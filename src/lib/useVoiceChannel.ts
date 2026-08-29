@@ -1,0 +1,749 @@
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { supabase } from './supabase'
+import type { RealtimeChannel } from '@supabase/supabase-js'
+
+export type VoiceParticipant = {
+  userId: string
+  displayName: string
+  isSpeaking: boolean
+  avatarUrl?: string
+  screenStream?: MediaStream
+}
+
+const ICE_SERVERS: RTCConfiguration = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ],
+}
+
+// Threshold for speaking detection (0-255)
+const SPEAKING_THRESHOLD = 25
+const SPEAKING_CHECK_INTERVAL = 150
+
+export function useVoiceChannel() {
+  const [participants, setParticipants] = useState<VoiceParticipant[]>([])
+  const [isMuted, setIsMuted] = useState(false)
+  const [isConnected, setIsConnected] = useState(false)
+  const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null)
+
+  const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map())
+  const localStreamRef = useRef<MediaStream | null>(null)
+  const localScreenStreamRef = useRef<MediaStream | null>(null)
+  const screenSendersRef = useRef<Map<string, RTCRtpSender>>(new Map()) // Tracks video senders per peer
+  const screenAudioSendersRef = useRef<Map<string, RTCRtpSender>>(new Map()) // Tracks audio senders per peer
+  const channelRef = useRef<RealtimeChannel | null>(null)
+  const myInfoRef = useRef<{ userId: string; displayName: string; avatarUrl?: string } | null>(null)
+  const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map())
+  
+  // Analysers
+  const analysersRef = useRef<Map<string, { analyser: AnalyserNode; ctx: AudioContext }>>(new Map())
+  const localAnalyserRef = useRef<{ analyser: AnalyserNode; ctx: AudioContext } | null>(null)
+  
+  // Selected devices configuration
+  const selectedInputIdRef = useRef<string>('default')
+  const selectedOutputIdRef = useRef<string>('default')
+
+  const speakingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map())
+  const peerVolumesRef = useRef<Map<string, number>>(new Map()) // Tracks local volume per peer
+  const peerScreenVolumesRef = useRef<Map<string, number>>(new Map()) // Tracks local screenshare volume per peer
+  const participantsMapRef = useRef<Map<string, { displayName: string; avatarUrl?: string; screenStream?: MediaStream }>>(new Map())
+
+  // Update participants list from the map
+  const syncParticipants = useCallback(() => {
+    const list: VoiceParticipant[] = []
+    // Add self
+    if (myInfoRef.current) {
+      list.push({
+        userId: myInfoRef.current.userId,
+        displayName: myInfoRef.current.displayName,
+        avatarUrl: myInfoRef.current.avatarUrl,
+        isSpeaking: false,
+        screenStream: localScreenStreamRef.current || undefined
+      })
+    }
+    // Add others
+    participantsMapRef.current.forEach((info, id) => {
+      if (id !== myInfoRef.current?.userId) {
+        list.push({
+          userId: id,
+          displayName: info.displayName,
+          avatarUrl: info.avatarUrl,
+          isSpeaking: false,
+          screenStream: info.screenStream
+        })
+      }
+    })
+    setParticipants(list)
+  }, [])
+
+  // Create a peer connection for a remote user
+  const createPeerConnection = useCallback((remoteUserId: string) => {
+    if (!localStreamRef.current || !supabase) return undefined
+
+    const pc = new RTCPeerConnection(ICE_SERVERS)
+
+    // Add local audio tracks
+    localStreamRef.current.getAudioTracks().forEach(track => {
+      pc.addTrack(track, localStreamRef.current!)
+    })
+
+    // If we are currently sharing screen, add the video and audio tracks to this new peer connection too!
+    if (localScreenStreamRef.current) {
+      const videoTrack = localScreenStreamRef.current.getVideoTracks()[0]
+      if (videoTrack) {
+        const sender = pc.addTrack(videoTrack, localScreenStreamRef.current)
+        screenSendersRef.current.set(remoteUserId, sender)
+      }
+      const audioTrack = localScreenStreamRef.current.getAudioTracks()[0]
+      if (audioTrack) {
+        const sender = pc.addTrack(audioTrack, localScreenStreamRef.current)
+        screenAudioSendersRef.current.set(remoteUserId, sender)
+      }
+    }
+
+    // Handle remote tracks (audio or video)
+    pc.ontrack = (event) => {
+      const remoteStream = event.streams[0]
+      if (!remoteStream) return
+
+      const track = event.track
+      if (track.kind === 'audio') {
+        // Detect if this is screenshare audio (stream contains a video track) or normal microphone voice
+        const isScreen = remoteStream.getVideoTracks().length > 0
+        const key = isScreen ? `${remoteUserId}-screen` : `${remoteUserId}-voice`
+        
+        let audio = audioElementsRef.current.get(key)
+        if (!audio) {
+          audio = new Audio()
+          audio.autoplay = true
+          const savedVol = isScreen
+            ? (peerScreenVolumesRef.current.get(remoteUserId) !== undefined ? peerScreenVolumesRef.current.get(remoteUserId)! : 1.0)
+            : (peerVolumesRef.current.get(remoteUserId) !== undefined ? peerVolumesRef.current.get(remoteUserId)! : 1.0)
+          audio.volume = savedVol
+          audioElementsRef.current.set(key, audio)
+        }
+        audio.srcObject = remoteStream
+
+        // Set output device if configured
+        if (typeof audio.setSinkId === 'function' && selectedOutputIdRef.current !== 'default') {
+          audio.setSinkId(selectedOutputIdRef.current).catch(err => {
+            console.error('Error setting sinkId during peer connection setup:', err)
+          })
+        }
+
+        // Set up speaking detection
+        try {
+          const ctx = new AudioContext()
+          const source = ctx.createMediaStreamSource(remoteStream)
+          const analyser = ctx.createAnalyser()
+          analyser.fftSize = 512
+          source.connect(analyser)
+          analysersRef.current.set(remoteUserId, { analyser, ctx })
+        } catch {
+          // AudioContext may fail in some environments
+        }
+      } else if (track.kind === 'video') {
+        // This is a screen share stream from the remote user!
+        const current = participantsMapRef.current.get(remoteUserId) || { displayName: 'Membro' }
+        participantsMapRef.current.set(remoteUserId, {
+          ...current,
+          screenStream: remoteStream
+        })
+        syncParticipants()
+
+        // Handle track stop
+        track.onended = () => {
+          const info = participantsMapRef.current.get(remoteUserId)
+          if (info) {
+            delete info.screenStream
+            syncParticipants()
+          }
+        }
+      }
+    }
+
+    // Handle ICE candidates
+    pc.onicecandidate = (event) => {
+      if (event.candidate && channelRef.current) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'ice-candidate',
+          payload: {
+            from: myInfoRef.current!.userId,
+            to: remoteUserId,
+            candidate: event.candidate.toJSON(),
+          },
+        })
+      }
+    }
+
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+        cleanupPeer(remoteUserId)
+      }
+    }
+
+    peersRef.current.set(remoteUserId, pc)
+    return pc
+  }, [syncParticipants])
+
+  // Clean up a single peer
+  const cleanupPeer = useCallback((peerId: string) => {
+    const pc = peersRef.current.get(peerId)
+    if (pc) { pc.close(); peersRef.current.delete(peerId) }
+
+    audioElementsRef.current.forEach((audio, key) => {
+      if (key === peerId || key.startsWith(`${peerId}-`)) {
+        audio.srcObject = null
+        audioElementsRef.current.delete(key)
+      }
+    })
+
+    const a = analysersRef.current.get(peerId)
+    if (a) { a.ctx.close().catch(() => {}); analysersRef.current.delete(peerId) }
+
+    screenSendersRef.current.delete(peerId)
+    pendingCandidatesRef.current.delete(peerId)
+    participantsMapRef.current.delete(peerId)
+    syncParticipants()
+  }, [syncParticipants])
+
+  // Handle incoming signaling messages
+  const handleSignal = useCallback(async (event: string, payload: Record<string, unknown>) => {
+    const from = payload.from as string
+    const to = payload.to as string
+
+    // Ignore messages not meant for us
+    if (to !== myInfoRef.current?.userId) return
+
+    if (event === 'sdp-offer') {
+      const sdp = payload.sdp as RTCSessionDescriptionInit
+      let pc = peersRef.current.get(from)
+      if (!pc) pc = createPeerConnection(from)
+      if (!pc) return
+
+      await pc.setRemoteDescription(new RTCSessionDescription(sdp))
+
+      // Apply any pending ICE candidates
+      const pending = pendingCandidatesRef.current.get(from) ?? []
+      for (const c of pending) {
+        await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})
+      }
+      pendingCandidatesRef.current.delete(from)
+
+      const answer = await pc.createAnswer()
+      await pc.setLocalDescription(answer)
+
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'sdp-answer',
+        payload: { from: myInfoRef.current!.userId, to: from, sdp: answer },
+      })
+    }
+
+    if (event === 'sdp-answer') {
+      const sdp = payload.sdp as RTCSessionDescriptionInit
+      const pc = peersRef.current.get(from)
+      if (!pc) return
+      await pc.setRemoteDescription(new RTCSessionDescription(sdp))
+
+      // Apply any pending ICE candidates
+      const pending = pendingCandidatesRef.current.get(from) ?? []
+      for (const c of pending) {
+        await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})
+      }
+      pendingCandidatesRef.current.delete(from)
+    }
+
+    if (event === 'ice-candidate') {
+      const candidate = payload.candidate as RTCIceCandidateInit
+      const pc = peersRef.current.get(from)
+      if (pc && pc.remoteDescription) {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {})
+      } else {
+        // Queue the candidate for later
+        const pending = pendingCandidatesRef.current.get(from) ?? []
+        pending.push(candidate)
+        pendingCandidatesRef.current.set(from, pending)
+      }
+    }
+  }, [createPeerConnection])
+
+  // Initiate connection to a peer (we create the offer)
+  const initiateConnection = useCallback(async (remoteUserId: string) => {
+    let pc = peersRef.current.get(remoteUserId)
+    if (!pc) pc = createPeerConnection(remoteUserId)
+    if (!pc) return
+
+    const offer = await pc.createOffer()
+    await pc.setLocalDescription(offer)
+
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'sdp-offer',
+      payload: { from: myInfoRef.current!.userId, to: remoteUserId, sdp: offer },
+    })
+  }, [createPeerConnection])
+
+  // Start speaking detection interval
+  const startSpeakingDetection = useCallback(() => {
+    if (speakingIntervalRef.current) return
+
+    speakingIntervalRef.current = setInterval(() => {
+      const updates: Record<string, boolean> = {}
+
+      // Check local stream speaking (Glow own name)
+      if (localAnalyserRef.current && myInfoRef.current) {
+        const data = new Uint8Array(localAnalyserRef.current.analyser.frequencyBinCount)
+        localAnalyserRef.current.analyser.getByteFrequencyData(data)
+        const avg = data.reduce((sum, v) => sum + v, 0) / data.length
+        
+        // Muted local microphone shouldn't trigger speaking
+        const isLocalMuted = localStreamRef.current?.getAudioTracks()[0]?.enabled === false
+        updates[myInfoRef.current.userId] = !isLocalMuted && avg > SPEAKING_THRESHOLD
+      }
+
+      // Check remote streams
+      analysersRef.current.forEach((a, peerId) => {
+        const data = new Uint8Array(a.analyser.frequencyBinCount)
+        a.analyser.getByteFrequencyData(data)
+        const avg = data.reduce((sum, v) => sum + v, 0) / data.length
+        updates[peerId] = avg > SPEAKING_THRESHOLD
+      })
+
+      setParticipants(prev =>
+        prev.map(p => ({
+          ...p,
+          isSpeaking: updates[p.userId] ?? p.isSpeaking,
+        }))
+      )
+    }, SPEAKING_CHECK_INTERVAL)
+  }, [])
+
+  // Join a voice channel (with custom device selection inputs)
+  const joinVoice = useCallback(async (channelId: string, userId: string, displayName: string, avatarUrl?: string, inputId?: string, outputId?: string) => {
+    if (!supabase || isConnected) return
+
+    try {
+      if (inputId) selectedInputIdRef.current = inputId
+      if (outputId) selectedOutputIdRef.current = outputId
+
+      // Get microphone access with requested constraints
+      const constraints = {
+        audio: {
+          deviceId: inputId && inputId !== 'default' ? { exact: inputId } : undefined
+        },
+        video: false
+      }
+      
+      const stream = await navigator.mediaDevices.getUserMedia(constraints)
+      localStreamRef.current = stream
+      myInfoRef.current = { userId, displayName, avatarUrl }
+
+      // Setup local audio analyser for speaking detection
+      try {
+        const ctx = new AudioContext()
+        const source = ctx.createMediaStreamSource(stream)
+        const analyser = ctx.createAnalyser()
+        analyser.fftSize = 512
+        source.connect(analyser)
+        localAnalyserRef.current = { analyser, ctx }
+      } catch (err) {
+        console.error('Failed to setup local audio analyser:', err)
+      }
+
+      // Create the Supabase Realtime channel
+      const realtimeChannel = supabase.channel(`voice-${channelId}`, {
+        config: { presence: { key: userId } },
+      })
+
+      channelRef.current = realtimeChannel
+
+      // Listen for signaling broadcasts
+      realtimeChannel.on('broadcast', { event: 'sdp-offer' }, ({ payload }) => {
+        handleSignal('sdp-offer', payload as Record<string, unknown>)
+      })
+      realtimeChannel.on('broadcast', { event: 'sdp-answer' }, ({ payload }) => {
+        handleSignal('sdp-answer', payload as Record<string, unknown>)
+      })
+      realtimeChannel.on('broadcast', { event: 'ice-candidate' }, ({ payload }) => {
+        handleSignal('ice-candidate', payload as Record<string, unknown>)
+      })
+
+      // Handle presence: peer joins
+      realtimeChannel.on('presence', { event: 'join' }, ({ newPresences }) => {
+        for (const presence of newPresences) {
+          const peerId = (presence as Record<string, string>).user_id
+          const peerName = (presence as Record<string, string>).display_name
+          const peerAvatar = (presence as Record<string, string>).avatar_url
+          if (peerId && peerId !== userId) {
+            participantsMapRef.current.set(peerId, { 
+              displayName: peerName || 'Membro',
+              avatarUrl: peerAvatar
+            })
+            syncParticipants()
+
+            if (userId < peerId) {
+              initiateConnection(peerId)
+            }
+          }
+        }
+      })
+
+      // Handle presence: peer leaves
+      realtimeChannel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
+        for (const presence of leftPresences) {
+          const peerId = (presence as Record<string, string>).user_id
+          if (peerId) cleanupPeer(peerId)
+        }
+      })
+
+      // Handle presence sync (existing users when we join)
+      realtimeChannel.on('presence', { event: 'sync' }, () => {
+        const state = realtimeChannel.presenceState()
+        Object.entries(state).forEach(([_key, presences]) => {
+          for (const presence of presences) {
+            const p = presence as Record<string, string>
+            if (p.user_id && p.user_id !== userId) {
+              participantsMapRef.current.set(p.user_id, { 
+                displayName: p.display_name || 'Membro',
+                avatarUrl: p.avatar_url
+              })
+            }
+          }
+        })
+        syncParticipants()
+      })
+
+      // Subscribe and track presence
+      await realtimeChannel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await realtimeChannel.track({
+            user_id: userId,
+            display_name: displayName,
+            avatar_url: avatarUrl,
+            online_at: new Date().toISOString(),
+          })
+        }
+      })
+
+      setIsConnected(true)
+      startSpeakingDetection()
+    } catch (err) {
+      console.error('Failed to join voice channel:', err)
+      localStreamRef.current?.getTracks().forEach(t => t.stop())
+      localStreamRef.current = null
+    }
+  }, [isConnected, handleSignal, initiateConnection, cleanupPeer, syncParticipants, startSpeakingDetection])
+
+  // Leave voice channel
+  const leaveVoice = useCallback(() => {
+    if (speakingIntervalRef.current) {
+      clearInterval(speakingIntervalRef.current)
+      speakingIntervalRef.current = null
+    }
+
+    // Stop local analyser
+    if (localAnalyserRef.current) {
+      localAnalyserRef.current.ctx.close().catch(() => {})
+      localAnalyserRef.current = null
+    }
+
+    // Stop screen share
+    if (localScreenStreamRef.current) {
+      localScreenStreamRef.current.getTracks().forEach(t => t.stop())
+      localScreenStreamRef.current = null
+      setLocalScreenStream(null)
+    }
+    screenSendersRef.current.clear()
+    screenAudioSendersRef.current.clear()
+
+    // Close all peer connections
+    peersRef.current.forEach((pc) => pc.close())
+    peersRef.current.clear()
+
+    // Stop local audio stream
+    localStreamRef.current?.getTracks().forEach(t => t.stop())
+    localStreamRef.current = null
+
+    // Clean up audio elements
+    audioElementsRef.current.forEach(audio => { audio.srcObject = null })
+    audioElementsRef.current.clear()
+
+    // Clean up analysers
+    analysersRef.current.forEach(a => a.ctx.close().catch(() => {}))
+    analysersRef.current.clear()
+
+    // Leave realtime channel
+    if (channelRef.current && supabase) {
+      supabase.removeChannel(channelRef.current)
+      channelRef.current = null
+    }
+
+    pendingCandidatesRef.current.clear()
+    participantsMapRef.current.clear()
+    myInfoRef.current = null
+    setParticipants([])
+    setIsConnected(false)
+    setIsMuted(false)
+  }, [])
+
+  // Toggle mute
+  const toggleMute = useCallback(() => {
+    if (!localStreamRef.current) return
+    const audioTrack = localStreamRef.current.getAudioTracks()[0]
+    if (audioTrack) {
+      audioTrack.enabled = !audioTrack.enabled
+      setIsMuted(!audioTrack.enabled)
+    }
+  }, [])
+
+  // Change input microphone device in real-time
+  const changeInputDevice = useCallback(async (deviceId: string) => {
+    selectedInputIdRef.current = deviceId
+    if (!isConnected || !localStreamRef.current) return
+
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        audio: { deviceId: { exact: deviceId } },
+        video: false
+      })
+      const newTrack = newStream.getAudioTracks()[0]
+
+      const oldTracks = localStreamRef.current.getAudioTracks()
+      oldTracks.forEach(t => t.stop())
+
+      localStreamRef.current.removeTrack(oldTracks[0])
+      localStreamRef.current.addTrack(newTrack)
+
+      // Replace audio track on all active WebRTC peer connections
+      for (const pc of peersRef.current.values()) {
+        const senders = pc.getSenders()
+        const audioSender = senders.find(s => s.track?.kind === 'audio')
+        if (audioSender) {
+          await audioSender.replaceTrack(newTrack)
+        }
+      }
+
+      // Re-create local analyser for volume tracking
+      if (localAnalyserRef.current) {
+        localAnalyserRef.current.ctx.close().catch(() => {})
+      }
+      try {
+        const ctx = new AudioContext()
+        const source = ctx.createMediaStreamSource(newStream)
+        const analyser = ctx.createAnalyser()
+        analyser.fftSize = 512
+        source.connect(analyser)
+        localAnalyserRef.current = { analyser, ctx }
+      } catch (e) {}
+
+    } catch (err) {
+      console.error('Failed to change input device:', err)
+    }
+  }, [isConnected])
+
+  // Change output speaker device in real-time
+  const changeOutputDevice = useCallback(async (deviceId: string) => {
+    selectedOutputIdRef.current = deviceId
+
+    for (const audio of audioElementsRef.current.values()) {
+      if (typeof audio.setSinkId === 'function') {
+        try {
+          await audio.setSinkId(deviceId)
+        } catch (err) {
+          console.error('Failed to setSinkId on audio element:', err)
+        }
+      }
+    }
+  }, [])
+
+  // Start sharing screen
+  const startScreenShare = useCallback(async (sourceId?: string, width?: number, height?: number, fps?: number) => {
+    if (!isConnected || !myInfoRef.current) return
+    try {
+      let stream: MediaStream
+      if (sourceId) {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            mandatory: {
+              chromeMediaSource: 'desktop'
+            }
+          } as any,
+          video: {
+            mandatory: {
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: sourceId,
+              minWidth: width || 1280,
+              maxWidth: width || 1280,
+              minHeight: height || 720,
+              maxHeight: height || 720,
+              minFrameRate: fps || 30,
+              maxFrameRate: fps || 30
+            }
+          } as any
+        })
+      } else {
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          audio: true,
+          video: {
+            width: width ? { ideal: width } : 1280,
+            height: height ? { ideal: height } : 720,
+            frameRate: fps ? { ideal: fps } : 30
+          }
+        })
+      }
+
+      localScreenStreamRef.current = stream
+      setLocalScreenStream(stream)
+
+      const videoTrack = stream.getVideoTracks()[0]
+      const audioTrack = stream.getAudioTracks()[0]
+
+      if (videoTrack) {
+        for (const [peerId, pc] of peersRef.current.entries()) {
+          const existingVideoSender = screenSendersRef.current.get(peerId)
+          if (existingVideoSender) {
+            await existingVideoSender.replaceTrack(videoTrack)
+          } else {
+            const sender = pc.addTrack(videoTrack, stream)
+            screenSendersRef.current.set(peerId, sender)
+          }
+
+          if (audioTrack) {
+            const existingAudioSender = screenAudioSendersRef.current.get(peerId)
+            if (existingAudioSender) {
+              await existingAudioSender.replaceTrack(audioTrack)
+            } else {
+              const sender = pc.addTrack(audioTrack, stream)
+              screenAudioSendersRef.current.set(peerId, sender)
+            }
+          }
+
+          // Trigger renegotiation
+          const offer = await pc.createOffer()
+          await pc.setLocalDescription(offer)
+          channelRef.current?.send({
+            type: 'broadcast',
+            event: 'sdp-offer',
+            payload: {
+              from: myInfoRef.current.userId,
+              to: peerId,
+              sdp: offer
+            }
+          })
+        }
+
+        videoTrack.onended = () => {
+          stopScreenShare()
+        }
+      }
+
+      syncParticipants()
+    } catch (err) {
+      console.error('Error starting screen share:', err)
+    }
+  }, [isConnected, syncParticipants])
+
+  // Stop sharing screen
+  const stopScreenShare = useCallback(async () => {
+    if (localScreenStreamRef.current) {
+      localScreenStreamRef.current.getTracks().forEach(t => t.stop())
+      localScreenStreamRef.current = null
+      setLocalScreenStream(null)
+    }
+
+    for (const [peerId, pc] of peersRef.current.entries()) {
+      const sender = screenSendersRef.current.get(peerId)
+      if (sender) {
+        try {
+          pc.removeTrack(sender)
+        } catch (e) {}
+        screenSendersRef.current.delete(peerId)
+      }
+
+      const audioSender = screenAudioSendersRef.current.get(peerId)
+      if (audioSender) {
+        try {
+          pc.removeTrack(audioSender)
+        } catch (e) {}
+        screenAudioSendersRef.current.delete(peerId)
+      }
+
+      try {
+        const offer = await pc.createOffer()
+        await pc.setLocalDescription(offer)
+        channelRef.current?.send({
+          type: 'broadcast',
+          event: 'sdp-offer',
+          payload: {
+            from: myInfoRef.current!.userId,
+            to: peerId,
+            sdp: offer
+          }
+        })
+      } catch (e) {}
+    }
+
+    syncParticipants()
+  }, [syncParticipants])
+
+  // Change screen share constraints on the fly (resolution/fps)
+  const changeScreenShareSettings = useCallback(async (width?: number, height?: number, fps?: number) => {
+    if (!localScreenStreamRef.current) return
+    const track = localScreenStreamRef.current.getVideoTracks()[0]
+    if (!track) return
+
+    try {
+      const constraints: MediaTrackConstraints = {}
+      if (width) constraints.width = { ideal: width }
+      if (height) constraints.height = { ideal: height }
+      if (fps) constraints.frameRate = { ideal: fps }
+
+      await track.applyConstraints(constraints)
+      console.log('Successfully applied new video track constraints:', constraints)
+    } catch (err) {
+      console.error('Failed to apply video track constraints:', err)
+    }
+  }, [])
+
+  const changePeerVolume = useCallback((peerId: string, volume: number) => {
+    peerVolumesRef.current.set(peerId, volume)
+    const audio = audioElementsRef.current.get(`${peerId}-voice`) || audioElementsRef.current.get(peerId)
+    if (audio) {
+      audio.volume = volume
+    }
+  }, [])
+
+  const changePeerScreenVolume = useCallback((peerId: string, volume: number) => {
+    peerScreenVolumesRef.current.set(peerId, volume)
+    const audio = audioElementsRef.current.get(`${peerId}-screen`)
+    if (audio) {
+      audio.volume = volume
+    }
+  }, [])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { leaveVoice() }
+  }, [leaveVoice])
+
+  return { 
+    participants, 
+    isMuted, 
+    isConnected, 
+    localScreenStream,
+    joinVoice, 
+    leaveVoice, 
+    toggleMute,
+    startScreenShare,
+    stopScreenShare,
+    changeInputDevice,
+    changeOutputDevice,
+    changeScreenShareSettings,
+    changePeerVolume,
+    changePeerScreenVolume
+  }
+}

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Echo — A Evolução do Chat por Voz e Vídeo</title>
+  <style>
+    :root {
+      --bg-dark: #0f1312;
+      --bg-card: #151b1a;
+      --accent: #2ed573;
+      --accent-hover: #26b360;
+      --text-main: #f5f7f6;
+      --text-muted: #8e9e9c;
+      --font-stack: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-stack);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Header & Navigation */
+    header {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-weight: 800;
+      font-size: 24px;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo-mark {
+      width: 18px;
+      height: 18px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--accent);
+      display: inline-block;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14.5px;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--text-main);
+    }
+
+    /* Hero Section */
+    .hero {
+      max-width: 1200px;
+      margin: 60px auto 80px auto;
+      padding: 0 24px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .beta-badge {
+      background: rgba(46, 213, 115, 0.1);
+      color: var(--accent);
+      border: 1px solid rgba(46, 213, 115, 0.2);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 12.5px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    h1 {
+      font-size: 56px;
+      font-weight: 850;
+      line-height: 1.1;
+      letter-spacing: -2px;
+      max-width: 800px;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, #fff 30%, var(--text-muted) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .tagline {
+      font-size: 18.5px;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin-bottom: 40px;
+    }
+
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--accent);
+      color: #0f1312;
+      text-decoration: none;
+      padding: 16px 36px;
+      border-radius: 28px;
+      font-size: 16.5px;
+      font-weight: 750;
+      box-shadow: 0 10px 30px rgba(46, 213, 115, 0.3);
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+
+    .cta-btn:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 12px 40px rgba(46, 213, 115, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .cta-btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-subtitle {
+      font-size: 12px;
+      color: rgba(15, 19, 18, 0.6);
+      margin-top: 8px;
+      font-weight: 600;
+    }
+
+    /* Showcase Screenshot Wrapper */
+    .app-showcase {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 24px;
+      perspective: 1000px;
+    }
+
+    .app-preview-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+      transform: rotateX(8deg);
+      transition: transform 0.5s ease;
+    }
+
+    .app-preview-card:hover {
+      transform: rotateX(0deg);
+    }
+
+    .window-header {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .dot.red { background: #ff5f56; }
+    .dot.yellow { background: #ffbd2e; }
+    .dot.green { background: #27c93f; }
+
+    .window-content {
+      background: #0d1110;
+      height: 480px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.04);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: var(--text-muted);
+      font-size: 15px;
+      font-weight: 500;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Fake UI layout inside mock */
+    .fake-ui {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      width: 100%;
+      height: 100%;
+    }
+
+    .fake-sidebar {
+      background: #111615;
+      border-right: 1px solid rgba(255,255,255,0.05);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .fake-channels {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .fake-channel {
+      height: 32px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 6px;
+      width: 100%;
+    }
+
+    .fake-channel.active {
+      background: rgba(46, 213, 115, 0.15);
+      border-left: 3px solid var(--accent);
+    }
+
+    .fake-grid {
+      padding: 24px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      background: #0b0e0d;
+    }
+
+    .fake-card {
+      border: 2px solid rgba(255,255,255,0.05);
+      border-radius: 20px;
+      background: #121817;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+    }
+
+    .fake-card.speaking {
+      border-color: var(--accent);
+      box-shadow: 0 0 15px rgba(46, 213, 115, 0.15);
+    }
+
+    .fake-avatar {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: #222e2c;
+      border: 3px solid var(--text-muted);
+    }
+
+    .fake-card.speaking .fake-avatar {
+      border-color: var(--accent);
+    }
+
+    .fake-name {
+      font-size: 13px;
+      font-weight: 750;
+      color: var(--text-main);
+    }
+
+    /* Feature Grid Section */
+    .features {
+      max-width: 1200px;
+      margin: 120px auto;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 36px;
+      border-radius: 20px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .feature-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+    }
+
+    .icon-box {
+      font-size: 32px;
+      margin-bottom: 20px;
+    }
+
+    .feature-title {
+      font-size: 20px;
+      font-weight: 750;
+      margin-bottom: 12px;
+    }
+
+    .feature-desc {
+      font-size: 14.5px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 60px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 768px) {
+      h1 { font-size: 38px; }
+      .features { grid-template-columns: 1fr; }
+      .app-preview-card { transform: none; }
+      .fake-ui { grid-template-columns: 1fr; }
+      .fake-sidebar { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">
+      <span class="logo-mark"></span>
+      <span>echo</span>
+    </div>
+    <div class="nav-links">
+      <a href="#features">Recursos</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="beta-badge">Echo Beta v0.9.0</div>
+    <h1>Conecte. Transmita. Converse.</h1>
+    <p class="tagline">Uma alternativa ultra leve, rápida e moderna para chamadas de voz e compartilhamento de tela com seus amigos.</p>
+    
+    <div>
+      <a href="https://gofile.io/d/TPeegbcJ" class="cta-btn" download>
+        <span>📥 Baixar para Windows (.zip)</span>
+      </a>
+      <div class="btn-subtitle">Windows 10 / 11 de 64 bits</div>
+    </div>
+  </section>
+
+  <section class="app-showcase">
+    <div class="app-preview-card">
+      <div class="window-header">
+        <span class="dot red"></span>
+        <span class="dot yellow"></span>
+        <span class="dot green"></span>
+      </div>
+      <div class="window-content">
+        <div class="fake-ui">
+          <div class="fake-sidebar">
+            <div style="width: 100px; height: 16px; background: rgba(255,255,255,0.08); border-radius: 4px;"></div>
+            <div class="fake-channels">
+              <div class="fake-channel"></div>
+              <div class="fake-channel active"></div>
+              <div class="fake-channel"></div>
+            </div>
+          </div>
+          <div class="fake-grid">
+            <div class="fake-card speaking">
+              <div class="fake-avatar" style="background-image: radial-gradient(circle, var(--accent) 0%, transparent 70%);"></div>
+              <span class="fake-name">Gabriel</span>
+              <div style="position: absolute; bottom: 12px; right: 12px; font-size: 11px; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px; color: var(--accent);">🟢 Online</div>
+            </div>
+            <div class="fake-card">
+              <div class="fake-avatar"></div>
+              <span class="fake-name">Você</span>
+              <div style="position: absolute; bottom: 12px; right: 12px; font-size: 11px; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px;">🟢 Transmitindo</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features" id="features">
+    <div class="feature-card">
+      <div class="icon-box">🖥️</div>
+      <h3 class="feature-title">Compartilhamento de Tela</h3>
+      <p class="feature-desc">Transmita seu jogo ou janela em tempo real a até 60 FPS com resolução personalizada de forma leve.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon-box">🔊</div>
+      <h3 class="feature-title">Áudio de Transmissão Nítido</h3>
+      <p class="feature-desc">Captação e reprodução nativas do som da tela. Seus amigos escutam suas jogadas e músicas sem complicação.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon-box">🎛️</div>
+      <h3 class="feature-title">Controle de Volume Separado</h3>
+      <p class="feature-desc">Ajuste o volume de voz de cada participante e o volume da transmissão dele de forma individualizada.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>&copy; 2026 Echo. Desenvolvido para comunicação rápida, ultra leve e segura.</p>
+  </footer>
+
+</body>
+</html>
