@@ -2711,3 +2711,54 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
     box-shadow: 0 0 0 2px #23a55a, 0 0 4px rgba(35, 165, 90, 0.3);
   }
 }
+
+/* ── Auto-Update Banner ────────────────────────────── */
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 9999;
+  flex-shrink: 0;
+}
+
+.update-banner span {
+  white-space: nowrap;
+}
+
+.update-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  overflow: hidden;
+  min-width: 100px;
+}
+
+.update-progress-fill {
+  height: 100%;
+  background: #fff;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.update-restart-btn {
+  padding: 4px 14px;
+  background: #fff;
+  color: var(--accent-color);
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+
+.update-restart-btn:hover {
+  opacity: 0.9;
+}

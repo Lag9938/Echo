@@ -1,4 +1,4 @@
-name: Build and Sign Echo
+name: Build and Release Echo
 
 on:
   push:
@@ -6,11 +6,10 @@ on:
       - 'v*'
 
 permissions:
-  id-token: write
-  contents: read
+  contents: write
 
 jobs:
-  build:
+  build-and-release:
     runs-on: windows-latest
 
     steps:
@@ -26,42 +25,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build app
-        run: npm run build
-
-      - name: Package Electron app (without signing)
-        run: npx electron-builder --win --publish never
-
-      - name: Upload unsigned artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Echo-win-unsigned
-          path: dist-desktop/*.zip
-
-  sign:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download unsigned artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: Echo-win-unsigned
-
-      - name: Sign with SignPath
-        uses: signpath/github-action-submit-signing-request@v1
-        with:
-          api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
-          organization-id: '${{ secrets.SIGNPATH_ORGANIZATION_ID }}'
-          project-slug: 'Echo'
-          signing-policy-slug: 'release-signing'
-          artifact-configuration-slug: 'zip-signing'
-          github-artifact-id: 'Echo-win-unsigned'
-          wait-for-completion: true
-          output-artifact-directory: signed-output
-
-      - name: Upload signed artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Echo-win-signed
-          path: signed-output/
+      - name: Build and publish
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: npm run build && npx electron-builder --win --publish always

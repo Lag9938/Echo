@@ -502,6 +502,11 @@ function Echo({ user }: { user: User }) {
     return val !== null ? parseFloat(val) : 0.5
   })
 
+  // Auto-update state
+  const [updateStatus, setUpdateStatus] = useState<'idle' | 'downloading' | 'ready'>('idle')
+  const [updateVersion, setUpdateVersion] = useState('')
+  const [updateProgress, setUpdateProgress] = useState(0)
+
   async function updatePresenceStatus(status: 'online' | 'idle' | 'dnd' | 'invisible') {
     setPresenceStatus(status)
     localStorage.setItem('echo-presence-status', status)
@@ -557,6 +562,23 @@ function Echo({ user }: { user: User }) {
   function toggleTheme() {
     setTheme(prev => prev === 'light' ? 'dark' : 'light')
   }
+
+  // Auto-update listener
+  useEffect(() => {
+    const api = (window as any).electronAPI
+    if (!api?.onUpdateAvailable) return
+    api.onUpdateAvailable((info: { version: string }) => {
+      setUpdateStatus('downloading')
+      setUpdateVersion(info.version)
+    })
+    api.onUpdateProgress((progress: { percent: number }) => {
+      setUpdateProgress(progress.percent)
+    })
+    api.onUpdateReady((info: { version: string }) => {
+      setUpdateStatus('ready')
+      setUpdateVersion(info.version)
+    })
+  }, [])
 
   // Voice hook and state
   const { 
@@ -1420,6 +1442,25 @@ function Echo({ user }: { user: User }) {
 
   return (
     <main className="echo-app">
+      {updateStatus !== 'idle' && (
+        <div className="update-banner">
+          {updateStatus === 'downloading' ? (
+            <>
+              <span>⬇️ Baixando atualização v{updateVersion}... {updateProgress}%</span>
+              <div className="update-progress-bar">
+                <div className="update-progress-fill" style={{ width: `${updateProgress}%` }} />
+              </div>
+            </>
+          ) : (
+            <>
+              <span>✅ Atualização v{updateVersion} pronta!</span>
+              <button className="update-restart-btn" onClick={() => (window as any).electronAPI?.installUpdate()}>
+                Reiniciar para atualizar
+              </button>
+            </>
+          )}
+        </div>
+      )}
       <header className="topbar">
         <Brand />
         <nav>

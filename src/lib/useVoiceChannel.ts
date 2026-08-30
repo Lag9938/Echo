@@ -618,7 +618,8 @@ export function useVoiceChannel() {
         stream = await navigator.mediaDevices.getUserMedia({
           audio: {
             mandatory: {
-              chromeMediaSource: 'desktop'
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: sourceId
             }
           } as any,
           video: {

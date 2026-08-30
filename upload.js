@@ -1,16 +1,28 @@
 import fs from 'fs';
 
 async function upload() {
-  const filePath = 'dist-desktop/Echo-0.16.0-win.zip';
+  const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  const version = pkg.version;
+  const filePath = `dist-desktop/Echo Setup ${version}.exe`;
+
   if (!fs.existsSync(filePath)) {
-    console.error(`Erro: Arquivo não encontrado em ${filePath}.`);
+    // Fallback to zip if exe not found
+    const zipPath = `dist-desktop/Echo-${version}-win.zip`;
+    if (fs.existsSync(zipPath)) {
+      return uploadFile(zipPath, `Echo-${version}-win.zip`);
+    }
+    console.error(`Erro: Arquivo não encontrado em ${filePath} nem ${zipPath}.`);
     return;
   }
   
+  return uploadFile(filePath, `Echo-Setup-${version}.exe`);
+}
+
+async function uploadFile(filePath, fileName) {
   const stats = fs.statSync(filePath);
   console.log(`Lendo arquivo (${(stats.size / 1024 / 1024).toFixed(2)} MB) em memória...`);
   const fileBuffer = fs.readFileSync(filePath);
-  const blob = new Blob([fileBuffer], { type: 'application/zip' });
+  const blob = new Blob([fileBuffer], { type: 'application/octet-stream' });
 
   console.log("Consultando servidores Gofile disponíveis...");
   const serverResponse = await fetch('https://api.gofile.io/servers');
@@ -19,9 +31,9 @@ async function upload() {
   console.log(`Servidor de upload: ${activeServer}`);
 
   const formData = new FormData();
-  formData.append('file', blob, 'Echo-0.16.0-win.zip');
+  formData.append('file', blob, fileName);
   
-  console.log(`Enviando arquivo para Gofile...`);
+  console.log(`Enviando ${fileName} para Gofile...`);
   const response = await fetch(`https://${activeServer}.gofile.io/contents/uploadfile`, {
     method: 'POST',
     body: formData
@@ -38,7 +50,6 @@ async function upload() {
     if (fs.existsSync(htmlPath)) {
       let html = fs.readFileSync(htmlPath, 'utf8');
       html = html.replace(/href="[^"]*"(\s+class="cta-btn")/, `href="${downloadPageUrl}"$1`);
-      html = html.replace('📥 Baixar para Windows (.exe)', '📥 Baixar para Windows (.zip)');
       fs.writeFileSync(htmlPath, html, 'utf8');
       console.log(`Landing Page atualizada.`);
     }

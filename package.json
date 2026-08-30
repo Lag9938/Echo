@@ -3,7 +3,7 @@
   "description": "Comunidades e conversas em tempo real.",
   "author": "Echo Lobby",
   "private": true,
-  "version": "0.16.0",
+  "version": "0.17.0",
   "main": "electron-main.js",
   "type": "module",
   "scripts": {
@@ -48,7 +48,7 @@
       "package.json"
     ],
     "win": {
-      "target": "zip",
+      "target": "nsis",
       "signtoolOptions": {
         "sign": "./noop-sign.cjs"
       }
@@ -59,6 +59,11 @@
       "createDesktopShortcut": true,
       "runAfterFinish": true,
       "packElevateHelper": false
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Lag9938",
+      "repo": "Echo"
     }
   }
 }
