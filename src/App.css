@@ -2233,3 +2233,56 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
     transform: translateX(0);
   }
 }
+
+/* ── Custom Confirmation Modal ───────────────────── */
+.confirm-modal-overlay {
+  z-index: 2000 !important;
+}
+.confirm-modal-title {
+  color: #df6d5d !important;
+}
+.dark-theme .confirm-modal-title {
+  color: #ef7d6d !important;
+}
+
+/* ── Unread Channels Indicator ─────────────────── */
+.channel-item.unread {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+  position: relative;
+}
+.channel-item.unread::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 8px;
+  background: var(--text-primary);
+  border-radius: 0 4px 4px 0;
+}
+
+/* ── Mention Highlight & Tags ─────────────────── */
+.msg-card.mention-highlight {
+  background: rgba(250, 166, 26, 0.08) !important;
+  border-left: 4px solid #faa61a !important;
+  border-radius: 0 14px 14px 0;
+}
+.msg-card.mention-highlight:hover {
+  background: rgba(250, 166, 26, 0.12) !important;
+}
+.mention-tag {
+  background: rgba(88, 101, 242, 0.15);
+  color: #5865f2;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.95em;
+  transition: all 0.15s ease;
+}
+.mention-tag:hover {
+  background: #5865f2;
+  color: #fff;
+  cursor: pointer;
+}

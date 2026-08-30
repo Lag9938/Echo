@@ -202,6 +202,144 @@ function ClockIcon({ className }: { className?: string }) {
   )
 }
 
+function formatMessageText(text: string, userDisplayName?: string): React.ReactNode {
+  if (!text) return "";
+
+  // Detect code blocks first
+  const blockCodeRegex = /```([\s\S]+?)```/g;
+  const blockParts = text.split(blockCodeRegex);
+
+  return blockParts.map((blockPart, blockIndex) => {
+    // Odd index means it is a code block
+    if (blockIndex % 2 === 1) {
+      return (
+        <pre 
+          key={`block-c-${blockIndex}`} 
+          style={{ 
+            fontFamily: 'monospace', 
+            background: 'var(--bg-tertiary)', 
+            padding: '12px', 
+            borderRadius: '8px', 
+            fontSize: '0.9em',
+            overflowX: 'auto',
+            border: '1.5px solid var(--border-color)',
+            margin: '8px 0',
+            whiteSpace: 'pre-wrap',
+            color: 'var(--text-primary)',
+            textAlign: 'left'
+          }}
+        >
+          <code>{blockPart}</code>
+        </pre>
+      );
+    }
+
+    // Process URLs on normal text
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = blockPart.split(urlRegex);
+
+    return (
+      <span key={blockIndex}>
+        {parts.map((part, index) => {
+          if (part.match(urlRegex)) {
+            return (
+              <a 
+                key={index} 
+                href={part} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                style={{ color: 'var(--accent-color)', textDecoration: 'underline' }}
+              >
+                {part}
+              </a>
+            );
+          }
+
+          // Format bold, italic, strikethrough, inline code and mentions
+          let subParts: (string | React.ReactNode)[] = [part];
+
+          // Bold: **text**
+          const boldRegex = /\*\*([^*]+)\*\*/g;
+          subParts = subParts.flatMap(sp => {
+            if (typeof sp !== 'string') return sp;
+            const bParts = sp.split(boldRegex);
+            return bParts.map((bp, i) => {
+              if (i % 2 === 1) return <strong key={`b-${i}`}>{bp}</strong>;
+              return bp;
+            });
+          });
+
+          // Italic: *text*
+          const italicRegex = /\*([^*]+)\*/g;
+          subParts = subParts.flatMap(sp => {
+            if (typeof sp !== 'string') return sp;
+            const iParts = sp.split(italicRegex);
+            return iParts.map((ip, i) => {
+              if (i % 2 === 1) return <em key={`i-${i}`}>{ip}</em>;
+              return ip;
+            });
+          });
+
+          // Strikethrough: ~~text~~
+          const strikeRegex = /~~([^~]+)~~/g;
+          subParts = subParts.flatMap(sp => {
+            if (typeof sp !== 'string') return sp;
+            const sParts = sp.split(strikeRegex);
+            return sParts.map((spart, i) => {
+              if (i % 2 === 1) return <span key={`s-${i}`} style={{ textDecoration: 'line-through' }}>{spart}</span>;
+              return spart;
+            });
+          });
+
+          // Inline code: `text`
+          const codeRegex = /`([^`]+)`/g;
+          subParts = subParts.flatMap(sp => {
+            if (typeof sp !== 'string') return sp;
+            const cParts = sp.split(codeRegex);
+            return cParts.map((cp, i) => {
+              if (i % 2 === 1) {
+                return (
+                  <code 
+                    key={`c-${i}`} 
+                    style={{ 
+                      fontFamily: 'monospace', 
+                      background: 'var(--bg-tertiary)', 
+                      padding: '2px 6px', 
+                      borderRadius: '4px', 
+                      fontSize: '0.9em',
+                      color: 'var(--accent-color)',
+                      border: '1px solid var(--border-color)'
+                    }}
+                  >
+                    {cp}
+                  </code>
+                );
+              }
+              return cp;
+            });
+          });
+
+          // Mentions: @username
+          if (userDisplayName) {
+            const escapedName = userDisplayName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const mentionRegex = new RegExp(`(@${escapedName})`, 'gi');
+            subParts = subParts.flatMap(sp => {
+              if (typeof sp !== 'string') return sp;
+              const mParts = sp.split(mentionRegex);
+              return mParts.map((mp, i) => {
+                if (i % 2 === 1) return <span key={`m-${i}`} className="mention-tag">{mp}</span>;
+                return mp;
+              });
+            });
+          }
+
+          return <span key={index}>{subParts}</span>;
+        })}
+      </span>
+    );
+  });
+}
+
 function copyToClipboard(text: string): boolean {
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -328,11 +466,30 @@ function Echo({ user }: { user: User }) {
   const [editingSpaceDescription, setEditingSpaceDescription] = useState('')
   const [activeSpaceTab, setActiveSpaceTab] = useState<'geral' | 'channels'>('geral')
   const [showSpaceSettingsModal, setShowSpaceSettingsModal] = useState(false)
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [spaceMembers, setSpaceMembers] = useState<any[]>([])
   const [showMembersList, setShowMembersList] = useState(true)
   const [showVoiceChat, setShowVoiceChat] = useState(false)
   const [showVoiceMembers, setShowVoiceMembers] = useState(false)
+  const [customStatus, setCustomStatus] = useState(() => localStorage.getItem('echo-custom-status') || '')
+  const [presenceData, setPresenceData] = useState<Record<string, any>>({})
+  const [unreadChannels, setUnreadChannels] = useState<Set<string>>(new Set())
+  const selectedChannelRef = useRef(selectedChannel)
+  const presenceChannelRef = useRef<any>(null)
+
+  useEffect(() => {
+    selectedChannelRef.current = selectedChannel
+    if (selectedChannel) {
+      setUnreadChannels(prev => {
+        if (!prev.has(selectedChannel.id)) return prev
+        const next = new Set(prev)
+        next.delete(selectedChannel.id)
+        return next
+      })
+    }
+  }, [selectedChannel])
+
   const displayName = (user.user_metadata.display_name as string | undefined) || user.email?.split('@')[0] || 'Você'
 
   // Theme state
@@ -582,10 +739,8 @@ function Echo({ user }: { user: User }) {
     }
   }
 
-  async function deleteChannel(channelId: string) {
+  async function executeDeleteChannel(channelId: string) {
     if (!supabase || !editingSpace) return
-    const confirmDelete = window.confirm("Tem certeza de que deseja excluir este canal permanentemente?")
-    if (!confirmDelete) return
     setError('')
     const { error: err } = await supabase
       .from('channels')
@@ -600,14 +755,27 @@ function Echo({ user }: { user: User }) {
       }
       await loadChannelsForSpace(editingSpace.id)
     }
+    setConfirmModalConfig(null)
   }
 
-  async function handleDeleteSpace() {
+  function deleteChannel(channelId: string) {
+    if (!editingSpace) return
+    const ch = (spaceChannels[editingSpace.id] ?? []).find(c => c.id === channelId)
+    if (!ch) return
+    
+    setConfirmModalConfig({
+      isOpen: true,
+      title: "Excluir Canal",
+      message: `Tem certeza de que deseja excluir o canal "# ${ch.name}"? Todas as mensagens dele serão perdidas permanentemente e esta ação não poderá ser desfeita.`,
+      onConfirm: () => {
+        executeDeleteChannel(channelId)
+      }
+    })
+  }
+
+  async function executeDeleteSpace() {
     if (!supabase || !editingSpace) return
     setError('')
-    const confirmDelete = window.confirm(`Tem certeza de que deseja excluir permanentemente o servidor "${editingSpace.name}"? Todos os canais e mensagens dele serão perdidos de forma irreversível.`)
-    if (!confirmDelete) return
-
     const { error: err } = await supabase
       .from('spaces')
       .delete()
@@ -621,6 +789,19 @@ function Echo({ user }: { user: User }) {
       setSelectedChannel(null)
       await loadSpaces()
     }
+    setConfirmModalConfig(null)
+  }
+
+  function handleDeleteSpace() {
+    if (!editingSpace) return
+    setConfirmModalConfig({
+      isOpen: true,
+      title: "Excluir Servidor",
+      message: `Tem certeza de que deseja excluir permanentemente o servidor "${editingSpace.name}"? Todos os canais e mensagens dele serão perdidos de forma irreversível e esta ação não poderá ser desfeita.`,
+      onConfirm: () => {
+        executeDeleteSpace()
+      }
+    })
   }
 
   function getQualityDimensions(quality: '720p' | '1080p' | 'native') {
@@ -911,31 +1092,62 @@ function Echo({ user }: { user: User }) {
     loadFriendships()
     loadAudioDevices()
 
+    const client = supabase
+    if (!client) return
+    
     // Setup global online presence
-    if (!supabase) return
-    const presenceChannel = supabase.channel('global-presence', {
+    const presenceChannel = client.channel('global-presence', {
       config: { presence: { key: user.id } }
     })
+    presenceChannelRef.current = presenceChannel
     
     presenceChannel
       .on('presence', { event: 'sync' }, () => {
         const state = presenceChannel.presenceState()
         const online = new Set<string>()
-        Object.keys(state).forEach(key => online.add(key))
+        const pData: Record<string, any> = {}
+        
+        Object.keys(state).forEach(key => {
+          online.add(key)
+          const userPresence = state[key]
+          if (userPresence && userPresence.length > 0) {
+            pData[key] = userPresence[0]
+          }
+        })
+        
+        setPresenceData(pData)
         setOnlineUsers(online)
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
+          const savedStatus = localStorage.getItem('echo-custom-status') || ''
           await presenceChannel.track({
             user_id: user.id,
             display_name: displayName,
-            online_at: new Date().toISOString()
+            online_at: new Date().toISOString(),
+            custom_status: savedStatus
           })
         }
       })
 
+    // Setup global realtime messages listener to detect unread messages
+    const globalMessagesChannel = client.channel('global-messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+        const newMsg = payload.new as any
+        if (newMsg && newMsg.channel_id !== selectedChannelRef.current?.id) {
+          setUnreadChannels(prev => {
+            if (prev.has(newMsg.channel_id)) return prev
+            const next = new Set(prev)
+            next.add(newMsg.channel_id)
+            return next
+          })
+        }
+      })
+      .subscribe()
+
     return () => {
-      supabase?.removeChannel(presenceChannel)
+      client.removeChannel(presenceChannel)
+      client.removeChannel(globalMessagesChannel)
     }
   }, [])
 
@@ -1184,7 +1396,7 @@ function Echo({ user }: { user: User }) {
                           <div className="channel-group">
                             <span className="channel-group-label">TEXTO</span>
                             {textChannels.map(ch => (
-                              <button key={ch.id} className={`channel-item ${selectedChannel?.id === ch.id ? 'active' : ''}`} onClick={() => setSelectedChannel(ch)}>
+                              <button key={ch.id} className={`channel-item ${selectedChannel?.id === ch.id ? 'active' : ''} ${unreadChannels.has(ch.id) ? 'unread' : ''}`} onClick={() => setSelectedChannel(ch)}>
                                 <span className="ch-icon"><HashtagIcon /></span>
                                 <span>{ch.name}</span>
                               </button>
@@ -1336,30 +1548,33 @@ function Echo({ user }: { user: User }) {
                     <div className="chat-area-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
                       <div className="messages-area">
                         {messages.length === 0 && <div className="no-messages"><span className="no-msg-icon">✉</span><p>Ainda não há mensagens.<br />Diga olá!</p></div>}
-                        {messages.map((message) => (
-                          <article className={`msg-card ${message.author_id === user.id ? 'msg-own' : ''}`} key={message.id}>
-                            <div className={`msg-avatar ${message.author_id === user.id ? 'avatar-self' : 'avatar-other'}`} style={{ overflow: 'hidden' }}>
-                              {message.profile?.avatar_url ? (
-                                <img src={message.profile.avatar_url} alt={message.profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
-                              ) : (
-                                (message.profile?.display_name ?? 'E').slice(0, 1).toUpperCase()
-                              )}
-                            </div>
-                            <div className="msg-body">
-                              <div className="msg-meta">
-                                <strong>{message.profile?.display_name ?? 'Membro'}</strong>
-                                <time>{new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
+                        {messages.map((message) => {
+                          const isMentioned = message.author_id !== user.id && message.body.toLowerCase().includes(`@${profileDisplayName.toLowerCase()}`)
+                          return (
+                            <article className={`msg-card ${message.author_id === user.id ? 'msg-own' : ''} ${isMentioned ? 'mention-highlight' : ''}`} key={message.id}>
+                              <div className={`msg-avatar ${message.author_id === user.id ? 'avatar-self' : 'avatar-other'}`} style={{ overflow: 'hidden' }}>
+                                {message.profile?.avatar_url ? (
+                                  <img src={message.profile.avatar_url} alt={message.profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                                ) : (
+                                  (message.profile?.display_name ?? 'E').slice(0, 1).toUpperCase()
+                                )}
                               </div>
-                              {message.attachment_url && message.attachment_type === 'image' ? (
-                                <img src={message.attachment_url} alt="anexo" className="msg-attachment-img" onClick={() => window.open(message.attachment_url, '_blank')} />
-                              ) : message.attachment_url && message.attachment_type !== 'image' ? (
-                                <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-file">📎 {message.body}</a>
-                              ) : (
-                                <p>{message.body}</p>
-                              )}
-                            </div>
-                          </article>
-                        ))}
+                              <div className="msg-body">
+                                <div className="msg-meta">
+                                  <strong>{message.profile?.display_name ?? 'Membro'}</strong>
+                                  <time>{new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
+                                </div>
+                                {message.attachment_url && message.attachment_type === 'image' ? (
+                                  <img src={message.attachment_url} alt="anexo" className="msg-attachment-img" onClick={() => window.open(message.attachment_url, '_blank')} />
+                                ) : message.attachment_url && message.attachment_type !== 'image' ? (
+                                  <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-file">📎 {message.body}</a>
+                                ) : (
+                                  <p>{formatMessageText(message.body, profileDisplayName)}</p>
+                                )}
+                              </div>
+                            </article>
+                          )
+                        })}
                         <div ref={messagesEndRef} />
                       </div>
                       <form className="composer" onSubmit={send}>
@@ -1398,8 +1613,8 @@ function Echo({ user }: { user: User }) {
                                       <span className="member-name">{member.user.display_name}</span>
                                       {isCreator && <span className="member-badge creator">Criador</span>}
                                     </div>
-                                    <span className="member-status-text">
-                                      {isVoiceUser ? 'Em chamada' : 'Disponível'}
+                                    <span className="member-status-text" title={presenceData[member.user.id]?.custom_status}>
+                                      {isVoiceUser ? 'Em chamada' : (presenceData[member.user.id]?.custom_status || 'Disponível')}
                                     </span>
                                   </div>
                                 </div>
@@ -1605,30 +1820,33 @@ function Echo({ user }: { user: User }) {
                                   <p>Início do chat por texto da chamada.</p>
                                 </div>
                               )}
-                              {messages.map((message) => (
-                                <article className={`msg-card ${message.author_id === user.id ? 'msg-own' : ''}`} key={message.id}>
-                                  <div className={`msg-avatar ${message.author_id === user.id ? 'avatar-self' : 'avatar-other'}`} style={{ overflow: 'hidden' }}>
-                                    {message.profile?.avatar_url ? (
-                                      <img src={message.profile.avatar_url} alt={message.profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
-                                    ) : (
-                                      (message.profile?.display_name ?? 'E').slice(0, 1).toUpperCase()
-                                    )}
-                                  </div>
-                                  <div className="msg-body">
-                                    <div className="msg-meta">
-                                      <strong>{message.profile?.display_name ?? 'Membro'}</strong>
-                                      <time>{new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
+                              {messages.map((message) => {
+                                const isMentioned = message.author_id !== user.id && message.body.toLowerCase().includes(`@${profileDisplayName.toLowerCase()}`)
+                                return (
+                                  <article className={`msg-card ${message.author_id === user.id ? 'msg-own' : ''} ${isMentioned ? 'mention-highlight' : ''}`} key={message.id}>
+                                    <div className={`msg-avatar ${message.author_id === user.id ? 'avatar-self' : 'avatar-other'}`} style={{ overflow: 'hidden' }}>
+                                      {message.profile?.avatar_url ? (
+                                        <img src={message.profile.avatar_url} alt={message.profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                                      ) : (
+                                        (message.profile?.display_name ?? 'E').slice(0, 1).toUpperCase()
+                                      )}
                                     </div>
-                                    {message.attachment_url && message.attachment_type === 'image' ? (
-                                      <img src={message.attachment_url} alt="anexo" className="msg-attachment-img" onClick={() => window.open(message.attachment_url, '_blank')} />
-                                    ) : message.attachment_url && message.attachment_type !== 'image' ? (
-                                      <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-file">📎 {message.body}</a>
-                                    ) : (
-                                      <p>{message.body}</p>
-                                    )}
-                                  </div>
-                                </article>
-                              ))}
+                                    <div className="msg-body">
+                                      <div className="msg-meta">
+                                        <strong>{message.profile?.display_name ?? 'Membro'}</strong>
+                                        <time>{new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
+                                      </div>
+                                      {message.attachment_url && message.attachment_type === 'image' ? (
+                                        <img src={message.attachment_url} alt="anexo" className="msg-attachment-img" onClick={() => window.open(message.attachment_url, '_blank')} />
+                                      ) : message.attachment_url && message.attachment_type !== 'image' ? (
+                                        <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-file">📎 {message.body}</a>
+                                      ) : (
+                                        <p>{formatMessageText(message.body, profileDisplayName)}</p>
+                                      )}
+                                    </div>
+                                  </article>
+                                )
+                              })}
                               <div ref={messagesEndRef} />
                             </div>
                             <form className="voice-chat-composer" onSubmit={send}>
@@ -1691,8 +1909,8 @@ function Echo({ user }: { user: User }) {
                                       <span className="member-name">{member.user.display_name}</span>
                                       {isCreator && <span className="member-badge creator">Criador</span>}
                                     </div>
-                                    <span className="member-status-text">
-                                      {isVoiceUser ? 'Em chamada' : 'Disponível'}
+                                    <span className="member-status-text" title={presenceData[member.user.id]?.custom_status}>
+                                      {isVoiceUser ? 'Em chamada' : (presenceData[member.user.id]?.custom_status || 'Disponível')}
                                     </span>
                                   </div>
                                 </div>
@@ -1727,6 +1945,7 @@ function Echo({ user }: { user: User }) {
           acceptFriendRequest={acceptFriendRequest}
           removeFriendship={removeFriendship}
           onlineUsers={onlineUsers}
+          presenceData={presenceData}
           user={user}
           selectedDMUserId={selectedDMUserId}
           directMessages={directMessages}
@@ -1771,9 +1990,22 @@ function Echo({ user }: { user: User }) {
           userId={user.id}
           currentDisplayName={profileDisplayName}
           currentAvatarUrl={profileAvatarUrl}
+          customStatus={customStatus}
           onProfileUpdate={(name, avatar) => {
             setProfileDisplayName(name)
             setProfileAvatarUrl(avatar)
+          }}
+          onCustomStatusUpdate={async (status) => {
+            setCustomStatus(status)
+            localStorage.setItem('echo-custom-status', status)
+            if (presenceChannelRef.current) {
+              await presenceChannelRef.current.track({
+                user_id: user.id,
+                display_name: profileDisplayName,
+                online_at: new Date().toISOString(),
+                custom_status: status
+              })
+            }
           }}
           audioInputs={audioInputs}
           audioOutputs={audioOutputs}
@@ -2101,6 +2333,36 @@ function Echo({ user }: { user: User }) {
         </div>
       )}
 
+      {/* Custom Confirmation Modal */}
+      {confirmModalConfig && confirmModalConfig.isOpen && (
+        <div className="screen-picker-overlay confirm-modal-overlay" onClick={() => setConfirmModalConfig(null)}>
+          <div className="screen-picker-modal confirm-modal" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
+            <h2 className="confirm-modal-title">{confirmModalConfig.title}</h2>
+            <p className="confirm-modal-message" style={{ margin: '12px 0 20px', fontSize: '14.5px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+              {confirmModalConfig.message}
+            </p>
+            <div className="confirm-modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button 
+                type="button" 
+                className="ch-create-btn" 
+                style={{ background: 'none', border: '1.5px solid var(--border-color)', color: 'var(--text-primary)', padding: '10px 20px', borderRadius: '10px', fontSize: '13.5px', fontWeight: 'bold' }} 
+                onClick={() => setConfirmModalConfig(null)}
+              >
+                Cancelar
+              </button>
+              <button 
+                type="button" 
+                className="dropdown-action-btn danger" 
+                style={{ width: 'auto', padding: '10px 20px', borderRadius: '10px', fontSize: '13.5px', fontWeight: 'bold' }} 
+                onClick={confirmModalConfig.onConfirm}
+              >
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast Notifications */}
       {toasts.length > 0 && (
         <div className="toast-container">
@@ -2150,6 +2412,7 @@ function FriendsView({
   acceptFriendRequest,
   removeFriendship,
   onlineUsers,
+  presenceData,
   user,
   selectedDMUserId,
   directMessages,
@@ -2178,6 +2441,7 @@ function FriendsView({
   acceptFriendRequest: (id: string) => void
   removeFriendship: (id: string) => void
   onlineUsers: Set<string>
+  presenceData: Record<string, any>
   user: User
   selectedDMUserId: string | null
   directMessages: DirectMessage[]
@@ -2280,7 +2544,9 @@ function FriendsView({
                     </div>
                     <div className="friend-info">
                       <span className="friend-name">{friend.user.display_name}</span>
-                      <span className="friend-status">Disponível</span>
+                      <span className="friend-status" title={presenceData[friend.user.id]?.custom_status}>
+                        {presenceData[friend.user.id]?.custom_status || 'Disponível'}
+                      </span>
                     </div>
                     <div className="friend-actions">
                       <button className="friend-action-btn msg-btn" onClick={() => onOpenDM(friend.user.id)} title="Mensagem" style={{ position: 'relative' }}>
@@ -2319,7 +2585,9 @@ function FriendsView({
                       </div>
                       <div className="friend-info">
                         <span className="friend-name">{friend.user.display_name}</span>
-                        <span className="friend-status">{isOnline ? 'Online' : 'Offline'}</span>
+                        <span className="friend-status" title={isOnline ? (presenceData[friend.user.id]?.custom_status || 'Online') : 'Offline'}>
+                          {isOnline ? (presenceData[friend.user.id]?.custom_status || 'Online') : 'Offline'}
+                        </span>
                       </div>
                       <div className="friend-actions">
                         <button className="friend-action-btn msg-btn" onClick={() => onOpenDM(friend.user.id)} title="Mensagem" style={{ position: 'relative' }}>
@@ -2459,7 +2727,9 @@ function SettingsView({
   userId,
   currentDisplayName,
   currentAvatarUrl,
+  customStatus,
   onProfileUpdate,
+  onCustomStatusUpdate,
   audioInputs,
   audioOutputs,
   selectedInputId,
@@ -2478,7 +2748,9 @@ function SettingsView({
   userId: string
   currentDisplayName: string
   currentAvatarUrl: string
+  customStatus: string
   onProfileUpdate: (name: string, avatar: string) => void
+  onCustomStatusUpdate: (status: string) => void
   audioInputs: MediaDeviceInfo[]
   audioOutputs: MediaDeviceInfo[]
   selectedInputId: string
@@ -2499,7 +2771,27 @@ function SettingsView({
   // Profile settings state
   const [localDisplayName, setLocalDisplayName] = useState(currentDisplayName)
   const [localAvatarUrl, setLocalAvatarUrl] = useState(currentAvatarUrl)
+  const [localCustomStatus, setLocalCustomStatus] = useState(customStatus)
   const [savingProfile, setSavingProfile] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+
+  async function handleAvatarUpload(file: File) {
+    if (!supabase) return
+    setUploadingAvatar(true)
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `avatars/${userId}/${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file)
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
+      setLocalAvatarUrl(urlData.publicUrl)
+    } catch (err: any) {
+      alert('Erro ao fazer upload da imagem: ' + err.message)
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
 
   // Mic test state
   const [testingMic, setTestingMic] = useState(false)
@@ -2530,6 +2822,7 @@ function SettingsView({
       })
       if (error) throw error
       onProfileUpdate(localDisplayName, localAvatarUrl)
+      onCustomStatusUpdate(localCustomStatus)
       alert('Perfil salvo com sucesso!')
     } catch (err: any) {
       alert('Erro ao salvar perfil: ' + err.message)
@@ -2650,7 +2943,7 @@ function SettingsView({
                 </div>
                 <div className="profile-preview-meta">
                   <h3>{localDisplayName || 'Membro'}</h3>
-                  <p>Visualização do seu avatar circular</p>
+                  <p style={{ fontStyle: 'italic', opacity: 0.8, fontSize: '13px', margin: '2px 0 0 0' }}>{localCustomStatus || 'Nenhum status'}</p>
                 </div>
               </div>
 
@@ -2668,13 +2961,47 @@ function SettingsView({
               </div>
 
               <div className="selector-card" style={{ marginTop: '16px' }}>
-                <label>Foto de Perfil (URL da Imagem)</label>
+                <label>Status de Atividade (ex: Jogando Minecraft)</label>
                 <input 
-                  value={localAvatarUrl} 
-                  onChange={(e) => setLocalAvatarUrl(e.target.value)} 
-                  placeholder="Cole o link de qualquer imagem (.png, .jpg, .svg)"
+                  value={localCustomStatus} 
+                  onChange={(e) => setLocalCustomStatus(e.target.value)} 
+                  placeholder="O que você está fazendo agora?"
+                  maxLength={100}
                   className="profile-input-text"
                 />
+              </div>
+
+              <div className="selector-card" style={{ marginTop: '16px' }}>
+                <label>Foto de Perfil (URL da Imagem)</label>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <input 
+                    value={localAvatarUrl} 
+                    onChange={(e) => setLocalAvatarUrl(e.target.value)} 
+                    placeholder="Cole o link de qualquer imagem (.png, .jpg, .svg)"
+                    className="profile-input-text"
+                    style={{ flex: 1 }}
+                  />
+                  <input 
+                    type="file" 
+                    id="profile-avatar-upload-input" 
+                    accept="image/*" 
+                    style={{ display: 'none' }} 
+                    onChange={(e) => { 
+                      const f = e.target.files?.[0]; 
+                      if (f) handleAvatarUpload(f); 
+                      e.target.value = '' 
+                    }} 
+                  />
+                  <button 
+                    type="button" 
+                    className="ch-create-btn" 
+                    style={{ padding: '10px 16px', fontSize: '13px', whiteSpace: 'nowrap', width: 'auto', margin: 0 }}
+                    onClick={() => document.getElementById('profile-avatar-upload-input')?.click()}
+                    disabled={uploadingAvatar}
+                  >
+                    {uploadingAvatar ? 'Enviando...' : '📤 Enviar Imagem'}
+                  </button>
+                </div>
               </div>
 
               <div className="avatar-gallery-section" style={{ marginTop: '16px' }}>
