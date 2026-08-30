@@ -28,4 +28,6 @@ jobs:
       - name: Build and publish
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
         run: npm run build && npx electron-builder --win --publish always
