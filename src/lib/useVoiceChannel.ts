@@ -685,9 +685,28 @@ export function useVoiceChannel() {
 
               scriptNode.connect(dest)
 
+              let leftoverBuffer: Uint8Array | null = null
+
               ;(window as any).electronAPI.onScreenshareAudioChunk((chunk: Uint8Array) => {
-                const samplesCount = chunk.byteLength / 2
-                const view = new DataView(chunk.buffer, chunk.byteOffset, chunk.byteLength)
+                let dataToProcess = chunk.slice()
+                if (leftoverBuffer && leftoverBuffer.length > 0) {
+                  const combined = new Uint8Array(leftoverBuffer.length + dataToProcess.length)
+                  combined.set(leftoverBuffer, 0)
+                  combined.set(dataToProcess, leftoverBuffer.length)
+                  dataToProcess = combined
+                  leftoverBuffer = null
+                }
+
+                const remainder = dataToProcess.length % 4
+                if (remainder > 0) {
+                  leftoverBuffer = dataToProcess.slice(dataToProcess.length - remainder)
+                  dataToProcess = dataToProcess.slice(0, dataToProcess.length - remainder)
+                }
+
+                if (dataToProcess.length === 0) return
+
+                const samplesCount = dataToProcess.length / 2
+                const view = new DataView(dataToProcess.buffer, dataToProcess.byteOffset, dataToProcess.byteLength)
                 const floatL = new Float32Array(samplesCount / 2)
                 const floatR = new Float32Array(samplesCount / 2)
 
