@@ -25,3 +25,7 @@ dist-desktop
 *.njsproj
 *.sln
 *.sw?
+
+# Build outputs and store releases
+dist-desktop
+release-store/

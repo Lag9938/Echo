@@ -1,7 +1,9 @@
 {
   "name": "echo",
+  "description": "Comunidades e conversas em tempo real.",
+  "author": "Echo Lobby",
   "private": true,
-  "version": "0.9.2",
+  "version": "0.9.9",
   "main": "electron-main.js",
   "type": "module",
   "scripts": {
@@ -9,6 +11,7 @@
     "desktop": "concurrently -k \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "tsc -b && vite build",
     "dist": "npm run build && electron-builder --win",
+    "store:package": "powershell -ExecutionPolicy Bypass -File scripts/generate-store-assets.ps1 && npm run build && electron-builder --win dir --x64 && node scripts/create-store-package.cjs",
     "lint": "oxlint",
     "preview": "vite preview"
   },
@@ -26,6 +29,7 @@
     "concurrently": "^10.0.5",
     "electron": "^44.0.0",
     "electron-builder": "^26.15.3",
+    "electron-windows-store": "^2.1.0",
     "oxlint": "^1.79.0",
     "typescript": "~6.0.2",
     "vite": "^8.2.2",

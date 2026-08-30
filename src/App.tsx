@@ -14,7 +14,7 @@ type Message = {
   body: string; 
   created_at: string; 
   author_id: string; 
-  profile?: { display_name: string };
+  profile?: { display_name: string; avatar_url?: string };
   attachment_url?: string;
   attachment_type?: string;
 }
@@ -38,7 +38,7 @@ type Toast = {
 
 type FriendshipRequest = {
   id: string
-  user: { id: string; display_name: string }
+  user: { id: string; display_name: string; avatar_url?: string }
   status: 'pending' | 'accepted'
   initiatorId: string
 }
@@ -89,6 +89,146 @@ function FullscreenIcon({ className }: { className?: string }) {
       <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
     </svg>
   )
+}
+
+function SunIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+    </svg>
+  )
+}
+
+function MoonIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+    </svg>
+  )
+}
+
+function SettingsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  )
+}
+
+function LogOutIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  )
+}
+
+function LinkIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+    </svg>
+  )
+}
+
+function HashtagIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="4" y1="9" x2="20" y2="9" />
+      <line x1="4" y1="15" x2="20" y2="15" />
+      <line x1="10" y1="3" x2="8" y2="21" />
+      <line x1="16" y1="3" x2="14" y2="21" />
+    </svg>
+  )
+}
+
+function VolumeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+    </svg>
+  )
+}
+
+function PlusIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  )
+}
+
+function UsersIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  )
+}
+
+function MessageSquareIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  )
+}
+
+function ActivityIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  )
+}
+
+function ClockIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  )
+}
+
+function copyToClipboard(text: string): boolean {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (e) {
+    console.warn("navigator.clipboard failed, trying fallback", e);
+  }
+
+  try {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.opacity = "0";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return successful;
+  } catch (err) {
+    console.error("Fallback copy failed", err);
+    return false;
+  }
 }
 
 export default function App() {
@@ -162,6 +302,8 @@ function Echo({ user }: { user: User }) {
   const [showNewChannel, setShowNewChannel] = useState<string | null>(null)
   const [newChannelName, setNewChannelName] = useState('')
   const [newChannelType, setNewChannelType] = useState<'text' | 'voice'>('text')
+  const [showAddSpaceModal, setShowAddSpaceModal] = useState(false)
+  const [addSpaceModalTab, setAddSpaceModalTab] = useState<'options' | 'create' | 'join'>('options')
 
   // DM and notification states
   const [directMessages, setDirectMessages] = useState<DirectMessage[]>([])
@@ -183,8 +325,14 @@ function Echo({ user }: { user: User }) {
   // Space/Server Settings States
   const [editingSpace, setEditingSpace] = useState<Space | null>(null)
   const [editingSpaceName, setEditingSpaceName] = useState('')
+  const [editingSpaceDescription, setEditingSpaceDescription] = useState('')
+  const [activeSpaceTab, setActiveSpaceTab] = useState<'geral' | 'channels'>('geral')
   const [showSpaceSettingsModal, setShowSpaceSettingsModal] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [spaceMembers, setSpaceMembers] = useState<any[]>([])
+  const [showMembersList, setShowMembersList] = useState(true)
+  const [showVoiceChat, setShowVoiceChat] = useState(false)
+  const [showVoiceMembers, setShowVoiceMembers] = useState(false)
   const displayName = (user.user_metadata.display_name as string | undefined) || user.email?.split('@')[0] || 'Você'
 
   // Theme state
@@ -393,15 +541,20 @@ function Echo({ user }: { user: User }) {
   function openSpaceSettings(space: Space) {
     setEditingSpace(space)
     setEditingSpaceName(space.name)
+    setEditingSpaceDescription(space.description || '')
+    setActiveSpaceTab('geral')
     setShowSpaceSettingsModal(true)
   }
 
-  async function handleRenameSpace(event: FormEvent) {
+  async function handleSaveSpaceSettings(event: FormEvent) {
     event.preventDefault(); if (!supabase || !editingSpace || !editingSpaceName.trim()) return
     setError('')
     const { error: err } = await supabase
       .from('spaces')
-      .update({ name: editingSpaceName.trim() })
+      .update({ 
+        name: editingSpaceName.trim(),
+        description: editingSpaceDescription.trim()
+      })
       .eq('id', editingSpace.id)
 
     if (err) {
@@ -409,6 +562,43 @@ function Echo({ user }: { user: User }) {
     } else {
       setShowSpaceSettingsModal(false)
       await loadSpaces()
+    }
+  }
+
+  async function renameChannel(channelId: string, newName: string) {
+    if (!supabase || !newName.trim()) return
+    setError('')
+    const { error: err } = await supabase
+      .from('channels')
+      .update({ name: newName.trim() })
+      .eq('id', channelId)
+
+    if (err) {
+      setError(err.message)
+    } else {
+      if (editingSpace) {
+        await loadChannelsForSpace(editingSpace.id)
+      }
+    }
+  }
+
+  async function deleteChannel(channelId: string) {
+    if (!supabase || !editingSpace) return
+    const confirmDelete = window.confirm("Tem certeza de que deseja excluir este canal permanentemente?")
+    if (!confirmDelete) return
+    setError('')
+    const { error: err } = await supabase
+      .from('channels')
+      .delete()
+      .eq('id', channelId)
+
+    if (err) {
+      setError(err.message)
+    } else {
+      if (selectedChannel?.id === channelId) {
+        setSelectedChannel(null)
+      }
+      await loadChannelsForSpace(editingSpace.id)
     }
   }
 
@@ -528,17 +718,45 @@ function Echo({ user }: { user: User }) {
 
   async function loadMessages(channelId: string) {
     if (!supabase) return
-    const { data, error: queryError } = await supabase.from('messages').select('id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name)').eq('channel_id', channelId).order('created_at')
+    const { data, error: queryError } = await supabase.from('messages').select('id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)').eq('channel_id', channelId).order('created_at')
     if (queryError) { setError(queryError.message); return }
-    setMessages((data ?? []).map((row: Message & { profiles?: { display_name: string } | { display_name: string }[] }) => ({ ...row, profile: Array.isArray(row.profiles) ? row.profiles?.[0] : row.profiles })))
+    setMessages((data ?? []).map((row: any) => ({ ...row, profile: Array.isArray(row.profiles) ? row.profiles?.[0] : row.profiles })))
   }
+
+  async function loadSpaceMembers(spaceId: string) {
+    if (!supabase) return
+    const { data, error: queryError } = await supabase
+      .from('space_members')
+      .select('role, user:profiles(id, display_name, avatar_url)')
+      .eq('space_id', spaceId)
+
+    if (queryError) {
+      console.warn("loadSpaceMembers error", queryError)
+      return
+    }
+
+    const members = (data ?? []).map((row: any) => ({
+      role: row.role,
+      user: Array.isArray(row.user) ? row.user[0] : row.user
+    })).filter(m => m.user !== null)
+
+    setSpaceMembers(members)
+  }
+
+  useEffect(() => {
+    if (selectedChannel?.space_id) {
+      loadSpaceMembers(selectedChannel.space_id)
+    } else {
+      setSpaceMembers([])
+    }
+  }, [selectedChannel?.space_id])
 
   // Friends system APIs
   async function loadFriendships() {
     if (!supabase) return
     const { data, error: qError } = await supabase
       .from('friendships')
-      .select('id, status, user:profiles!friendships_user_id_fkey(id, display_name), friend:profiles!friendships_friend_id_fkey(id, display_name)')
+      .select('id, status, user:profiles!friendships_user_id_fkey(id, display_name, avatar_url), friend:profiles!friendships_friend_id_fkey(id, display_name, avatar_url)')
       .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
     
     if (qError) { setError(qError.message); return }
@@ -772,7 +990,31 @@ function Echo({ user }: { user: User }) {
     return () => {
       supabase?.removeChannel(liveDMs)
     }
+
   }, [selectedDMUserId, friendships, user])
+
+  useEffect(() => {
+    if (!supabase || !user) return
+
+    const handleFriendshipChanges = (payload: any) => {
+      loadFriendships()
+      if (payload.eventType === 'INSERT') {
+        const newFriendship = payload.new
+        if (newFriendship.friend_id === user.id) {
+          showToast('Solicitação de Amizade', 'Você recebeu um novo convite de amizade.', 'friend')
+        }
+      }
+    }
+
+    const liveFriendships = supabase
+      .channel('public-friendships')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, handleFriendshipChanges)
+      .subscribe()
+
+    return () => {
+      supabase?.removeChannel(liveFriendships)
+    }
+  }, [user?.id])
 
   async function createSpace(event: FormEvent) {
     event.preventDefault(); if (!supabase || !newSpace.trim()) return
@@ -889,23 +1131,15 @@ function Echo({ user }: { user: User }) {
             )
           })}
         </nav>
-        <div className="top-actions">
-          <button className="theme-toggle-btn" onClick={toggleTheme} title="Alternar tema">
-            {theme === 'light' ? '🌙' : '☀️'}
-          </button>
-          <div className="user-pill">
-            <div className="my-avatar">{displayName.slice(0, 1).toUpperCase()}</div>
-            <span className="user-name">{displayName}</span>
-          </div>
-          <button className="sign-out" onClick={() => supabase?.auth.signOut()}>Sair</button>
-        </div>
       </header>
 
       <section className="workspace" style={{ display: page === 'Servidores' ? undefined : 'none' }}>
           <aside className="sidebar">
-            <div className="sidebar-header">
-              <span>Seus Espaços</span>
-            </div>
+            <div className="sidebar-scrollable">
+              <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Seus Espaços</span>
+                <button className="add-space-trigger-btn" onClick={() => { setAddSpaceModalTab('options'); setShowAddSpaceModal(true) }} title="Criar ou Entrar em um Servidor">＋</button>
+              </div>
 
             <div className="spaces-tree">
               {spaces.map((space) => {
@@ -918,8 +1152,21 @@ function Echo({ user }: { user: User }) {
                     <div className="space-header-container">
                       <button className={`space-header ${isExpanded ? 'expanded' : ''}`} onClick={() => toggleSpace(space.id)}>
                         <span className="expand-icon">{isExpanded ? '▾' : '▸'}</span>
-                        <span className="space-dot" />
+                        <div className="space-avatar-mini">
+                          {space.name.slice(0, 1).toUpperCase()}
+                        </div>
                         <span className="space-name">{space.name}</span>
+                      </button>
+                      <button 
+                        className="space-invite-trigger" 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          copyToClipboard(space.id); 
+                          showToast("Convite Copiado!", `Código do servidor "${space.name}" copiado para a área de transferência.`, 'info'); 
+                        }}
+                        title="Copiar código de convite do servidor"
+                      >
+                        <LinkIcon />
                       </button>
                       {space.creator_id === user.id && (
                         <button 
@@ -927,7 +1174,7 @@ function Echo({ user }: { user: User }) {
                           onClick={(e) => { e.stopPropagation(); openSpaceSettings(space) }}
                           title="Configurar Servidor"
                         >
-                          ⚙️
+                          <SettingsIcon />
                         </button>
                       )}
                     </div>
@@ -938,7 +1185,7 @@ function Echo({ user }: { user: User }) {
                             <span className="channel-group-label">TEXTO</span>
                             {textChannels.map(ch => (
                               <button key={ch.id} className={`channel-item ${selectedChannel?.id === ch.id ? 'active' : ''}`} onClick={() => setSelectedChannel(ch)}>
-                                <span className="ch-icon">💬</span>
+                                <span className="ch-icon"><HashtagIcon /></span>
                                 <span>{ch.name}</span>
                               </button>
                             ))}
@@ -952,7 +1199,7 @@ function Echo({ user }: { user: User }) {
                               return (
                                 <div key={ch.id} className="voice-channel-node">
                                   <button className={`channel-item voice-item ${selectedChannel?.id === ch.id ? 'active' : ''}`} onClick={() => setSelectedChannel(ch)}>
-                                    <span className="ch-icon">🔊</span>
+                                    <span className="ch-icon"><VolumeIcon /></span>
                                     <span>{ch.name}</span>
                                   </button>
                                   {isActive && participants.length > 0 && (
@@ -990,8 +1237,8 @@ function Echo({ user }: { user: User }) {
                         {showNewChannel === space.id ? (
                           <form className="new-channel-form" onSubmit={(e) => createChannel(e, space.id)}>
                             <div className="new-ch-type-row">
-                              <button type="button" className={`type-btn ${newChannelType === 'text' ? 'type-active' : ''}`} onClick={() => setNewChannelType('text')}>💬 Texto</button>
-                              <button type="button" className={`type-btn ${newChannelType === 'voice' ? 'type-active' : ''}`} onClick={() => setNewChannelType('voice')}>🔊 Voz</button>
+                              <button type="button" className={`type-btn ${newChannelType === 'text' ? 'type-active' : ''}`} onClick={() => setNewChannelType('text')} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><HashtagIcon /> Texto</button>
+                              <button type="button" className={`type-btn ${newChannelType === 'voice' ? 'type-active' : ''}`} onClick={() => setNewChannelType('voice')} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><VolumeIcon /> Voz</button>
                             </div>
                             <input value={newChannelName} onChange={e => setNewChannelName(e.target.value)} placeholder="Nome do canal" required minLength={2} />
                             <div className="new-ch-actions">
@@ -1000,7 +1247,10 @@ function Echo({ user }: { user: User }) {
                             </div>
                           </form>
                         ) : (
-                          <button className="add-channel-btn" onClick={() => setShowNewChannel(space.id)}>＋ Novo canal</button>
+                          <button className="add-channel-btn" onClick={() => setShowNewChannel(space.id)}>
+                            <PlusIcon />
+                            <span>Novo canal</span>
+                          </button>
                         )}
                       </div>
                     )}
@@ -1029,16 +1279,35 @@ function Echo({ user }: { user: User }) {
               </div>
             )}
 
-            <form className="new-space-form" onSubmit={createSpace}>
-              <input value={newSpace} onChange={(e) => setNewSpace(e.target.value)} placeholder="Novo espaço…" required />
-              <button disabled={creating} title="Criar Espaço">{creating ? '…' : '＋'}</button>
-            </form>
+          </div>
 
-            <form className="new-space-form" onSubmit={joinSpace} style={{ marginTop: '8px' }}>
-              <input value={joinSpaceCode} onChange={(e) => setJoinSpaceCode(e.target.value)} placeholder="Entrar com código…" required />
-              <button disabled={joining} title="Entrar em Espaço">{joining ? '…' : '➔'}</button>
-            </form>
-          </aside>
+          <div className="sidebar-profile-footer">
+            <div className="profile-footer-info">
+              <div className="profile-footer-avatar">
+                {profileAvatarUrl ? (
+                  <img src={profileAvatarUrl} alt={profileDisplayName} />
+                ) : (
+                  profileDisplayName.slice(0, 1).toUpperCase()
+                )}
+              </div>
+              <div className="profile-footer-meta">
+                <span className="profile-footer-name" title={profileDisplayName}>{profileDisplayName}</span>
+                <span className="profile-footer-status">Online</span>
+              </div>
+            </div>
+            <div className="profile-footer-actions">
+              <button className="profile-footer-btn" onClick={toggleTheme} title="Alternar tema">
+                {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+              </button>
+              <button className="profile-footer-btn" onClick={() => setPage('Configurações')} title="Configurações">
+                <SettingsIcon />
+              </button>
+              <button className="profile-footer-btn logout" onClick={() => supabase?.auth.signOut()} title="Sair">
+                <LogOutIcon />
+              </button>
+            </div>
+          </div>
+        </aside>
 
           <section className="main-content">
             {error && <div className="app-error">{error}<button className="dismiss-error" onClick={() => setError('')}>✕</button></div>}
@@ -1049,274 +1318,389 @@ function Echo({ user }: { user: User }) {
                   <header className="content-header">
                     <div className="header-info">
                       {currentSpace && <span className="header-space">{currentSpace.name}</span>}
-                      <h1><span className="header-icon">💬</span> {selectedChannel.name}</h1>
+                      <h1><span className="header-icon"><HashtagIcon /></span> {selectedChannel.name}</h1>
                     </div>
-                    <span className="live-badge">● ao vivo</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span className="live-badge">● ao vivo</span>
+                      <button 
+                        className={`profile-footer-btn ${showMembersList ? 'active' : ''}`} 
+                        onClick={() => setShowMembersList(!showMembersList)}
+                        title="Lista de Membros"
+                        style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <UsersIcon />
+                      </button>
+                    </div>
                   </header>
-                  <div className="messages-area">
-                    {messages.length === 0 && <div className="no-messages"><span className="no-msg-icon">✉</span><p>Ainda não há mensagens.<br />Diga olá!</p></div>}
-                    {messages.map((message) => (
-                      <article className={`msg-card ${message.author_id === user.id ? 'msg-own' : ''}`} key={message.id}>
-                        <div className={`msg-avatar ${message.author_id === user.id ? 'avatar-self' : 'avatar-other'}`}>
-                          {(message.profile?.display_name ?? 'E').slice(0, 1).toUpperCase()}
-                        </div>
-                        <div className="msg-body">
-                          <div className="msg-meta">
-                            <strong>{message.profile?.display_name ?? 'Membro'}</strong>
-                            <time>{new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
+                  <div className="chat-workspace-wrapper" style={{ display: 'flex', flex: 1, minHeight: 0, width: '100%' }}>
+                    <div className="chat-area-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                      <div className="messages-area">
+                        {messages.length === 0 && <div className="no-messages"><span className="no-msg-icon">✉</span><p>Ainda não há mensagens.<br />Diga olá!</p></div>}
+                        {messages.map((message) => (
+                          <article className={`msg-card ${message.author_id === user.id ? 'msg-own' : ''}`} key={message.id}>
+                            <div className={`msg-avatar ${message.author_id === user.id ? 'avatar-self' : 'avatar-other'}`} style={{ overflow: 'hidden' }}>
+                              {message.profile?.avatar_url ? (
+                                <img src={message.profile.avatar_url} alt={message.profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                              ) : (
+                                (message.profile?.display_name ?? 'E').slice(0, 1).toUpperCase()
+                              )}
+                            </div>
+                            <div className="msg-body">
+                              <div className="msg-meta">
+                                <strong>{message.profile?.display_name ?? 'Membro'}</strong>
+                                <time>{new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
+                              </div>
+                              {message.attachment_url && message.attachment_type === 'image' ? (
+                                <img src={message.attachment_url} alt="anexo" className="msg-attachment-img" onClick={() => window.open(message.attachment_url, '_blank')} />
+                              ) : message.attachment_url && message.attachment_type !== 'image' ? (
+                                <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-file">📎 {message.body}</a>
+                              ) : (
+                                <p>{message.body}</p>
+                              )}
+                            </div>
+                          </article>
+                        ))}
+                        <div ref={messagesEndRef} />
+                      </div>
+                      <form className="composer" onSubmit={send}>
+                        <input type="file" id="chat-file-input" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleChatFileUpload(f); e.target.value = '' }} />
+                        <button type="button" className="dm-attach-btn" onClick={() => document.getElementById('chat-file-input')?.click()} disabled={isUploading} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 8px 0 0' }}>
+                          {isUploading ? '⏳' : '📎'}
+                        </button>
+                        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={`Mensagem em ${selectedChannel.name}…`} />
+                        <button type="submit" className="send-btn" disabled={!draft.trim() && !isUploading}>
+                          <span>↑</span>
+                        </button>
+                      </form>
+                    </div>
+                    {showMembersList && currentSpace && (
+                      <aside className="members-sidebar">
+                        <div className="members-sidebar-inner">
+                          <div className="members-group-label">Membros ({spaceMembers.length})</div>
+                          <div className="members-list">
+                            {spaceMembers.map((member) => {
+                              const isCreator = currentSpace.creator_id === member.user.id
+                              const isVoiceUser = participants.some(p => p.userId === member.user.id)
+                              return (
+                                <div className="member-card" key={member.user.id}>
+                                  <div className="member-avatar-container">
+                                    <div className="member-avatar">
+                                      {member.user.avatar_url ? (
+                                        <img src={member.user.avatar_url} alt={member.user.display_name} />
+                                      ) : (
+                                        member.user.display_name.slice(0, 1).toUpperCase()
+                                      )}
+                                    </div>
+                                    <span className={`member-status-dot ${isVoiceUser ? 'voice-active' : 'online'}`} />
+                                  </div>
+                                  <div className="member-info">
+                                    <div className="member-name-row">
+                                      <span className="member-name">{member.user.display_name}</span>
+                                      {isCreator && <span className="member-badge creator">Criador</span>}
+                                    </div>
+                                    <span className="member-status-text">
+                                      {isVoiceUser ? 'Em chamada' : 'Disponível'}
+                                    </span>
+                                  </div>
+                                </div>
+                              )
+                            })}
                           </div>
-                          {message.attachment_url && message.attachment_type === 'image' ? (
-                            <img src={message.attachment_url} alt="anexo" className="msg-attachment-img" onClick={() => window.open(message.attachment_url, '_blank')} />
-                          ) : message.attachment_url && message.attachment_type !== 'image' ? (
-                            <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-file">📎 {message.body}</a>
-                          ) : (
-                            <p>{message.body}</p>
-                          )}
                         </div>
-                      </article>
-                    ))}
-                    <div ref={messagesEndRef} />
+                      </aside>
+                    )}
                   </div>
-                  <form className="composer" onSubmit={send}>
-                    <input type="file" id="chat-file-input" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleChatFileUpload(f); e.target.value = '' }} />
-                    <button type="button" className="dm-attach-btn" onClick={() => document.getElementById('chat-file-input')?.click()} disabled={isUploading} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 8px 0 0' }}>
-                      {isUploading ? '⏳' : '📎'}
-                    </button>
-                    <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={`Mensagem em ${selectedChannel.name}…`} />
-                    <button type="submit" className="send-btn" disabled={!draft.trim() && !isUploading}>
-                      <span>↑</span>
-                    </button>
-                  </form>
                 </>
               ) : (
                 <div className="voice-room">
                   <header className="content-header">
                     <div className="header-info">
                       {currentSpace && <span className="header-space">{currentSpace.name}</span>}
-                      <h1><span className="header-icon">🔊</span> {selectedChannel.name}</h1>
+                      <h1><span className="header-icon"><VolumeIcon /></span> {selectedChannel.name}</h1>
                     </div>
-                    {activeVoiceChannelId === selectedChannel.id && (
-                      <span className="live-badge voice-live">● Conectado</span>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {activeVoiceChannelId === selectedChannel.id && (
+                        <span className="live-badge voice-live">● Conectado</span>
+                      )}
+                      <button 
+                        className={`profile-footer-btn ${showVoiceChat ? 'active' : ''}`} 
+                        onClick={() => setShowVoiceChat(!showVoiceChat)}
+                        title="Chat de Texto"
+                        style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <MessageSquareIcon />
+                      </button>
+                      <button 
+                        className={`profile-footer-btn ${showVoiceMembers ? 'active' : ''}`} 
+                        onClick={() => setShowVoiceMembers(!showVoiceMembers)}
+                        title="Lista de Membros"
+                        style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <UsersIcon />
+                      </button>
+                    </div>
                   </header>
 
-                  <div className="voice-content">
-                    {activeVoiceChannelId === selectedChannel.id ? (
-                      <div className="voice-split-layout">
-                        {/* Media pane (Left) */}
-                        <div className="voice-media-pane">
-                          {activeScreenSharer ? (
-                            <div className={`screen-share-view ${isScreenFullScreen ? 'fullscreen-active' : ''}`} ref={screenShareContainerRef}>
-                              <video 
-                                ref={screenShareVideoRef}
-                                autoPlay 
-                                playsInline 
-                                muted
-                                className="screen-share-video-el"
-                              />
-                              <div className="screen-share-tag" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <span>🖥️ Transmissão de {activeScreenSharer.displayName}</span>
-                                <AudioLevelMeter stream={activeScreenSharer.screenStream || null} />
+                  <div className="voice-workspace-wrapper" style={{ display: 'flex', flex: 1, minHeight: 0, width: '100%' }}>
+                    <div className="voice-content" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: activeVoiceChannelId === selectedChannel.id ? '0' : '24px', minWidth: 0 }}>
+                      {activeVoiceChannelId === selectedChannel.id ? (
+                        <div className="voice-split-layout" style={!showVoiceChat ? { gridTemplateColumns: '1fr' } : undefined}>
+                          {/* Media pane (Left) */}
+                          <div className="voice-media-pane">
+                            {activeScreenSharer ? (
+                              <div className={`screen-share-view ${isScreenFullScreen ? 'fullscreen-active' : ''}`} ref={screenShareContainerRef}>
+                                <video 
+                                  ref={screenShareVideoRef}
+                                  autoPlay 
+                                  playsInline 
+                                  muted
+                                  className="screen-share-video-el"
+                                />
+                                <div className="screen-share-tag" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  <span>🖥️ Transmissão de {activeScreenSharer.displayName}</span>
+                                  <AudioLevelMeter stream={activeScreenSharer.screenStream || null} />
+                                </div>
+                                
+                                <div className="screen-share-overlay-controls">
+                                  {activeScreenSharer.userId !== user.id && (
+                                    <div className="screen-volume-control" title="Volume da Transmissão">
+                                      <span style={{ fontSize: '13.5px' }}>🔊</span>
+                                      <input 
+                                        type="range" 
+                                        min="0" 
+                                        max="100" 
+                                        value={peerScreenVolumes[activeScreenSharer.userId] !== undefined ? peerScreenVolumes[activeScreenSharer.userId] : 100}
+                                        onChange={(e) => {
+                                          const val = parseInt(e.target.value)
+                                          const newVols = { ...peerScreenVolumes, [activeScreenSharer.userId]: val }
+                                          setPeerScreenVolumes(newVols)
+                                          localStorage.setItem('echo-peer-screen-volumes', JSON.stringify(newVols))
+                                        }}
+                                        style={{ width: '80px', accentColor: 'var(--accent-color)', cursor: 'pointer' }}
+                                      />
+                                      <span style={{ fontSize: '11px', minWidth: '30px', fontWeight: 'bold' }}>
+                                        {peerScreenVolumes[activeScreenSharer.userId] !== undefined ? peerScreenVolumes[activeScreenSharer.userId] : 100}%
+                                      </span>
+                                    </div>
+                                  )}
+                                  <button 
+                                    className="fullscreen-toggle-btn"
+                                    onClick={() => setIsScreenFullScreen(!isScreenFullScreen)}
+                                    title="Tela Cheia"
+                                  >
+                                    <FullscreenIcon />
+                                  </button>
+                                </div>
                               </div>
-                              
-                              <div className="screen-share-overlay-controls">
-                                {activeScreenSharer.userId !== user.id && (
-                                  <div className="screen-volume-control" title="Volume da Transmissão">
-                                    <span style={{ fontSize: '13.5px' }}>🔊</span>
-                                    <input 
-                                      type="range" 
-                                      min="0" 
-                                      max="100" 
-                                      value={peerScreenVolumes[activeScreenSharer.userId] !== undefined ? peerScreenVolumes[activeScreenSharer.userId] : 100}
-                                      onChange={(e) => {
-                                        const val = parseInt(e.target.value)
-                                        const newVols = { ...peerScreenVolumes, [activeScreenSharer.userId]: val }
-                                        setPeerScreenVolumes(newVols)
-                                        localStorage.setItem('echo-peer-screen-volumes', JSON.stringify(newVols))
-                                      }}
-                                      style={{ width: '80px', accentColor: 'var(--accent-color)', cursor: 'pointer' }}
-                                    />
-                                    <span style={{ fontSize: '11px', minWidth: '30px', fontWeight: 'bold' }}>
-                                      {peerScreenVolumes[activeScreenSharer.userId] !== undefined ? peerScreenVolumes[activeScreenSharer.userId] : 100}%
+                            ) : (
+                              <div className="participants-grid">
+                                {participants.map(p => (
+                                  <div 
+                                    key={p.userId} 
+                                    className={`participant-card ${p.isSpeaking ? 'speaking' : ''}`}
+                                    onClick={() => {
+                                      if (p.userId !== user.id) {
+                                        setVolumeControlUser(p)
+                                      }
+                                    }}
+                                    style={{ cursor: p.userId !== user.id ? 'pointer' : 'default' }}
+                                    title={p.userId !== user.id ? "Ajustar volume de áudio" : ""}
+                                  >
+                                    <div className="participant-avatar-large">
+                                      {p.avatarUrl ? (
+                                        <img src={p.avatarUrl} alt={p.displayName} className="round-avatar-img-large" />
+                                      ) : (
+                                        <span className="avatar-initial-large">
+                                          {p.displayName.slice(0, 1).toUpperCase()}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="participant-name">
+                                      {p.displayName}
+                                      {p.userId === user.id && " (Você)"}
                                     </span>
                                   </div>
-                                )}
-                                <button 
-                                  className="fullscreen-toggle-btn"
-                                  onClick={() => setIsScreenFullScreen(!isScreenFullScreen)}
-                                  title="Tela Cheia"
-                                >
-                                  <FullscreenIcon />
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="participants-grid">
-                              {participants.map(p => (
-                                <div 
-                                  key={p.userId} 
-                                  className={`participant-card ${p.isSpeaking ? 'speaking' : ''}`}
-                                  onClick={() => {
-                                    if (p.userId !== user.id) {
-                                      setVolumeControlUser(p)
-                                    }
-                                  }}
-                                  style={{ cursor: p.userId !== user.id ? 'pointer' : 'default' }}
-                                  title={p.userId !== user.id ? "Ajustar volume de áudio" : ""}
-                                >
-                                  <div className="participant-avatar-large">
-                                    {p.avatarUrl ? (
-                                      <img src={p.avatarUrl} alt={p.displayName} className="round-avatar-img-large" />
-                                    ) : (
-                                      <span className="avatar-initial-large">
-                                        {p.displayName.slice(0, 1).toUpperCase()}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="participant-name">
-                                    {p.displayName}
-                                    {p.userId === user.id && " (Você)"}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          <div className="voice-controls">
-                            <button 
-                              className={`control-btn ${isMuted ? 'muted' : ''}`} 
-                              onClick={toggleMute}
-                              title={isMuted ? "Desmutar microfone" : "Mutar microfone"}
-                            >
-                              {isMuted ? <MicOffIcon /> : <MicIcon />}
-                            </button>
-                            
-                            <div className="screen-control-wrapper" style={{ position: 'relative' }}>
-                              <button 
-                                className={`control-btn screen-btn ${localScreenStream ? 'sharing' : ''}`} 
-                                onClick={openScreenPicker}
-                                title="Opções de Transmissão"
-                              >
-                                <ScreenIcon />
-                              </button>
-                              {showScreenMenu && localScreenStream && (
-                                <div className="screen-share-dropdown">
-                                  <div className="dropdown-section">
-                                    <button className="dropdown-action-btn danger" onClick={async () => { setShowScreenMenu(false); await stopScreenShare() }}>
-                                      Parar Transmissão
-                                    </button>
-                                    <button className="dropdown-action-btn" onClick={forceOpenScreenPicker}>
-                                      Mudar de Janela
-                                    </button>
-                                  </div>
-                                  <div className="dropdown-divider" />
-                                  <div className="dropdown-section">
-                                    <span className="section-title">Resolução</span>
-                                    {([720, 1080, 'native'] as const).map(q => {
-                                      const label = q === 720 ? '720p' : q === 1080 ? '1080p' : 'native'
-                                      const keyVal = q === 720 ? '720p' : q === 1080 ? '1080p' : 'native'
-                                      return (
-                                        <button 
-                                          key={keyVal} 
-                                          className={`dropdown-option ${screenQuality === keyVal ? 'selected' : ''}`}
-                                          onClick={() => handleQualityChange(keyVal)}
-                                        >
-                                          {q === 'native' ? 'Nativa / Fonte' : label}
-                                        </button>
-                                      )
-                                    })}
-                                  </div>
-                                  <div className="dropdown-divider" />
-                                  <div className="dropdown-section">
-                                    <span className="section-title">FPS</span>
-                                    {([15, 30, 60] as const).map(fps => (
-                                      <button 
-                                        key={fps} 
-                                        className={`dropdown-option ${screenFps === fps ? 'selected' : ''}`}
-                                        onClick={() => handleFpsChange(fps)}
-                                      >
-                                        {fps} FPS
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            <button 
-                              className="control-btn leave-btn" 
-                              onClick={handleLeaveVoice}
-                              title="Sair da chamada"
-                            >
-                              <PhoneOffIcon />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Chat pane (Right) */}
-                        <div className="voice-chat-pane">
-                          <div className="voice-chat-messages">
-                            {messages.length === 0 && (
-                              <div className="no-messages">
-                                <span className="no-msg-icon">💬</span>
-                                <p>Início do chat por texto da chamada.</p>
+                                ))}
                               </div>
                             )}
-                            {messages.map((message) => (
-                              <article className={`msg-card ${message.author_id === user.id ? 'msg-own' : ''}`} key={message.id}>
-                                <div className={`msg-avatar ${message.author_id === user.id ? 'avatar-self' : 'avatar-other'}`}>
-                                  {(message.profile?.display_name ?? 'E').slice(0, 1).toUpperCase()}
-                                </div>
-                                <div className="msg-body">
-                                  <div className="msg-meta">
-                                    <strong>{message.profile?.display_name ?? 'Membro'}</strong>
-                                    <time>{new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
+
+                            {/* Controls bottom bar */}
+                            <div className="voice-controls-bar">
+                              <button 
+                                className={`control-btn mic-btn ${isMuted ? 'muted' : ''}`} 
+                                onClick={toggleMute}
+                                title={isMuted ? "Desmutar microfone" : "Mutar microfone"}
+                              >
+                                {isMuted ? <MicOffIcon /> : <MicIcon />}
+                              </button>
+                              
+                              <div className="screen-control-wrapper" style={{ position: 'relative' }}>
+                                <button 
+                                  className={`control-btn screen-btn ${localScreenStream ? 'sharing' : ''}`} 
+                                  onClick={openScreenPicker}
+                                  title="Opções de Transmissão"
+                                >
+                                  <ScreenIcon />
+                                </button>
+                                {showScreenMenu && localScreenStream && (
+                                  <div className="screen-share-dropdown">
+                                    <div className="dropdown-section">
+                                      <button className="dropdown-action-btn danger" onClick={async () => { setShowScreenMenu(false); await stopScreenShare() }}>
+                                        Parar Transmissão
+                                      </button>
+                                      <button className="dropdown-action-btn" onClick={forceOpenScreenPicker}>
+                                        Mudar de Janela
+                                      </button>
+                                    </div>
+                                    <div className="dropdown-divider" />
+                                    <div className="dropdown-section">
+                                      <span className="section-title">Resolução</span>
+                                      {([720, 1080, 'native'] as const).map(q => {
+                                        const label = q === 720 ? '720p' : q === 1080 ? '1080p' : 'native'
+                                        const keyVal = q === 720 ? '720p' : q === 1080 ? '1080p' : 'native'
+                                        return (
+                                          <button 
+                                            key={keyVal} 
+                                            className={`dropdown-option ${screenQuality === keyVal ? 'selected' : ''}`}
+                                            onClick={() => handleQualityChange(keyVal)}
+                                          >
+                                            {q === 'native' ? 'Nativa / Fonte' : label}
+                                          </button>
+                                        )
+                                      })}
+                                    </div>
+                                    <div className="dropdown-divider" />
+                                    <div className="dropdown-section">
+                                      <span className="section-title">FPS</span>
+                                      {([15, 30, 60] as const).map(fps => (
+                                        <button 
+                                          key={fps} 
+                                          className={`dropdown-option ${screenFps === fps ? 'selected' : ''}`}
+                                          onClick={() => handleFpsChange(fps)}
+                                        >
+                                          {fps} FPS
+                                        </button>
+                                      ))}
+                                    </div>
                                   </div>
-                                  {message.attachment_url && message.attachment_type === 'image' ? (
-                                    <img src={message.attachment_url} alt="anexo" className="msg-attachment-img" onClick={() => window.open(message.attachment_url, '_blank')} />
-                                  ) : message.attachment_url && message.attachment_type !== 'image' ? (
-                                    <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-file">📎 {message.body}</a>
-                                  ) : (
-                                    <p>{message.body}</p>
-                                  )}
-                                </div>
-                              </article>
-                            ))}
-                            <div ref={messagesEndRef} />
+                                )}
+                              </div>
+
+                              <button 
+                                className="control-btn leave-btn" 
+                                onClick={handleLeaveVoice}
+                                title="Sair da chamada"
+                              >
+                                <PhoneOffIcon />
+                              </button>
+                            </div>
                           </div>
-                          <form className="voice-chat-composer" onSubmit={send}>
-                            <input type="file" id="voice-chat-file-input" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleChatFileUpload(f); e.target.value = '' }} />
-                            <button type="button" className="dm-attach-btn" onClick={() => document.getElementById('voice-chat-file-input')?.click()} disabled={isUploading} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 8px 0 0' }}>
-                              {isUploading ? '⏳' : '📎'}
-                            </button>
-                            <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Conversar por texto com a call…" />
-                            <button type="submit" className="send-btn" disabled={!draft.trim() && !isUploading}>
-                              <span>↑</span>
-                            </button>
-                          </form>
+
+                          {/* Chat pane (Right) */}
+                          <div className="voice-chat-pane" style={!showVoiceChat ? { display: 'none' } : undefined}>
+                            <div className="voice-chat-messages">
+                              {messages.length === 0 && (
+                                <div className="no-messages">
+                                  <span className="no-msg-icon">💬</span>
+                                  <p>Início do chat por texto da chamada.</p>
+                                </div>
+                              )}
+                              {messages.map((message) => (
+                                <article className={`msg-card ${message.author_id === user.id ? 'msg-own' : ''}`} key={message.id}>
+                                  <div className={`msg-avatar ${message.author_id === user.id ? 'avatar-self' : 'avatar-other'}`} style={{ overflow: 'hidden' }}>
+                                    {message.profile?.avatar_url ? (
+                                      <img src={message.profile.avatar_url} alt={message.profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                                    ) : (
+                                      (message.profile?.display_name ?? 'E').slice(0, 1).toUpperCase()
+                                    )}
+                                  </div>
+                                  <div className="msg-body">
+                                    <div className="msg-meta">
+                                      <strong>{message.profile?.display_name ?? 'Membro'}</strong>
+                                      <time>{new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
+                                    </div>
+                                    {message.attachment_url && message.attachment_type === 'image' ? (
+                                      <img src={message.attachment_url} alt="anexo" className="msg-attachment-img" onClick={() => window.open(message.attachment_url, '_blank')} />
+                                    ) : message.attachment_url && message.attachment_type !== 'image' ? (
+                                      <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-file">📎 {message.body}</a>
+                                    ) : (
+                                      <p>{message.body}</p>
+                                    )}
+                                  </div>
+                                </article>
+                              ))}
+                              <div ref={messagesEndRef} />
+                            </div>
+                            <form className="voice-chat-composer" onSubmit={send}>
+                              <input type="file" id="voice-chat-file-input" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleChatFileUpload(f); e.target.value = '' }} />
+                              <button type="button" className="dm-attach-btn" onClick={() => document.getElementById('voice-chat-file-input')?.click()} disabled={isUploading} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 8px 0 0' }}>
+                                {isUploading ? '⏳' : '📎'}
+                              </button>
+                              <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Conversar por texto com a call…" />
+                              <button type="submit" className="send-btn" disabled={!draft.trim() && !isUploading}>
+                                <span>↑</span>
+                              </button>
+                            </form>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="voice-join-panel">
-                        <div className="voice-join-icon">🔊</div>
-                        <h2>Pronto para entrar?</h2>
-                        {activeVoiceChannelId ? (
-                          <p>Você já está na chamada de <strong>{activeVoiceChannel?.name}</strong>. Entrar aqui desconectará você da outra chamada.</p>
-                        ) : (
-                          <p>Entre no canal de voz para conversar em tempo real com outras pessoas neste espaço.</p>
-                        )}
-                        <button 
-                          className="voice-join-submit-btn" 
-                          onClick={async () => {
-                            if (activeVoiceChannelId) {
-                              handleLeaveVoice()
-                            }
-                            await handleJoinVoice(selectedChannel.id)
-                          }}
-                        >
-                          Entrar na chamada
-                        </button>
-                      </div>
+                      ) : (
+                        <div className="voice-join-panel">
+                          <div className="voice-join-icon">🔊</div>
+                          <h2>Pronto para entrar?</h2>
+                          {activeVoiceChannelId ? (
+                            <p>Você já está na chamada de <strong>{activeVoiceChannel?.name}</strong>. Entrar aqui desconectará você da outra chamada.</p>
+                          ) : (
+                            <p>Entre no canal de voz para conversar em tempo real com outras pessoas neste espaço.</p>
+                          )}
+                          <button 
+                            className="voice-join-submit-btn" 
+                            onClick={async () => {
+                              if (activeVoiceChannelId) {
+                                handleLeaveVoice()
+                              }
+                              await handleJoinVoice(selectedChannel.id)
+                            }}
+                          >
+                            Entrar na chamada
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {currentSpace && (
+                      <aside className="members-sidebar" style={!showVoiceMembers ? { display: 'none' } : undefined}>
+                        <div className="members-sidebar-inner">
+                          <div className="members-group-label">Membros ({spaceMembers.length})</div>
+                          <div className="members-list">
+                            {spaceMembers.map((member) => {
+                              const isCreator = currentSpace.creator_id === member.user.id
+                              const isVoiceUser = participants.some(p => p.userId === member.user.id)
+                              return (
+                                <div className="member-card" key={member.user.id}>
+                                  <div className="member-avatar-container">
+                                    <div className="member-avatar">
+                                      {member.user.avatar_url ? (
+                                        <img src={member.user.avatar_url} alt={member.user.display_name} />
+                                      ) : (
+                                        member.user.display_name.slice(0, 1).toUpperCase()
+                                      )}
+                                    </div>
+                                    <span className={`member-status-dot ${isVoiceUser ? 'voice-active' : 'online'}`} />
+                                  </div>
+                                  <div className="member-info">
+                                    <div className="member-name-row">
+                                      <span className="member-name">{member.user.display_name}</span>
+                                      {isCreator && <span className="member-badge creator">Criador</span>}
+                                    </div>
+                                    <span className="member-status-text">
+                                      {isVoiceUser ? 'Em chamada' : 'Disponível'}
+                                    </span>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      </aside>
                     )}
                   </div>
                 </div>
@@ -1373,6 +1757,12 @@ function Echo({ user }: { user: User }) {
             await sendDirectMessage(dmDraft.trim() || file.name, urlData.publicUrl, fileType)
             setIsUploading(false)
           }}
+          profileDisplayName={profileDisplayName}
+          profileAvatarUrl={profileAvatarUrl}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          setPage={setPage}
+          onSignOut={() => supabase?.auth.signOut()}
         />
       </div>
 
@@ -1393,12 +1783,101 @@ function Echo({ user }: { user: User }) {
           onOutputDeviceChange={handleOutputDeviceChange}
           audioError={audioError}
           onRefreshDevices={loadAudioDevices}
+          profileDisplayName={profileDisplayName}
+          profileAvatarUrl={profileAvatarUrl}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          setPage={setPage}
+          onSignOut={() => supabase?.auth.signOut()}
         />
       </div>
 
       <div style={{ display: page === 'Descobrir' ? undefined : 'none' }}>
         <Placeholder page={'Descobrir'} />
       </div>
+
+      {/* Create/Join Space Modal (Discord-Style) */}
+      {showAddSpaceModal && (
+        <div className="screen-picker-overlay" onClick={() => setShowAddSpaceModal(false)}>
+          <div className="screen-picker-modal" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
+            {addSpaceModalTab === 'options' && (
+              <>
+                <h2 style={{ textAlign: 'center' }}>Adicionar um servidor</h2>
+                <p style={{ textAlign: 'center' }}>Um servidor é onde você e seus amigos se reúnem. Crie o seu próprio ou junte-se a um já existente.</p>
+                <div className="add-space-modal-cards">
+                  <div className="add-space-card">
+                    <span className="add-space-card-icon">🎨</span>
+                    <h3>Criar o meu</h3>
+                    <p>Comece um servidor do seu jeito e convide os amigos para conversar.</p>
+                    <button className="add-space-card-btn" onClick={() => setAddSpaceModalTab('create')}>Criar Servidor</button>
+                  </div>
+                  <div className="add-space-card">
+                    <span className="add-space-card-icon">🤝</span>
+                    <h3>Entrar em um</h3>
+                    <p>Tem um código de convite? Junte-se a um servidor ativo agora.</p>
+                    <button className="add-space-card-btn" onClick={() => setAddSpaceModalTab('join')}>Entrar no Servidor</button>
+                  </div>
+                </div>
+                <button className="picker-close-btn" style={{ width: '100%', marginTop: '16px' }} onClick={() => setShowAddSpaceModal(false)}>Cancelar</button>
+              </>
+            )}
+
+            {addSpaceModalTab === 'create' && (
+              <>
+                <h2>Criar seu servidor</h2>
+                <p>Dê um nome ao seu novo servidor. Você poderá alterá-lo a qualquer momento.</p>
+                <form 
+                  onSubmit={async (e) => { 
+                    e.preventDefault(); 
+                    await createSpace(e); 
+                    setShowAddSpaceModal(false); 
+                  }} 
+                  className="add-space-modal-form"
+                >
+                  <input 
+                    value={newSpace} 
+                    onChange={(e) => setNewSpace(e.target.value)} 
+                    placeholder="Nome do servidor" 
+                    required 
+                    minLength={2}
+                    maxLength={80}
+                  />
+                  <button type="submit" className="add-space-modal-submit-btn" disabled={creating}>
+                    {creating ? 'Criando...' : 'Criar'}
+                  </button>
+                </form>
+                <button className="add-space-modal-back-btn" onClick={() => setAddSpaceModalTab('options')}>Voltar</button>
+              </>
+            )}
+
+            {addSpaceModalTab === 'join' && (
+              <>
+                <h2>Entrar em um servidor</h2>
+                <p>Insira o código de convite enviado por um amigo para se juntar ao servidor.</p>
+                <form 
+                  onSubmit={async (e) => { 
+                    e.preventDefault(); 
+                    await joinSpace(e); 
+                    setShowAddSpaceModal(false); 
+                  }} 
+                  className="add-space-modal-form"
+                >
+                  <input 
+                    value={joinSpaceCode} 
+                    onChange={(e) => setJoinSpaceCode(e.target.value)} 
+                    placeholder="Código do convite" 
+                    required 
+                  />
+                  <button type="submit" className="add-space-modal-submit-btn" disabled={joining}>
+                    {joining ? 'Entrando...' : 'Entrar'}
+                  </button>
+                </form>
+                <button className="add-space-modal-back-btn" onClick={() => setAddSpaceModalTab('options')}>Voltar</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Screen Selection Modal */}
       {showScreenPicker && (
@@ -1422,67 +1901,164 @@ function Echo({ user }: { user: User }) {
       {/* Space Settings Modal */}
       {showSpaceSettingsModal && editingSpace && (
         <div className="screen-picker-overlay">
-          <div className="screen-picker-modal space-settings-modal">
+          <div className="screen-picker-modal space-settings-modal" style={{ maxWidth: '500px' }}>
             <h2>Configurações do Servidor</h2>
             <p>Gerencie o servidor <strong>{editingSpace.name}</strong>.</p>
             
-            <form onSubmit={handleRenameSpace} className="space-settings-form">
-              <label className="space-settings-label">Nome do Servidor</label>
-              <input 
-                value={editingSpaceName} 
-                onChange={(e) => setEditingSpaceName(e.target.value)} 
-                placeholder="Insira o nome do servidor"
-                required 
-                minLength={2}
-                maxLength={80}
-              />
-              <button type="submit" className="ch-create-btn" style={{ marginTop: '8px', padding: '10px' }}>
-                Salvar Alterações
-              </button>
-            </form>
-
-            <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '8px', marginTop: '16px', border: '1px solid var(--border-color)' }}>
-              <label style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>
-                Código de Convite do Servidor
-              </label>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <input 
-                  type="text" 
-                  value={editingSpace.id} 
-                  readOnly 
-                  style={{ flex: 1, background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', padding: '6px', borderRadius: '4px', fontSize: '12px', color: 'var(--text-main)' }} 
-                />
-                <button 
-                  type="button" 
-                  className="ch-create-btn" 
-                  style={{ padding: '6px 12px', fontSize: '12px' }}
-                  onClick={() => {
-                    navigator.clipboard.writeText(editingSpace.id)
-                    alert('Código de convite copiado para a área de transferência!')
-                  }}
-                >
-                  Copiar
-                </button>
-              </div>
-              <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
-                Envie este código para seus amigos. Eles podem usá-lo na barra lateral para entrar neste servidor.
-              </p>
-            </div>
-
-            <div className="dropdown-divider" style={{ margin: '16px 0' }} />
-
-            <div className="danger-zone">
-              <h3>Zona de Perigo</h3>
-              <p>Ao excluir este servidor, todos os canais, mensagens e participantes associados a ele serão deletados permanentemente. Esta ação não pode ser desfeita.</p>
+            <div className="space-settings-tabs">
               <button 
-                type="button" 
-                className="dropdown-action-btn danger" 
-                style={{ textAlign: 'center', fontWeight: 'bold', padding: '10px' }} 
-                onClick={handleDeleteSpace}
+                type="button"
+                className={`settings-tab-btn ${activeSpaceTab === 'geral' ? 'active' : ''}`}
+                onClick={() => setActiveSpaceTab('geral')}
               >
-                Excluir Servidor
+                Visão Geral
+              </button>
+              <button 
+                type="button"
+                className={`settings-tab-btn ${activeSpaceTab === 'channels' ? 'active' : ''}`}
+                onClick={() => setActiveSpaceTab('channels')}
+              >
+                Canais
               </button>
             </div>
+
+            {activeSpaceTab === 'geral' && (
+              <>
+                <form onSubmit={handleSaveSpaceSettings} className="space-settings-form">
+                  <label className="space-settings-label">Nome do Servidor</label>
+                  <input 
+                    value={editingSpaceName} 
+                    onChange={(e) => setEditingSpaceName(e.target.value)} 
+                    placeholder="Insira o nome do servidor"
+                    required 
+                    minLength={2}
+                    maxLength={80}
+                  />
+                  
+                  <label className="space-settings-label" style={{ display: 'block', marginTop: '12px' }}>Descrição do Servidor</label>
+                  <textarea 
+                    value={editingSpaceDescription} 
+                    onChange={(e) => setEditingSpaceDescription(e.target.value)} 
+                    placeholder="Fale um pouco sobre o que é este servidor..."
+                    className="space-settings-textarea"
+                    maxLength={280}
+                  />
+                  
+                  <button type="submit" className="add-space-modal-submit-btn" style={{ marginTop: '16px' }}>
+                    Salvar Alterações
+                  </button>
+                </form>
+
+                <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '8px', marginTop: '16px', border: '1px solid var(--border-color)' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>
+                    Código de Convite do Servidor
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input 
+                      type="text" 
+                      value={editingSpace.id} 
+                      readOnly 
+                      style={{ flex: 1, background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', padding: '6px', borderRadius: '4px', fontSize: '12px', color: 'var(--text-main)' }} 
+                    />
+                    <button 
+                      type="button" 
+                      className="ch-create-btn" 
+                      style={{ padding: '6px 12px', fontSize: '12px' }}
+                      onClick={() => {
+                        copyToClipboard(editingSpace.id)
+                        showToast("Código Copiado!", "Código de convite copiado com sucesso.", "info")
+                      }}
+                    >
+                      Copiar
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                    Envie este código para seus amigos. Eles podem usá-lo na barra lateral para entrar neste servidor.
+                  </p>
+                </div>
+
+                <div className="dropdown-divider" style={{ margin: '16px 0' }} />
+
+                <div className="danger-zone">
+                  <h3>Zona de Perigo</h3>
+                  <p>Ao excluir este servidor, todos os canais, mensagens e participantes associados a ele serão deletados permanentemente. Esta ação não pode ser desfeita.</p>
+                  <button 
+                    type="button" 
+                    className="dropdown-action-btn danger" 
+                    style={{ textAlign: 'center', fontWeight: 'bold', padding: '10px' }} 
+                    onClick={handleDeleteSpace}
+                  >
+                    Excluir Servidor
+                  </button>
+                </div>
+              </>
+            )}
+
+            {activeSpaceTab === 'channels' && (
+              <>
+                <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px', color: 'var(--text-secondary)' }}>Canais do Servidor</h3>
+                <div className="space-settings-channels-list">
+                  {(spaceChannels[editingSpace.id] ?? []).map(ch => (
+                    <div key={ch.id} className="settings-channel-item">
+                      <span className="channel-item-prefix">{ch.type === 'text' ? '＃' : '🔊'}</span>
+                      <input 
+                        type="text" 
+                        defaultValue={ch.name} 
+                        onBlur={(e) => {
+                          if (e.target.value.trim() && e.target.value.trim() !== ch.name) {
+                            renameChannel(ch.id, e.target.value.trim())
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.currentTarget.blur()
+                          }
+                        }}
+                      />
+                      {ch.name !== 'Geral' && (
+                        <button 
+                          className="settings-channel-delete-btn" 
+                          onClick={() => deleteChannel(ch.id)}
+                          title="Excluir Canal"
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <form 
+                  onSubmit={async (e) => {
+                    e.preventDefault()
+                    await createChannel(e, editingSpace.id)
+                  }}
+                  className="settings-channel-create-inline-form"
+                >
+                  <h4>Criar Novo Canal</h4>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input 
+                      value={newChannelName}
+                      onChange={(e) => setNewChannelName(e.target.value)}
+                      placeholder="Nome do canal"
+                      required
+                      minLength={2}
+                      maxLength={60}
+                      style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1.5px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                    />
+                    <select 
+                      value={newChannelType} 
+                      onChange={(e) => setNewChannelType(e.target.value as 'text' | 'voice')}
+                      style={{ padding: '8px', borderRadius: '8px', border: '1.5px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                    >
+                      <option value="text">Texto</option>
+                      <option value="voice">Voz</option>
+                    </select>
+                    <button type="submit" className="add-space-card-btn" style={{ width: 'auto', padding: '8px 16px' }}>Criar</button>
+                  </div>
+                </form>
+              </>
+            )}
 
             <button className="picker-close-btn" style={{ marginTop: '16px' }} onClick={() => setShowSpaceSettingsModal(false)}>
               Fechar
@@ -1584,7 +2160,13 @@ function FriendsView({
   onSendDM,
   onCloseDM,
   isUploading,
-  onUploadFile
+  onUploadFile,
+  profileDisplayName,
+  profileAvatarUrl,
+  theme,
+  toggleTheme,
+  setPage,
+  onSignOut
 }: {
   friendships: FriendshipRequest[]
   friendTab: 'online' | 'all' | 'pending' | 'add'
@@ -1607,6 +2189,12 @@ function FriendsView({
   onCloseDM: () => void
   isUploading: boolean
   onUploadFile: (file: File) => void
+  profileDisplayName: string
+  profileAvatarUrl: string
+  theme: 'light' | 'dark'
+  toggleTheme: () => void
+  setPage: (page: Page) => void
+  onSignOut: () => void
 }) {
   const dmFileRef = useRef<HTMLInputElement>(null)
   const dmMessagesEndRef = useRef<HTMLDivElement>(null)
@@ -1617,27 +2205,56 @@ function FriendsView({
   return (
     <section className="friends-workspace">
       <aside className="friends-sidebar">
-        <div className="sidebar-header">Amigos</div>
-        <div className="friends-menu">
-          <button className={`menu-item ${friendTab === 'online' ? 'active' : ''}`} onClick={() => setFriendTab('online')}>
-            <span className="menu-icon">🟢</span>
-            <span>Online</span>
-            {onlineFriends.length > 0 && <span className="menu-badge">{onlineFriends.length}</span>}
-          </button>
-          <button className={`menu-item ${friendTab === 'all' ? 'active' : ''}`} onClick={() => setFriendTab('all')}>
-            <span className="menu-icon">👥</span>
-            <span>Todos</span>
-            {acceptedFriends.length > 0 && <span className="menu-badge">{acceptedFriends.length}</span>}
-          </button>
-          <button className={`menu-item ${friendTab === 'pending' ? 'active' : ''}`} onClick={() => setFriendTab('pending')}>
-            <span className="menu-icon">⏳</span>
-            <span>Pendentes</span>
-            {pendingRequests.length > 0 && <span className="menu-badge pending-badge">{pendingRequests.length}</span>}
-          </button>
-          <button className={`menu-item add-friend-item ${friendTab === 'add' ? 'active' : ''}`} onClick={() => setFriendTab('add')}>
-            <span className="menu-icon">➕</span>
-            <span>Adicionar Amigo</span>
-          </button>
+        <div className="friends-sidebar-scrollable">
+          <div className="sidebar-header">Amigos</div>
+          <div className="friends-menu">
+            <button className={`menu-item ${friendTab === 'online' ? 'active' : ''}`} onClick={() => setFriendTab('online')}>
+              <span className="menu-icon"><ActivityIcon /></span>
+              <span>Online</span>
+              {onlineFriends.length > 0 && <span className="menu-badge">{onlineFriends.length}</span>}
+            </button>
+            <button className={`menu-item ${friendTab === 'all' ? 'active' : ''}`} onClick={() => setFriendTab('all')}>
+              <span className="menu-icon"><UsersIcon /></span>
+              <span>Todos</span>
+              {acceptedFriends.length > 0 && <span className="menu-badge">{acceptedFriends.length}</span>}
+            </button>
+            <button className={`menu-item ${friendTab === 'pending' ? 'active' : ''}`} onClick={() => setFriendTab('pending')}>
+              <span className="menu-icon"><ClockIcon /></span>
+              <span>Pendentes</span>
+              {pendingRequests.length > 0 && <span className="menu-badge pending-badge">{pendingRequests.length}</span>}
+            </button>
+            <button className={`menu-item add-friend-item ${friendTab === 'add' ? 'active' : ''}`} onClick={() => setFriendTab('add')}>
+              <span className="menu-icon"><PlusIcon /></span>
+              <span>Adicionar Amigo</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="sidebar-profile-footer">
+          <div className="profile-footer-info">
+            <div className="profile-footer-avatar">
+              {profileAvatarUrl ? (
+                <img src={profileAvatarUrl} alt={profileDisplayName} />
+              ) : (
+                profileDisplayName.slice(0, 1).toUpperCase()
+              )}
+            </div>
+            <div className="profile-footer-meta">
+              <span className="profile-footer-name" title={profileDisplayName}>{profileDisplayName}</span>
+              <span className="profile-footer-status">Online</span>
+            </div>
+          </div>
+          <div className="profile-footer-actions">
+            <button className="profile-footer-btn" onClick={toggleTheme} title="Alternar tema">
+              {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+            </button>
+            <button className="profile-footer-btn" onClick={() => setPage('Configurações')} title="Configurações">
+              <SettingsIcon />
+            </button>
+            <button className="profile-footer-btn logout" onClick={onSignOut} title="Sair">
+              <LogOutIcon />
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -1652,7 +2269,13 @@ function FriendsView({
                 {onlineFriends.map(friend => (
                   <div key={friend.id} className="friend-row">
                     <div className="friend-avatar-wrapper">
-                      <div className="friend-avatar">{friend.user.display_name.slice(0, 1).toUpperCase()}</div>
+                      <div className="friend-avatar" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {friend.user.avatar_url ? (
+                          <img src={friend.user.avatar_url} alt={friend.user.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          friend.user.display_name.slice(0, 1).toUpperCase()
+                        )}
+                      </div>
                       <span className="online-indicator" />
                     </div>
                     <div className="friend-info">
@@ -1685,7 +2308,13 @@ function FriendsView({
                   return (
                     <div key={friend.id} className="friend-row">
                       <div className="friend-avatar-wrapper">
-                        <div className="friend-avatar">{friend.user.display_name.slice(0, 1).toUpperCase()}</div>
+                        <div className="friend-avatar" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {friend.user.avatar_url ? (
+                            <img src={friend.user.avatar_url} alt={friend.user.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            friend.user.display_name.slice(0, 1).toUpperCase()
+                          )}
+                        </div>
                         {isOnline && <span className="online-indicator" />}
                       </div>
                       <div className="friend-info">
@@ -1718,7 +2347,13 @@ function FriendsView({
                   const isReceived = req.initiatorId !== user.id
                   return (
                     <div key={req.id} className="friend-row">
-                      <div className="friend-avatar">{req.user.display_name.slice(0, 1).toUpperCase()}</div>
+                      <div className="friend-avatar" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {req.user.avatar_url ? (
+                          <img src={req.user.avatar_url} alt={req.user.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          req.user.display_name.slice(0, 1).toUpperCase()
+                        )}
+                      </div>
                       <div className="friend-info">
                         <span className="friend-name">{req.user.display_name}</span>
                         <span className="friend-status">{isReceived ? 'Quer ser seu amigo' : 'Solicitação enviada'}</span>
@@ -1772,7 +2407,13 @@ function FriendsView({
           <aside className="dm-chat-panel">
             <div className="dm-chat-header">
               <div className="dm-chat-header-info">
-                <div className="friend-avatar" style={{ width: 32, height: 32, fontSize: 14 }}>{dmFriendName.slice(0, 1).toUpperCase()}</div>
+                <div className="friend-avatar" style={{ width: 32, height: 32, fontSize: 14, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {dmFriend?.user.avatar_url ? (
+                    <img src={dmFriend.user.avatar_url} alt={dmFriendName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    dmFriendName.slice(0, 1).toUpperCase()
+                  )}
+                </div>
                 <span className="dm-chat-name">{dmFriendName}</span>
               </div>
               <button className="dm-close-btn" onClick={onCloseDM} title="Fechar">✕</button>
@@ -1826,7 +2467,13 @@ function SettingsView({
   onInputDeviceChange,
   onOutputDeviceChange,
   audioError,
-  onRefreshDevices
+  onRefreshDevices,
+  profileDisplayName,
+  profileAvatarUrl,
+  theme,
+  toggleTheme,
+  setPage,
+  onSignOut
 }: {
   userId: string
   currentDisplayName: string
@@ -1840,6 +2487,12 @@ function SettingsView({
   onOutputDeviceChange: (id: string) => void
   audioError: string | null
   onRefreshDevices: () => void
+  profileDisplayName: string
+  profileAvatarUrl: string
+  theme: 'light' | 'dark'
+  toggleTheme: () => void
+  setPage: (page: Page) => void
+  onSignOut: () => void
 }) {
   const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'audio'>('profile')
   
@@ -1930,22 +2583,51 @@ function SettingsView({
   return (
     <section className="settings-workspace">
       <aside className="settings-sidebar">
-        <div className="sidebar-header">Configurações</div>
-        <div className="settings-menu">
-          <button 
-            className={`menu-item ${activeSettingsTab === 'profile' ? 'active' : ''}`}
-            onClick={() => setActiveSettingsTab('profile')}
-          >
-            <span className="menu-icon">👤</span>
-            <span>Meu Perfil</span>
-          </button>
-          <button 
-            className={`menu-item ${activeSettingsTab === 'audio' ? 'active' : ''}`}
-            onClick={() => setActiveSettingsTab('audio')}
-          >
-            <span className="menu-icon">🎙️</span>
-            <span>Voz e Áudio</span>
-          </button>
+        <div className="settings-sidebar-scrollable">
+          <div className="sidebar-header">Configurações</div>
+          <div className="settings-menu">
+            <button 
+              className={`menu-item ${activeSettingsTab === 'profile' ? 'active' : ''}`}
+              onClick={() => setActiveSettingsTab('profile')}
+            >
+              <span className="menu-icon">👤</span>
+              <span>Meu Perfil</span>
+            </button>
+            <button 
+              className={`menu-item ${activeSettingsTab === 'audio' ? 'active' : ''}`}
+              onClick={() => setActiveSettingsTab('audio')}
+            >
+              <span className="menu-icon">🎙️</span>
+              <span>Voz e Áudio</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="sidebar-profile-footer">
+          <div className="profile-footer-info">
+            <div className="profile-footer-avatar">
+              {profileAvatarUrl ? (
+                <img src={profileAvatarUrl} alt={profileDisplayName} />
+              ) : (
+                profileDisplayName.slice(0, 1).toUpperCase()
+              )}
+            </div>
+            <div className="profile-footer-meta">
+              <span className="profile-footer-name" title={profileDisplayName}>{profileDisplayName}</span>
+              <span className="profile-footer-status">Online</span>
+            </div>
+          </div>
+          <div className="profile-footer-actions">
+            <button className="profile-footer-btn" onClick={toggleTheme} title="Alternar tema">
+              {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+            </button>
+            <button className="profile-footer-btn" onClick={() => setPage('Configurações')} title="Configurações">
+              <SettingsIcon />
+            </button>
+            <button className="profile-footer-btn logout" onClick={onSignOut} title="Sair">
+              <LogOutIcon />
+            </button>
+          </div>
         </div>
       </aside>
 

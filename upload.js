@@ -1,7 +1,7 @@
 import fs from 'fs';
 
 async function upload() {
-  const filePath = 'dist-desktop/Echo-0.9.2-win.zip';
+  const filePath = 'dist-desktop/Echo-0.9.9-win.zip';
   if (!fs.existsSync(filePath)) {
     console.error(`Erro: Arquivo não encontrado em ${filePath}.`);
     return;
@@ -19,7 +19,7 @@ async function upload() {
   console.log(`Servidor de upload: ${activeServer}`);
 
   const formData = new FormData();
-  formData.append('file', blob, 'Echo-0.9.2-win.zip');
+  formData.append('file', blob, 'Echo-0.9.9-win.zip');
   
   console.log(`Enviando arquivo para Gofile...`);
   const response = await fetch(`https://${activeServer}.gofile.io/contents/uploadfile`, {
