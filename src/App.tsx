@@ -6,6 +6,9 @@ import { useVoiceChannel } from './lib/useVoiceChannel'
 import type { VoiceParticipant } from './lib/useVoiceChannel'
 import { playMuteSound, playUnmuteSound } from './lib/soundEffects'
 import './App.css'
+import { THEMES } from './lib/themes'
+
+
 
 type Page = 'Amigos' | 'Mensagens' | 'Servidores' | 'Descobrir' | 'Configurações'
 type Space = { id: string; name: string; description: string; creator_id: string }
@@ -420,6 +423,10 @@ function Auth() {
   }
   return (
     <main className="auth-page">
+      <div className="auth-bg-blob auth-bg-blob-1"></div>
+      <div className="auth-bg-blob auth-bg-blob-2"></div>
+      <div className="auth-bg-blob auth-bg-blob-3"></div>
+
       <section className="auth-card">
         <Brand />
         <h1>{mode === 'login' ? 'Bem-vindo de volta' : 'Crie sua conta'}</h1>
@@ -546,21 +553,54 @@ function Echo({ user }: { user: User }) {
   const displayName = (user.user_metadata.display_name as string | undefined) || user.email?.split('@')[0] || 'Você'
 
   // Theme state
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem('echo-theme') as 'light' | 'dark') || 'light'
+  const [theme, setTheme] = useState<string>(() => {
+    return localStorage.getItem('echo-theme') || 'light'
   })
 
+  // Premium & Subscription state (Mocked / Local)
+  const [isPremiumUser, setIsPremiumUser] = useState<boolean>(() => {
+    return localStorage.getItem('echo-premium') === 'true'
+  })
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+  const [pendingTheme, setPendingTheme] = useState<string | null>(null)
+
   useEffect(() => {
-    if (theme === 'dark') {
-      document.body.classList.add('dark-theme')
-    } else {
-      document.body.classList.remove('dark-theme')
+    // Clear all theme classes
+    THEMES.forEach(t => {
+      document.body.classList.remove(t.className)
+    })
+    // Add current theme class
+    const activeTheme = THEMES.find(t => t.id === theme)
+    if (activeTheme) {
+      document.body.classList.add(activeTheme.className)
     }
     localStorage.setItem('echo-theme', theme)
   }, [theme])
 
+  function selectTheme(themeId: string) {
+    const selected = THEMES.find(t => t.id === themeId)
+    if (!selected) return
+
+    if (selected.isPremium && !isPremiumUser) {
+      setPendingTheme(themeId)
+      setShowSubscriptionModal(true)
+    } else {
+      setTheme(themeId)
+    }
+  }
+
   function toggleTheme() {
     setTheme(prev => prev === 'light' ? 'dark' : 'light')
+  }
+
+  function handleSimulateSubscription() {
+    setIsPremiumUser(true)
+    localStorage.setItem('echo-premium', 'true')
+    setShowSubscriptionModal(false)
+    if (pendingTheme) {
+      setTheme(pendingTheme)
+      setPendingTheme(null)
+    }
   }
 
   // Auto-update listener
@@ -1461,6 +1501,36 @@ function Echo({ user }: { user: User }) {
           )}
         </div>
       )}
+
+      {showSubscriptionModal && (
+        <div className="screen-picker-overlay" onClick={() => setShowSubscriptionModal(false)} style={{ zIndex: 10000 }}>
+          <div className="screen-picker-modal" style={{ maxWidth: '420px', textAlign: 'center', padding: '32px' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>👑</div>
+            <h2 style={{ fontSize: '22px', fontWeight: '800', marginBottom: '8px' }}>Echo Premium</h2>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.5' }}>
+              Desbloqueie personalização completa! Assinando o Echo Premium você tem acesso a temas exclusivos, transmissões em alta qualidade e muito mais.
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button 
+                className="voice-join-submit-btn" 
+                style={{ width: '100%', padding: '12px', fontWeight: 'bold', margin: 0 }}
+                onClick={handleSimulateSubscription}
+              >
+                Simular Assinatura (Grátis para Testes)
+              </button>
+              <button 
+                className="ch-create-btn" 
+                style={{ width: '100%', padding: '12px', fontWeight: 'bold', margin: 0, background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+                onClick={() => setShowSubscriptionModal(false)}
+              >
+                Voltar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="topbar">
         <Brand />
         <nav>
@@ -2214,6 +2284,8 @@ function Echo({ user }: { user: User }) {
           profileAvatarUrl={profileAvatarUrl}
           theme={theme}
           toggleTheme={toggleTheme}
+          selectTheme={selectTheme}
+          isPremiumUser={isPremiumUser}
           setPage={setPage}
           onSignOut={() => supabase?.auth.signOut()}
           noiseSuppressionEnabled={noiseSuppressionEnabled}
@@ -2746,7 +2818,7 @@ function FriendsView({
   onUploadFile: (file: File) => void
   profileDisplayName: string
   profileAvatarUrl: string
-  theme: 'light' | 'dark'
+  theme: string
   toggleTheme: () => void
   setPage: (page: Page) => void
   onSignOut: () => void
@@ -3075,6 +3147,8 @@ function SettingsView({
   profileAvatarUrl,
   theme,
   toggleTheme,
+  selectTheme,
+  isPremiumUser,
   setPage,
   onSignOut,
   noiseSuppressionEnabled,
@@ -3100,8 +3174,10 @@ function SettingsView({
   onRefreshDevices: () => void
   profileDisplayName: string
   profileAvatarUrl: string
-  theme: 'light' | 'dark'
+  theme: string
   toggleTheme: () => void
+  selectTheme: (themeId: string) => void
+  isPremiumUser: boolean
   setPage: (page: Page) => void
   onSignOut: () => void
   noiseSuppressionEnabled: boolean
@@ -3111,7 +3187,7 @@ function SettingsView({
   sfxVolume: number
   onSfxVolumeChange: (val: number) => void
 }) {
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'audio'>('profile')
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'audio' | 'appearance'>('profile')
   
   // Profile settings state
   const [localDisplayName, setLocalDisplayName] = useState(currentDisplayName)
@@ -3238,6 +3314,13 @@ function SettingsView({
               <span className="menu-icon">🎙️</span>
               <span>Voz e Áudio</span>
             </button>
+            <button 
+              className={`menu-item ${activeSettingsTab === 'appearance' ? 'active' : ''}`}
+              onClick={() => setActiveSettingsTab('appearance')}
+            >
+              <span className="menu-icon">🎨</span>
+              <span>Aparência</span>
+            </button>
           </div>
         </div>
 
@@ -3270,7 +3353,7 @@ function SettingsView({
       </aside>
 
       <section className="settings-content">
-        {activeSettingsTab === 'profile' ? (
+        {activeSettingsTab === 'profile' && (
           <div className="settings-container">
             <h2>Meu Perfil</h2>
             <p>Gerencie o seu nome de usuário e foto de exibição para todo o Echo.</p>
@@ -3388,7 +3471,9 @@ function SettingsView({
               </button>
             </form>
           </div>
-        ) : (
+        )}
+
+        {activeSettingsTab === 'audio' && (
           <div className="settings-container">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2>Configurações de Áudio</h2>
@@ -3503,6 +3588,81 @@ function SettingsView({
                   {Math.round(sfxVolume * 100)}%
                 </span>
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeSettingsTab === 'appearance' && (
+          <div className="settings-container">
+            <h2>Aparência</h2>
+            <p>Personalize o visual do Echo com temas exclusivos. Assinantes premium têm acesso a temas personalizados.</p>
+
+            <div className="themes-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginTop: '24px' }}>
+              {THEMES.map(t => {
+                const isSelected = theme === t.id
+                return (
+                  <div 
+                    key={t.id}
+                    onClick={() => selectTheme(t.id)}
+                    className={`theme-card ${isSelected ? 'selected' : ''}`}
+                    style={{
+                      padding: '16px',
+                      borderRadius: '12px',
+                      background: 'var(--bg-secondary)',
+                      border: isSelected ? '2px solid var(--accent-color)' : '2px solid var(--border-color)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px',
+                      position: 'relative',
+                      transition: 'all 0.2s',
+                      boxShadow: isSelected ? '0 4px 12px rgba(0,0,0,0.08)' : 'none'
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {t.previewColors.map((color, i) => (
+                        <span 
+                          key={i} 
+                          style={{
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            background: color,
+                            border: '1px solid rgba(0,0,0,0.1)'
+                          }} 
+                        />
+                      ))}
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontWeight: 'bold', fontSize: '14px', color: 'var(--text-primary)' }}>{t.name}</span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        {t.isPremium ? (isPremiumUser ? 'Premium 👑 (Ativo)' : 'Premium 👑') : 'Gratuito'}
+                      </span>
+                    </div>
+
+                    {isSelected && (
+                      <span style={{
+                        position: 'absolute',
+                        top: '12px',
+                        right: '12px',
+                        background: 'var(--accent-color)',
+                        color: '#fff',
+                        borderRadius: '50%',
+                        width: '18px',
+                        height: '18px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '10px',
+                        fontWeight: 'bold'
+                      }}>
+                        ✓
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}

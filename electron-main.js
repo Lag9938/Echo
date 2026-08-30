@@ -3,10 +3,28 @@ import pkg from 'electron-updater'
 const { autoUpdater } = pkg
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { spawn } from 'node:child_process'
+import net from 'node:net'
+
 const isDevelopment = !app.isPackaged
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 let mainWindow = null
+let audioHelperProcess = null
+let audioTcpClient = null
+
+function stopAudioCapture() {
+  if (audioTcpClient) {
+    audioTcpClient.destroy()
+    audioTcpClient = null
+  }
+  if (audioHelperProcess) {
+    try {
+      audioHelperProcess.kill('SIGTERM')
+    } catch (e) {}
+    audioHelperProcess = null
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({ 
@@ -42,6 +60,74 @@ function createWindow() {
       name: source.name,
       thumbnail: source.thumbnail.toDataURL()
     }))
+  })
+
+  // Handlers para gerenciar a captura de áudio exclusiva do jogo
+  ipcMain.handle('start-process-audio-capture', async (event, sourceId) => {
+    stopAudioCapture()
+
+    const parts = sourceId.split(':')
+    if (parts[0] !== 'window') {
+      return { success: false, reason: 'Not a window source' }
+    }
+
+    const hwnd = parts[1]
+    const port = 8090
+
+    let helperPath
+    if (isDevelopment) {
+      helperPath = path.join(__dirname, 'src', 'native', 'AudioCaptureHelper', 'bin', 'AudioCaptureHelper.exe')
+    } else {
+      helperPath = path.join(process.resourcesPath, 'AudioCaptureHelper.exe')
+    }
+
+    console.log(`Spawning AudioCaptureHelper for HWND: ${hwnd} on port: ${port}`)
+
+    try {
+      audioHelperProcess = spawn(helperPath, ['--hwnd', hwnd, port.toString()])
+
+      audioHelperProcess.stdout.on('data', (data) => {
+        console.log(`[AudioHelper STDOUT]: ${data.toString().trim()}`)
+      })
+
+      audioHelperProcess.stderr.on('data', (data) => {
+        console.error(`[AudioHelper STDERR]: ${data.toString().trim()}`)
+      })
+
+      audioHelperProcess.on('close', (code) => {
+        console.log(`AudioCaptureHelper exited with code: ${code}`)
+        stopAudioCapture()
+      })
+
+      // Aguarda o servidor TCP iniciar no helper C#
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Conecta ao socket TCP local
+      audioTcpClient = net.createConnection({ port, host: '127.0.0.1' }, () => {
+        console.log('Connected to AudioCaptureHelper TCP Server!')
+      })
+
+      audioTcpClient.on('data', (chunk) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          // Envia o chunk de áudio bruto (PCM) para o renderer
+          mainWindow.webContents.send('screenshare-audio-chunk', chunk)
+        }
+      })
+
+      audioTcpClient.on('error', (err) => {
+        console.error('TCP client connection error:', err.message)
+      })
+
+      return { success: true }
+    } catch (err) {
+      console.error('Failed to start AudioCaptureHelper:', err)
+      return { success: false, reason: err.message }
+    }
+  })
+
+  ipcMain.handle('stop-process-audio-capture', async () => {
+    stopAudioCapture()
+    return { success: true }
   })
 
   // Handler para instalar atualização quando o usuário decidir
@@ -89,4 +175,7 @@ function createWindow() {
   else mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'))
 }
 app.whenReady().then(() => { createWindow(); app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() }) })
+app.on('will-quit', () => {
+  stopAudioCapture()
+})
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })

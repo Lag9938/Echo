@@ -29,3 +29,8 @@ dist-desktop
 # Build outputs and store releases
 dist-desktop
 release-store/
+
+# .NET Build artifacts
+src/native/**/obj/
+src/native/**/bin/*
+!src/native/**/bin/AudioCaptureHelper.exe

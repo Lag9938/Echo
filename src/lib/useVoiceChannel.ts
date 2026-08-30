@@ -362,8 +362,13 @@ export function useVoiceChannel() {
           echoCancellation: echoCancellation,
           noiseSuppression: noiseSuppression,
           autoGainControl: true,
-          channelCount: 1
-        },
+          channelCount: 1,
+          googEchoCancellation: echoCancellation,
+          googNoiseSuppression: noiseSuppression,
+          googAutoGainControl: true,
+          googHighpassFilter: true,
+          googNoiseReduction: noiseSuppression
+        } as any,
         video: false
       }
       
@@ -555,8 +560,13 @@ export function useVoiceChannel() {
           echoCancellation: echoCancellation,
           noiseSuppression: noiseSuppression,
           autoGainControl: true,
-          channelCount: 1
-        },
+          channelCount: 1,
+          googEchoCancellation: echoCancellation,
+          googNoiseSuppression: noiseSuppression,
+          googAutoGainControl: true,
+          googHighpassFilter: true,
+          googNoiseReduction: noiseSuppression
+        } as any,
         video: false
       })
       const newTrack = newStream.getAudioTracks()[0]
@@ -613,28 +623,126 @@ export function useVoiceChannel() {
   const startScreenShare = useCallback(async (sourceId?: string, width?: number, height?: number, fps?: number) => {
     if (!isConnected || !myInfoRef.current) return
     try {
-      let stream: MediaStream
+      let stream: MediaStream | null = null
       if (sourceId) {
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            mandatory: {
-              chromeMediaSource: 'desktop',
-              chromeMediaSourceId: sourceId
+        let captureSuccess = false
+        if (sourceId.startsWith('window:') && (window as any).electronAPI) {
+          try {
+            const res = await (window as any).electronAPI.startProcessAudioCapture(sourceId)
+            if (res && res.success) {
+              stream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: {
+                  mandatory: {
+                    chromeMediaSource: 'desktop',
+                    chromeMediaSourceId: sourceId,
+                    minWidth: width || 1280,
+                    maxWidth: width || 1280,
+                    minHeight: height || 720,
+                    maxHeight: height || 720,
+                    minFrameRate: fps || 30,
+                    maxFrameRate: fps || 30
+                  }
+                } as any
+              })
+
+              const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext
+              const audioCtx = new AudioCtxClass({ sampleRate: 48000 })
+              const dest = audioCtx.createMediaStreamDestination()
+
+              const audioQueueL: Float32Array[] = []
+              const audioQueueR: Float32Array[] = []
+              let currentBufferL: Float32Array | null = null
+              let currentBufferR: Float32Array | null = null
+              let currentBufferIndex = 0
+
+              const scriptNode = audioCtx.createScriptProcessor(2048, 0, 2)
+              scriptNode.onaudioprocess = (e) => {
+                const outL = e.outputBuffer.getChannelData(0)
+                const outR = e.outputBuffer.getChannelData(1)
+                let written = 0
+
+                while (written < outL.length) {
+                  if (currentBufferL && currentBufferR && currentBufferIndex < currentBufferL.length) {
+                    outL[written] = currentBufferL[currentBufferIndex]
+                    outR[written] = currentBufferR[currentBufferIndex]
+                    currentBufferIndex++
+                    written++
+                  } else {
+                    if (audioQueueL.length > 0) {
+                      currentBufferL = audioQueueL.shift() || null
+                      currentBufferR = audioQueueR.shift() || null
+                      currentBufferIndex = 0
+                    } else {
+                      outL[written] = 0
+                      outR[written] = 0
+                      written++
+                    }
+                  }
+                }
+              }
+
+              scriptNode.connect(dest)
+
+              ;(window as any).electronAPI.onScreenshareAudioChunk((chunk: Uint8Array) => {
+                const samplesCount = chunk.byteLength / 2
+                const view = new DataView(chunk.buffer, chunk.byteOffset, chunk.byteLength)
+                const floatL = new Float32Array(samplesCount / 2)
+                const floatR = new Float32Array(samplesCount / 2)
+
+                for (let i = 0; i < samplesCount / 2; i++) {
+                  const leftInt = view.getInt16(i * 4, true)
+                  const rightInt = view.getInt16(i * 4 + 2, true)
+                  floatL[i] = leftInt / 32768.0
+                  floatR[i] = rightInt / 32768.0
+                }
+
+                audioQueueL.push(floatL)
+                audioQueueR.push(floatR)
+
+                if (audioQueueL.length > 40) {
+                  audioQueueL.splice(0, 15)
+                  audioQueueR.splice(0, 15)
+                }
+              })
+
+              const gameAudioTrack = dest.stream.getAudioTracks()[0]
+              if (gameAudioTrack) {
+                stream.addTrack(gameAudioTrack)
+              }
+
+              ;(stream as any)._audioCtx = audioCtx;
+              ;(stream as any)._scriptNode = scriptNode;
+              captureSuccess = true
+              console.log('Successfully initialized process-isolated audio capture via C# helper.')
             }
-          } as any,
-          video: {
-            mandatory: {
-              chromeMediaSource: 'desktop',
-              chromeMediaSourceId: sourceId,
-              minWidth: width || 1280,
-              maxWidth: width || 1280,
-              minHeight: height || 720,
-              maxHeight: height || 720,
-              minFrameRate: fps || 30,
-              maxFrameRate: fps || 30
-            }
-          } as any
-        })
+          } catch (captureErr) {
+            console.error('Failed to bind process loopback audio, falling back to system loopback:', captureErr)
+          }
+        }
+
+        if (!captureSuccess) {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              mandatory: {
+                chromeMediaSource: 'desktop',
+                chromeMediaSourceId: sourceId
+              }
+            } as any,
+            video: {
+              mandatory: {
+                chromeMediaSource: 'desktop',
+                chromeMediaSourceId: sourceId,
+                minWidth: width || 1280,
+                maxWidth: width || 1280,
+                minHeight: height || 720,
+                maxHeight: height || 720,
+                minFrameRate: fps || 30,
+                maxFrameRate: fps || 30
+              }
+            } as any
+          })
+        }
       } else {
         stream = await navigator.mediaDevices.getDisplayMedia({
           audio: true,
@@ -644,6 +752,10 @@ export function useVoiceChannel() {
             frameRate: fps ? { ideal: fps } : 30
           }
         })
+      }
+
+      if (!stream) {
+        throw new Error('Screen capture stream could not be initialized.')
       }
 
       localScreenStreamRef.current = stream
@@ -708,7 +820,25 @@ export function useVoiceChannel() {
   // Stop sharing screen
   const stopScreenShare = useCallback(async () => {
     if (localScreenStreamRef.current) {
-      localScreenStreamRef.current.getTracks().forEach(t => t.stop())
+      const stream = localScreenStreamRef.current
+      if ((stream as any)._audioCtx) {
+        try {
+          ((stream as any)._audioCtx as AudioContext).close()
+        } catch (e) {}
+      }
+      if ((stream as any)._scriptNode) {
+        try {
+          ((stream as any)._scriptNode as ScriptProcessorNode).disconnect()
+        } catch (e) {}
+      }
+
+      if ((window as any).electronAPI && typeof (window as any).electronAPI.stopProcessAudioCapture === 'function') {
+        try {
+          await (window as any).electronAPI.stopProcessAudioCapture()
+        } catch (e) {}
+      }
+
+      stream.getTracks().forEach(t => t.stop())
       localScreenStreamRef.current = null
       setLocalScreenStream(null)
       const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')

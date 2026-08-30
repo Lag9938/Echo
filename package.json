@@ -3,7 +3,7 @@
   "description": "Comunidades e conversas em tempo real.",
   "author": "Echo Lobby",
   "private": true,
-  "version": "0.17.1",
+  "version": "0.18.0",
   "main": "electron-main.js",
   "type": "module",
   "scripts": {
@@ -41,6 +41,12 @@
     "directories": {
       "output": "dist-desktop"
     },
+    "extraResources": [
+      {
+        "from": "src/native/AudioCaptureHelper/bin/AudioCaptureHelper.exe",
+        "to": "AudioCaptureHelper.exe"
+      }
+    ],
     "files": [
       "dist/**/*",
       "electron-main.js",
