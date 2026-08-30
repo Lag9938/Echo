@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { supabase } from './supabase'
 import type { RealtimeChannel } from '@supabase/supabase-js'
+import { playJoinSound, playLeaveSound, playScreenStartSound, playScreenStopSound } from './soundEffects'
 
 export type VoiceParticipant = {
   userId: string
@@ -21,11 +22,31 @@ const ICE_SERVERS: RTCConfiguration = {
 const SPEAKING_THRESHOLD = 25
 const SPEAKING_CHECK_INTERVAL = 150
 
+function optimizeSDP(sdp: string): string {
+  let lines = sdp.split('\r\n');
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].includes('a=rtpmap:') && lines[i].toLowerCase().includes('opus/48000/2')) {
+      const match = lines[i].match(/a=rtpmap:(\d+)\s+opus/i);
+      if (match) {
+        const payloadType = match[1];
+        for (let j = 0; j < lines.length; j++) {
+          if (lines[j].startsWith(`a=fmtp:${payloadType}`)) {
+            lines[j] = `a=fmtp:${payloadType} maxaveragebitrate=64000;stereo=0;useinbandfec=1;usedtx=1`;
+            break;
+          }
+        }
+      }
+    }
+  }
+  return lines.join('\r\n');
+}
+
 export function useVoiceChannel() {
   const [participants, setParticipants] = useState<VoiceParticipant[]>([])
   const [isMuted, setIsMuted] = useState(false)
   const [isConnected, setIsConnected] = useState(false)
   const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null)
+  const [rtcStats, setRtcStats] = useState<{ ping: number; jitter: number; packetLoss: number } | null>(null)
 
   const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map())
   const localStreamRef = useRef<MediaStream | null>(null)
@@ -233,13 +254,15 @@ export function useVoiceChannel() {
       }
       pendingCandidatesRef.current.delete(from)
 
-      const answer = await pc.createAnswer()
-      await pc.setLocalDescription(answer)
+      let answer = await pc.createAnswer()
+      const optimizedSdp = optimizeSDP(answer.sdp || '')
+      const finalAnswer = { type: answer.type, sdp: optimizedSdp }
+      await pc.setLocalDescription(finalAnswer)
 
       channelRef.current?.send({
         type: 'broadcast',
         event: 'sdp-answer',
-        payload: { from: myInfoRef.current!.userId, to: from, sdp: answer },
+        payload: { from: myInfoRef.current!.userId, to: from, sdp: finalAnswer },
       })
     }
 
@@ -277,13 +300,15 @@ export function useVoiceChannel() {
     if (!pc) pc = createPeerConnection(remoteUserId)
     if (!pc) return
 
-    const offer = await pc.createOffer()
-    await pc.setLocalDescription(offer)
+    let offer = await pc.createOffer()
+    const optimizedSdp = optimizeSDP(offer.sdp || '')
+    const finalOffer = { type: offer.type, sdp: optimizedSdp }
+    await pc.setLocalDescription(finalOffer)
 
     channelRef.current?.send({
       type: 'broadcast',
       event: 'sdp-offer',
-      payload: { from: myInfoRef.current!.userId, to: remoteUserId, sdp: offer },
+      payload: { from: myInfoRef.current!.userId, to: remoteUserId, sdp: finalOffer },
     })
   }, [createPeerConnection])
 
@@ -323,7 +348,7 @@ export function useVoiceChannel() {
   }, [])
 
   // Join a voice channel (with custom device selection inputs)
-  const joinVoice = useCallback(async (channelId: string, userId: string, displayName: string, avatarUrl?: string, inputId?: string, outputId?: string) => {
+  const joinVoice = useCallback(async (channelId: string, userId: string, displayName: string, avatarUrl?: string, inputId?: string, outputId?: string, noiseSuppression = true, echoCancellation = true) => {
     if (!supabase || isConnected) return
 
     try {
@@ -333,7 +358,11 @@ export function useVoiceChannel() {
       // Get microphone access with requested constraints
       const constraints = {
         audio: {
-          deviceId: inputId && inputId !== 'default' ? { exact: inputId } : undefined
+          deviceId: inputId && inputId !== 'default' ? { exact: inputId } : undefined,
+          echoCancellation: echoCancellation,
+          noiseSuppression: noiseSuppression,
+          autoGainControl: true,
+          channelCount: 1
         },
         video: false
       }
@@ -379,6 +408,9 @@ export function useVoiceChannel() {
           const peerName = (presence as Record<string, string>).display_name
           const peerAvatar = (presence as Record<string, string>).avatar_url
           if (peerId && peerId !== userId) {
+            const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
+            playJoinSound(sfxVol)
+
             participantsMapRef.current.set(peerId, { 
               displayName: peerName || 'Membro',
               avatarUrl: peerAvatar
@@ -396,7 +428,11 @@ export function useVoiceChannel() {
       realtimeChannel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
         for (const presence of leftPresences) {
           const peerId = (presence as Record<string, string>).user_id
-          if (peerId) cleanupPeer(peerId)
+          if (peerId && peerId !== userId) {
+            const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
+            playLeaveSound(sfxVol)
+            cleanupPeer(peerId)
+          }
         }
       })
 
@@ -430,6 +466,8 @@ export function useVoiceChannel() {
       })
 
       setIsConnected(true)
+      const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
+      playJoinSound(sfxVol)
       startSpeakingDetection()
     } catch (err) {
       console.error('Failed to join voice channel:', err)
@@ -440,6 +478,11 @@ export function useVoiceChannel() {
 
   // Leave voice channel
   const leaveVoice = useCallback(() => {
+    if (localStreamRef.current) {
+      const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
+      playLeaveSound(sfxVol)
+    }
+
     if (speakingIntervalRef.current) {
       clearInterval(speakingIntervalRef.current)
       speakingIntervalRef.current = null
@@ -501,13 +544,19 @@ export function useVoiceChannel() {
   }, [])
 
   // Change input microphone device in real-time
-  const changeInputDevice = useCallback(async (deviceId: string) => {
+  const changeInputDevice = useCallback(async (deviceId: string, noiseSuppression = true, echoCancellation = true) => {
     selectedInputIdRef.current = deviceId
     if (!isConnected || !localStreamRef.current) return
 
     try {
       const newStream = await navigator.mediaDevices.getUserMedia({
-        audio: { deviceId: { exact: deviceId } },
+        audio: { 
+          deviceId: { exact: deviceId },
+          echoCancellation: echoCancellation,
+          noiseSuppression: noiseSuppression,
+          autoGainControl: true,
+          channelCount: 1
+        },
         video: false
       })
       const newTrack = newStream.getAudioTracks()[0]
@@ -603,6 +652,10 @@ export function useVoiceChannel() {
       const audioTrack = stream.getAudioTracks()[0]
 
       if (videoTrack) {
+        if ('contentHint' in videoTrack) {
+          (videoTrack as any).contentHint = 'motion';
+        }
+
         for (const [peerId, pc] of peersRef.current.entries()) {
           const existingVideoSender = screenSendersRef.current.get(peerId)
           if (existingVideoSender) {
@@ -622,16 +675,18 @@ export function useVoiceChannel() {
             }
           }
 
-          // Trigger renegotiation
-          const offer = await pc.createOffer()
-          await pc.setLocalDescription(offer)
+          // Trigger renegotiation with optimized SDP
+          let offer = await pc.createOffer()
+          const optimizedSdp = optimizeSDP(offer.sdp || '')
+          const finalOffer = { type: offer.type, sdp: optimizedSdp }
+          await pc.setLocalDescription(finalOffer)
           channelRef.current?.send({
             type: 'broadcast',
             event: 'sdp-offer',
             payload: {
               from: myInfoRef.current.userId,
               to: peerId,
-              sdp: offer
+              sdp: finalOffer
             }
           })
         }
@@ -641,6 +696,8 @@ export function useVoiceChannel() {
         }
       }
 
+      const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
+      playScreenStartSound(sfxVol)
       syncParticipants()
     } catch (err) {
       console.error('Error starting screen share:', err)
@@ -653,6 +710,8 @@ export function useVoiceChannel() {
       localScreenStreamRef.current.getTracks().forEach(t => t.stop())
       localScreenStreamRef.current = null
       setLocalScreenStream(null)
+      const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
+      playScreenStopSound(sfxVol)
     }
 
     for (const [peerId, pc] of peersRef.current.entries()) {
@@ -725,6 +784,43 @@ export function useVoiceChannel() {
     }
   }, [])
 
+  // Monitor RTC Connection quality metrics (ping, jitter, packet loss)
+  useEffect(() => {
+    if (!isConnected) {
+      setRtcStats(null)
+      return
+    }
+    const interval = setInterval(async () => {
+      if (peersRef.current.size === 0) {
+        setRtcStats(null)
+        return
+      }
+      try {
+        const pc = Array.from(peersRef.current.values())[0]
+        const stats = await pc.getStats()
+        let ping = 0
+        let jitter = 0
+        let packetLoss = 0
+
+        stats.forEach((report) => {
+          if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+            ping = Math.round((report.currentRoundTripTime || 0) * 1000)
+          }
+          if (report.type === 'inbound-rtp' && report.kind === 'audio') {
+            jitter = Math.round((report.jitter || 0) * 1000)
+            const lost = report.packetsLost || 0
+            const received = report.packetsReceived || 1
+            packetLoss = Math.round((lost / (received + lost)) * 10000) / 100
+          }
+        })
+        setRtcStats({ ping, jitter, packetLoss })
+      } catch (e) {
+        console.error("Error reading RTC stats:", e)
+      }
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [isConnected])
+
   // Cleanup on unmount
   useEffect(() => {
     return () => { leaveVoice() }
@@ -735,6 +831,7 @@ export function useVoiceChannel() {
     isMuted, 
     isConnected, 
     localScreenStream,
+    rtcStats,
     joinVoice, 
     leaveVoice, 
     toggleMute,

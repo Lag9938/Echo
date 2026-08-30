@@ -4,6 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { useVoiceChannel } from './lib/useVoiceChannel'
 import type { VoiceParticipant } from './lib/useVoiceChannel'
+import { playMuteSound, playUnmuteSound } from './lib/soundEffects'
 import './App.css'
 
 type Page = 'Amigos' | 'Mensagens' | 'Servidores' | 'Descobrir' | 'Configurações'
@@ -343,20 +344,34 @@ function formatMessageText(text: string, userDisplayName?: string): React.ReactN
 function copyToClipboard(text: string): boolean {
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text);
+      navigator.clipboard.writeText(text).catch(err => {
+        console.warn("Async clipboard write failed, trying fallback", err);
+        fallbackCopyToClipboard(text);
+      });
       return true;
     }
   } catch (e) {
     console.warn("navigator.clipboard failed, trying fallback", e);
   }
+  return fallbackCopyToClipboard(text);
+}
 
+function fallbackCopyToClipboard(text: string): boolean {
   try {
     const textArea = document.createElement("textarea");
     textArea.value = text;
     textArea.style.position = "fixed";
-    textArea.style.top = "0";
-    textArea.style.left = "0";
+    textArea.style.top = "-9999px";
+    textArea.style.left = "-9999px";
+    textArea.style.width = "2em";
+    textArea.style.height = "2em";
+    textArea.style.padding = "0";
+    textArea.style.border = "none";
+    textArea.style.outline = "none";
+    textArea.style.boxShadow = "none";
+    textArea.style.background = "transparent";
     textArea.style.opacity = "0";
+    
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();
@@ -477,6 +492,30 @@ function Echo({ user }: { user: User }) {
   const [unreadChannels, setUnreadChannels] = useState<Set<string>>(new Set())
   const selectedChannelRef = useRef(selectedChannel)
   const presenceChannelRef = useRef<any>(null)
+  const [presenceStatus, setPresenceStatus] = useState<'online' | 'idle' | 'dnd' | 'invisible'>(() => (localStorage.getItem('echo-presence-status') as any) || 'online')
+  const [showStatusMenu, setShowStatusMenu] = useState(false)
+  const [noiseSuppressionEnabled, setNoiseSuppressionEnabled] = useState(() => localStorage.getItem('echo-noise-suppression') !== 'false')
+  const [echoCancellationEnabled, setEchoCancellationEnabled] = useState(() => localStorage.getItem('echo-echo-cancellation') !== 'false')
+  const [showScreenshareModal, setShowScreenshareModal] = useState(false)
+  const [sfxVolume, setSfxVolume] = useState(() => {
+    const val = localStorage.getItem('echo-sfx-volume')
+    return val !== null ? parseFloat(val) : 0.5
+  })
+
+  async function updatePresenceStatus(status: 'online' | 'idle' | 'dnd' | 'invisible') {
+    setPresenceStatus(status)
+    localStorage.setItem('echo-presence-status', status)
+    if (presenceChannelRef.current) {
+      const savedStatus = localStorage.getItem('echo-custom-status') || ''
+      await presenceChannelRef.current.track({
+        user_id: user.id,
+        display_name: profileDisplayName,
+        online_at: new Date().toISOString(),
+        custom_status: savedStatus,
+        presence_status: status
+      })
+    }
+  }
 
   useEffect(() => {
     selectedChannelRef.current = selectedChannel
@@ -489,6 +528,15 @@ function Echo({ user }: { user: User }) {
       })
     }
   }, [selectedChannel])
+
+  // Request desktop notification permission on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        Notification.requestPermission()
+      }
+    }
+  }, [])
 
   const displayName = (user.user_metadata.display_name as string | undefined) || user.email?.split('@')[0] || 'Você'
 
@@ -516,6 +564,7 @@ function Echo({ user }: { user: User }) {
     isMuted, 
     isConnected, 
     localScreenStream,
+    rtcStats,
     joinVoice, 
     leaveVoice, 
     toggleMute,
@@ -646,7 +695,7 @@ function Echo({ user }: { user: User }) {
   function handleInputDeviceChange(id: string) {
     setSelectedInputId(id)
     localStorage.setItem('echo-input-id', id)
-    changeInputDevice(id)
+    changeInputDevice(id, noiseSuppressionEnabled, echoCancellationEnabled)
   }
 
   function handleOutputDeviceChange(id: string) {
@@ -686,13 +735,38 @@ function Echo({ user }: { user: User }) {
   }, [isConnected])
 
   async function handleJoinVoice(channelId: string) {
-    await joinVoice(channelId, user.id, profileDisplayName, profileAvatarUrl, selectedInputId, selectedOutputId)
+    await joinVoice(channelId, user.id, profileDisplayName, profileAvatarUrl, selectedInputId, selectedOutputId, noiseSuppressionEnabled, echoCancellationEnabled)
     setActiveVoiceChannelId(channelId)
   }
 
   function handleLeaveVoice() {
     leaveVoice()
     setActiveVoiceChannelId(null)
+  }
+
+  function handleToggleMute() {
+    toggleMute()
+    if (isMuted) {
+      playUnmuteSound(sfxVolume)
+    } else {
+      playMuteSound(sfxVolume)
+    }
+  }
+
+  function triggerDesktopNotification(title: string, body: string) {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        const notif = new Notification(title, {
+          body: body,
+          icon: '/favicon.ico',
+        })
+        notif.onclick = () => {
+          window.focus()
+        }
+      } catch (e) {
+        console.warn("Failed to trigger desktop notification:", e)
+      }
+    }
   }
 
   function openSpaceSettings(space: Space) {
@@ -827,39 +901,41 @@ function Echo({ user }: { user: User }) {
   }
 
 
+  async function startScreenShareWithConfig(quality: '720p' | '1080p' | 'native', fps: 15 | 30 | 60) {
+    setScreenQuality(quality)
+    setScreenFps(fps)
+    setShowScreenshareModal(false)
+    setTimeout(async () => {
+      await openScreenPickerHelper(quality, fps)
+    }, 150)
+  }
+
+  async function openScreenPickerHelper(quality: '720p' | '1080p' | 'native', fps: 15 | 30 | 60) {
+    if ((window as any).electronAPI) {
+      try {
+        const sources = await (window as any).electronAPI.getSources()
+        setScreenSources(sources)
+        setShowScreenPicker(true)
+      } catch (err) {
+        setError('Não foi possível capturar as telas: ' + err)
+      }
+    } else {
+      const { w, h } = getQualityDimensions(quality)
+      await startScreenShare(undefined, w, h, fps)
+    }
+  }
+
   async function openScreenPicker() {
     if (localScreenStream) {
       setShowScreenMenu(prev => !prev)
       return
     }
-    if ((window as any).electronAPI) {
-      try {
-        const sources = await (window as any).electronAPI.getSources()
-        setScreenSources(sources)
-        setShowScreenPicker(true)
-      } catch (err) {
-        setError('Não foi possível capturar as telas: ' + err)
-      }
-    } else {
-      const { w, h } = getQualityDimensions(screenQuality)
-      await startScreenShare(undefined, w, h, screenFps)
-    }
+    await openScreenPickerHelper(screenQuality, screenFps)
   }
 
   async function forceOpenScreenPicker() {
     setShowScreenMenu(false)
-    if ((window as any).electronAPI) {
-      try {
-        const sources = await (window as any).electronAPI.getSources()
-        setScreenSources(sources)
-        setShowScreenPicker(true)
-      } catch (err) {
-        setError('Não foi possível capturar as telas: ' + err)
-      }
-    } else {
-      const { w, h } = getQualityDimensions(screenQuality)
-      await startScreenShare(undefined, w, h, screenFps)
-    }
+    await openScreenPickerHelper(screenQuality, screenFps)
   }
 
   async function selectScreenSource(sourceId: string) {
@@ -1108,10 +1184,13 @@ function Echo({ user }: { user: User }) {
         const pData: Record<string, any> = {}
         
         Object.keys(state).forEach(key => {
-          online.add(key)
           const userPresence = state[key]
           if (userPresence && userPresence.length > 0) {
-            pData[key] = userPresence[0]
+            const p = userPresence[0] as any
+            pData[key] = p
+            if (p.presence_status !== 'invisible') {
+              online.add(key)
+            }
           }
         })
         
@@ -1121,11 +1200,13 @@ function Echo({ user }: { user: User }) {
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           const savedStatus = localStorage.getItem('echo-custom-status') || ''
+          const savedPresStatus = localStorage.getItem('echo-presence-status') || 'online'
           await presenceChannel.track({
             user_id: user.id,
             display_name: displayName,
             online_at: new Date().toISOString(),
-            custom_status: savedStatus
+            custom_status: savedStatus,
+            presence_status: savedPresStatus
           })
         }
       })
@@ -1141,6 +1222,9 @@ function Echo({ user }: { user: User }) {
             next.add(newMsg.channel_id)
             return next
           })
+          if (!document.hasFocus()) {
+            triggerDesktopNotification('Nova mensagem', newMsg.body || '')
+          }
         }
       })
       .subscribe()
@@ -1176,6 +1260,12 @@ function Echo({ user }: { user: User }) {
       
       // If it's related to the user
       if (newMsg.sender_id === user.id || newMsg.receiver_id === user.id) {
+        if (newMsg.receiver_id === user.id && !document.hasFocus()) {
+          const friendObj = friendships.find(f => f.user.id === newMsg.sender_id)
+          const senderName = friendObj?.user.display_name || 'Um amigo'
+          triggerDesktopNotification(`Mensagem de ${senderName}`, newMsg.body || '')
+        }
+
         // If it's from the currently selected friend
         if (selectedDMUserId && (newMsg.sender_id === selectedDMUserId || newMsg.receiver_id === selectedDMUserId)) {
           loadDirectMessages(selectedDMUserId)
@@ -1474,14 +1564,26 @@ function Echo({ user }: { user: User }) {
             {activeVoiceChannelId && (
               <div className="voice-status-panel">
                 <div className="voice-status-info">
-                  <span className="voice-status-indicator">●</span>
+                  <div className="connection-quality-indicator" style={{ position: 'relative', cursor: 'pointer' }}>
+                    <div className={`connection-bars ${rtcStats && rtcStats.ping < 100 ? 'good' : rtcStats && rtcStats.ping < 200 ? 'medium' : 'bad'}`}>
+                      <i /><i /><i />
+                    </div>
+                    
+                    {/* Tooltip de Estatísticas RTC */}
+                    <div className="connection-stats-tooltip">
+                      <strong>Conexão RTC</strong>
+                      <div className="stat-row"><span>Latência (Ping):</span> <strong>{rtcStats ? `${rtcStats.ping} ms` : 'Medindo...'}</strong></div>
+                      <div className="stat-row"><span>Jitter:</span> <strong>{rtcStats ? `${rtcStats.jitter} ms` : '0 ms'}</strong></div>
+                      <div className="stat-row"><span>Perda de Pacotes:</span> <strong>{rtcStats ? `${rtcStats.packetLoss} %` : '0 %'}</strong></div>
+                    </div>
+                  </div>
                   <div className="voice-status-text">
                     <span className="voice-status-label">Voz conectada</span>
                     <span className="voice-status-channel">{activeVoiceChannel?.name}</span>
                   </div>
                 </div>
                 <div className="voice-status-actions">
-                  <button className={`voice-action-btn ${isMuted ? 'muted' : ''}`} onClick={toggleMute} title={isMuted ? "Desmutar" : "Mutar"}>
+                  <button className={`voice-action-btn ${isMuted ? 'muted' : ''}`} onClick={handleToggleMute} title={isMuted ? "Desmutar" : "Mutar"}>
                     {isMuted ? <MicOffIcon /> : <MicIcon />}
                   </button>
                   <button className="voice-action-btn disconnect-btn" onClick={handleLeaveVoice} title="Desconectar">
@@ -1494,18 +1596,56 @@ function Echo({ user }: { user: User }) {
           </div>
 
           <div className="sidebar-profile-footer">
-            <div className="profile-footer-info">
-              <div className="profile-footer-avatar">
+            <div className="profile-footer-info" onClick={() => setShowStatusMenu(!showStatusMenu)} style={{ cursor: 'pointer', position: 'relative' }}>
+              <div className="profile-footer-avatar" style={{ position: 'relative' }}>
                 {profileAvatarUrl ? (
                   <img src={profileAvatarUrl} alt={profileDisplayName} />
                 ) : (
                   profileDisplayName.slice(0, 1).toUpperCase()
                 )}
+                <span className={`my-status-dot ${presenceStatus}`} />
               </div>
               <div className="profile-footer-meta">
                 <span className="profile-footer-name" title={profileDisplayName}>{profileDisplayName}</span>
-                <span className="profile-footer-status">Online</span>
+                <span className="profile-footer-status">
+                  {presenceStatus === 'online' ? '🟢 Online' :
+                   presenceStatus === 'idle' ? '🟡 Ausente' :
+                   presenceStatus === 'dnd' ? '🔴 Não Perturbe' : '⚪ Invisível'}
+                </span>
               </div>
+
+              {showStatusMenu && (
+                <div className="status-picker-popover" onClick={(e) => e.stopPropagation()}>
+                  <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('online'); setShowStatusMenu(false); }}>
+                    <span className="status-dot-bullet online" />
+                    <div className="status-meta">
+                      <strong>Online</strong>
+                      <span>Disponível</span>
+                    </div>
+                  </button>
+                  <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('idle'); setShowStatusMenu(false); }}>
+                    <span className="status-dot-bullet idle" />
+                    <div className="status-meta">
+                      <strong>Ausente</strong>
+                      <span>Inativo</span>
+                    </div>
+                  </button>
+                  <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('dnd'); setShowStatusMenu(false); }}>
+                    <span className="status-dot-bullet dnd" />
+                    <div className="status-meta">
+                      <strong>Não perturbe</strong>
+                      <span>Silenciar</span>
+                    </div>
+                  </button>
+                  <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('invisible'); setShowStatusMenu(false); }}>
+                    <span className="status-dot-bullet offline" />
+                    <div className="status-meta">
+                      <strong>Invisível</strong>
+                      <span>Aparecer offline</span>
+                    </div>
+                  </button>
+                </div>
+              )}
             </div>
             <div className="profile-footer-actions">
               <button className="profile-footer-btn" onClick={toggleTheme} title="Alternar tema">
@@ -1596,6 +1736,8 @@ function Echo({ user }: { user: User }) {
                             {spaceMembers.map((member) => {
                               const isCreator = currentSpace.creator_id === member.user.id
                               const isVoiceUser = participants.some(p => p.userId === member.user.id)
+                              const isOnline = onlineUsers.has(member.user.id)
+                              const userPresenceStatus = isOnline ? (presenceData[member.user.id]?.presence_status || 'online') : 'offline'
                               return (
                                 <div className="member-card" key={member.user.id}>
                                   <div className="member-avatar-container">
@@ -1606,7 +1748,7 @@ function Echo({ user }: { user: User }) {
                                         member.user.display_name.slice(0, 1).toUpperCase()
                                       )}
                                     </div>
-                                    <span className={`member-status-dot ${isVoiceUser ? 'voice-active' : 'online'}`} />
+                                    <span className={`member-status-dot ${isVoiceUser ? 'voice-active' : userPresenceStatus}`} />
                                   </div>
                                   <div className="member-info">
                                     <div className="member-name-row">
@@ -1743,7 +1885,7 @@ function Echo({ user }: { user: User }) {
                             <div className="voice-controls-bar">
                               <button 
                                 className={`control-btn mic-btn ${isMuted ? 'muted' : ''}`} 
-                                onClick={toggleMute}
+                                onClick={handleToggleMute}
                                 title={isMuted ? "Desmutar microfone" : "Mutar microfone"}
                               >
                                 {isMuted ? <MicOffIcon /> : <MicIcon />}
@@ -1752,8 +1894,14 @@ function Echo({ user }: { user: User }) {
                               <div className="screen-control-wrapper" style={{ position: 'relative' }}>
                                 <button 
                                   className={`control-btn screen-btn ${localScreenStream ? 'sharing' : ''}`} 
-                                  onClick={openScreenPicker}
-                                  title="Opções de Transmissão"
+                                  onClick={() => {
+                                    if (localScreenStream) {
+                                      openScreenPicker()
+                                    } else {
+                                      setShowScreenshareModal(true)
+                                    }
+                                  }}
+                                  title={localScreenStream ? "Opções de Transmissão" : "Transmitir Tela"}
                                 >
                                   <ScreenIcon />
                                 </button>
@@ -1892,6 +2040,8 @@ function Echo({ user }: { user: User }) {
                             {spaceMembers.map((member) => {
                               const isCreator = currentSpace.creator_id === member.user.id
                               const isVoiceUser = participants.some(p => p.userId === member.user.id)
+                              const isOnline = onlineUsers.has(member.user.id)
+                              const userPresenceStatus = isOnline ? (presenceData[member.user.id]?.presence_status || 'online') : 'offline'
                               return (
                                 <div className="member-card" key={member.user.id}>
                                   <div className="member-avatar-container">
@@ -1902,7 +2052,7 @@ function Echo({ user }: { user: User }) {
                                         member.user.display_name.slice(0, 1).toUpperCase()
                                       )}
                                     </div>
-                                    <span className={`member-status-dot ${isVoiceUser ? 'voice-active' : 'online'}`} />
+                                    <span className={`member-status-dot ${isVoiceUser ? 'voice-active' : userPresenceStatus}`} />
                                   </div>
                                   <div className="member-info">
                                     <div className="member-name-row">
@@ -1982,6 +2132,10 @@ function Echo({ user }: { user: User }) {
           toggleTheme={toggleTheme}
           setPage={setPage}
           onSignOut={() => supabase?.auth.signOut()}
+          presenceStatus={presenceStatus}
+          showStatusMenu={showStatusMenu}
+          setShowStatusMenu={setShowStatusMenu}
+          updatePresenceStatus={updatePresenceStatus}
         />
       </div>
 
@@ -2021,12 +2175,104 @@ function Echo({ user }: { user: User }) {
           toggleTheme={toggleTheme}
           setPage={setPage}
           onSignOut={() => supabase?.auth.signOut()}
+          noiseSuppressionEnabled={noiseSuppressionEnabled}
+          echoCancellationEnabled={echoCancellationEnabled}
+          onNoiseSuppressionChange={(val) => {
+            setNoiseSuppressionEnabled(val)
+            localStorage.setItem('echo-noise-suppression', val ? 'true' : 'false')
+            if (activeVoiceChannelId) {
+              changeInputDevice(selectedInputId, val, echoCancellationEnabled)
+            }
+          }}
+          onEchoCancellationChange={(val) => {
+            setEchoCancellationEnabled(val)
+            localStorage.setItem('echo-echo-cancellation', val ? 'true' : 'false')
+            if (activeVoiceChannelId) {
+              changeInputDevice(selectedInputId, noiseSuppressionEnabled, val)
+            }
+          }}
+          sfxVolume={sfxVolume}
+          onSfxVolumeChange={(val) => {
+            setSfxVolume(val)
+            localStorage.setItem('echo-sfx-volume', val.toString())
+          }}
         />
       </div>
 
       <div style={{ display: page === 'Descobrir' ? undefined : 'none' }}>
         <Placeholder page={'Descobrir'} />
       </div>
+
+      {/* Modal de Qualidade de Transmissão de Tela */}
+      {showScreenshareModal && (
+        <div className="screen-picker-overlay" onClick={() => setShowScreenshareModal(false)}>
+          <div className="screen-picker-modal" style={{ maxWidth: '460px' }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ textAlign: 'center', marginBottom: '8px' }}>Qualidade da Transmissão</h2>
+            <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>
+              Selecione as configurações ideais para o compartilhamento da sua tela.
+            </p>
+
+            <div className="screenshare-options-grid" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button 
+                type="button" 
+                className="screenshare-quality-option" 
+                onClick={() => startScreenShareWithConfig('720p', 30)}
+              >
+                <div className="quality-icon">⚡</div>
+                <div className="quality-meta">
+                  <strong>Otimizado (720p @ 30 FPS)</strong>
+                  <span>Recomendado para conexões normais</span>
+                </div>
+              </button>
+
+              <button 
+                type="button" 
+                className="screenshare-quality-option" 
+                onClick={() => startScreenShareWithConfig('720p', 60)}
+              >
+                <div className="quality-icon">🎮</div>
+                <div className="quality-meta">
+                  <strong>Fluido (720p @ 60 FPS)</strong>
+                  <span>Ideal para transmissão de jogos rápidos</span>
+                </div>
+              </button>
+
+              <button 
+                type="button" 
+                className="screenshare-quality-option" 
+                onClick={() => startScreenShareWithConfig('1080p', 30)}
+              >
+                <div className="quality-icon">🖥️</div>
+                <div className="quality-meta">
+                  <strong>Alta Definição (1080p @ 30 FPS)</strong>
+                  <span>Melhor legibilidade para leitura e código</span>
+                </div>
+              </button>
+
+              <button 
+                type="button" 
+                className="screenshare-quality-option" 
+                onClick={() => startScreenShareWithConfig('1080p', 60)}
+              >
+                <div className="quality-icon">🔥</div>
+                <div className="quality-meta">
+                  <strong>Fidelidade Máxima (1080p @ 60 FPS)</strong>
+                  <span>Qualidade e fluidez profissionais (Exige banda)</span>
+                </div>
+              </button>
+            </div>
+
+            <button 
+              type="button" 
+              className="picker-close-btn" 
+              style={{ width: '100%', marginTop: '20px', fontWeight: 'bold' }} 
+              onClick={() => setShowScreenshareModal(false)}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Create/Join Space Modal (Discord-Style) */}
       {showAddSpaceModal && (
@@ -2429,7 +2675,11 @@ function FriendsView({
   theme,
   toggleTheme,
   setPage,
-  onSignOut
+  onSignOut,
+  presenceStatus,
+  showStatusMenu,
+  setShowStatusMenu,
+  updatePresenceStatus
 }: {
   friendships: FriendshipRequest[]
   friendTab: 'online' | 'all' | 'pending' | 'add'
@@ -2459,6 +2709,10 @@ function FriendsView({
   toggleTheme: () => void
   setPage: (page: Page) => void
   onSignOut: () => void
+  presenceStatus: 'online' | 'idle' | 'dnd' | 'invisible'
+  showStatusMenu: boolean
+  setShowStatusMenu: (val: boolean) => void
+  updatePresenceStatus: (status: 'online' | 'idle' | 'dnd' | 'invisible') => void
 }) {
   const dmFileRef = useRef<HTMLInputElement>(null)
   const dmMessagesEndRef = useRef<HTMLDivElement>(null)
@@ -2495,18 +2749,56 @@ function FriendsView({
         </div>
 
         <div className="sidebar-profile-footer">
-          <div className="profile-footer-info">
-            <div className="profile-footer-avatar">
+          <div className="profile-footer-info" onClick={() => setShowStatusMenu(!showStatusMenu)} style={{ cursor: 'pointer', position: 'relative' }}>
+            <div className="profile-footer-avatar" style={{ position: 'relative' }}>
               {profileAvatarUrl ? (
                 <img src={profileAvatarUrl} alt={profileDisplayName} />
               ) : (
                 profileDisplayName.slice(0, 1).toUpperCase()
               )}
+              <span className={`my-status-dot ${presenceStatus}`} />
             </div>
             <div className="profile-footer-meta">
               <span className="profile-footer-name" title={profileDisplayName}>{profileDisplayName}</span>
-              <span className="profile-footer-status">Online</span>
+              <span className="profile-footer-status">
+                {presenceStatus === 'online' ? '🟢 Online' :
+                 presenceStatus === 'idle' ? '🟡 Ausente' :
+                 presenceStatus === 'dnd' ? '🔴 Não Perturbe' : '⚪ Invisível'}
+              </span>
             </div>
+
+            {showStatusMenu && (
+              <div className="status-picker-popover" onClick={(e) => e.stopPropagation()}>
+                <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('online'); setShowStatusMenu(false); }}>
+                  <span className="status-dot-bullet online" />
+                  <div className="status-meta">
+                    <strong>Online</strong>
+                    <span>Disponível</span>
+                  </div>
+                </button>
+                <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('idle'); setShowStatusMenu(false); }}>
+                  <span className="status-dot-bullet idle" />
+                  <div className="status-meta">
+                    <strong>Ausente</strong>
+                    <span>Inativo</span>
+                  </div>
+                </button>
+                <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('dnd'); setShowStatusMenu(false); }}>
+                  <span className="status-dot-bullet dnd" />
+                  <div className="status-meta">
+                    <strong>Não perturbe</strong>
+                    <span>Silenciar</span>
+                  </div>
+                </button>
+                <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('invisible'); setShowStatusMenu(false); }}>
+                  <span className="status-dot-bullet offline" />
+                  <div className="status-meta">
+                    <strong>Invisível</strong>
+                    <span>Aparecer offline</span>
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
           <div className="profile-footer-actions">
             <button className="profile-footer-btn" onClick={toggleTheme} title="Alternar tema">
@@ -2540,7 +2832,7 @@ function FriendsView({
                           friend.user.display_name.slice(0, 1).toUpperCase()
                         )}
                       </div>
-                      <span className="online-indicator" />
+                      <span className={`online-indicator ${presenceData[friend.user.id]?.presence_status || 'online'}`} />
                     </div>
                     <div className="friend-info">
                       <span className="friend-name">{friend.user.display_name}</span>
@@ -2581,7 +2873,7 @@ function FriendsView({
                             friend.user.display_name.slice(0, 1).toUpperCase()
                           )}
                         </div>
-                        {isOnline && <span className="online-indicator" />}
+                        <span className={`online-indicator ${isOnline ? (presenceData[friend.user.id]?.presence_status || 'online') : 'offline'}`} />
                       </div>
                       <div className="friend-info">
                         <span className="friend-name">{friend.user.display_name}</span>
@@ -2743,7 +3035,13 @@ function SettingsView({
   theme,
   toggleTheme,
   setPage,
-  onSignOut
+  onSignOut,
+  noiseSuppressionEnabled,
+  echoCancellationEnabled,
+  onNoiseSuppressionChange,
+  onEchoCancellationChange,
+  sfxVolume,
+  onSfxVolumeChange
 }: {
   userId: string
   currentDisplayName: string
@@ -2765,6 +3063,12 @@ function SettingsView({
   toggleTheme: () => void
   setPage: (page: Page) => void
   onSignOut: () => void
+  noiseSuppressionEnabled: boolean
+  echoCancellationEnabled: boolean
+  onNoiseSuppressionChange: (val: boolean) => void
+  onEchoCancellationChange: (val: boolean) => void
+  sfxVolume: number
+  onSfxVolumeChange: (val: number) => void
 }) {
   const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'audio'>('profile')
   
@@ -3103,6 +3407,60 @@ function SettingsView({
                 <div className="volume-meter-bg">
                   <div className="volume-meter-fill" style={{ width: `${testVolume}%` }} />
                 </div>
+              </div>
+            </div>
+
+            <div className="mic-test-panel" style={{ marginTop: '20px' }}>
+              <h3>Preferências de Voz</h3>
+              <p>Habilite filtros de redução de ruído e eco para melhorar a sua voz.</p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                <label className="checkbox-setting-label" style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={noiseSuppressionEnabled} 
+                    onChange={(e) => onNoiseSuppressionChange(e.target.checked)} 
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <div>
+                    <strong style={{ display: 'block', color: 'var(--text-primary)' }}>Supressão de Ruído</strong>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Filtra ruídos de fundo como ventiladores e digitação</span>
+                  </div>
+                </label>
+
+                <label className="checkbox-setting-label" style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px', cursor: 'pointer', marginTop: '4px' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={echoCancellationEnabled} 
+                    onChange={(e) => onEchoCancellationChange(e.target.checked)} 
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <div>
+                    <strong style={{ display: 'block', color: 'var(--text-primary)' }}>Cancelamento de Eco</strong>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Impede que a voz de outras pessoas nos speakers retorne ao seu microfone</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div className="mic-test-panel" style={{ marginTop: '20px' }}>
+              <h3>Efeitos Sonoros</h3>
+              <p>Ajuste o volume dos avisos sonoros de conexão, mudo e transmissão.</p>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '16px' }}>
+                <span style={{ fontSize: '18px' }}>{sfxVolume === 0 ? '🔈' : sfxVolume < 0.4 ? '🔉' : '🔊'}</span>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="1" 
+                  step="0.05"
+                  value={sfxVolume}
+                  onChange={(e) => onSfxVolumeChange(parseFloat(e.target.value))}
+                  style={{ flex: 1, accentColor: 'var(--accent-color)', cursor: 'pointer', height: '6px', borderRadius: '3px' }}
+                />
+                <span style={{ minWidth: '40px', textAlign: 'right', fontWeight: 'bold', fontSize: '13px' }}>
+                  {Math.round(sfxVolume * 100)}%
+                </span>
               </div>
             </div>
           </div>

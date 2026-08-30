@@ -889,8 +889,53 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #5daa7e;
   border: 2px solid var(--bg-secondary);
+}
+.online-indicator.online {
+  background-color: #23a55a !important;
+}
+.online-indicator.idle {
+  background-color: #f0b232 !important;
+  position: relative;
+}
+.online-indicator.idle::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--bg-secondary);
+}
+.online-indicator.dnd {
+  background-color: #f23f43 !important;
+  position: relative;
+}
+.online-indicator.dnd::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 2px;
+  background-color: var(--bg-secondary);
+}
+.online-indicator.offline {
+  background-color: #80848e !important;
+  position: relative;
+}
+.online-indicator.offline::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: var(--bg-secondary);
 }
 .friend-info {
   display: flex;
@@ -2171,10 +2216,53 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
   border: 2px solid var(--bg-secondary);
 }
 .member-status-dot.online {
-  background-color: #2ec4b6; /* Green */
+  background-color: #23a55a !important;
+}
+.member-status-dot.idle {
+  background-color: #f0b232 !important;
+  position: relative;
+}
+.member-status-dot.idle::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--bg-secondary);
+}
+.member-status-dot.dnd {
+  background-color: #f23f43 !important;
+  position: relative;
+}
+.member-status-dot.dnd::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 2px;
+  background-color: var(--bg-secondary);
+}
+.member-status-dot.offline {
+  background-color: #80848e !important;
+  position: relative;
+}
+.member-status-dot.offline::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: var(--bg-secondary);
 }
 .member-status-dot.voice-active {
-  background-color: var(--speaking-color); /* Blue indicator for active voice call */
+  background-color: var(--speaking-color) !important;
   box-shadow: 0 0 4px var(--speaking-color);
 }
 
@@ -2285,4 +2373,341 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
   background: #5865f2;
   color: #fff;
   cursor: pointer;
+}
+
+/* ── Status Picker Popover ──────────────────────── */
+.status-picker-popover {
+  position: absolute;
+  bottom: 60px;
+  left: 10px;
+  background: var(--bg-tertiary);
+  border: 1.5px solid var(--border-color);
+  border-radius: 12px;
+  padding: 8px;
+  width: 230px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 1000;
+  animation: slideInUp 0.15s cubic-bezier(0.1, 0.9, 0.2, 1);
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.status-picker-option {
+  background: none;
+  border: none;
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+  color: var(--text-primary);
+}
+
+.status-picker-option:hover {
+  background: var(--bg-secondary);
+}
+
+.status-dot-bullet {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.status-dot-bullet.online {
+  background-color: #23a55a;
+}
+.status-dot-bullet.idle {
+  background-color: #f0b232;
+}
+.status-dot-bullet.idle::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--bg-tertiary);
+}
+.status-picker-option:hover .status-dot-bullet.idle::after {
+  background-color: var(--bg-secondary);
+}
+
+.status-dot-bullet.dnd {
+  background-color: #f23f43;
+}
+.status-dot-bullet.dnd::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 2px;
+  background-color: var(--bg-tertiary);
+}
+.status-picker-option:hover .status-dot-bullet.dnd::after {
+  background-color: var(--bg-secondary);
+}
+
+.status-dot-bullet.offline {
+  background-color: #80848e;
+}
+.status-dot-bullet.offline::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: var(--bg-tertiary);
+}
+.status-picker-option:hover .status-dot-bullet.offline::after {
+  background-color: var(--bg-secondary);
+}
+
+.status-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.status-meta strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.status-meta span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── My Status Dot (Rodapé) ─────────────────────── */
+.my-status-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-secondary);
+}
+
+.my-status-dot.online {
+  background-color: #23a55a;
+}
+.my-status-dot.idle {
+  background-color: #f0b232;
+}
+.my-status-dot.idle::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: var(--bg-secondary);
+}
+.my-status-dot.dnd {
+  background-color: #f23f43;
+}
+.my-status-dot.dnd::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 2px;
+  background-color: var(--bg-secondary);
+}
+.my-status-dot.offline {
+  background-color: #80848e;
+}
+.my-status-dot.offline::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: var(--bg-secondary);
+}
+
+/* ── Connection Quality Indicator (Discord-Style) ── */
+.connection-quality-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  transition: background 0.15s ease;
+}
+.connection-quality-indicator:hover {
+  background: var(--bg-primary);
+}
+.connection-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2.5px;
+  height: 14px;
+}
+.connection-bars i {
+  width: 3px;
+  border-radius: 1px;
+  background: var(--text-muted);
+  display: block;
+}
+.connection-bars i:nth-child(1) { height: 5px; }
+.connection-bars i:nth-child(2) { height: 9px; }
+.connection-bars i:nth-child(3) { height: 13px; }
+
+/* Colors according to latency state */
+.connection-bars.good i { background-color: #23a55a !important; }
+.connection-bars.medium i { background-color: #f0b232 !important; }
+.connection-bars.bad i { background-color: #f23f43 !important; }
+
+/* Tooltip for connection details */
+.connection-stats-tooltip {
+  position: absolute;
+  bottom: 30px;
+  left: 0;
+  background: rgba(17, 18, 20, 0.96);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  border-radius: 8px;
+  padding: 10px 14px;
+  width: 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 10000;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.connection-quality-indicator:hover .connection-stats-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+.connection-stats-tooltip strong {
+  font-size: 12px;
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 4px;
+  margin-bottom: 2px;
+}
+.connection-stats-tooltip .stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+.connection-stats-tooltip .stat-row strong {
+  color: #fff;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* ── Screenshare Quality Select Modal ───────────────── */
+.screenshare-quality-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: var(--bg-primary);
+  border: 1.5px solid var(--border-color);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.screenshare-quality-option:hover {
+  border-color: var(--accent-color);
+  background: var(--accent-light);
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+.screenshare-quality-option:active {
+  transform: scale(0.99);
+}
+.screenshare-quality-option .quality-icon {
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  flex-shrink: 0;
+}
+.screenshare-quality-option:hover .quality-icon {
+  background: var(--bg-primary);
+}
+.screenshare-quality-option .quality-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.screenshare-quality-option .quality-meta strong {
+  font-size: 13.5px;
+  color: var(--text-primary);
+}
+.screenshare-quality-option .quality-meta span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Speaking Glow Effect (Discord-Style Neon Ring) ── */
+.sidebar-voice-user.speaking .sidebar-voice-avatar {
+  box-shadow: 0 0 0 2px #23a55a, 0 0 8px rgba(35, 165, 90, 0.6);
+  animation: speakingGlowPulse 1.2s infinite ease-in-out;
+  border-radius: 50% !important;
+}
+
+.participant-card.speaking .participant-avatar-large {
+  box-shadow: 0 0 0 3px #23a55a, 0 0 12px rgba(35, 165, 90, 0.7);
+  animation: speakingGlowPulse 1.2s infinite ease-in-out;
+  border-radius: 18px !important;
+}
+
+@keyframes speakingGlowPulse {
+  0% {
+    box-shadow: 0 0 0 2px #23a55a, 0 0 4px rgba(35, 165, 90, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 2px #23a55a, 0 0 10px rgba(35, 165, 90, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 0 2px #23a55a, 0 0 4px rgba(35, 165, 90, 0.3);
+  }
 }
