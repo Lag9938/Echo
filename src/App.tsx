@@ -503,6 +503,8 @@ function Echo({ user }: { user: User }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [noiseSuppressionEnabled, setNoiseSuppressionEnabled] = useState(() => localStorage.getItem('echo-noise-suppression') !== 'false')
   const [echoCancellationEnabled, setEchoCancellationEnabled] = useState(() => localStorage.getItem('echo-echo-cancellation') !== 'false')
+  const [noiseGateEnabled, setNoiseGateEnabled] = useState(() => localStorage.getItem('echo-noise-gate-enabled') !== 'false')
+  const [noiseGateThreshold, setNoiseGateThreshold] = useState(() => parseFloat(localStorage.getItem('echo-noise-gate-threshold') || '-45'))
   const [showScreenshareModal, setShowScreenshareModal] = useState(false)
   const [sfxVolume, setSfxVolume] = useState(() => {
     const val = localStorage.getItem('echo-sfx-volume')
@@ -2309,6 +2311,16 @@ function Echo({ user }: { user: User }) {
             setSfxVolume(val)
             localStorage.setItem('echo-sfx-volume', val.toString())
           }}
+          noiseGateEnabled={noiseGateEnabled}
+          noiseGateThreshold={noiseGateThreshold}
+          onNoiseGateEnabledChange={(val) => {
+            setNoiseGateEnabled(val)
+            localStorage.setItem('echo-noise-gate-enabled', val ? 'true' : 'false')
+          }}
+          onNoiseGateThresholdChange={(val) => {
+            setNoiseGateThreshold(val)
+            localStorage.setItem('echo-noise-gate-threshold', val.toString())
+          }}
         />
       </div>
 
@@ -3156,7 +3168,11 @@ function SettingsView({
   onNoiseSuppressionChange,
   onEchoCancellationChange,
   sfxVolume,
-  onSfxVolumeChange
+  onSfxVolumeChange,
+  noiseGateEnabled,
+  noiseGateThreshold,
+  onNoiseGateEnabledChange,
+  onNoiseGateThresholdChange
 }: {
   userId: string
   currentDisplayName: string
@@ -3186,6 +3202,10 @@ function SettingsView({
   onEchoCancellationChange: (val: boolean) => void
   sfxVolume: number
   onSfxVolumeChange: (val: number) => void
+  noiseGateEnabled: boolean
+  noiseGateThreshold: number
+  onNoiseGateEnabledChange: (val: boolean) => void
+  onNoiseGateThresholdChange: (val: number) => void
 }) {
   const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'audio' | 'appearance'>('profile')
   
@@ -3566,6 +3586,41 @@ function SettingsView({
                     <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Impede que a voz de outras pessoas nos speakers retorne ao seu microfone</span>
                   </div>
                 </label>
+
+                <label className="checkbox-setting-label" style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px', cursor: 'pointer', marginTop: '4px' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={noiseGateEnabled} 
+                    onChange={(e) => onNoiseGateEnabledChange(e.target.checked)} 
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <div>
+                    <strong style={{ display: 'block', color: 'var(--text-primary)' }}>Portão de Ruído (Noise Gate)</strong>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Corta o som do microfone automaticamente quando você está em silêncio</span>
+                  </div>
+                </label>
+
+                {noiseGateEnabled && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '28px', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      <span>Limiar de Sensibilidade:</span>
+                      <strong>{noiseGateThreshold} dB</strong>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="-60" 
+                      max="-25" 
+                      step="1" 
+                      value={noiseGateThreshold} 
+                      onChange={(e) => onNoiseGateThresholdChange(parseFloat(e.target.value))} 
+                      className="slider-setting"
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                      Valores menores (ex: -55 dB) abrem o portão com sons mais baixos. Padrão: -45 dB.
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 

@@ -23,7 +23,32 @@ const SPEAKING_THRESHOLD = 25
 const SPEAKING_CHECK_INTERVAL = 150
 
 function optimizeSDP(sdp: string): string {
-  let lines = sdp.split('\r\n');
+  // O SDP é composto por seções de mídia que começam com "m="
+  const sections = sdp.split('\r\nm=');
+  let isFirstAudio = true;
+  
+  for (let i = 1; i < sections.length; i++) {
+    let section = sections[i];
+    if (section.startsWith('audio')) {
+      // A primeira seção de áudio encontrada é sempre a do microfone.
+      // Qualquer seção subsequente é a da transmissão de tela (screenshare).
+      if (isFirstAudio) {
+        // Voz (Microfone): Mono, 64kbps, DTX ativo
+        section = optimizeAudioSection(section, { stereo: 0, bitrate: 64000, dtx: 1 });
+        isFirstAudio = false;
+      } else {
+        // Transmissão de tela (Jogo): Stereo, 128kbps, DTX inativo
+        section = optimizeAudioSection(section, { stereo: 1, bitrate: 128000, dtx: 0 });
+      }
+      sections[i] = section;
+    }
+  }
+  
+  return sections.join('\r\nm=');
+}
+
+function optimizeAudioSection(section: string, config: { stereo: number; bitrate: number; dtx: number }): string {
+  let lines = section.split('\r\n');
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].includes('a=rtpmap:') && lines[i].toLowerCase().includes('opus/48000/2')) {
       const match = lines[i].match(/a=rtpmap:(\d+)\s+opus/i);
@@ -31,8 +56,7 @@ function optimizeSDP(sdp: string): string {
         const payloadType = match[1];
         for (let j = 0; j < lines.length; j++) {
           if (lines[j].startsWith(`a=fmtp:${payloadType}`)) {
-            // Habilita stereo de alta fidelidade (128kbps) no codec Opus
-            lines[j] = `a=fmtp:${payloadType} maxaveragebitrate=128000;stereo=1;sprop-stereo=1;useinbandfec=1;usedtx=1`;
+            lines[j] = `a=fmtp:${payloadType} maxaveragebitrate=${config.bitrate};stereo=${config.stereo};sprop-stereo=${config.stereo};useinbandfec=1;usedtx=${config.dtx}`;
             break;
           }
         }
@@ -51,6 +75,8 @@ export function useVoiceChannel() {
 
   const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map())
   const localStreamRef = useRef<MediaStream | null>(null)
+  const localRawStreamRef = useRef<MediaStream | null>(null)
+  const localDspCtxRef = useRef<AudioContext | null>(null)
   const localScreenStreamRef = useRef<MediaStream | null>(null)
   const screenSendersRef = useRef<Map<string, RTCRtpSender>>(new Map()) // Tracks video senders per peer
   const screenAudioSendersRef = useRef<Map<string, RTCRtpSender>>(new Map()) // Tracks audio senders per peer
@@ -374,13 +400,57 @@ export function useVoiceChannel() {
       }
       
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
-      localStreamRef.current = stream
+      localRawStreamRef.current = stream
       myInfoRef.current = { userId, displayName, avatarUrl }
 
-      // Setup local audio analyser for speaking detection
+      let finalStream = stream
+      try {
+        const audioCtx = new AudioContext()
+        localDspCtxRef.current = audioCtx
+
+        const source = audioCtx.createMediaStreamSource(stream)
+        const highpass = audioCtx.createBiquadFilter()
+        highpass.type = 'highpass'
+        highpass.frequency.value = 80
+
+        const gateNode = audioCtx.createScriptProcessor(2048, 1, 1)
+        let gain = 0
+        gateNode.onaudioprocess = (e) => {
+          const input = e.inputBuffer.getChannelData(0)
+          const output = e.outputBuffer.getChannelData(0)
+          const gateEnabled = localStorage.getItem('echo-noise-gate-enabled') !== 'false'
+          const thresholdDb = parseFloat(localStorage.getItem('echo-noise-gate-threshold') || '-45')
+          const thresholdLinear = Math.pow(10, thresholdDb / 20)
+          
+          let sum = 0
+          for (let i = 0; i < input.length; i++) {
+            sum += input[i] * input[i]
+          }
+          const rms = Math.sqrt(sum / input.length)
+          const targetGain = (!gateEnabled || rms >= thresholdLinear) ? 1.0 : 0.0
+          
+          for (let i = 0; i < input.length; i++) {
+            gain = gain * 0.995 + targetGain * 0.005
+            output[i] = input[i] * gain
+          }
+        }
+
+        const dest = audioCtx.createMediaStreamDestination()
+        source.connect(highpass)
+        highpass.connect(gateNode)
+        gateNode.connect(dest)
+
+        finalStream = dest.stream
+      } catch (dspErr) {
+        console.error('Failed to initialize local microphone DSP pipeline:', dspErr)
+      }
+
+      localStreamRef.current = finalStream
+
+      // Setup local audio analyser for speaking detection (connect to final filtered stream)
       try {
         const ctx = new AudioContext()
-        const source = ctx.createMediaStreamSource(stream)
+        const source = ctx.createMediaStreamSource(finalStream)
         const analyser = ctx.createAnalyser()
         analyser.fftSize = 512
         source.connect(analyser)
@@ -513,9 +583,19 @@ export function useVoiceChannel() {
     peersRef.current.forEach((pc) => pc.close())
     peersRef.current.clear()
 
-    // Stop local audio stream
+    // Stop local audio stream (both raw and processed)
+    if (localRawStreamRef.current) {
+      localRawStreamRef.current.getTracks().forEach(t => t.stop())
+      localRawStreamRef.current = null
+    }
     localStreamRef.current?.getTracks().forEach(t => t.stop())
     localStreamRef.current = null
+
+    // Close local DSP context
+    if (localDspCtxRef.current) {
+      localDspCtxRef.current.close().catch(() => {})
+      localDspCtxRef.current = null
+    }
 
     // Clean up audio elements
     audioElementsRef.current.forEach(audio => { audio.srcObject = null })
@@ -570,7 +650,59 @@ export function useVoiceChannel() {
         } as any,
         video: false
       })
-      const newTrack = newStream.getAudioTracks()[0]
+      // Close old DSP context and stop raw tracks
+      if (localDspCtxRef.current) {
+        localDspCtxRef.current.close().catch(() => {})
+        localDspCtxRef.current = null
+      }
+      if (localRawStreamRef.current) {
+        localRawStreamRef.current.getTracks().forEach(t => t.stop())
+      }
+      localRawStreamRef.current = newStream
+
+      let finalStream = newStream
+      try {
+        const audioCtx = new AudioContext()
+        localDspCtxRef.current = audioCtx
+
+        const source = audioCtx.createMediaStreamSource(newStream)
+        const highpass = audioCtx.createBiquadFilter()
+        highpass.type = 'highpass'
+        highpass.frequency.value = 80
+
+        const gateNode = audioCtx.createScriptProcessor(2048, 1, 1)
+        let gain = 0
+        gateNode.onaudioprocess = (e) => {
+          const input = e.inputBuffer.getChannelData(0)
+          const output = e.outputBuffer.getChannelData(0)
+          const gateEnabled = localStorage.getItem('echo-noise-gate-enabled') !== 'false'
+          const thresholdDb = parseFloat(localStorage.getItem('echo-noise-gate-threshold') || '-45')
+          const thresholdLinear = Math.pow(10, thresholdDb / 20)
+          
+          let sum = 0
+          for (let i = 0; i < input.length; i++) {
+            sum += input[i] * input[i]
+          }
+          const rms = Math.sqrt(sum / input.length)
+          const targetGain = (!gateEnabled || rms >= thresholdLinear) ? 1.0 : 0.0
+          
+          for (let i = 0; i < input.length; i++) {
+            gain = gain * 0.995 + targetGain * 0.005
+            output[i] = input[i] * gain
+          }
+        }
+
+        const dest = audioCtx.createMediaStreamDestination()
+        source.connect(highpass)
+        highpass.connect(gateNode)
+        gateNode.connect(dest)
+
+        finalStream = dest.stream
+      } catch (dspErr) {
+        console.error('Failed to initialize local microphone DSP pipeline on device change:', dspErr)
+      }
+
+      const newTrack = finalStream.getAudioTracks()[0]
 
       const oldTracks = localStreamRef.current.getAudioTracks()
       oldTracks.forEach(t => t.stop())
@@ -587,13 +719,13 @@ export function useVoiceChannel() {
         }
       }
 
-      // Re-create local analyser for volume tracking
+      // Re-create local analyser for volume tracking (connect to final filtered stream)
       if (localAnalyserRef.current) {
         localAnalyserRef.current.ctx.close().catch(() => {})
       }
       try {
         const ctx = new AudioContext()
-        const source = ctx.createMediaStreamSource(newStream)
+        const source = ctx.createMediaStreamSource(finalStream)
         const analyser = ctx.createAnalyser()
         analyser.fftSize = 512
         source.connect(analyser)
