@@ -31,7 +31,8 @@ function optimizeSDP(sdp: string): string {
         const payloadType = match[1];
         for (let j = 0; j < lines.length; j++) {
           if (lines[j].startsWith(`a=fmtp:${payloadType}`)) {
-            lines[j] = `a=fmtp:${payloadType} maxaveragebitrate=64000;stereo=0;useinbandfec=1;usedtx=1`;
+            // Habilita stereo de alta fidelidade (128kbps) no codec Opus
+            lines[j] = `a=fmtp:${payloadType} maxaveragebitrate=128000;stereo=1;sprop-stereo=1;useinbandfec=1;usedtx=1`;
             break;
           }
         }
@@ -771,11 +772,21 @@ export function useVoiceChannel() {
 
         for (const [peerId, pc] of peersRef.current.entries()) {
           const existingVideoSender = screenSendersRef.current.get(peerId)
+          let sender: RTCRtpSender
           if (existingVideoSender) {
             await existingVideoSender.replaceTrack(videoTrack)
+            sender = existingVideoSender
           } else {
-            const sender = pc.addTrack(videoTrack, stream)
+            sender = pc.addTrack(videoTrack, stream)
             screenSendersRef.current.set(peerId, sender)
+          }
+
+          try {
+            const parameters = sender.getParameters()
+            parameters.degradationPreference = 'maintain-framerate'
+            await sender.setParameters(parameters)
+          } catch (e) {
+            console.error('Failed to set degradationPreference:', e)
           }
 
           if (audioTrack) {
