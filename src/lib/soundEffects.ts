@@ -64,6 +64,66 @@ export function playUnmuteSound(volume = 0.5) {
   }
 }
 
+export function playDeafenSound(volume = 0.5) {
+  if (volume <= 0) return
+  try {
+    const ctx = getAudioContext()
+    const now = ctx.currentTime
+    const notes = [440, 349.23, 261.63] // A4, F4, C4 (descending triad)
+    
+    notes.forEach((freq, index) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      
+      const startTime = now + index * 0.06
+      gain.gain.setValueAtTime(0, now)
+      gain.gain.setValueAtTime(volume * 0.18, startTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.2)
+      
+      osc.start(startTime)
+      osc.stop(startTime + 0.22)
+    })
+  } catch (e) {
+    console.error("Failed to play SFX (deafen):", e)
+  }
+}
+
+export function playUndeafenSound(volume = 0.5) {
+  if (volume <= 0) return
+  try {
+    const ctx = getAudioContext()
+    const now = ctx.currentTime
+    const notes = [261.63, 349.23, 440] // C4, F4, A4 (ascending triad)
+    
+    notes.forEach((freq, index) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      
+      const startTime = now + index * 0.06
+      gain.gain.setValueAtTime(0, now)
+      gain.gain.setValueAtTime(volume * 0.18, startTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.2)
+      
+      osc.start(startTime)
+      osc.stop(startTime + 0.22)
+    })
+  } catch (e) {
+    console.error("Failed to play SFX (undeafen):", e)
+  }
+}
+
 export function playJoinSound(volume = 0.5) {
   if (volume <= 0) return
   try {

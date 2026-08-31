@@ -347,15 +347,16 @@
   </header>
 
   <section class="hero">
-    <div class="beta-badge">Echo Beta v0.9.0</div>
+    <div class="beta-badge" id="version-badge">Echo v0.20.3 (Mais Recente)</div>
     <h1>Conecte. Transmita. Converse.</h1>
-    <p class="tagline">Uma alternativa ultra leve, rápida e moderna para chamadas de voz e compartilhamento de tela com seus amigos.</p>
+    <p class="tagline">Uma alternativa ultra leve, rápida e moderna para servidores comunitários, chamadas de voz e compartilhamento de tela com seus amigos.</p>
     
-    <div>
-      <a href="https://gofile.io/d/x71w7Vym" class="cta-btn" download>
-        <span>📥 Baixar para Windows (.zip)</span>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+      <a id="download-btn" href="https://github.com/Lag9938/Echo/releases/latest" class="cta-btn">
+        <span style="font-size: 20px;">📥</span>
+        <span>Baixar para Windows (.exe)</span>
       </a>
-      <div class="btn-subtitle">Windows 10 / 11 de 64 bits</div>
+      <div class="btn-subtitle">Instalador oficial para Windows 10 / 11 de 64 bits</div>
     </div>
   </section>
 
@@ -395,25 +396,73 @@
 
   <section class="features" id="features">
     <div class="feature-card">
+      <div class="icon-box">🛡️</div>
+      <h3 class="feature-title">Servidores & Cargos</h3>
+      <p class="feature-desc">Crie seus próprios servidores com categorias, canais de texto e voz, permissões granulares e cargos coloridos.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon-box">😀</div>
+      <h3 class="feature-title">Emojis & GIFs Personalizados</h3>
+      <p class="feature-desc">Envie imagens e GIFs para seu servidor e use :emojis: animados direto no chat com seletor interativo.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon-box">📌</div>
+      <h3 class="feature-title">Fixados & Modo Lento</h3>
+      <p class="feature-desc">Fixe mensagens importantes em gavetas dedicadas e controle o fluxo do chat com intervalo de modo lento.</p>
+    </div>
+    <div class="feature-card">
       <div class="icon-box">🖥️</div>
-      <h3 class="feature-title">Compartilhamento de Tela</h3>
-      <p class="feature-desc">Transmita seu jogo ou janela em tempo real a até 60 FPS com resolução personalizada de forma leve.</p>
+      <h3 class="feature-title">Compartilhamento de Tela 60 FPS</h3>
+      <p class="feature-desc">Transmita seu jogo ou janelas em tempo real com resolução personalizada e baixíssima latência.</p>
     </div>
     <div class="feature-card">
       <div class="icon-box">🔊</div>
       <h3 class="feature-title">Áudio de Transmissão Nítido</h3>
-      <p class="feature-desc">Captação e reprodução nativas do som da tela. Seus amigos escutam suas jogadas e músicas sem complicação.</p>
+      <p class="feature-desc">Captação e reprodução nativas do som do sistema. Seus amigos escutam suas jogadas e músicas com clareza.</p>
     </div>
     <div class="feature-card">
       <div class="icon-box">🎛️</div>
       <h3 class="feature-title">Controle de Volume Separado</h3>
-      <p class="feature-desc">Ajuste o volume de voz de cada participante e o volume da transmissão dele de forma individualizada.</p>
+      <p class="feature-desc">Ajuste o volume de voz de cada participante e o volume da transmissão de tela de forma individualizada.</p>
     </div>
   </section>
 
   <footer>
     <p>&copy; 2026 Echo. Desenvolvido para comunicação rápida, ultra leve e segura.</p>
   </footer>
+
+  <script>
+    const GITHUB_REPO = "Lag9938/Echo";
+    
+    async function setupDownloadLink() {
+      const downloadBtn = document.getElementById("download-btn");
+      const versionBadge = document.getElementById("version-badge");
+      
+      try {
+        const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.tag_name) {
+            versionBadge.textContent = `Echo ${data.tag_name} (Mais Recente)`;
+          }
+          const exeAsset = data.assets && data.assets.find(a => a.name.endsWith('.exe') && !a.name.includes('blockmap'));
+          const zipAsset = data.assets && data.assets.find(a => a.name.endsWith('.zip'));
+          const target = exeAsset || zipAsset;
+          if (target && target.browser_download_url) {
+            downloadBtn.href = target.browser_download_url;
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch release dynamically:", err);
+      }
+      
+      // Direct release link fallback
+      downloadBtn.href = `https://github.com/${GITHUB_REPO}/releases/latest`;
+    }
+
+    setupDownloadLink();
+  </script>
 
 </body>
 </html>

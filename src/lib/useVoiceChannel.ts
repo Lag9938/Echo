@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { supabase } from './supabase'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { playJoinSound, playLeaveSound, playScreenStartSound, playScreenStopSound } from './soundEffects'
+import { playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound, playDeafenSound, playUndeafenSound, playScreenStartSound, playScreenStopSound } from './soundEffects'
 
 export type VoiceParticipant = {
   userId: string
@@ -9,6 +9,8 @@ export type VoiceParticipant = {
   isSpeaking: boolean
   avatarUrl?: string
   screenStream?: MediaStream
+  isMuted?: boolean
+  isDeafened?: boolean
 }
 
 const ICE_SERVERS: RTCConfiguration = {
@@ -69,9 +71,13 @@ function optimizeAudioSection(section: string, config: { stereo: number; bitrate
 export function useVoiceChannel() {
   const [participants, setParticipants] = useState<VoiceParticipant[]>([])
   const [isMuted, setIsMuted] = useState(false)
+  const [isDeafened, setIsDeafened] = useState(false)
   const [isConnected, setIsConnected] = useState(false)
   const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null)
   const [rtcStats, setRtcStats] = useState<{ ping: number; jitter: number; packetLoss: number } | null>(null)
+
+  const isMutedRef = useRef(false)
+  const isDeafenedRef = useRef(false)
 
   const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map())
   const localStreamRef = useRef<MediaStream | null>(null)
@@ -96,7 +102,7 @@ export function useVoiceChannel() {
   const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map())
   const peerVolumesRef = useRef<Map<string, number>>(new Map()) // Tracks local volume per peer
   const peerScreenVolumesRef = useRef<Map<string, number>>(new Map()) // Tracks local screenshare volume per peer
-  const participantsMapRef = useRef<Map<string, { displayName: string; avatarUrl?: string; screenStream?: MediaStream }>>(new Map())
+  const participantsMapRef = useRef<Map<string, { displayName: string; avatarUrl?: string; screenStream?: MediaStream; isMuted?: boolean; isDeafened?: boolean }>>(new Map())
 
   // Update participants list from the map
   const syncParticipants = useCallback(() => {
@@ -108,7 +114,9 @@ export function useVoiceChannel() {
         displayName: myInfoRef.current.displayName,
         avatarUrl: myInfoRef.current.avatarUrl,
         isSpeaking: false,
-        screenStream: localScreenStreamRef.current || undefined
+        screenStream: localScreenStreamRef.current || undefined,
+        isMuted: isDeafenedRef.current || isMutedRef.current,
+        isDeafened: isDeafenedRef.current
       })
     }
     // Add others
@@ -119,7 +127,9 @@ export function useVoiceChannel() {
           displayName: info.displayName,
           avatarUrl: info.avatarUrl,
           isSpeaking: false,
-          screenStream: info.screenStream
+          screenStream: info.screenStream,
+          isMuted: info.isMuted,
+          isDeafened: info.isDeafened
         })
       }
     })
@@ -170,8 +180,10 @@ export function useVoiceChannel() {
             ? (peerScreenVolumesRef.current.get(remoteUserId) !== undefined ? peerScreenVolumesRef.current.get(remoteUserId)! : 1.0)
             : (peerVolumesRef.current.get(remoteUserId) !== undefined ? peerVolumesRef.current.get(remoteUserId)! : 1.0)
           audio.volume = savedVol
+          audio.muted = isDeafenedRef.current
           audioElementsRef.current.set(key, audio)
         }
+        audio.muted = isDeafenedRef.current
         audio.srcObject = remoteStream
 
         // Set output device if configured
@@ -480,16 +492,21 @@ export function useVoiceChannel() {
       // Handle presence: peer joins
       realtimeChannel.on('presence', { event: 'join' }, ({ newPresences }) => {
         for (const presence of newPresences) {
-          const peerId = (presence as Record<string, string>).user_id
-          const peerName = (presence as Record<string, string>).display_name
-          const peerAvatar = (presence as Record<string, string>).avatar_url
+          const p = presence as Record<string, any>
+          const peerId = p.user_id
+          const peerName = p.display_name
+          const peerAvatar = p.avatar_url
+          const peerMuted = !!p.is_muted
+          const peerDeafened = !!p.is_deafened
           if (peerId && peerId !== userId) {
             const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
             playJoinSound(sfxVol)
 
             participantsMapRef.current.set(peerId, { 
               displayName: peerName || 'Membro',
-              avatarUrl: peerAvatar
+              avatarUrl: peerAvatar,
+              isMuted: peerMuted,
+              isDeafened: peerDeafened
             })
             syncParticipants()
 
@@ -512,16 +529,20 @@ export function useVoiceChannel() {
         }
       })
 
-      // Handle presence sync (existing users when we join)
+      // Handle presence sync (existing users when we join or status updates)
       realtimeChannel.on('presence', { event: 'sync' }, () => {
         const state = realtimeChannel.presenceState()
         Object.entries(state).forEach(([_key, presences]) => {
           for (const presence of presences) {
-            const p = presence as Record<string, string>
+            const p = presence as Record<string, any>
             if (p.user_id && p.user_id !== userId) {
+              const existing = participantsMapRef.current.get(p.user_id)
               participantsMapRef.current.set(p.user_id, { 
                 displayName: p.display_name || 'Membro',
-                avatarUrl: p.avatar_url
+                avatarUrl: p.avatar_url,
+                screenStream: existing?.screenStream,
+                isMuted: !!p.is_muted,
+                isDeafened: !!p.is_deafened
               })
             }
           }
@@ -537,6 +558,8 @@ export function useVoiceChannel() {
             display_name: displayName,
             avatar_url: avatarUrl,
             online_at: new Date().toISOString(),
+            is_muted: isMutedRef.current,
+            is_deafened: isDeafenedRef.current,
           })
         }
       })
@@ -614,20 +637,101 @@ export function useVoiceChannel() {
     pendingCandidatesRef.current.clear()
     participantsMapRef.current.clear()
     myInfoRef.current = null
+    isMutedRef.current = false
+    isDeafenedRef.current = false
     setParticipants([])
     setIsConnected(false)
     setIsMuted(false)
+    setIsDeafened(false)
   }, [])
+
+  // Toggle deafen (mutes all incoming audio + mutes own microphone)
+  const toggleDeafen = useCallback(() => {
+    const nextDeafened = !isDeafenedRef.current
+    isDeafenedRef.current = nextDeafened
+    setIsDeafened(nextDeafened)
+
+    const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
+
+    if (nextDeafened) {
+      playDeafenSound(sfxVol)
+      // Mute all incoming audio streams (voice and screenshare)
+      audioElementsRef.current.forEach(audio => {
+        audio.muted = true
+      })
+      // Mute local microphone
+      if (localStreamRef.current) {
+        const audioTrack = localStreamRef.current.getAudioTracks()[0]
+        if (audioTrack) {
+          audioTrack.enabled = false
+        }
+      }
+    } else {
+      playUndeafenSound(sfxVol)
+      // Unmute all incoming audio streams
+      audioElementsRef.current.forEach(audio => {
+        audio.muted = false
+      })
+      // Restore microphone based on user's mute setting
+      if (localStreamRef.current) {
+        const audioTrack = localStreamRef.current.getAudioTracks()[0]
+        if (audioTrack) {
+          audioTrack.enabled = !isMutedRef.current
+        }
+      }
+    }
+
+    if (channelRef.current && myInfoRef.current) {
+      channelRef.current.track({
+        user_id: myInfoRef.current.userId,
+        display_name: myInfoRef.current.displayName,
+        avatar_url: myInfoRef.current.avatarUrl,
+        online_at: new Date().toISOString(),
+        is_muted: nextDeafened ? true : isMutedRef.current,
+        is_deafened: nextDeafened,
+      }).catch(() => {})
+    }
+
+    syncParticipants()
+  }, [syncParticipants])
 
   // Toggle mute
   const toggleMute = useCallback(() => {
+    if (isDeafenedRef.current) {
+      // If user is deafened and clicks mute/unmute, undeafen them and unmute
+      toggleDeafen()
+      return
+    }
+
     if (!localStreamRef.current) return
     const audioTrack = localStreamRef.current.getAudioTracks()[0]
     if (audioTrack) {
-      audioTrack.enabled = !audioTrack.enabled
-      setIsMuted(!audioTrack.enabled)
+      const nextMuted = audioTrack.enabled // If enabled, we will mute it (next is muted = true)
+      audioTrack.enabled = !nextMuted
+      isMutedRef.current = nextMuted
+      setIsMuted(nextMuted)
+
+      const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
+      if (nextMuted) {
+        playMuteSound(sfxVol)
+      } else {
+        playUnmuteSound(sfxVol)
+      }
+
+      if (channelRef.current && myInfoRef.current) {
+        channelRef.current.track({
+          user_id: myInfoRef.current.userId,
+          display_name: myInfoRef.current.displayName,
+          avatar_url: myInfoRef.current.avatarUrl,
+          online_at: new Date().toISOString(),
+          is_muted: nextMuted,
+          is_deafened: isDeafenedRef.current,
+        }).catch(() => {})
+      }
+
+      syncParticipants()
     }
-  }, [])
+  }, [toggleDeafen, syncParticipants])
 
   // Change input microphone device in real-time
   const changeInputDevice = useCallback(async (deviceId: string, noiseSuppression = true, echoCancellation = true) => {
@@ -1122,12 +1226,14 @@ export function useVoiceChannel() {
   return { 
     participants, 
     isMuted, 
+    isDeafened,
     isConnected, 
     localScreenStream,
     rtcStats,
     joinVoice, 
     leaveVoice, 
     toggleMute,
+    toggleDeafen,
     startScreenShare,
     stopScreenShare,
     changeInputDevice,
