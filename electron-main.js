@@ -11,6 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // Hardware Acceleration & High-Performance Screen Capture for Games (Valorant, CS2, etc.)
 app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer,WindowsGraphicsCapture,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization')
+app.commandLine.appendSwitch('disable-features', 'HardwareAcceleratedDirectScanout')
 app.commandLine.appendSwitch('enable-gpu-rasterization')
 app.commandLine.appendSwitch('enable-zero-copy')
 app.commandLine.appendSwitch('ignore-gpu-blocklist')
@@ -60,24 +61,63 @@ function createWindow() {
 
   // Handler para capturar telas e janelas do sistema operacional com WGC e alta definição
   ipcMain.handle('get-sources', async () => {
-    const sources = await desktopCapturer.getSources({
-      types: ['window', 'screen'],
-      thumbnailSize: { width: 640, height: 360 },
-      fetchWindowIcons: true
-    })
-    return sources.map(source => {
-      const isScreen = source.id.startsWith('screen:')
-      const thumb = source.thumbnail
-      const appIcon = source.appIcon ? source.appIcon.toDataURL() : null
-      
-      return {
-        id: source.id,
-        name: source.name,
-        thumbnail: thumb && !thumb.isEmpty() ? thumb.toDataURL() : null,
-        appIcon: appIcon,
-        type: isScreen ? 'screen' : 'window'
+    try {
+      const sources = await desktopCapturer.getSources({
+        types: ['window', 'screen'],
+        thumbnailSize: { width: 640, height: 360 },
+        fetchWindowIcons: true
+      })
+      return sources.map(source => {
+        const isScreen = source.id.startsWith('screen:')
+        const thumb = source.thumbnail
+        let appIcon = null
+        try {
+          if (source.appIcon && typeof source.appIcon.toDataURL === 'function') {
+            appIcon = source.appIcon.toDataURL()
+          }
+        } catch (e) {}
+
+        let name = source.name ? source.name.trim() : ''
+        if (!name) {
+          name = isScreen ? 'Monitor Principal' : 'Janela de Jogo / Aplicativo'
+        }
+
+        return {
+          id: source.id,
+          name: name,
+          thumbnail: thumb && !thumb.isEmpty() ? thumb.toDataURL() : null,
+          appIcon: appIcon,
+          type: isScreen ? 'screen' : 'window'
+        }
+      })
+    } catch (err) {
+      console.warn('Erro ao obter fontes com ícones, tentando fallback:', err)
+      try {
+        const fallbackSources = await desktopCapturer.getSources({
+          types: ['window', 'screen'],
+          thumbnailSize: { width: 640, height: 360 },
+          fetchWindowIcons: false
+        })
+        return fallbackSources.map(source => {
+          const isScreen = source.id.startsWith('screen:')
+          const thumb = source.thumbnail
+          let name = source.name ? source.name.trim() : ''
+          if (!name) {
+            name = isScreen ? 'Monitor Principal' : 'Janela de Jogo / Aplicativo'
+          }
+          return {
+            id: source.id,
+            name: name,
+            thumbnail: thumb && !thumb.isEmpty() ? thumb.toDataURL() : null,
+            appIcon: null,
+            type: isScreen ? 'screen' : 'window'
+          }
+        })
+      } catch (fallbackErr) {
+        console.error('Falha geral em get-sources:', fallbackErr)
+        return []
       }
-    })
+    }
   })
 
   // Handlers para gerenciar a captura de áudio exclusiva do jogo

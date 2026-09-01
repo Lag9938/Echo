@@ -1092,12 +1092,29 @@ function Echo({ user }: { user: User }) {
     })
   }, [participants, peerScreenVolumes, changePeerScreenVolume])
 
-  const activeScreenSharer = participants.find(p => p.screenStream !== undefined)
+  const [selectedScreenSharerUserId, setSelectedScreenSharerUserId] = useState<string | null>(null)
+  const [screenShareViewMode, setScreenShareViewMode] = useState<'focus' | 'grid'>('focus')
+
+  // Filter participants who have an active screenshare stream with live video track
+  const activeScreenSharers = participants.filter(p => p.screenStream && p.screenStream.getVideoTracks().some(t => t.readyState === 'live'))
+  const activeScreenSharer = (selectedScreenSharerUserId && activeScreenSharers.find(p => p.userId === selectedScreenSharerUserId)) || activeScreenSharers[0] || null
   const [activeVoiceChannelId, setActiveVoiceChannelId] = useState<string | null>(null)
   const [screenSources, setScreenSources] = useState<any[]>([])
   const [showScreenPicker, setShowScreenPicker] = useState(false)
   const [screenPickerTab, setScreenPickerTab] = useState<'windows' | 'screens'>('windows')
   const [isScreenFullScreen, setIsScreenFullScreen] = useState(false)
+
+  // Auto-refresh screen sources while picker modal is open
+  useEffect(() => {
+    if (!showScreenPicker || !(window as any).electronAPI) return
+    const interval = setInterval(async () => {
+      try {
+        const sources = await (window as any).electronAPI.getSources()
+        setScreenSources(sources)
+      } catch (e) {}
+    }, 1500)
+    return () => clearInterval(interval)
+  }, [showScreenPicker])
 
   // Exit fullscreen / settings on Esc key
   useEffect(() => {
@@ -3571,50 +3588,84 @@ function Echo({ user }: { user: User }) {
                         <div className="voice-split-layout" style={!showVoiceChat ? { gridTemplateColumns: '1fr' } : undefined}>
                           {/* Media pane (Left) */}
                           <div className="voice-media-pane">
-                            {activeScreenSharer ? (
-                              <div className={`screen-share-view ${isScreenFullScreen ? 'fullscreen-active' : ''}`} ref={screenShareContainerRef}>
-                                <video 
-                                  ref={screenShareVideoRef}
-                                  autoPlay 
-                                  playsInline 
-                                  muted
-                                  className="screen-share-video-el"
-                                />
-                                <div className="screen-share-tag" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                  <span>🖥️ Transmissão de {activeScreenSharer.displayName}</span>
-                                  <AudioLevelMeter stream={activeScreenSharer.screenStream || null} />
-                                </div>
-                                
-                                <div className="screen-share-overlay-controls">
-                                  {activeScreenSharer.userId !== user.id && (
-                                    <div className="screen-volume-control" title="Volume da Transmissão">
-                                      <span style={{ fontSize: '13.5px' }}>🔊</span>
-                                      <input 
-                                        type="range" 
-                                        min="0" 
-                                        max="100" 
-                                        value={peerScreenVolumes[activeScreenSharer.userId] !== undefined ? peerScreenVolumes[activeScreenSharer.userId] : 100}
-                                        onChange={(e) => {
-                                          const val = parseInt(e.target.value)
-                                          const newVols = { ...peerScreenVolumes, [activeScreenSharer.userId]: val }
-                                          setPeerScreenVolumes(newVols)
-                                          localStorage.setItem('echo-peer-screen-volumes', JSON.stringify(newVols))
-                                        }}
-                                        style={{ width: '80px', accentColor: 'var(--accent-color)', cursor: 'pointer' }}
-                                      />
-                                      <span style={{ fontSize: '11px', minWidth: '30px', fontWeight: 'bold' }}>
-                                        {peerScreenVolumes[activeScreenSharer.userId] !== undefined ? peerScreenVolumes[activeScreenSharer.userId] : 100}%
-                                      </span>
+                            {activeScreenSharers.length > 0 ? (
+                              <div className="voice-streams-container">
+                                {activeScreenSharers.length > 1 && (
+                                  <div className="streams-switcher-bar">
+                                    <div className="streams-switcher-tabs">
+                                      {activeScreenSharers.map(sharer => {
+                                        const isSelected = activeScreenSharer?.userId === sharer.userId
+                                        return (
+                                          <button
+                                            key={sharer.userId}
+                                            className={`stream-tab-btn ${isSelected && screenShareViewMode === 'focus' ? 'active' : ''}`}
+                                            onClick={() => {
+                                              setSelectedScreenSharerUserId(sharer.userId)
+                                              setScreenShareViewMode('focus')
+                                            }}
+                                          >
+                                            <div className="stream-tab-avatar">
+                                              {sharer.avatarUrl ? (
+                                                <img src={sharer.avatarUrl} alt={sharer.displayName} />
+                                              ) : (
+                                                <span>{sharer.displayName.slice(0, 1).toUpperCase()}</span>
+                                              )}
+                                            </div>
+                                            <span className="stream-tab-name">Transmissão de {sharer.displayName}</span>
+                                            <span className="stream-tab-live-badge">🔴 AO VIVO</span>
+                                          </button>
+                                        )
+                                      })}
                                     </div>
-                                  )}
-                                  <button 
-                                    className="fullscreen-toggle-btn"
-                                    onClick={() => setIsScreenFullScreen(!isScreenFullScreen)}
-                                    title="Tela Cheia"
-                                  >
-                                    <FullscreenIcon />
-                                  </button>
-                                </div>
+
+                                    <div className="streams-view-mode-toggles">
+                                      <button
+                                        className={`stream-view-toggle-btn ${screenShareViewMode === 'focus' ? 'active' : ''}`}
+                                        onClick={() => setScreenShareViewMode('focus')}
+                                        title="Modo Foco (Uma tela em destaque)"
+                                      >
+                                        🖥️ Foco
+                                      </button>
+                                      <button
+                                        className={`stream-view-toggle-btn ${screenShareViewMode === 'grid' ? 'active' : ''}`}
+                                        onClick={() => setScreenShareViewMode('grid')}
+                                        title="Modo Grade (Ver todas as telas divididas)"
+                                      >
+                                        🔲 Grade ({activeScreenSharers.length})
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {screenShareViewMode === 'grid' && activeScreenSharers.length > 1 ? (
+                                  <div className="streams-multi-grid" style={{ gridTemplateColumns: `repeat(${Math.min(activeScreenSharers.length, 2)}, 1fr)` }}>
+                                    {activeScreenSharers.map(sharer => (
+                                      <StreamTile
+                                        key={sharer.userId}
+                                        participant={sharer}
+                                        user={user}
+                                        peerScreenVolumes={peerScreenVolumes}
+                                        setPeerScreenVolumes={setPeerScreenVolumes}
+                                        isGrid={true}
+                                        onSelectFocus={() => {
+                                          setSelectedScreenSharerUserId(sharer.userId)
+                                          setScreenShareViewMode('focus')
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                ) : activeScreenSharer ? (
+                                  <div className="stream-single-focus-wrap" ref={screenShareContainerRef}>
+                                    <StreamTile
+                                      participant={activeScreenSharer}
+                                      user={user}
+                                      peerScreenVolumes={peerScreenVolumes}
+                                      setPeerScreenVolumes={setPeerScreenVolumes}
+                                      isFullScreen={isScreenFullScreen}
+                                      onToggleFullScreen={() => setIsScreenFullScreen(!isScreenFullScreen)}
+                                    />
+                                  </div>
+                                ) : null}
                               </div>
                             ) : (
                               <div className="participants-grid">
@@ -3658,10 +3709,37 @@ function Echo({ user }: { user: User }) {
                                         </div>
                                       )}
                                     </div>
-                                    <span className="participant-name">
-                                      {p.displayName}
-                                      {p.userId === user.id && " (Você)"}
-                                    </span>
+                                    <div className="participant-card-bottom-info" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', width: '100%' }}>
+                                      <span className="participant-name">
+                                        {p.displayName}
+                                        {p.userId === user.id && " (Você)"}
+                                      </span>
+                                      {p.screenStream && (
+                                        <button
+                                          className="watch-stream-badge-btn"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setSelectedScreenSharerUserId(p.userId)
+                                            setScreenShareViewMode('focus')
+                                          }}
+                                          style={{
+                                            background: 'rgba(255, 71, 87, 0.15)',
+                                            border: '1px solid rgba(255, 71, 87, 0.4)',
+                                            color: '#ff4757',
+                                            borderRadius: '12px',
+                                            padding: '2px 8px',
+                                            fontSize: '10px',
+                                            fontWeight: 800,
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                          }}
+                                        >
+                                          🔴 Assistir Tela
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
@@ -4172,7 +4250,34 @@ function Echo({ user }: { user: User }) {
                 <h2>Transmitir Tela ou Jogo</h2>
                 <p>Escolha o que você gostaria de transmitir com áudio estéreo a 60 FPS.</p>
               </div>
-              <button className="screen-picker-close-x" onClick={() => setShowScreenPicker(false)}>×</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button 
+                  className="screen-picker-refresh-btn"
+                  onClick={async () => {
+                    if ((window as any).electronAPI) {
+                      const s = await (window as any).electronAPI.getSources()
+                      setScreenSources(s)
+                    }
+                  }}
+                  title="Atualizar lista de janelas e jogos"
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-color)',
+                    color: 'var(--text-secondary)',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  🔄 Atualizar
+                </button>
+                <button className="screen-picker-close-x" onClick={() => setShowScreenPicker(false)}>×</button>
+              </div>
             </div>
 
             <div className="screen-picker-tabs">
@@ -6727,6 +6832,112 @@ function AudioLevelMeter({ stream }: { stream: MediaStream | null }) {
       ) : (
         <span style={{ color: '#ff4757', fontWeight: 'bold' }}>Não Detectado (Sem som)</span>
       )}
+    </div>
+  )
+}
+
+function StreamTile({
+  participant,
+  user,
+  peerScreenVolumes,
+  setPeerScreenVolumes,
+  isFullScreen,
+  onToggleFullScreen,
+  onSelectFocus,
+  isGrid
+}: {
+  participant: VoiceParticipant;
+  user: User;
+  peerScreenVolumes: Record<string, number>;
+  setPeerScreenVolumes: (v: Record<string, number>) => void;
+  isFullScreen?: boolean;
+  onToggleFullScreen?: () => void;
+  onSelectFocus?: () => void;
+  isGrid?: boolean;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+
+  useEffect(() => {
+    if (videoRef.current) {
+      const stream = participant.screenStream || null
+      if (videoRef.current.srcObject !== stream) {
+        videoRef.current.srcObject = stream
+      }
+      if (stream && videoRef.current.paused) {
+        videoRef.current.play().catch(() => {})
+      }
+    }
+  }, [participant.screenStream])
+
+  return (
+    <div className={`screen-share-view ${isFullScreen ? 'fullscreen-active' : ''} ${isGrid ? 'grid-stream-view' : ''}`}>
+      <video 
+        ref={videoRef}
+        autoPlay 
+        playsInline 
+        muted
+        className="screen-share-video-el"
+      />
+      <div className="screen-share-tag" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <span className="stream-live-tag">🔴 AO VIVO</span>
+        <span>🖥️ Transmissão de {participant.displayName}</span>
+        <AudioLevelMeter stream={participant.screenStream || null} />
+      </div>
+      
+      <div className="screen-share-overlay-controls">
+        {onSelectFocus && (
+          <button 
+            className="stream-action-btn"
+            onClick={onSelectFocus}
+            title="Expandir e focar nesta transmissão"
+            style={{
+              background: 'rgba(20, 24, 28, 0.85)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: '#fff',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            🔍 Focar
+          </button>
+        )}
+        {participant.userId !== user.id && (
+          <div className="screen-volume-control" title="Volume da Transmissão">
+            <span style={{ fontSize: '13.5px' }}>🔊</span>
+            <input 
+              type="range" 
+              min="0" 
+              max="100" 
+              value={peerScreenVolumes[participant.userId] !== undefined ? peerScreenVolumes[participant.userId] : 100}
+              onChange={(e) => {
+                const val = parseInt(e.target.value)
+                const newVols = { ...peerScreenVolumes, [participant.userId]: val }
+                setPeerScreenVolumes(newVols)
+                localStorage.setItem('echo-peer-screen-volumes', JSON.stringify(newVols))
+              }}
+              style={{ width: '80px', accentColor: 'var(--accent-color)', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '11px', minWidth: '30px', fontWeight: 'bold' }}>
+              {peerScreenVolumes[participant.userId] !== undefined ? peerScreenVolumes[participant.userId] : 100}%
+            </span>
+          </div>
+        )}
+        {onToggleFullScreen && (
+          <button 
+            className="fullscreen-toggle-btn"
+            onClick={onToggleFullScreen}
+            title="Tela Cheia"
+          >
+            <FullscreenIcon />
+          </button>
+        )}
+      </div>
     </div>
   )
 }

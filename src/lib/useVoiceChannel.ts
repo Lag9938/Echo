@@ -249,12 +249,13 @@ export function useVoiceChannel() {
     // Add others
     participantsMapRef.current.forEach((info, id) => {
       if (id !== myInfoRef.current?.userId) {
+        const isLive = info.screenStream && info.screenStream.getVideoTracks().some(t => t.readyState === 'live' && !t.muted)
         list.push({
           userId: id,
           displayName: info.displayName,
           avatarUrl: info.avatarUrl,
           isSpeaking: false,
-          screenStream: info.screenStream,
+          screenStream: isLive ? info.screenStream : undefined,
           isMuted: info.isMuted,
           isDeafened: info.isDeafened
         })
@@ -342,13 +343,21 @@ export function useVoiceChannel() {
         })
         syncParticipants()
 
-        // Handle track stop
-        track.onended = () => {
+        // Handle track stop and mute cleanly
+        const handleStop = () => {
           const info = participantsMapRef.current.get(remoteUserId)
-          if (info) {
+          if (info && info.screenStream) {
             delete info.screenStream
             syncParticipants()
           }
+        }
+        track.onended = handleStop
+        track.onmute = () => {
+          setTimeout(() => {
+            if (track.readyState === 'ended' || track.muted) {
+              handleStop()
+            }
+          }, 300)
         }
       }
     }
@@ -415,6 +424,18 @@ export function useVoiceChannel() {
 
       await pc.setRemoteDescription(new RTCSessionDescription(sdp))
 
+      // Check if remote peer stopped sharing video
+      const transceivers = pc.getTransceivers ? pc.getTransceivers() : []
+      const hasLiveVideoTrack = transceivers.some(t => t.receiver.track && t.receiver.track.kind === 'video' && t.currentDirection !== 'inactive' && t.currentDirection !== 'sendonly' && t.receiver.track.readyState === 'live')
+      if (!hasLiveVideoTrack) {
+        const info = participantsMapRef.current.get(from)
+        if (info && info.screenStream) {
+          info.screenStream.getTracks().forEach(t => t.stop())
+          delete info.screenStream
+          syncParticipants()
+        }
+      }
+
       // Apply any pending ICE candidates
       const pending = pendingCandidatesRef.current.get(from) ?? []
       for (const c of pending) {
@@ -439,6 +460,18 @@ export function useVoiceChannel() {
       const pc = peersRef.current.get(from)
       if (!pc) return
       await pc.setRemoteDescription(new RTCSessionDescription(sdp))
+
+      // Check if remote peer stopped sharing video
+      const transceivers = pc.getTransceivers ? pc.getTransceivers() : []
+      const hasLiveVideoTrack = transceivers.some(t => t.receiver.track && t.receiver.track.kind === 'video' && t.currentDirection !== 'inactive' && t.currentDirection !== 'sendonly' && t.receiver.track.readyState === 'live')
+      if (!hasLiveVideoTrack) {
+        const info = participantsMapRef.current.get(from)
+        if (info && info.screenStream) {
+          info.screenStream.getTracks().forEach(t => t.stop())
+          delete info.screenStream
+          syncParticipants()
+        }
+      }
 
       // Apply any pending ICE candidates
       const pending = pendingCandidatesRef.current.get(from) ?? []
@@ -586,6 +619,16 @@ export function useVoiceChannel() {
       })
       realtimeChannel.on('broadcast', { event: 'ice-candidate' }, ({ payload }) => {
         handleSignal('ice-candidate', payload as Record<string, unknown>)
+      })
+      realtimeChannel.on('broadcast', { event: 'screenshare-stopped' }, ({ payload }) => {
+        const peerId = (payload as Record<string, string>)?.from
+        if (peerId) {
+          const info = participantsMapRef.current.get(peerId)
+          if (info) {
+            delete info.screenStream
+            syncParticipants()
+          }
+        }
       })
 
       // Handle presence: peer joins
@@ -1259,6 +1302,29 @@ export function useVoiceChannel() {
           }
         })
       } catch (e) {}
+    }
+
+    if (channelRef.current && myInfoRef.current) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'screenshare-stopped',
+        payload: {
+          from: myInfoRef.current.userId
+        }
+      })
+    }
+
+    if (spaceVoiceChannelRef.current && myInfoRef.current) {
+      spaceVoiceChannelRef.current.track({
+        user_id: myInfoRef.current.userId,
+        display_name: myInfoRef.current.displayName,
+        avatar_url: myInfoRef.current.avatarUrl,
+        channel_id: activeChannelIdRef.current,
+        is_muted: isMutedRef.current,
+        is_deafened: isDeafenedRef.current,
+        is_speaking: false,
+        has_screen: false
+      }).catch(() => {})
     }
 
     syncParticipants()
