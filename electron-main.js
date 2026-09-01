@@ -78,6 +78,30 @@ function createWindow() {
       console.warn('Native window lister failed:', e)
     }
 
+    // Direct PowerShell fallback for gaming windows if helper did not find games
+    if (!nativeWindows.some(w => w.name && w.name.toLowerCase().includes('valorant'))) {
+      try {
+        const psCommand = `Get-Process | Where-Object { $_.ProcessName -like "*VALORANT*" } | ForEach-Object { "$($_.MainWindowHandle)|$($_.ProcessName)" }`
+        const { stdout: psOut } = await execFileAsync('powershell.exe', ['-NoProfile', '-Command', psCommand], { timeout: 2000 })
+        if (psOut) {
+          psOut.split(/\r?\n/).forEach(line => {
+            const parts = line.trim().split('|')
+            if (parts.length >= 2 && parts[0] && parts[0] !== '0') {
+              nativeWindows.unshift({
+                id: `window:${parts[0]}:0`,
+                name: 'VALORANT (Jogo)',
+                processName: parts[1],
+                type: 'window',
+                isGame: true
+              })
+            }
+          })
+        }
+      } catch (psErr) {
+        console.warn('PowerShell window fallback error:', psErr)
+      }
+    }
+
     let sources = []
     try {
       sources = await desktopCapturer.getSources({

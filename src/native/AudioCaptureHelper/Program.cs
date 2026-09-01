@@ -110,9 +110,12 @@ namespace AudioCaptureHelper
                     GetWindowText(hWnd, titleSb, 512);
                     string title = titleSb.ToString().Trim();
 
-                    bool isGame = processName.IndexOf("valorant", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                 processName.IndexOf("riot", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                 className.Equals("UnrealWindow", StringComparison.OrdinalIgnoreCase) ||
+                    bool isValorant = processName.IndexOf("valorant", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                     className.Equals("UnrealWindow", StringComparison.OrdinalIgnoreCase);
+
+                    bool isRiotClient = processName.IndexOf("riotclient", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                    bool isGame = isValorant ||
                                  processName.IndexOf("cs2", StringComparison.OrdinalIgnoreCase) >= 0 ||
                                  processName.IndexOf("fortnite", StringComparison.OrdinalIgnoreCase) >= 0 ||
                                  processName.IndexOf("league", StringComparison.OrdinalIgnoreCase) >= 0 ||
@@ -123,17 +126,23 @@ namespace AudioCaptureHelper
 
                     if (string.IsNullOrEmpty(title))
                     {
-                        if (isGame)
+                        if (isValorant)
                         {
-                            if (processName.IndexOf("valorant", StringComparison.OrdinalIgnoreCase) >= 0 || className.Equals("UnrealWindow", StringComparison.OrdinalIgnoreCase))
-                                title = "VALORANT";
-                            else
-                                title = processName;
+                            title = "VALORANT";
+                        }
+                        else if (isGame)
+                        {
+                            title = processName;
                         }
                         else
                         {
                             return true;
                         }
+                    }
+
+                    if (isValorant)
+                    {
+                        title = "VALORANT";
                     }
 
                     if (processName.Equals("TextInputHost", StringComparison.OrdinalIgnoreCase) ||
@@ -144,19 +153,70 @@ namespace AudioCaptureHelper
                         return true;
                     }
 
+                    string displayName = isGame && !title.Contains("(") ? $"{title} (Jogo)" : title;
+                    if (isRiotClient && !isValorant)
+                    {
+                        displayName = "Riot Client";
+                        isGame = false;
+                    }
+
                     list.Add(new
                     {
                         id = $"window:{hWnd.ToInt64()}:0",
-                        name = isGame && !title.Contains("(") ? $"{title} (Jogo)" : title,
+                        name = displayName,
                         processName = processName,
                         pid = pid,
-                        type = "window"
+                        type = "window",
+                        isGame = isGame
                     });
                 }
                 catch {}
 
                 return true;
             }, IntPtr.Zero);
+
+            // Direct process table scan to guarantee Valorant is detected even if EnumWindows missed its HWND
+            try
+            {
+                foreach (var proc in System.Diagnostics.Process.GetProcesses())
+                {
+                    try
+                    {
+                        string pName = proc.ProcessName;
+                        if (pName.IndexOf("VALORANT", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            IntPtr mainHwnd = proc.MainWindowHandle;
+                            if (mainHwnd != IntPtr.Zero)
+                            {
+                                string targetId = $"window:{mainHwnd.ToInt64()}:0";
+                                bool alreadyAdded = false;
+                                foreach (dynamic item in list)
+                                {
+                                    if (item.id == targetId)
+                                    {
+                                        alreadyAdded = true;
+                                        break;
+                                    }
+                                }
+                                if (!alreadyAdded)
+                                {
+                                    list.Insert(0, new
+                                    {
+                                        id = targetId,
+                                        name = "VALORANT (Jogo)",
+                                        processName = pName,
+                                        pid = (uint)proc.Id,
+                                        type = "window",
+                                        isGame = true
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    catch {}
+                }
+            }
+            catch {}
 
             string json = System.Text.Json.JsonSerializer.Serialize(list);
             Console.WriteLine(json);
