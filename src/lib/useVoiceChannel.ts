@@ -43,6 +43,10 @@ function optimizeSDP(sdp: string): string {
         section = optimizeAudioSection(section, { stereo: 1, bitrate: 128000, dtx: 0 });
       }
       sections[i] = section;
+    } else if (section.startsWith('video')) {
+      // Otimização de vídeo de jogo para WebRTC (60 FPS, Bitrate alto sem pixelização)
+      section = optimizeVideoSection(section);
+      sections[i] = section;
     }
   }
   
@@ -58,7 +62,7 @@ function optimizeAudioSection(section: string, config: { stereo: number; bitrate
         const payloadType = match[1];
         for (let j = 0; j < lines.length; j++) {
           if (lines[j].startsWith(`a=fmtp:${payloadType}`)) {
-            lines[j] = `a=fmtp:${payloadType} maxaveragebitrate=${config.bitrate};stereo=${config.stereo};sprop-stereo=${config.stereo};useinbandfec=1;usedtx=${config.dtx}`;
+            lines[j] = `a=fmtp:${payloadType} maxaveragebitrate=${config.bitrate};stereo=${config.stereo};sprop-stereo=${config.stereo};useinbandfec=1;usedtx=${config.dtx};cbr=0;maxplaybackrate=48000;sprop-maxcapturerate=48000;minptime=10`;
             break;
           }
         }
@@ -66,6 +70,126 @@ function optimizeAudioSection(section: string, config: { stereo: number; bitrate
     }
   }
   return lines.join('\r\n');
+}
+
+function createStudioMicrophoneDSP(stream: MediaStream): { finalStream: MediaStream; audioCtx: AudioContext } {
+  const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+  const audioCtx = new AudioCtxClass({ sampleRate: 48000 });
+  const source = audioCtx.createMediaStreamSource(stream);
+
+  // 1. Filtro Passa-Alta em 85 Hz (elimina vibrações de mesa, sopro e vento de ventoinhas)
+  const highpass = audioCtx.createBiquadFilter();
+  highpass.type = 'highpass';
+  highpass.frequency.value = 85;
+  highpass.Q.value = 0.707;
+
+  // 2. Filtro Passa-Baixa em 14 kHz (elimina ruído elétrico de microfones USB e chiados de alta frequência)
+  const lowpass = audioCtx.createBiquadFilter();
+  lowpass.type = 'lowpass';
+  lowpass.frequency.value = 14000;
+  lowpass.Q.value = 0.707;
+
+  // 3. Compressor Dinâmico de Estúdio (nivelamento automático de voz para som quente e broadcast)
+  const compressor = audioCtx.createDynamicsCompressor();
+  compressor.threshold.value = -24;
+  compressor.knee.value = 10;
+  compressor.ratio.value = 4;
+  compressor.attack.value = 0.003;
+  compressor.release.value = 0.15;
+
+  const dest = audioCtx.createMediaStreamDestination();
+  source.connect(highpass);
+  highpass.connect(lowpass);
+  lowpass.connect(compressor);
+  compressor.connect(dest);
+
+  return { finalStream: dest.stream, audioCtx };
+}
+
+function optimizeVideoSection(section: string): string {
+  let lines = section.split('\r\n');
+  let hasBandwidth = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].startsWith('b=AS:') || lines[i].startsWith('b=TIAS:')) {
+      lines[i] = 'b=AS:8000\r\nb=TIAS:8000000';
+      hasBandwidth = true;
+      break;
+    }
+  }
+
+  if (!hasBandwidth) {
+    lines.splice(1, 0, 'b=AS:8000', 'b=TIAS:8000000');
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].includes('a=rtpmap:') && (lines[i].toLowerCase().includes('h264/90000') || lines[i].toLowerCase().includes('vp8/90000') || lines[i].toLowerCase().includes('vp9/90000'))) {
+      const match = lines[i].match(/a=rtpmap:(\d+)\s+/i);
+      if (match) {
+        const pt = match[1];
+        let foundFmtp = false;
+        for (let j = 0; j < lines.length; j++) {
+          if (lines[j].startsWith(`a=fmtp:${pt}`)) {
+            foundFmtp = true;
+            if (!lines[j].includes('x-google-max-bitrate')) {
+              lines[j] += ';x-google-min-bitrate=2000;x-google-max-bitrate=8000;x-google-start-bitrate=4500';
+            }
+            break;
+          }
+        }
+        if (!foundFmtp) {
+          lines.push(`a=fmtp:${pt} x-google-min-bitrate=2000;x-google-max-bitrate=8000;x-google-start-bitrate=4500`);
+        }
+      }
+    }
+  }
+
+  return lines.join('\r\n');
+}
+
+async function applyVideoSenderParameters(sender: RTCRtpSender, width?: number, _height?: number, fps?: number) {
+  try {
+    const parameters = sender.getParameters();
+    if (!parameters.encodings || parameters.encodings.length === 0) {
+      parameters.encodings = [{}];
+    }
+    const targetFps = fps || 60;
+    const isHighQuality = (width && width >= 1920) || targetFps === 60;
+    
+    // Alta alocação de bitrate para eliminar pixelização e manter nitidez 60 FPS
+    const maxBitrate = isHighQuality ? 6000000 : (targetFps >= 60 ? 4000000 : 2500000);
+    
+    parameters.encodings[0].maxBitrate = maxBitrate;
+    parameters.encodings[0].maxFramerate = targetFps;
+    parameters.encodings[0].scaleResolutionDownBy = 1.0;
+    parameters.degradationPreference = 'maintain-framerate';
+    
+    await sender.setParameters(parameters);
+  } catch (e) {
+    console.warn('Could not apply video sender parameters:', e);
+  }
+}
+
+function preferHardwareVideoCodecs(pc: RTCPeerConnection) {
+  if (typeof RTCRtpReceiver.getCapabilities === 'function') {
+    const capabilities = RTCRtpReceiver.getCapabilities('video');
+    if (capabilities && capabilities.codecs) {
+      const h264Codecs = capabilities.codecs.filter(c => c.mimeType.toLowerCase() === 'video/h264');
+      const otherCodecs = capabilities.codecs.filter(c => c.mimeType.toLowerCase() !== 'video/h264');
+      const sortedCodecs = [...h264Codecs, ...otherCodecs];
+      
+      const transceivers = pc.getTransceivers ? pc.getTransceivers() : [];
+      for (const transceiver of transceivers) {
+        if (transceiver.receiver.track && transceiver.receiver.track.kind === 'video') {
+          if (typeof transceiver.setCodecPreferences === 'function') {
+            try {
+              transceiver.setCodecPreferences(sortedCodecs);
+            } catch (e) {}
+          }
+        }
+      }
+    }
+  }
 }
 
 export function useVoiceChannel() {
@@ -103,6 +227,9 @@ export function useVoiceChannel() {
   const peerVolumesRef = useRef<Map<string, number>>(new Map()) // Tracks local volume per peer
   const peerScreenVolumesRef = useRef<Map<string, number>>(new Map()) // Tracks local screenshare volume per peer
   const participantsMapRef = useRef<Map<string, { displayName: string; avatarUrl?: string; screenStream?: MediaStream; isMuted?: boolean; isDeafened?: boolean }>>(new Map())
+  const activeChannelIdRef = useRef<string | null>(null)
+  const activeSpaceIdRef = useRef<string | null>(null)
+  const spaceVoiceChannelRef = useRef<RealtimeChannel | null>(null)
 
   // Update participants list from the map
   const syncParticipants = useCallback(() => {
@@ -141,6 +268,7 @@ export function useVoiceChannel() {
     if (!localStreamRef.current || !supabase) return undefined
 
     const pc = new RTCPeerConnection(ICE_SERVERS)
+    preferHardwareVideoCodecs(pc)
 
     // Add local audio tracks
     localStreamRef.current.getAudioTracks().forEach(track => {
@@ -153,6 +281,7 @@ export function useVoiceChannel() {
       if (videoTrack) {
         const sender = pc.addTrack(videoTrack, localScreenStreamRef.current)
         screenSendersRef.current.set(remoteUserId, sender)
+        applyVideoSenderParameters(sender)
       }
       const audioTrack = localScreenStreamRef.current.getAudioTracks()[0]
       if (audioTrack) {
@@ -386,13 +515,16 @@ export function useVoiceChannel() {
     }, SPEAKING_CHECK_INTERVAL)
   }, [])
 
-  // Join a voice channel (with custom device selection inputs)
-  const joinVoice = useCallback(async (channelId: string, userId: string, displayName: string, avatarUrl?: string, inputId?: string, outputId?: string, noiseSuppression = true, echoCancellation = true) => {
+  // Join a voice channel (with custom device selection inputs and optional spaceId)
+  const joinVoice = useCallback(async (channelId: string, userId: string, displayName: string, avatarUrl?: string, inputId?: string, outputId?: string, noiseSuppression = true, echoCancellation = true, spaceId?: string) => {
     if (!supabase || isConnected) return
 
     try {
       if (inputId) selectedInputIdRef.current = inputId
       if (outputId) selectedOutputIdRef.current = outputId
+
+      activeChannelIdRef.current = channelId
+      activeSpaceIdRef.current = spaceId || null
 
       // Get microphone access with requested constraints
       const constraints = {
@@ -417,42 +549,9 @@ export function useVoiceChannel() {
 
       let finalStream = stream
       try {
-        const audioCtx = new AudioContext()
+        const { finalStream: dspStream, audioCtx } = createStudioMicrophoneDSP(stream)
         localDspCtxRef.current = audioCtx
-
-        const source = audioCtx.createMediaStreamSource(stream)
-        const highpass = audioCtx.createBiquadFilter()
-        highpass.type = 'highpass'
-        highpass.frequency.value = 80
-
-        const gateNode = audioCtx.createScriptProcessor(2048, 1, 1)
-        let gain = 0
-        gateNode.onaudioprocess = (e) => {
-          const input = e.inputBuffer.getChannelData(0)
-          const output = e.outputBuffer.getChannelData(0)
-          const gateEnabled = localStorage.getItem('echo-noise-gate-enabled') !== 'false'
-          const thresholdDb = parseFloat(localStorage.getItem('echo-noise-gate-threshold') || '-45')
-          const thresholdLinear = Math.pow(10, thresholdDb / 20)
-          
-          let sum = 0
-          for (let i = 0; i < input.length; i++) {
-            sum += input[i] * input[i]
-          }
-          const rms = Math.sqrt(sum / input.length)
-          const targetGain = (!gateEnabled || rms >= thresholdLinear) ? 1.0 : 0.0
-          
-          for (let i = 0; i < input.length; i++) {
-            gain = gain * 0.995 + targetGain * 0.005
-            output[i] = input[i] * gain
-          }
-        }
-
-        const dest = audioCtx.createMediaStreamDestination()
-        source.connect(highpass)
-        highpass.connect(gateNode)
-        gateNode.connect(dest)
-
-        finalStream = dest.stream
+        finalStream = dspStream
       } catch (dspErr) {
         console.error('Failed to initialize local microphone DSP pipeline:', dspErr)
       }
@@ -471,7 +570,7 @@ export function useVoiceChannel() {
         console.error('Failed to setup local audio analyser:', err)
       }
 
-      // Create the Supabase Realtime channel
+      // Create the Supabase Realtime channel for WebRTC signaling
       const realtimeChannel = supabase.channel(`voice-${channelId}`, {
         config: { presence: { key: userId } },
       })
@@ -550,7 +649,7 @@ export function useVoiceChannel() {
         syncParticipants()
       })
 
-      // Subscribe and track presence
+      // Subscribe and track presence on room channel
       await realtimeChannel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await realtimeChannel.track({
@@ -563,6 +662,28 @@ export function useVoiceChannel() {
           })
         }
       })
+
+      // Also track presence on space-wide channel for sidebar visibility
+      if (spaceId) {
+        const spacePresenceChannel = supabase.channel(`space-voice-${spaceId}`, {
+          config: { presence: { key: userId } }
+        })
+        spaceVoiceChannelRef.current = spacePresenceChannel
+        spacePresenceChannel.subscribe(async (s) => {
+          if (s === 'SUBSCRIBED') {
+            await spacePresenceChannel.track({
+              user_id: userId,
+              display_name: displayName,
+              avatar_url: avatarUrl,
+              channel_id: channelId,
+              is_muted: isMutedRef.current,
+              is_deafened: isDeafenedRef.current,
+              is_speaking: false,
+              has_screen: !!localScreenStreamRef.current
+            }).catch(() => {})
+          }
+        })
+      }
 
       setIsConnected(true)
       const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
@@ -628,12 +749,21 @@ export function useVoiceChannel() {
     analysersRef.current.forEach(a => a.ctx.close().catch(() => {}))
     analysersRef.current.clear()
 
-    // Leave realtime channel
+    // Leave space-wide realtime channel
+    if (spaceVoiceChannelRef.current && supabase) {
+      spaceVoiceChannelRef.current.untrack().catch(() => {})
+      supabase.removeChannel(spaceVoiceChannelRef.current)
+      spaceVoiceChannelRef.current = null
+    }
+
+    // Leave room realtime channel
     if (channelRef.current && supabase) {
       supabase.removeChannel(channelRef.current)
       channelRef.current = null
     }
 
+    activeSpaceIdRef.current = null
+    activeChannelIdRef.current = null
     pendingCandidatesRef.current.clear()
     participantsMapRef.current.clear()
     myInfoRef.current = null
@@ -692,6 +822,19 @@ export function useVoiceChannel() {
       }).catch(() => {})
     }
 
+    if (spaceVoiceChannelRef.current && myInfoRef.current) {
+      spaceVoiceChannelRef.current.track({
+        user_id: myInfoRef.current.userId,
+        display_name: myInfoRef.current.displayName,
+        avatar_url: myInfoRef.current.avatarUrl,
+        channel_id: activeChannelIdRef.current,
+        is_muted: nextDeafened ? true : isMutedRef.current,
+        is_deafened: nextDeafened,
+        is_speaking: false,
+        has_screen: !!localScreenStreamRef.current
+      }).catch(() => {})
+    }
+
     syncParticipants()
   }, [syncParticipants])
 
@@ -726,6 +869,19 @@ export function useVoiceChannel() {
           online_at: new Date().toISOString(),
           is_muted: nextMuted,
           is_deafened: isDeafenedRef.current,
+        }).catch(() => {})
+      }
+
+      if (spaceVoiceChannelRef.current && myInfoRef.current) {
+        spaceVoiceChannelRef.current.track({
+          user_id: myInfoRef.current.userId,
+          display_name: myInfoRef.current.displayName,
+          avatar_url: myInfoRef.current.avatarUrl,
+          channel_id: activeChannelIdRef.current,
+          is_muted: nextMuted,
+          is_deafened: isDeafenedRef.current,
+          is_speaking: false,
+          has_screen: !!localScreenStreamRef.current
         }).catch(() => {})
       }
 
@@ -766,42 +922,9 @@ export function useVoiceChannel() {
 
       let finalStream = newStream
       try {
-        const audioCtx = new AudioContext()
+        const { finalStream: dspStream, audioCtx } = createStudioMicrophoneDSP(newStream)
         localDspCtxRef.current = audioCtx
-
-        const source = audioCtx.createMediaStreamSource(newStream)
-        const highpass = audioCtx.createBiquadFilter()
-        highpass.type = 'highpass'
-        highpass.frequency.value = 80
-
-        const gateNode = audioCtx.createScriptProcessor(2048, 1, 1)
-        let gain = 0
-        gateNode.onaudioprocess = (e) => {
-          const input = e.inputBuffer.getChannelData(0)
-          const output = e.outputBuffer.getChannelData(0)
-          const gateEnabled = localStorage.getItem('echo-noise-gate-enabled') !== 'false'
-          const thresholdDb = parseFloat(localStorage.getItem('echo-noise-gate-threshold') || '-45')
-          const thresholdLinear = Math.pow(10, thresholdDb / 20)
-          
-          let sum = 0
-          for (let i = 0; i < input.length; i++) {
-            sum += input[i] * input[i]
-          }
-          const rms = Math.sqrt(sum / input.length)
-          const targetGain = (!gateEnabled || rms >= thresholdLinear) ? 1.0 : 0.0
-          
-          for (let i = 0; i < input.length; i++) {
-            gain = gain * 0.995 + targetGain * 0.005
-            output[i] = input[i] * gain
-          }
-        }
-
-        const dest = audioCtx.createMediaStreamDestination()
-        source.connect(highpass)
-        highpass.connect(gateNode)
-        gateNode.connect(dest)
-
-        finalStream = dest.stream
+        finalStream = dspStream
       } catch (dspErr) {
         console.error('Failed to initialize local microphone DSP pipeline on device change:', dspErr)
       }
@@ -1026,6 +1149,7 @@ export function useVoiceChannel() {
         }
 
         for (const [peerId, pc] of peersRef.current.entries()) {
+          preferHardwareVideoCodecs(pc)
           const existingVideoSender = screenSendersRef.current.get(peerId)
           let sender: RTCRtpSender
           if (existingVideoSender) {
@@ -1036,13 +1160,7 @@ export function useVoiceChannel() {
             screenSendersRef.current.set(peerId, sender)
           }
 
-          try {
-            const parameters = sender.getParameters()
-            parameters.degradationPreference = 'maintain-framerate'
-            await sender.setParameters(parameters)
-          } catch (e) {
-            console.error('Failed to set degradationPreference:', e)
-          }
+          await applyVideoSenderParameters(sender, width, height, fps)
 
           if (audioTrack) {
             const existingAudioSender = screenAudioSendersRef.current.get(peerId)
@@ -1159,7 +1277,10 @@ export function useVoiceChannel() {
       if (fps) constraints.frameRate = { ideal: fps }
 
       await track.applyConstraints(constraints)
-      console.log('Successfully applied new video track constraints:', constraints)
+      for (const sender of screenSendersRef.current.values()) {
+        await applyVideoSenderParameters(sender, width, height, fps)
+      }
+      console.log('Successfully applied new video track constraints and sender parameters:', constraints)
     } catch (err) {
       console.error('Failed to apply video track constraints:', err)
     }

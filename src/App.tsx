@@ -864,6 +864,7 @@ function Echo({ user }: { user: User }) {
   const [newChannelCategory, setNewChannelCategory] = useState('')
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
   const [slowmodeCooldown, setSlowmodeCooldown] = useState<number>(0)
+  const [spaceVoiceUsers, setSpaceVoiceUsers] = useState<Record<string, VoiceParticipant[]>>({})
 
   // Inspected Member Card Popover
   const [inspectedMember, setInspectedMember] = useState<{ user: { id: string; display_name: string; avatar_url?: string }; joined_at?: string; roleName?: string; roleColor?: string; roles?: ServerRole[] } | null>(null)
@@ -1095,6 +1096,7 @@ function Echo({ user }: { user: User }) {
   const [activeVoiceChannelId, setActiveVoiceChannelId] = useState<string | null>(null)
   const [screenSources, setScreenSources] = useState<any[]>([])
   const [showScreenPicker, setShowScreenPicker] = useState(false)
+  const [screenPickerTab, setScreenPickerTab] = useState<'windows' | 'screens'>('windows')
   const [isScreenFullScreen, setIsScreenFullScreen] = useState(false)
 
   // Exit fullscreen / settings on Esc key
@@ -1201,8 +1203,78 @@ function Echo({ user }: { user: User }) {
     }
   }, [isConnected])
 
+  // Subscrição em tempo real para visualizar participantes em todos os canais de voz mesmo sem entrar
+  useEffect(() => {
+    const sb = supabase
+    if (!sb || spaces.length === 0) return
+
+    const activeSubscriptions: any[] = []
+
+    spaces.forEach(sp => {
+      const channel = sb.channel(`space-voice-${sp.id}`, {
+        config: { presence: { key: user.id } }
+      })
+
+      const handlePresenceSync = () => {
+        const state = channel.presenceState()
+        const byChannel: Record<string, VoiceParticipant[]> = {}
+
+        Object.values(state).forEach(presences => {
+          for (const pres of presences as any[]) {
+            if (pres && pres.channel_id) {
+              if (!byChannel[pres.channel_id]) {
+                byChannel[pres.channel_id] = []
+              }
+              if (!byChannel[pres.channel_id].some(u => u.userId === pres.user_id)) {
+                byChannel[pres.channel_id].push({
+                  userId: pres.user_id,
+                  displayName: pres.display_name || 'Membro',
+                  avatarUrl: pres.avatar_url,
+                  isSpeaking: !!pres.is_speaking,
+                  isMuted: !!pres.is_muted,
+                  isDeafened: !!pres.is_deafened,
+                  screenStream: pres.has_screen ? (new MediaStream()) : undefined
+                })
+              }
+            }
+          }
+        })
+
+        setSpaceVoiceUsers(prev => {
+          const next = { ...prev }
+          const spaceChs = spaceChannels[sp.id] || []
+          spaceChs.forEach(c => {
+            if (c.type === 'voice') {
+              if (byChannel[c.id]) {
+                next[c.id] = byChannel[c.id]
+              } else {
+                delete next[c.id]
+              }
+            }
+          })
+          return { ...next, ...byChannel }
+        })
+      }
+
+      channel
+        .on('presence', { event: 'sync' }, handlePresenceSync)
+        .on('presence', { event: 'join' }, handlePresenceSync)
+        .on('presence', { event: 'leave' }, handlePresenceSync)
+        .subscribe()
+
+      activeSubscriptions.push(channel)
+    })
+
+    return () => {
+      activeSubscriptions.forEach(ch => {
+        sb.removeChannel(ch)
+      })
+    }
+  }, [spaces, spaceChannels, user.id])
+
   async function handleJoinVoice(channelId: string) {
-    await joinVoice(channelId, user.id, profileDisplayName, profileAvatarUrl, selectedInputId, selectedOutputId, noiseSuppressionEnabled, echoCancellationEnabled)
+    const spaceId = Object.keys(spaceChannels).find(sId => (spaceChannels[sId] || []).some(c => c.id === channelId))
+    await joinVoice(channelId, user.id, profileDisplayName, profileAvatarUrl, selectedInputId, selectedOutputId, noiseSuppressionEnabled, echoCancellationEnabled, spaceId)
     setActiveVoiceChannelId(channelId)
   }
 
@@ -2755,6 +2827,8 @@ function Echo({ user }: { user: User }) {
                   }
 
                   const isActive = activeVoiceChannelId === ch.id
+                  const channelVoiceUsers = isActive ? participants : (spaceVoiceUsers[ch.id] || [])
+
                   return (
                     <div key={ch.id} className="voice-channel-node">
                       <button className={`channel-item voice-item ${selectedChannel?.id === ch.id ? 'active' : ''}`} onClick={() => setSelectedChannel(ch)}>
@@ -2762,23 +2836,27 @@ function Echo({ user }: { user: User }) {
                         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ch.name}</span>
                         {ch.user_limit && ch.user_limit > 0 ? (
                           <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, padding: '2px 6px', borderRadius: '10px', background: 'var(--bg-primary)' }}>
-                            {isActive ? participants.length : 0}/{ch.user_limit}
+                            {channelVoiceUsers.length}/{ch.user_limit}
+                          </span>
+                        ) : channelVoiceUsers.length > 0 ? (
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, padding: '2px 6px', borderRadius: '10px', background: 'var(--bg-primary)' }}>
+                            {channelVoiceUsers.length}
                           </span>
                         ) : null}
                       </button>
-                      {isActive && participants.length > 0 && (
+                      {channelVoiceUsers.length > 0 && (
                         <div className="sidebar-voice-users">
-                          {participants.map(p => (
+                          {channelVoiceUsers.map(p => (
                             <div 
                               key={p.userId} 
                               className={`sidebar-voice-user ${p.isSpeaking ? 'speaking' : ''}`}
                               onClick={() => {
-                                if (p.userId !== user.id) {
+                                if (isActive && p.userId !== user.id) {
                                   setVolumeControlUser(p)
                                 }
                               }}
-                              style={{ cursor: p.userId !== user.id ? 'pointer' : 'default' }}
-                              title={p.userId !== user.id ? "Ajustar volume de áudio" : ""}
+                              style={{ cursor: (isActive && p.userId !== user.id) ? 'pointer' : 'default' }}
+                              title={(isActive && p.userId !== user.id) ? "Ajustar volume de áudio" : p.displayName}
                             >
                               <div className="sidebar-voice-avatar">
                                 {p.avatarUrl ? (
@@ -4087,19 +4165,83 @@ function Echo({ user }: { user: User }) {
 
       {/* Screen Selection Modal */}
       {showScreenPicker && (
-        <div className="screen-picker-overlay">
-          <div className="screen-picker-modal">
-            <h2>Selecione a tela ou janela</h2>
-            <p>Escolha o que você gostaria de transmitir para a chamada de voz.</p>
-            <div className="sources-list">
-              {screenSources.map(source => (
-                <button key={source.id} className="source-card" onClick={() => selectScreenSource(source.id)}>
-                  {source.thumbnail && <img src={source.thumbnail} alt={source.name} />}
-                  <span>{source.name}</span>
-                </button>
-              ))}
+        <div className="screen-picker-overlay" onClick={() => setShowScreenPicker(false)}>
+          <div className="screen-picker-modal" onClick={e => e.stopPropagation()}>
+            <div className="screen-picker-header">
+              <div className="screen-picker-header-info">
+                <h2>Transmitir Tela ou Jogo</h2>
+                <p>Escolha o que você gostaria de transmitir com áudio estéreo a 60 FPS.</p>
+              </div>
+              <button className="screen-picker-close-x" onClick={() => setShowScreenPicker(false)}>×</button>
             </div>
-            <button className="picker-close-btn" onClick={() => setShowScreenPicker(false)}>Cancelar</button>
+
+            <div className="screen-picker-tabs">
+              <button 
+                type="button"
+                className={`screen-picker-tab-btn ${screenPickerTab === 'windows' ? 'active' : ''}`}
+                onClick={() => setScreenPickerTab('windows')}
+              >
+                <span>🪟 Janelas de Jogos e Apps</span>
+                <span className="picker-tab-count">
+                  {screenSources.filter(s => s.type === 'window' || s.id.startsWith('window:')).length}
+                </span>
+              </button>
+              <button 
+                type="button"
+                className={`screen-picker-tab-btn ${screenPickerTab === 'screens' ? 'active' : ''}`}
+                onClick={() => setScreenPickerTab('screens')}
+              >
+                <span>🖥️ Telas Inteiras</span>
+                <span className="picker-tab-count">
+                  {screenSources.filter(s => s.type === 'screen' || s.id.startsWith('screen:')).length}
+                </span>
+              </button>
+            </div>
+
+            <div className="sources-list">
+              {screenSources
+                .filter(s => screenPickerTab === 'windows' ? (s.type === 'window' || s.id.startsWith('window:')) : (s.type === 'screen' || s.id.startsWith('screen:')))
+                .map(source => (
+                  <button key={source.id} className="source-card" onClick={() => selectScreenSource(source.id)}>
+                    <div className="source-card-thumb-wrap">
+                      {source.thumbnail ? (
+                        <img src={source.thumbnail} alt={source.name} className="source-thumb-img" />
+                      ) : source.appIcon ? (
+                        <div className="source-thumb-icon-placeholder">
+                          <img src={source.appIcon} alt="" className="source-placeholder-icon" />
+                        </div>
+                      ) : (
+                        <div className="source-thumb-icon-placeholder">
+                          <span className="source-placeholder-emoji">{screenPickerTab === 'screens' ? '🖥️' : '🪟'}</span>
+                        </div>
+                      )}
+                      {source.appIcon && source.thumbnail && (
+                        <img src={source.appIcon} alt="" className="source-app-icon-badge" />
+                      )}
+                    </div>
+                    <div className="source-card-info">
+                      {source.appIcon && <img src={source.appIcon} alt="" className="source-card-title-icon" />}
+                      <span title={source.name}>{source.name}</span>
+                    </div>
+                  </button>
+                ))}
+              {screenSources.filter(s => screenPickerTab === 'windows' ? (s.type === 'window' || s.id.startsWith('window:')) : (s.type === 'screen' || s.id.startsWith('screen:'))).length === 0 && (
+                <div className="sources-empty-state">
+                  Nenhuma {screenPickerTab === 'windows' ? 'janela aberta' : 'tela'} encontrada no momento.
+                </div>
+              )}
+            </div>
+
+            <div className="screen-picker-game-tip">
+              <span className="tip-icon">💡</span>
+              <div className="tip-text">
+                <strong>Dica para jogos em tela cheia com anti-cheat (ex: Valorant, CS2, Fortnite):</strong> Se a janela direta não for detectada pelo anti-cheat ou ficar preta, selecione a aba <strong>Telas Inteiras</strong>. Ela captura o monitor diretamente a 60 FPS com aceleração de hardware pela GPU sem perda de desempenho!
+              </div>
+            </div>
+
+            <div className="screen-picker-footer">
+              <button className="picker-close-btn" onClick={() => setShowScreenPicker(false)}>Cancelar</button>
+            </div>
           </div>
         </div>
       )}

@@ -9,6 +9,15 @@ import net from 'node:net'
 const isDevelopment = !app.isPackaged
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+// Hardware Acceleration & High-Performance Screen Capture for Games (Valorant, CS2, etc.)
+app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer,WindowsGraphicsCapture,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization')
+app.commandLine.appendSwitch('enable-gpu-rasterization')
+app.commandLine.appendSwitch('enable-zero-copy')
+app.commandLine.appendSwitch('ignore-gpu-blocklist')
+app.commandLine.appendSwitch('enable-accelerated-video-decode')
+app.commandLine.appendSwitch('enable-accelerated-mjpeg-decode')
+app.commandLine.appendSwitch('force_high_performance_gpu')
+
 let mainWindow = null
 let audioHelperProcess = null
 let audioTcpClient = null
@@ -49,17 +58,26 @@ function createWindow() {
     return ['media', 'microphone', 'audioCapture', 'display-capture'].includes(permission)
   })
 
-  // Handler para capturar telas e janelas do sistema operacional
+  // Handler para capturar telas e janelas do sistema operacional com WGC e alta definição
   ipcMain.handle('get-sources', async () => {
     const sources = await desktopCapturer.getSources({
       types: ['window', 'screen'],
-      thumbnailSize: { width: 150, height: 150 }
+      thumbnailSize: { width: 640, height: 360 },
+      fetchWindowIcons: true
     })
-    return sources.map(source => ({
-      id: source.id,
-      name: source.name,
-      thumbnail: source.thumbnail.toDataURL()
-    }))
+    return sources.map(source => {
+      const isScreen = source.id.startsWith('screen:')
+      const thumb = source.thumbnail
+      const appIcon = source.appIcon ? source.appIcon.toDataURL() : null
+      
+      return {
+        id: source.id,
+        name: source.name,
+        thumbnail: thumb && !thumb.isEmpty() ? thumb.toDataURL() : null,
+        appIcon: appIcon,
+        type: isScreen ? 'screen' : 'window'
+      }
+    })
   })
 
   // Handlers para gerenciar a captura de áudio exclusiva do jogo
