@@ -52,8 +52,17 @@ namespace AudioCaptureHelper
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool CloseHandle(IntPtr hObject);
 
+        [DllImport("user32.dll")]
+        private static extern bool IsIconic(IntPtr hWnd);
+
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         private static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+
+        private const int SW_RESTORE = 9;
+        private const int SW_SHOWNOACTIVATE = 4;
 
         private const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
 
@@ -122,7 +131,10 @@ namespace AudioCaptureHelper
                                  processName.IndexOf("overwatch", StringComparison.OrdinalIgnoreCase) >= 0 ||
                                  processName.IndexOf("r5apex", StringComparison.OrdinalIgnoreCase) >= 0;
 
-                    if (!IsWindowVisible(hWnd) && !isGame) return true;
+                    bool isMinimized = IsIconic(hWnd);
+                    bool isVisible = IsWindowVisible(hWnd) || isMinimized;
+
+                    if (!isVisible && !isGame) return true;
 
                     if (string.IsNullOrEmpty(title))
                     {
@@ -167,7 +179,8 @@ namespace AudioCaptureHelper
                         processName = processName,
                         pid = pid,
                         type = "window",
-                        isGame = isGame
+                        isGame = isGame,
+                        isMinimized = isMinimized
                     });
                 }
                 catch {}
@@ -227,6 +240,15 @@ namespace AudioCaptureHelper
             if (args.Length >= 1 && args[0] == "--list-windows")
             {
                 ListWindowsJson();
+                return;
+            }
+
+            if (args.Length >= 2 && args[0] == "--restore-window")
+            {
+                if (long.TryParse(args[1], out long hwndVal))
+                {
+                    ShowWindowAsync(new IntPtr(hwndVal), SW_RESTORE);
+                }
                 return;
             }
 

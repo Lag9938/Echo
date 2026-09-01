@@ -2142,6 +2142,13 @@ function Echo({ user }: { user: User }) {
 
   async function selectScreenSource(sourceId: string) {
     setShowScreenPicker(false)
+    if ((window as any).electronAPI?.restoreWindow && sourceId.startsWith('window:')) {
+      try {
+        await (window as any).electronAPI.restoreWindow(sourceId)
+      } catch (e) {
+        console.warn('Failed to restore window before screen share:', e)
+      }
+    }
     const { w, h } = getQualityDimensions(screenQuality)
     await startScreenShare(sourceId, w, h, screenFps)
   }
@@ -4320,11 +4327,15 @@ function Echo({ user }: { user: User }) {
                           <span className="source-placeholder-emoji">{screenPickerTab === 'screens' ? '🖥️' : source.isGame ? '🎮' : '🪟'}</span>
                         </div>
                       )}
-                      {source.isGame && (
+                      {source.isGame ? (
                         <span style={{ position: 'absolute', top: '6px', left: '6px', background: '#ff4655', color: '#fff', fontSize: '9px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>
                           🎮 JOGO
                         </span>
-                      )}
+                      ) : (source as any).isMinimized ? (
+                        <span style={{ position: 'absolute', top: '6px', left: '6px', background: '#5865f2', color: '#fff', fontSize: '9px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>
+                          ⏸️ MINIMIZADA
+                        </span>
+                      ) : null}
                       {source.appIcon && source.thumbnail && (
                         <img src={source.appIcon} alt="" className="source-app-icon-badge" />
                       )}

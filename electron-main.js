@@ -168,6 +168,22 @@ function createWindow() {
     return finalResults
   })
 
+  // Handler para desminimizar / restaurar janela antes de iniciar a captura
+  ipcMain.handle('restore-window', async (_event, sourceId) => {
+    if (!sourceId || typeof sourceId !== 'string') return
+    const parts = sourceId.split(':')
+    if (parts[0] === 'window' && parts[1]) {
+      try {
+        const helperPath = isDevelopment
+          ? path.join(__dirname, 'src', 'native', 'AudioCaptureHelper', 'bin', 'AudioCaptureHelper.exe')
+          : path.join(process.resourcesPath, 'AudioCaptureHelper.exe')
+        await execFileAsync(helperPath, ['--restore-window', parts[1]], { timeout: 1000 })
+      } catch (e) {
+        console.warn('Restore window failed:', e)
+      }
+    }
+  })
+
   // Handlers para gerenciar a captura de áudio exclusiva do jogo
   ipcMain.handle('start-process-audio-capture', async (event, sourceId) => {
     stopAudioCapture()

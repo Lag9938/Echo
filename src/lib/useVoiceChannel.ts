@@ -346,7 +346,7 @@ export function useVoiceChannel() {
         })
         syncParticipants()
 
-        // Handle track stop and mute cleanly
+        // Handle track stop cleanly
         const handleStop = () => {
           const info = participantsMapRef.current.get(remoteUserId)
           if (info && info.screenStream) {
@@ -355,13 +355,6 @@ export function useVoiceChannel() {
           }
         }
         track.onended = handleStop
-        track.onmute = () => {
-          setTimeout(() => {
-            if (track.readyState === 'ended' || track.muted) {
-              handleStop()
-            }
-          }, 300)
-        }
       }
     }
 
