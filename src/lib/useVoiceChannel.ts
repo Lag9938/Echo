@@ -309,12 +309,15 @@ export function useVoiceChannel() {
           const savedVol = isScreen
             ? (peerScreenVolumesRef.current.get(remoteUserId) !== undefined ? peerScreenVolumesRef.current.get(remoteUserId)! : 1.0)
             : (peerVolumesRef.current.get(remoteUserId) !== undefined ? peerVolumesRef.current.get(remoteUserId)! : 1.0)
-          audio.volume = savedVol
+          audio.volume = Math.max(0, Math.min(1, savedVol))
           audio.muted = isDeafenedRef.current
           audioElementsRef.current.set(key, audio)
         }
         audio.muted = isDeafenedRef.current
         audio.srcObject = remoteStream
+        audio.play().catch(e => {
+          console.warn('[WebRTC] Audio autoplay initial play:', e)
+        })
 
         // Set output device if configured
         if (typeof audio.setSinkId === 'function' && selectedOutputIdRef.current !== 'default') {
@@ -378,9 +381,16 @@ export function useVoiceChannel() {
     }
 
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-        cleanupPeer(remoteUserId)
+      console.log(`[WebRTC] Peer ${remoteUserId} connection state: ${pc.connectionState}`)
+      if (pc.connectionState === 'failed') {
+        setTimeout(() => {
+          if (pc.connectionState === 'failed') {
+            console.warn(`[WebRTC] Peer ${remoteUserId} connection permanently failed, cleaning up.`)
+            cleanupPeer(remoteUserId)
+          }
+        }, 5000)
       }
+      // Note: 'disconnected' state is transient and can recover automatically!
     }
 
     peersRef.current.set(remoteUserId, pc)
@@ -422,70 +432,92 @@ export function useVoiceChannel() {
       if (!pc) pc = createPeerConnection(from)
       if (!pc) return
 
-      await pc.setRemoteDescription(new RTCSessionDescription(sdp))
-
-      // Check if remote peer stopped sharing video
-      const transceivers = pc.getTransceivers ? pc.getTransceivers() : []
-      const hasLiveVideoTrack = transceivers.some(t => t.receiver.track && t.receiver.track.kind === 'video' && t.currentDirection !== 'inactive' && t.currentDirection !== 'sendonly' && t.receiver.track.readyState === 'live')
-      if (!hasLiveVideoTrack) {
-        const info = participantsMapRef.current.get(from)
-        if (info && info.screenStream) {
-          info.screenStream.getTracks().forEach(t => t.stop())
-          delete info.screenStream
-          syncParticipants()
+      try {
+        const isOfferCollision = pc.signalingState !== 'stable'
+        if (isOfferCollision) {
+          if (myInfoRef.current && myInfoRef.current.userId > from) {
+            await pc.setLocalDescription({ type: 'rollback' }).catch(() => {})
+          } else {
+            return
+          }
         }
+
+        await pc.setRemoteDescription(new RTCSessionDescription(sdp))
+
+        // Check if remote peer stopped sharing video
+        const transceivers = pc.getTransceivers ? pc.getTransceivers() : []
+        const hasLiveVideoTrack = transceivers.some(t => t.receiver.track && t.receiver.track.kind === 'video' && t.currentDirection !== 'inactive' && t.currentDirection !== 'sendonly' && t.receiver.track.readyState === 'live')
+        if (!hasLiveVideoTrack) {
+          const info = participantsMapRef.current.get(from)
+          if (info && info.screenStream) {
+            info.screenStream.getTracks().forEach(t => t.stop())
+            delete info.screenStream
+            syncParticipants()
+          }
+        }
+
+        // Apply any pending ICE candidates
+        const pending = pendingCandidatesRef.current.get(from) ?? []
+        for (const c of pending) {
+          await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})
+        }
+        pendingCandidatesRef.current.delete(from)
+
+        let answer = await pc.createAnswer()
+        const optimizedSdp = optimizeSDP(answer.sdp || '')
+        const finalAnswer = { type: answer.type, sdp: optimizedSdp }
+        await pc.setLocalDescription(finalAnswer)
+
+        channelRef.current?.send({
+          type: 'broadcast',
+          event: 'sdp-answer',
+          payload: { from: myInfoRef.current!.userId, to: from, sdp: finalAnswer },
+        })
+      } catch (err) {
+        console.warn('[WebRTC] sdp-offer negotiation error:', err)
       }
-
-      // Apply any pending ICE candidates
-      const pending = pendingCandidatesRef.current.get(from) ?? []
-      for (const c of pending) {
-        await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})
-      }
-      pendingCandidatesRef.current.delete(from)
-
-      let answer = await pc.createAnswer()
-      const optimizedSdp = optimizeSDP(answer.sdp || '')
-      const finalAnswer = { type: answer.type, sdp: optimizedSdp }
-      await pc.setLocalDescription(finalAnswer)
-
-      channelRef.current?.send({
-        type: 'broadcast',
-        event: 'sdp-answer',
-        payload: { from: myInfoRef.current!.userId, to: from, sdp: finalAnswer },
-      })
     }
 
     if (event === 'sdp-answer') {
       const sdp = payload.sdp as RTCSessionDescriptionInit
       const pc = peersRef.current.get(from)
       if (!pc) return
-      await pc.setRemoteDescription(new RTCSessionDescription(sdp))
 
-      // Check if remote peer stopped sharing video
-      const transceivers = pc.getTransceivers ? pc.getTransceivers() : []
-      const hasLiveVideoTrack = transceivers.some(t => t.receiver.track && t.receiver.track.kind === 'video' && t.currentDirection !== 'inactive' && t.currentDirection !== 'sendonly' && t.receiver.track.readyState === 'live')
-      if (!hasLiveVideoTrack) {
-        const info = participantsMapRef.current.get(from)
-        if (info && info.screenStream) {
-          info.screenStream.getTracks().forEach(t => t.stop())
-          delete info.screenStream
-          syncParticipants()
+      try {
+        if (pc.signalingState === 'have-local-offer') {
+          await pc.setRemoteDescription(new RTCSessionDescription(sdp))
+
+          // Check if remote peer stopped sharing video
+          const transceivers = pc.getTransceivers ? pc.getTransceivers() : []
+          const hasLiveVideoTrack = transceivers.some(t => t.receiver.track && t.receiver.track.kind === 'video' && t.currentDirection !== 'inactive' && t.currentDirection !== 'sendonly' && t.receiver.track.readyState === 'live')
+          if (!hasLiveVideoTrack) {
+            const info = participantsMapRef.current.get(from)
+            if (info && info.screenStream) {
+              info.screenStream.getTracks().forEach(t => t.stop())
+              delete info.screenStream
+              syncParticipants()
+            }
+          }
+
+          // Apply any pending ICE candidates
+          const pending = pendingCandidatesRef.current.get(from) ?? []
+          for (const c of pending) {
+            await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})
+          }
+          pendingCandidatesRef.current.delete(from)
         }
+      } catch (err) {
+        console.warn('[WebRTC] sdp-answer negotiation error:', err)
       }
-
-      // Apply any pending ICE candidates
-      const pending = pendingCandidatesRef.current.get(from) ?? []
-      for (const c of pending) {
-        await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})
-      }
-      pendingCandidatesRef.current.delete(from)
     }
 
     if (event === 'ice-candidate') {
       const candidate = payload.candidate as RTCIceCandidateInit
       const pc = peersRef.current.get(from)
-      if (pc && pc.remoteDescription) {
-        await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {})
+      if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(err => {
+          console.warn('[WebRTC] Add ICE candidate failed:', err)
+        })
       } else {
         // Queue the candidate for later
         const pending = pendingCandidatesRef.current.get(from) ?? []
@@ -493,7 +525,7 @@ export function useVoiceChannel() {
         pendingCandidatesRef.current.set(from, pending)
       }
     }
-  }, [createPeerConnection])
+  }, [createPeerConnection, syncParticipants])
 
   // Initiate connection to a peer (we create the offer)
   const initiateConnection = useCallback(async (remoteUserId: string) => {
@@ -501,16 +533,22 @@ export function useVoiceChannel() {
     if (!pc) pc = createPeerConnection(remoteUserId)
     if (!pc) return
 
-    let offer = await pc.createOffer()
-    const optimizedSdp = optimizeSDP(offer.sdp || '')
-    const finalOffer = { type: offer.type, sdp: optimizedSdp }
-    await pc.setLocalDescription(finalOffer)
+    try {
+      if (pc.signalingState !== 'stable') return
 
-    channelRef.current?.send({
-      type: 'broadcast',
-      event: 'sdp-offer',
-      payload: { from: myInfoRef.current!.userId, to: remoteUserId, sdp: finalOffer },
-    })
+      let offer = await pc.createOffer()
+      const optimizedSdp = optimizeSDP(offer.sdp || '')
+      const finalOffer = { type: offer.type, sdp: optimizedSdp }
+      await pc.setLocalDescription(finalOffer)
+
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'sdp-offer',
+        payload: { from: myInfoRef.current!.userId, to: remoteUserId, sdp: finalOffer },
+      })
+    } catch (err) {
+      console.warn('[WebRTC] initiateConnection error for peer', remoteUserId, err)
+    }
   }, [createPeerConnection])
 
   // Start speaking detection interval
@@ -631,6 +669,14 @@ export function useVoiceChannel() {
         }
       })
 
+      const ensurePeerConnection = (peerId: string) => {
+        if (!peersRef.current.has(peerId)) {
+          if (userId < peerId) {
+            initiateConnection(peerId)
+          }
+        }
+      }
+
       // Handle presence: peer joins
       realtimeChannel.on('presence', { event: 'join' }, ({ newPresences }) => {
         for (const presence of newPresences) {
@@ -644,17 +690,17 @@ export function useVoiceChannel() {
             const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
             playJoinSound(sfxVol)
 
+            const existing = participantsMapRef.current.get(peerId)
             participantsMapRef.current.set(peerId, { 
               displayName: peerName || 'Membro',
               avatarUrl: peerAvatar,
+              screenStream: existing?.screenStream,
               isMuted: peerMuted,
               isDeafened: peerDeafened
             })
             syncParticipants()
 
-            if (userId < peerId) {
-              initiateConnection(peerId)
-            }
+            ensurePeerConnection(peerId)
           }
         }
       })
@@ -686,6 +732,7 @@ export function useVoiceChannel() {
                 isMuted: !!p.is_muted,
                 isDeafened: !!p.is_deafened
               })
+              ensurePeerConnection(p.user_id)
             }
           }
         })
@@ -1353,18 +1400,20 @@ export function useVoiceChannel() {
   }, [])
 
   const changePeerVolume = useCallback((peerId: string, volume: number) => {
-    peerVolumesRef.current.set(peerId, volume)
+    const clamped = Math.max(0, Math.min(1, isNaN(volume) ? 1 : volume))
+    peerVolumesRef.current.set(peerId, clamped)
     const audio = audioElementsRef.current.get(`${peerId}-voice`) || audioElementsRef.current.get(peerId)
     if (audio) {
-      audio.volume = volume
+      audio.volume = clamped
     }
   }, [])
 
   const changePeerScreenVolume = useCallback((peerId: string, volume: number) => {
-    peerScreenVolumesRef.current.set(peerId, volume)
+    const clamped = Math.max(0, Math.min(1, isNaN(volume) ? 1 : volume))
+    peerScreenVolumesRef.current.set(peerId, clamped)
     const audio = audioElementsRef.current.get(`${peerId}-screen`)
     if (audio) {
-      audio.volume = volume
+      audio.volume = clamped
     }
   }, [])
 

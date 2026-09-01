@@ -4308,7 +4308,7 @@ function Echo({ user }: { user: User }) {
                 .filter(s => screenPickerTab === 'windows' ? (s.type === 'window' || s.id.startsWith('window:')) : (s.type === 'screen' || s.id.startsWith('screen:')))
                 .map(source => (
                   <button key={source.id} className="source-card" onClick={() => selectScreenSource(source.id)}>
-                    <div className="source-card-thumb-wrap">
+                    <div className="source-card-thumb-wrap" style={{ position: 'relative' }}>
                       {source.thumbnail ? (
                         <img src={source.thumbnail} alt={source.name} className="source-thumb-img" />
                       ) : source.appIcon ? (
@@ -4316,9 +4316,14 @@ function Echo({ user }: { user: User }) {
                           <img src={source.appIcon} alt="" className="source-placeholder-icon" />
                         </div>
                       ) : (
-                        <div className="source-thumb-icon-placeholder">
-                          <span className="source-placeholder-emoji">{screenPickerTab === 'screens' ? '🖥️' : '🪟'}</span>
+                        <div className="source-thumb-icon-placeholder" style={{ background: source.isGame ? 'linear-gradient(135deg, #ff4655, #0f1923)' : undefined }}>
+                          <span className="source-placeholder-emoji">{screenPickerTab === 'screens' ? '🖥️' : source.isGame ? '🎮' : '🪟'}</span>
                         </div>
+                      )}
+                      {source.isGame && (
+                        <span style={{ position: 'absolute', top: '6px', left: '6px', background: '#ff4655', color: '#fff', fontSize: '9px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>
+                          🎮 JOGO
+                        </span>
                       )}
                       {source.appIcon && source.thumbnail && (
                         <img src={source.appIcon} alt="" className="source-app-icon-badge" />

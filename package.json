@@ -3,7 +3,7 @@
   "description": "Comunidades e conversas em tempo real.",
   "author": "Echo Lobby",
   "private": true,
-  "version": "0.20.6",
+  "version": "0.20.7",
   "main": "electron-main.js",
   "type": "module",
   "scripts": {

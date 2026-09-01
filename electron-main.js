@@ -3,8 +3,11 @@ import pkg from 'electron-updater'
 const { autoUpdater } = pkg
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import { spawn } from 'node:child_process'
+import { spawn, execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import net from 'node:net'
+
+const execFileAsync = promisify(execFile)
 
 const isDevelopment = !app.isPackaged
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -61,63 +64,84 @@ function createWindow() {
 
   // Handler para capturar telas e janelas do sistema operacional com WGC e alta definição
   ipcMain.handle('get-sources', async () => {
+    let nativeWindows = []
     try {
-      const sources = await desktopCapturer.getSources({
+      const helperPath = isDevelopment
+        ? path.join(__dirname, 'src', 'native', 'AudioCaptureHelper', 'bin', 'AudioCaptureHelper.exe')
+        : path.join(process.resourcesPath, 'AudioCaptureHelper.exe')
+      
+      const { stdout } = await execFileAsync(helperPath, ['--list-windows'], { timeout: 3000 })
+      if (stdout && stdout.trim().startsWith('[')) {
+        nativeWindows = JSON.parse(stdout.trim())
+      }
+    } catch (e) {
+      console.warn('Native window lister failed:', e)
+    }
+
+    let sources = []
+    try {
+      sources = await desktopCapturer.getSources({
         types: ['window', 'screen'],
-        thumbnailSize: { width: 640, height: 360 },
-        fetchWindowIcons: true
-      })
-      return sources.map(source => {
-        const isScreen = source.id.startsWith('screen:')
-        const thumb = source.thumbnail
-        let appIcon = null
-        try {
-          if (source.appIcon && typeof source.appIcon.toDataURL === 'function') {
-            appIcon = source.appIcon.toDataURL()
-          }
-        } catch (e) {}
-
-        let name = source.name ? source.name.trim() : ''
-        if (!name) {
-          name = isScreen ? 'Monitor Principal' : 'Janela de Jogo / Aplicativo'
-        }
-
-        return {
-          id: source.id,
-          name: name,
-          thumbnail: thumb && !thumb.isEmpty() ? thumb.toDataURL() : null,
-          appIcon: appIcon,
-          type: isScreen ? 'screen' : 'window'
-        }
+        thumbnailSize: { width: 480, height: 270 },
+        fetchWindowIcons: false
       })
     } catch (err) {
-      console.warn('Erro ao obter fontes com ícones, tentando fallback:', err)
-      try {
-        const fallbackSources = await desktopCapturer.getSources({
-          types: ['window', 'screen'],
-          thumbnailSize: { width: 640, height: 360 },
-          fetchWindowIcons: false
-        })
-        return fallbackSources.map(source => {
-          const isScreen = source.id.startsWith('screen:')
-          const thumb = source.thumbnail
-          let name = source.name ? source.name.trim() : ''
-          if (!name) {
-            name = isScreen ? 'Monitor Principal' : 'Janela de Jogo / Aplicativo'
-          }
-          return {
-            id: source.id,
-            name: name,
-            thumbnail: thumb && !thumb.isEmpty() ? thumb.toDataURL() : null,
-            appIcon: null,
-            type: isScreen ? 'screen' : 'window'
-          }
-        })
-      } catch (fallbackErr) {
-        console.error('Falha geral em get-sources:', fallbackErr)
-        return []
-      }
+      console.warn('desktopCapturer.getSources error:', err)
     }
+
+    const resultMap = new Map()
+
+    // 1. Process screens first
+    sources.filter(s => s.id.startsWith('screen:')).forEach(source => {
+      const thumb = source.thumbnail
+      resultMap.set(source.id, {
+        id: source.id,
+        name: source.name || 'Monitor Principal',
+        thumbnail: thumb && !thumb.isEmpty() ? thumb.toDataURL() : null,
+        appIcon: null,
+        type: 'screen'
+      })
+    })
+
+    // 2. Add native windows (games like Valorant, etc.)
+    nativeWindows.forEach(win => {
+      resultMap.set(win.id, {
+        id: win.id,
+        name: win.name,
+        thumbnail: null,
+        appIcon: null,
+        type: 'window',
+        isGame: win.name.includes('(Jogo)') || win.name.toLowerCase().includes('valorant')
+      })
+    })
+
+    // 3. Add desktopCapturer windows and merge thumbnails
+    sources.filter(s => s.id.startsWith('window:')).forEach(source => {
+      const thumb = source.thumbnail
+      const existing = resultMap.get(source.id)
+      let name = (existing ? existing.name : source.name) || 'Janela'
+      name = name.trim()
+      resultMap.set(source.id, {
+        id: source.id,
+        name: name,
+        thumbnail: thumb && !thumb.isEmpty() ? thumb.toDataURL() : (existing ? existing.thumbnail : null),
+        appIcon: null,
+        type: 'window',
+        isGame: (existing && existing.isGame) || name.toLowerCase().includes('valorant') || name.toLowerCase().includes('jogo')
+      })
+    })
+
+    const finalResults = Array.from(resultMap.values())
+    // Sort: Screens first, then Games, then Windows alphabetically
+    finalResults.sort((a, b) => {
+      if (a.type === 'screen' && b.type !== 'screen') return -1
+      if (b.type === 'screen' && a.type !== 'screen') return 1
+      if (a.isGame && !b.isGame) return -1
+      if (!a.isGame && b.isGame) return 1
+      return a.name.localeCompare(b.name)
+    })
+
+    return finalResults
   })
 
   // Handlers para gerenciar a captura de áudio exclusiva do jogo
