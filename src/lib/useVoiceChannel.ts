@@ -567,6 +567,12 @@ export function useVoiceChannel() {
     const a = analysersRef.current.get(peerId)
     if (a) { a.ctx.close().catch(() => {}); analysersRef.current.delete(peerId) }
 
+    const pannerEntry = peerPannersRef.current.get(peerId)
+    if (pannerEntry) {
+      pannerEntry.ctx.close().catch(() => {})
+      peerPannersRef.current.delete(peerId)
+    }
+
     screenSendersRef.current.delete(peerId)
     pendingCandidatesRef.current.delete(peerId)
     participantsMapRef.current.delete(peerId)
@@ -1005,6 +1011,14 @@ export function useVoiceChannel() {
     // Clean up analysers
     analysersRef.current.forEach(a => a.ctx.close().catch(() => {}))
     analysersRef.current.clear()
+
+    // Clean up spatial audio panners
+    peerPannersRef.current.forEach(entry => {
+      try {
+        entry.ctx.close().catch(() => {})
+      } catch (e) {}
+    })
+    peerPannersRef.current.clear()
 
     // Leave space-wide realtime channel
     if (spaceVoiceChannelRef.current && supabase) {
