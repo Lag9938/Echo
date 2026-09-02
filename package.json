@@ -3,12 +3,13 @@
   "description": "Comunidades e conversas em tempo real.",
   "author": "Echo Lobby",
   "private": true,
-  "version": "0.23.7",
+  "version": "0.23.8",
   "main": "electron-main.js",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "desktop": "concurrently -k \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
+    "livekit:dev": "tools\\livekit\\livekit-server.exe --dev",
     "build": "tsc -b && vite build",
     "dist": "npm run build && electron-builder --win",
     "store:package": "powershell -ExecutionPolicy Bypass -File scripts/generate-store-assets.ps1 && npm run build && electron-builder --win dir --x64 && node scripts/create-store-package.cjs",
@@ -16,8 +17,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@sapphi-red/web-noise-suppressor": "^0.4.0",
     "@supabase/supabase-js": "^2.112.4",
     "electron-updater": "^6.8.9",
+    "livekit-client": "^2.22.2",
+    "livekit-server-sdk": "^2.18.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

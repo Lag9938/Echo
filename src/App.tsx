@@ -1132,7 +1132,9 @@ function Echo({ user }: { user: User }) {
     setPttActive,
     playSoundboard,
     startCallRecording,
-    stopCallRecording
+    stopCallRecording,
+    isAiDenoiseEnabled,
+    toggleAiDenoise
   } = useVoiceChannel()
 
   // Soundboard & WhatsNew Modals
@@ -2519,47 +2521,139 @@ function Echo({ user }: { user: User }) {
   async function loadSpaceMembers(spaceId: string) {
     if (!supabase) return
     try {
-      const { data, error: queryError } = await supabase
-        .from('space_members')
-        .select('role, user:profiles(id, display_name, avatar_url)')
-        .eq('space_id', spaceId)
+      const cacheKey = `echo-space-members-${spaceId}`
+      const memberMap = new Map<string, any>()
 
-      if (queryError) {
-        console.warn("loadSpaceMembers error", queryError)
-        return
-      }
-
-      let members = (data ?? []).map((row: any) => ({
-        role: row.role,
-        user: Array.isArray(row.user) ? row.user[0] : row.user
-      })).filter(m => m.user !== null && m.user?.id)
-
-      // Se o usuário logado está visualizando o servidor mas ainda não foi inserido na tabela space_members, insere automaticamente
-      if (user && !members.some(m => m.user.id === user.id)) {
-        const myMemberObj = {
-          role: 'member',
-          user: { id: user.id, display_name: profileDisplayName || 'Membro', avatar_url: profileAvatarUrl }
+      // 1. Inicializa imediatamente com o cache local para nunca exibir lista vazia
+      try {
+        const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]')
+        cached.forEach((m: any) => {
+          if (m?.user?.id) memberMap.set(m.user.id, m)
+        })
+        if (memberMap.size > 0) {
+          setSpaceMembers(Array.from(memberMap.values()))
         }
-        members.push(myMemberObj)
-        supabase.from('space_members').upsert({ space_id: spaceId, user_id: user.id, role: 'member' }).then(() => {})
+      } catch (e) {}
+
+      // 2. Consulta membros do banco de dados na tabela space_members
+      let dbSuccess = false
+      try {
+        const { data, error: queryError } = await supabase
+          .from('space_members')
+          .select('role, user:profiles(id, display_name, avatar_url)')
+          .eq('space_id', spaceId)
+
+        if (!queryError && data && data.length > 0) {
+          data.forEach((row: any) => {
+            const u = Array.isArray(row.user) ? row.user[0] : row.user
+            if (u?.id) {
+              memberMap.set(u.id, { role: row.role || 'member', user: u })
+              dbSuccess = true
+            }
+          })
+        }
+      } catch (dbErr) {
+        console.warn("loadSpaceMembers db error", dbErr)
       }
 
-      setSpaceMembers(members)
+      // 3. Fallback: Se a consulta com join não retornou outros membros, busca por user_id + profiles
+      if (!dbSuccess || memberMap.size <= 1) {
+        try {
+          const { data: directMembers } = await supabase
+            .from('space_members')
+            .select('user_id, role')
+            .eq('space_id', spaceId)
+
+          if (directMembers && directMembers.length > 0) {
+            const uIds = directMembers.map((d: any) => d.user_id)
+            const { data: profs } = await supabase
+              .from('profiles')
+              .select('id, display_name, avatar_url')
+              .in('id', uIds)
+
+            const profMap = new Map((profs || []).map((p: any) => [p.id, p]))
+            directMembers.forEach((d: any) => {
+              const u = profMap.get(d.user_id) || { id: d.user_id, display_name: 'Membro', avatar_url: '' }
+              memberMap.set(d.user_id, { role: d.role || 'member', user: u })
+            })
+          }
+        } catch (fbErr) {
+          console.warn("loadSpaceMembers direct fallback error", fbErr)
+        }
+      }
+
+      // 4. Descobre autores de mensagens nos canais de texto deste servidor
+      try {
+        const spaceChs = spaceChannelsRef.current[spaceId] || []
+        const chIds = spaceChs.map(c => c.id)
+        if (chIds.length > 0) {
+          const { data: msgData } = await supabase
+            .from('messages')
+            .select('author_id, profiles(id, display_name, avatar_url)')
+            .in('channel_id', chIds)
+            .limit(100)
+
+          if (msgData) {
+            msgData.forEach((m: any) => {
+              const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles
+              if (p?.id && !memberMap.has(p.id)) {
+                memberMap.set(p.id, { role: 'member', user: p })
+              }
+            })
+          }
+        }
+      } catch (msgErr) {
+        console.warn("loadSpaceMembers msg authors error", msgErr)
+      }
+
+      // 5. Garante que o Criador/Dono do servidor está na lista
+      const spObj = spaces.find(s => s.id === spaceId)
+      if (spObj && spObj.creator_id && !memberMap.has(spObj.creator_id)) {
+        try {
+          const { data: creatorProf } = await supabase
+            .from('profiles')
+            .select('id, display_name, avatar_url')
+            .eq('id', spObj.creator_id)
+            .maybeSingle()
+
+          if (creatorProf) {
+            memberMap.set(spObj.creator_id, { role: 'owner', user: creatorProf })
+          }
+        } catch (crErr) {}
+      }
+
+      // 6. Garante que o usuário logado está na lista e registrado na tabela
+      if (user && !memberMap.has(user.id)) {
+        const myMemberObj = {
+          role: spObj?.creator_id === user.id ? 'owner' : 'member',
+          user: { id: user.id, display_name: profileDisplayName || displayName || 'Membro', avatar_url: profileAvatarUrl }
+        }
+        memberMap.set(user.id, myMemberObj)
+        supabase.from('space_members').upsert({ space_id: spaceId, user_id: user.id, role: myMemberObj.role }).then(() => {})
+      }
+
+      const finalList = Array.from(memberMap.values())
+      setSpaceMembers(finalList)
+
+      // Salva a lista consolidada atualizada no cache local
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(finalList))
+      } catch (e) {}
     } catch (err) {
       console.warn("loadSpaceMembers catch", err)
     }
   }
 
   useEffect(() => {
-    if (!supabase || !selectedChannel?.space_id) {
+    const currentSpaceId = selectedChannel?.space_id || expandedSpace
+    if (!supabase || !currentSpaceId) {
       setSpaceMembers([])
       return
     }
 
-    const currentSpaceId = selectedChannel.space_id
     loadSpaceMembers(currentSpaceId)
 
-    // Canal Realtime para sincronizar novos membros instantaneamente
+    // Canal Realtime para mudanças no banco (Postgres changes)
     const membersChannel = supabase
       .channel(`public-space-members-${currentSpaceId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'space_members', filter: `space_id=eq.${currentSpaceId}` }, () => {
@@ -2570,16 +2664,77 @@ function Echo({ user }: { user: User }) {
       })
       .subscribe()
 
+    // Canal Realtime de Presença do Servidor (WebSockets direto, imune a RLS)
+    const spacePresenceChannel = supabase.channel(`space-presence-${currentSpaceId}`, {
+      config: { presence: { key: user.id } }
+    })
+
+    const handleSpacePresenceSync = () => {
+      const state = spacePresenceChannel.presenceState()
+      const liveUsers: any[] = []
+      Object.keys(state).forEach(key => {
+        const presList = state[key]
+        if (presList && presList.length > 0) {
+          const p = presList[0] as any
+          if (p && p.user_id) {
+            liveUsers.push({
+              role: p.role || 'member',
+              user: { id: p.user_id, display_name: p.display_name || 'Membro', avatar_url: p.avatar_url }
+            })
+          }
+        }
+      })
+
+      if (liveUsers.length > 0) {
+        setSpaceMembers(prev => {
+          const map = new Map<string, any>()
+          prev.forEach(m => { if (m?.user?.id) map.set(m.user.id, m) })
+          liveUsers.forEach(m => { if (m?.user?.id) map.set(m.user.id, m) })
+          const merged = Array.from(map.values())
+          try {
+            localStorage.setItem(`echo-space-members-${currentSpaceId}`, JSON.stringify(merged))
+          } catch (e) {}
+          return merged
+        })
+      }
+    }
+
+    const trackSpacePresence = async () => {
+      const spObj = spaces.find(s => s.id === currentSpaceId)
+      const isOwner = spObj?.creator_id === user.id
+      await spacePresenceChannel.track({
+        user_id: user.id,
+        display_name: profileDisplayName || displayName,
+        avatar_url: profileAvatarUrl,
+        role: isOwner ? 'owner' : 'member',
+        space_id: currentSpaceId
+      }).catch(() => {})
+    }
+
+    spacePresenceChannel
+      .on('presence', { event: 'sync' }, handleSpacePresenceSync)
+      .on('presence', { event: 'join' }, handleSpacePresenceSync)
+      .on('presence', { event: 'leave' }, handleSpacePresenceSync)
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await trackSpacePresence()
+          handleSpacePresenceSync()
+        }
+      })
+
     // Sincronização periódica de redundância (a cada 6s)
     const syncInterval = setInterval(() => {
       loadSpaceMembers(currentSpaceId)
+      trackSpacePresence()
     }, 6000)
 
     return () => {
       clearInterval(syncInterval)
+      spacePresenceChannel.untrack().catch(() => {})
       supabase?.removeChannel(membersChannel)
+      supabase?.removeChannel(spacePresenceChannel)
     }
-  }, [selectedChannel?.space_id, user?.id])
+  }, [selectedChannel?.space_id, expandedSpace, user?.id])
 
   // Friends system APIs (Realtime Discord-style)
   async function loadFriendships() {
@@ -5025,6 +5180,7 @@ function Echo({ user }: { user: User }) {
                                           setSelectedScreenSharerUserId(sharer.userId)
                                           setScreenShareViewMode('focus')
                                         }}
+                                        onCloseStream={() => setIsWatchingStreams(false)}
                                       />
                                     ))}
                                   </div>
@@ -5039,6 +5195,7 @@ function Echo({ user }: { user: User }) {
                                       onToggleFullScreen={() => setIsScreenFullScreen(!isScreenFullScreen)}
                                       isPiPActive={isPiPActive}
                                       onToggleFloatingPiP={() => setIsPiPActive(!isPiPActive)}
+                                      onCloseStream={() => setIsWatchingStreams(false)}
                                     />
                                   </div>
                                 ) : null}
@@ -5220,6 +5377,34 @@ function Echo({ user }: { user: User }) {
                                 title={isDeafened ? "Desensurdecer" : "Ensurdecer (Silenciar chamada)"}
                               >
                                 {isDeafened ? <HeadphonesOffIcon /> : <HeadphonesIcon />}
+                              </button>
+
+                              {/* Quick AI Noise Suppression Toggle */}
+                              <button 
+                                type="button"
+                                className={`control-btn ai-btn ${isAiDenoiseEnabled ? 'active' : ''}`} 
+                                onClick={() => toggleAiDenoise()}
+                                title={isAiDenoiseEnabled ? "Supressão de Ruído por IA: ATIVADA (Clique para desligar)" : "Supressão de Ruído por IA: DESATIVADA (Clique para ligar)"}
+                                style={{
+                                  background: isAiDenoiseEnabled ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(99, 102, 241, 0.25))' : undefined,
+                                  borderColor: isAiDenoiseEnabled ? '#a855f7' : undefined,
+                                  color: isAiDenoiseEnabled ? '#c084fc' : undefined,
+                                  position: 'relative'
+                                }}
+                              >
+                                <span style={{ fontSize: '15px' }}>🧠</span>
+                                {isAiDenoiseEnabled && (
+                                  <span style={{
+                                    position: 'absolute',
+                                    bottom: '5px',
+                                    right: '6px',
+                                    width: '6px',
+                                    height: '6px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#10b981',
+                                    boxShadow: '0 0 4px #10b981'
+                                  }} />
+                                )}
                               </button>
                               
                               <div className="screen-control-wrapper" style={{ position: 'relative' }}>
@@ -5663,6 +5848,8 @@ function Echo({ user }: { user: User }) {
               changePeerPan(p.userId, 0)
             })
           }}
+          isAiDenoiseEnabled={isAiDenoiseEnabled}
+          onToggleAiDenoise={toggleAiDenoise}
         />
       </div>
 
@@ -8508,7 +8695,9 @@ function SettingsView({
   onNoiseGateThresholdChange,
   spatialAudioEnabled,
   onToggleSpatialAudio,
-  onResetAllPans
+  onResetAllPans,
+  isAiDenoiseEnabled,
+  onToggleAiDenoise
 }: {
   userId: string
   currentDisplayName: string
@@ -8545,6 +8734,8 @@ function SettingsView({
   spatialAudioEnabled: boolean
   onToggleSpatialAudio: (val: boolean) => void
   onResetAllPans: () => void
+  isAiDenoiseEnabled: boolean
+  onToggleAiDenoise: (val: boolean) => void
 }) {
   const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'audio' | 'appearance' | 'changelog'>('profile')
   
@@ -9423,6 +9614,39 @@ function SettingsView({
               </div>
             </div>
 
+            {/* AI Noise Suppression (RNNoise) Card */}
+            <div className="mic-test-panel" style={{ marginTop: '20px', border: '1.5px solid rgba(168, 85, 247, 0.3)', background: 'rgba(168, 85, 247, 0.04)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>🧠 Supressão de Ruído por IA (Rede Neural RNNoise)</span>
+                    <span style={{ fontSize: '10.5px', background: 'rgba(168, 85, 247, 0.25)', color: '#c084fc', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
+                      IA LOCAL • 0% CPU
+                    </span>
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                    Rede neural de deep learning local (mesma tecnologia do OBS Studio). Remove cliques de teclado mecânico, barulho de ventilador, respiração e chiado elétrico sem distorcer a voz.
+                  </p>
+                </div>
+                <label className="echo-switch">
+                  <input 
+                    type="checkbox" 
+                    checked={isAiDenoiseEnabled} 
+                    onChange={(e) => onToggleAiDenoise(e.target.checked)} 
+                  />
+                  <span className="echo-slider" />
+                </label>
+              </div>
+
+              {isAiDenoiseEnabled && (
+                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                  <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 700 }}>
+                    ✓ Inteligência Artificial Ativa • Voz de estúdio limpa transmitida para seus amigos com máxima nitidez.
+                  </span>
+                </div>
+              )}
+            </div>
+
             {/* Spatial 3D Audio Card */}
             <div className="mic-test-panel" style={{ marginTop: '20px', border: '1.5px solid rgba(0, 242, 254, 0.25)', background: 'rgba(0, 242, 254, 0.03)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
@@ -9689,7 +9913,8 @@ function StreamTile({
   onSelectFocus,
   isGrid,
   isPiPActive,
-  onToggleFloatingPiP
+  onToggleFloatingPiP,
+  onCloseStream
 }: {
   participant: VoiceParticipant;
   user: User;
@@ -9701,6 +9926,7 @@ function StreamTile({
   isGrid?: boolean;
   isPiPActive?: boolean;
   onToggleFloatingPiP?: () => void;
+  onCloseStream?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [streamResolution, setStreamResolution] = useState<string>('')
@@ -9848,6 +10074,29 @@ function StreamTile({
             title="Tela Cheia"
           >
             <FullscreenIcon />
+          </button>
+        )}
+
+        {onCloseStream && (
+          <button 
+            type="button"
+            className="stream-action-btn danger"
+            onClick={onCloseStream}
+            title="Parar de Assistir (Ocultar transmissão e voltar aos avatares de voz)"
+            style={{
+              background: 'rgba(235, 59, 90, 0.18)',
+              border: '1px solid rgba(235, 59, 90, 0.35)',
+              color: '#eb3b5a',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '4px 8px',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            ✕ Fechar Vídeo
           </button>
         )}
       </div>

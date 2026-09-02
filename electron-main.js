@@ -3,14 +3,42 @@ import pkg from 'electron-updater'
 const { autoUpdater } = pkg
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import fs from 'node:fs'
 import { spawn, execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import net from 'node:net'
+import { AccessToken } from 'livekit-server-sdk'
 
 const execFileAsync = promisify(execFile)
 
 const isDevelopment = !app.isPackaged
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// LiveKit Local Server Process Management
+let livekitProcess = null
+
+function ensureLocalLivekitServer() {
+  const binaryPath = path.join(__dirname, 'tools', 'livekit', 'livekit-server.exe')
+  if (fs.existsSync(binaryPath)) {
+    const tester = net.createConnection({ port: 7880, host: '127.0.0.1' }, () => {
+      tester.destroy()
+      console.log('[LiveKit] Local server is already running on port 7880.')
+    })
+    tester.on('error', () => {
+      console.log('[LiveKit] Starting local livekit-server.exe --dev...')
+      try {
+        livekitProcess = spawn(binaryPath, ['--dev'], {
+          windowsHide: true,
+          stdio: ['ignore', 'pipe', 'pipe']
+        })
+        livekitProcess.on('error', (err) => console.warn('[LiveKit] Failed to spawn livekit-server:', err))
+        livekitProcess.on('exit', (code) => console.log(`[LiveKit] Server exited with code ${code}`))
+      } catch (err) {
+        console.warn('[LiveKit] Error launching livekit-server:', err)
+      }
+    })
+  }
+}
 
 // Rich Presence: Popular Games List
 const POPULAR_GAMES = [
@@ -396,6 +424,34 @@ function createWindow() {
     return { success: false }
   })
 
+  // LiveKit SFU Connection & Token Generation Handler
+  ipcMain.handle('get-livekit-connection', async (_event, params = {}) => {
+    try {
+      const { room, identity, name, cloudUrl, cloudApiKey, cloudApiSecret } = params
+      const livekitUrl = cloudUrl || process.env.LIVEKIT_URL || 'wss://echo-v87jtd7c.livekit.cloud'
+      const apiKey = cloudApiKey || process.env.LIVEKIT_API_KEY || 'APLi5XDp34K5gP3'
+      const apiSecret = cloudApiSecret || process.env.LIVEKIT_API_SECRET || 'LTl6XQ3ozsSupX8Ydva6erDmcmIVnbi7BFS6H7GPQDQ'
+
+      const at = new AccessToken(apiKey, apiSecret, {
+        identity: identity || 'anonymous',
+        name: name || 'Membro',
+      })
+      at.addGrant({
+        roomJoin: true,
+        room: room || 'general',
+        canPublish: true,
+        canSubscribe: true,
+        canPublishData: true,
+      })
+
+      const token = await at.toJwt()
+      return { success: true, url: livekitUrl, token }
+    } catch (err) {
+      console.error('[LiveKit] Failed to generate token:', err)
+      return { success: false, error: err.message }
+    }
+  })
+
   // Handler para instalar atualização quando o usuário decidir
   ipcMain.on('install-update', () => {
     autoUpdater.quitAndInstall(false, true)
@@ -445,10 +501,18 @@ function createWindow() {
   if (isDevelopment) mainWindow.loadURL('http://localhost:5173')
   else mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'))
 }
-app.whenReady().then(() => { createWindow(); app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() }) })
+app.whenReady().then(() => {
+  ensureLocalLivekitServer()
+  createWindow()
+  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
+})
 app.on('will-quit', () => {
   if (gameScanInterval) clearInterval(gameScanInterval)
   globalShortcut.unregisterAll()
   stopAudioCapture()
+  if (livekitProcess) {
+    try { livekitProcess.kill() } catch (e) {}
+    livekitProcess = null
+  }
 })
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })

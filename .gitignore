@@ -34,3 +34,6 @@ release-store/
 src/native/**/obj/
 src/native/**/bin/*
 !src/native/**/bin/AudioCaptureHelper.exe
+
+# Local Tools
+tools/

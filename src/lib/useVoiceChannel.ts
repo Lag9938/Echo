@@ -1,7 +1,22 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { supabase } from './supabase'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound, playDeafenSound, playUndeafenSound, playScreenStartSound, playScreenStopSound, playSoundboardEffect } from './soundEffects'
+import {
+  Room,
+  RoomEvent,
+  Track,
+  LocalAudioTrack,
+  LocalVideoTrack,
+  RemoteTrack,
+  RemoteTrackPublication,
+  RemoteParticipant,
+  Participant,
+  ConnectionQuality
+} from 'livekit-client'
+import { RnnoiseWorkletNode, loadRnnoise } from '@sapphi-red/web-noise-suppressor'
+import rnnoiseWorkletPath from '@sapphi-red/web-noise-suppressor/rnnoiseWorklet.js?url'
+import rnnoiseWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise.wasm?url'
+import rnnoiseSimdWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise_simd.wasm?url'
 
 export type VoiceParticipant = {
   userId: string
@@ -13,82 +28,36 @@ export type VoiceParticipant = {
   isDeafened?: boolean
 }
 
-const ICE_SERVERS: RTCConfiguration = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-  ],
-}
-
-// Threshold for speaking detection (0-255)
-const SPEAKING_THRESHOLD = 25
-const SPEAKING_CHECK_INTERVAL = 150
-
-function optimizeSDP(sdp: string): string {
-  // O SDP é composto por seções de mídia que começam com "m="
-  const sections = sdp.split('\r\nm=');
-  let isFirstAudio = true;
-  
-  for (let i = 1; i < sections.length; i++) {
-    let section = sections[i];
-    if (section.startsWith('audio')) {
-      // A primeira seção de áudio encontrada é sempre a do microfone.
-      // Qualquer seção subsequente é a da transmissão de tela (screenshare).
-      if (isFirstAudio) {
-        // Voz (Microfone): Mono, 64kbps, DTX inativo (mantém portas NAT de roteadores abertas em silêncio)
-        section = optimizeAudioSection(section, { stereo: 0, bitrate: 64000, dtx: 0 });
-        isFirstAudio = false;
-      } else {
-        // Transmissão de tela (Jogo): Stereo, 128kbps, DTX inativo
-        section = optimizeAudioSection(section, { stereo: 1, bitrate: 128000, dtx: 0 });
-      }
-      sections[i] = section;
-    } else if (section.startsWith('video')) {
-      // Otimização de vídeo de jogo para WebRTC (60 FPS, Bitrate alto sem pixelização)
-      section = optimizeVideoSection(section);
-      sections[i] = section;
-    }
-  }
-  
-  return sections.join('\r\nm=');
-}
-
-function optimizeAudioSection(section: string, config: { stereo: number; bitrate: number; dtx: number }): string {
-  let lines = section.split('\r\n');
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes('a=rtpmap:') && lines[i].toLowerCase().includes('opus/48000/2')) {
-      const match = lines[i].match(/a=rtpmap:(\d+)\s+opus/i);
-      if (match) {
-        const payloadType = match[1];
-        for (let j = 0; j < lines.length; j++) {
-          if (lines[j].startsWith(`a=fmtp:${payloadType}`)) {
-            lines[j] = `a=fmtp:${payloadType} maxaveragebitrate=${config.bitrate};stereo=${config.stereo};sprop-stereo=${config.stereo};useinbandfec=1;usedtx=${config.dtx};cbr=0;maxplaybackrate=48000;sprop-maxcapturerate=48000;minptime=10`;
-            break;
-          }
-        }
-      }
-    }
-  }
-  return lines.join('\r\n');
-}
-
 export interface StudioMicrophoneDSPNodes {
   source: MediaStreamAudioSourceNode;
   highpass: BiquadFilterNode;
   lowpass: BiquadFilterNode;
   compressor: DynamicsCompressorNode;
   dest: MediaStreamAudioDestinationNode;
+  rnnoiseNode: any | null;
+  audioCtx: AudioContext;
 }
 
-function createStudioMicrophoneDSP(stream: MediaStream): { 
+let rnnoiseWasmBinaryCache: ArrayBuffer | null = null
+
+async function getRnnoiseWasmBinary(): Promise<ArrayBuffer> {
+  if (!rnnoiseWasmBinaryCache) {
+    rnnoiseWasmBinaryCache = await loadRnnoise({
+      url: rnnoiseWasmPath,
+      simdUrl: rnnoiseSimdWasmPath
+    })
+  }
+  return rnnoiseWasmBinaryCache
+}
+
+async function createStudioMicrophoneDSP(stream: MediaStream, enableAi = false): Promise<{ 
   finalStream: MediaStream; 
   audioCtx: AudioContext; 
   nodes: StudioMicrophoneDSPNodes 
-} {
+}> {
   const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
   const audioCtx = new AudioCtxClass({ sampleRate: 48000 });
 
-  // Auto-resume se o contexto de áudio for suspenso pelo navegador ou SO
   audioCtx.onstatechange = () => {
     if (audioCtx.state === 'suspended') {
       audioCtx.resume().catch(() => {});
@@ -97,19 +66,19 @@ function createStudioMicrophoneDSP(stream: MediaStream): {
 
   const source = audioCtx.createMediaStreamSource(stream);
 
-  // 1. Filtro Passa-Alta em 85 Hz (elimina vibrações de mesa, sopro e vento de ventoinhas)
+  // 1. Filtro Passa-Alta em 85 Hz (elimina vibracoes de mesa, sopro e vento de ventoinhas)
   const highpass = audioCtx.createBiquadFilter();
   highpass.type = 'highpass';
   highpass.frequency.value = 85;
   highpass.Q.value = 0.707;
 
-  // 2. Filtro Passa-Baixa em 14 kHz (elimina ruído elétrico de microfones USB e chiados de alta frequência)
+  // 2. Filtro Passa-Baixa em 14 kHz (elimina ruido eletrico de microfones USB e chiados)
   const lowpass = audioCtx.createBiquadFilter();
   lowpass.type = 'lowpass';
   lowpass.frequency.value = 14000;
   lowpass.Q.value = 0.707;
 
-  // 3. Compressor Dinâmico de Estúdio (nivelamento automático de voz para som quente e broadcast)
+  // 3. Compressor Dinamico de Estudio (nivelamento automatico de voz para som broadcast)
   const compressor = audioCtx.createDynamicsCompressor();
   compressor.threshold.value = -24;
   compressor.knee.value = 10;
@@ -120,140 +89,56 @@ function createStudioMicrophoneDSP(stream: MediaStream): {
   const dest = audioCtx.createMediaStreamDestination();
   source.connect(highpass);
   highpass.connect(lowpass);
-  lowpass.connect(compressor);
+
+  let rnnoiseNode: any = null;
+  try {
+    const wasmBinary = await getRnnoiseWasmBinary();
+    await audioCtx.audioWorklet.addModule(rnnoiseWorkletPath);
+    rnnoiseNode = new RnnoiseWorkletNode(audioCtx, {
+      wasmBinary,
+      maxChannels: 1
+    });
+  } catch (err) {
+    console.warn('[RNNoise] Falha ao instanciar no Wasm de IA:', err);
+    rnnoiseNode = null;
+  }
+
+  if (enableAi && rnnoiseNode) {
+    lowpass.connect(rnnoiseNode);
+    rnnoiseNode.connect(compressor);
+  } else {
+    lowpass.connect(compressor);
+  }
+
   compressor.connect(dest);
 
   return { 
     finalStream: dest.stream, 
     audioCtx,
-    nodes: { source, highpass, lowpass, compressor, dest }
+    nodes: { source, highpass, lowpass, compressor, dest, rnnoiseNode, audioCtx }
   };
 }
 
-function createCleanGameAudioDSP(
-  sysStream: MediaStream
-): { finalStream: MediaStream; audioCtx: AudioContext | null } {
+function routeAiDenoise(nodes: StudioMicrophoneDSPNodes, enabled: boolean) {
   try {
-    const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtxClass) {
-      return { finalStream: sysStream, audioCtx: null };
+    nodes.lowpass.disconnect();
+    if (nodes.rnnoiseNode) {
+      try { nodes.rnnoiseNode.disconnect(); } catch (e) {}
     }
-    const audioCtx = new AudioCtxClass({ sampleRate: 48000 });
-    audioCtx.onstatechange = () => {
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume().catch(() => {});
-      }
-    };
-    const sysSource = audioCtx.createMediaStreamSource(sysStream);
 
-    // Sub-rumble filter
-    const highpass = audioCtx.createBiquadFilter();
-    highpass.type = 'highpass';
-    highpass.frequency.value = 40;
-
-    // Compressor dinâmico suave para jogabilidade (sem corte de frequências vocais)
-    const compressor = audioCtx.createDynamicsCompressor();
-    compressor.threshold.value = -12;
-    compressor.knee.value = 6;
-    compressor.ratio.value = 2.5;
-    compressor.attack.value = 0.005;
-    compressor.release.value = 0.1;
-
-    const dest = audioCtx.createMediaStreamDestination();
-    sysSource.connect(highpass);
-    highpass.connect(compressor);
-    compressor.connect(dest);
-
-    return { finalStream: dest.stream, audioCtx };
+    if (enabled && nodes.rnnoiseNode) {
+      nodes.lowpass.connect(nodes.rnnoiseNode);
+      nodes.rnnoiseNode.connect(nodes.compressor);
+      console.log('[RNNoise] Supressao de Ruido por IA ATIVADA');
+    } else {
+      nodes.lowpass.connect(nodes.compressor);
+      console.log('[RNNoise] Supressao de Ruido por IA DESATIVADA');
+    }
   } catch (err) {
-    console.warn('createCleanGameAudioDSP fallback:', err);
-    return { finalStream: sysStream, audioCtx: null };
-  }
-}
-
-function optimizeVideoSection(section: string): string {
-  let lines = section.split('\r\n');
-  let hasBandwidth = false;
-
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith('b=AS:') || lines[i].startsWith('b=TIAS:')) {
-      lines[i] = 'b=AS:8500\r\nb=TIAS:8500000';
-      hasBandwidth = true;
-      break;
-    }
-  }
-
-  if (!hasBandwidth) {
-    lines.splice(1, 0, 'b=AS:8500', 'b=TIAS:8500000');
-  }
-
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes('a=rtpmap:') && (lines[i].toLowerCase().includes('h264/90000') || lines[i].toLowerCase().includes('vp8/90000') || lines[i].toLowerCase().includes('vp9/90000') || lines[i].toLowerCase().includes('av1/90000'))) {
-      const match = lines[i].match(/a=rtpmap:(\d+)\s+/i);
-      if (match) {
-        const pt = match[1];
-        let foundFmtp = false;
-        for (let j = 0; j < lines.length; j++) {
-          if (lines[j].startsWith(`a=fmtp:${pt}`)) {
-            foundFmtp = true;
-            if (!lines[j].includes('x-google-max-bitrate')) {
-              lines[j] += ';x-google-min-bitrate=2500;x-google-max-bitrate=8500;x-google-start-bitrate=5000';
-            }
-            break;
-          }
-        }
-        if (!foundFmtp) {
-          lines.push(`a=fmtp:${pt} x-google-min-bitrate=2500;x-google-max-bitrate=8500;x-google-start-bitrate=5000`);
-        }
-      }
-    }
-  }
-
-  return lines.join('\r\n');
-}
-
-async function applyVideoSenderParameters(sender: RTCRtpSender, width?: number, _height?: number, fps?: number) {
-  try {
-    const parameters = sender.getParameters();
-    if (!parameters.encodings || parameters.encodings.length === 0) {
-      parameters.encodings = [{}];
-    }
-    const targetFps = fps || 60;
-    const isHighQuality = (width && width >= 1920) || targetFps === 60 || width === 0;
-    
-    // Alocação máxima de bitrate para ultra-definição 60 FPS (padrão Discord Nitro)
-    const maxBitrate = isHighQuality ? 8500000 : (targetFps >= 60 ? 5500000 : 3500000);
-    
-    parameters.encodings[0].maxBitrate = maxBitrate;
-    parameters.encodings[0].maxFramerate = targetFps;
-    parameters.encodings[0].scaleResolutionDownBy = 1.0;
-    parameters.degradationPreference = 'maintain-framerate';
-    
-    await sender.setParameters(parameters);
-  } catch (e) {
-    console.warn('Could not apply video sender parameters:', e);
-  }
-}
-
-function preferHardwareVideoCodecs(pc: RTCPeerConnection) {
-  if (typeof RTCRtpReceiver.getCapabilities === 'function') {
-    const capabilities = RTCRtpReceiver.getCapabilities('video');
-    if (capabilities && capabilities.codecs) {
-      const h264Codecs = capabilities.codecs.filter(c => c.mimeType.toLowerCase() === 'video/h264');
-      const otherCodecs = capabilities.codecs.filter(c => c.mimeType.toLowerCase() !== 'video/h264');
-      const sortedCodecs = [...h264Codecs, ...otherCodecs];
-      
-      const transceivers = pc.getTransceivers ? pc.getTransceivers() : [];
-      for (const transceiver of transceivers) {
-        if (transceiver.receiver.track && transceiver.receiver.track.kind === 'video') {
-          if (typeof transceiver.setCodecPreferences === 'function') {
-            try {
-              transceiver.setCodecPreferences(sortedCodecs);
-            } catch (e) {}
-          }
-        }
-      }
-    }
+    console.warn('[RNNoise] Erro ao alternar roteamento:', err);
+    try {
+      nodes.lowpass.connect(nodes.compressor);
+    } catch (e) {}
   }
 }
 
@@ -271,6 +156,12 @@ export function useVoiceChannel() {
   const isPttModeRef = useRef(false)
   const isPttActiveRef = useRef(false)
 
+  // AI Noise Suppression (RNNoise)
+  const [isAiDenoiseEnabled, setIsAiDenoiseEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('echo-ai-denoise-enabled') === 'true'
+  })
+  const isAiDenoiseEnabledRef = useRef(isAiDenoiseEnabled)
+
   // Soundboard
   const [lastSoundboardEvent, setLastSoundboardEvent] = useState<{ soundId: string; userId: string; displayName: string; timestamp: number } | null>(null)
 
@@ -284,800 +175,462 @@ export function useVoiceChannel() {
   const isMutedRef = useRef(false)
   const isDeafenedRef = useRef(false)
 
-  const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map())
+  // LiveKit Room instance & tracks
+  const roomRef = useRef<Room | null>(null)
+  const localAudioTrackRef = useRef<LocalAudioTrack | null>(null)
+  const localScreenVideoTrackRef = useRef<LocalVideoTrack | null>(null)
+  const localScreenAudioTrackRef = useRef<LocalAudioTrack | null>(null)
+  const activeSpeakersRef = useRef<Set<string>>(new Set())
+
+  // Audio streams & DSP
   const localStreamRef = useRef<MediaStream | null>(null)
   const localRawStreamRef = useRef<MediaStream | null>(null)
   const localDspCtxRef = useRef<AudioContext | null>(null)
   const localDspNodesRef = useRef<StudioMicrophoneDSPNodes | null>(null)
   const localScreenStreamRef = useRef<MediaStream | null>(null)
-  const screenSendersRef = useRef<Map<string, RTCRtpSender>>(new Map()) // Tracks video senders per peer
-  const screenAudioSendersRef = useRef<Map<string, RTCRtpSender>>(new Map()) // Tracks audio senders per peer
+
+  // Supabase presence channel
   const channelRef = useRef<RealtimeChannel | null>(null)
   const myInfoRef = useRef<{ userId: string; displayName: string; avatarUrl?: string } | null>(null)
+  
+  // Audio playback elements & volume/pan
   const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map())
-  
-  // Analysers (armazenam o nó source para evitar que o Garbage Collector descarte a captura de áudio)
-  const analysersRef = useRef<Map<string, { analyser: AnalyserNode; ctx: AudioContext; source?: MediaStreamAudioSourceNode }>>(new Map())
-  const localAnalyserRef = useRef<{ analyser: AnalyserNode; ctx: AudioContext; source?: MediaStreamAudioSourceNode } | null>(null)
-  
-  // Selected devices configuration
+  const peerVolumesRef = useRef<Map<string, number>>(new Map())
+  const peerScreenVolumesRef = useRef<Map<string, number>>(new Map())
+  const peerPansRef = useRef<Map<string, number>>(new Map())
+  const peerPannersRef = useRef<Map<string, { panner: StereoPannerNode; ctx: AudioContext; source: MediaStreamAudioSourceNode; dest: MediaStreamAudioDestinationNode }>>(new Map())
+  const isSpatialAudioEnabledRef = useRef(true)
+
   const selectedInputIdRef = useRef<string>('default')
   const selectedOutputIdRef = useRef<string>('default')
-
-  const speakingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map())
-  const peerVolumesRef = useRef<Map<string, number>>(new Map()) // Tracks local volume per peer
-  const peerScreenVolumesRef = useRef<Map<string, number>>(new Map()) // Tracks local screenshare volume per peer
-  const peerPansRef = useRef<Map<string, number>>(new Map()) // Tracks stereo panning per peer (-1 left, 0 center, +1 right)
-  const peerPannersRef = useRef<Map<string, { panner: StereoPannerNode; ctx: AudioContext; source?: MediaStreamAudioSourceNode; dest?: MediaStreamAudioDestinationNode }>>(new Map())
-  const initiateConnectionRef = useRef<((remoteUserId: string, isIceRestart?: boolean) => Promise<void>) | null>(null)
-  const peerVoiceTrackIdsRef = useRef<Map<string, string>>(new Map()) // Maps remoteUserId -> original microphone voice trackId
-  const nativeAudioCleanupRef = useRef<(() => void) | null>(null)
-  const nativeScriptNodeRef = useRef<ScriptProcessorNode | null>(null)
-  const nativeProcCtxRef = useRef<AudioContext | null>(null)
-  const isSpatialAudioEnabledRef = useRef(false)
-  const participantsMapRef = useRef<Map<string, { displayName: string; avatarUrl?: string; screenStream?: MediaStream; isMuted?: boolean; isDeafened?: boolean }>>(new Map())
   const activeChannelIdRef = useRef<string | null>(null)
   const activeSpaceIdRef = useRef<string | null>(null)
-  const spaceVoiceChannelRef = useRef<RealtimeChannel | null>(null)
+  const nativeAudioCleanupRef = useRef<(() => void) | null>(null)
 
-  // Update participants list from the map
+  // Sync all participants into React state
   const syncParticipants = useCallback(() => {
+    const room = roomRef.current
     const list: VoiceParticipant[] = []
-    // Add self
+
+    // 1. Local Participant
     if (myInfoRef.current) {
+      const isLocalSpeaking = activeSpeakersRef.current.has(myInfoRef.current.userId)
       list.push({
         userId: myInfoRef.current.userId,
         displayName: myInfoRef.current.displayName,
         avatarUrl: myInfoRef.current.avatarUrl,
-        isSpeaking: false,
-        screenStream: localScreenStreamRef.current || undefined,
-        isMuted: isDeafenedRef.current || isMutedRef.current,
-        isDeafened: isDeafenedRef.current
+        isSpeaking: isLocalSpeaking,
+        isMuted: isMutedRef.current,
+        isDeafened: isDeafenedRef.current,
+        screenStream: localScreenStreamRef.current || undefined
       })
     }
-    // Add others
-    participantsMapRef.current.forEach((info, id) => {
-      if (id !== myInfoRef.current?.userId) {
-        const isLive = info.screenStream && info.screenStream.getVideoTracks().some(t => t.readyState === 'live')
+
+    // 2. Remote Participants from LiveKit SFU
+    if (room) {
+      room.remoteParticipants.forEach((rp) => {
+        let screenStream: MediaStream | undefined = undefined
+        const screenPub = rp.getTrackPublication(Track.Source.ScreenShare)
+        if (screenPub && screenPub.track && screenPub.track.mediaStreamTrack) {
+          screenStream = new MediaStream([screenPub.track.mediaStreamTrack])
+        }
+
+        const isMuted = !rp.isMicrophoneEnabled
+        const isSpeaking = activeSpeakersRef.current.has(rp.identity)
+
+        let avatarUrl: string | undefined = undefined
+        try {
+          if (rp.metadata) {
+            const meta = JSON.parse(rp.metadata)
+            avatarUrl = meta.avatarUrl
+          }
+        } catch (e) {}
+
         list.push({
-          userId: id,
-          displayName: info.displayName,
-          avatarUrl: info.avatarUrl,
-          isSpeaking: false,
-          screenStream: isLive ? info.screenStream : undefined,
-          isMuted: info.isMuted,
-          isDeafened: info.isDeafened
+          userId: rp.identity,
+          displayName: rp.name || 'Membro',
+          avatarUrl: avatarUrl,
+          isSpeaking,
+          isMuted,
+          isDeafened: false,
+          screenStream
         })
-      }
-    })
+      })
+    }
+
     setParticipants(list)
   }, [])
 
-  // Create a peer connection for a remote user
-  const createPeerConnection = useCallback((remoteUserId: string) => {
-    if (!localStreamRef.current || !supabase) return undefined
-
-    const pc = new RTCPeerConnection(ICE_SERVERS)
-    preferHardwareVideoCodecs(pc)
-
-    // Add local audio tracks
-    localStreamRef.current.getAudioTracks().forEach(track => {
-      pc.addTrack(track, localStreamRef.current!)
-    })
-
-    // If we are currently sharing screen, add the video and audio tracks to this new peer connection too!
-    if (localScreenStreamRef.current) {
-      const videoTrack = localScreenStreamRef.current.getVideoTracks()[0]
-      if (videoTrack) {
-        const sender = pc.addTrack(videoTrack, localScreenStreamRef.current)
-        screenSendersRef.current.set(remoteUserId, sender)
-        applyVideoSenderParameters(sender)
-      }
-      const audioTrack = localScreenStreamRef.current.getAudioTracks()[0]
-      if (audioTrack) {
-        const sender = pc.addTrack(audioTrack, localScreenStreamRef.current)
-        screenAudioSendersRef.current.set(remoteUserId, sender)
-      }
-    }
-
-    // Handle remote tracks (audio or video)
-    pc.ontrack = (event) => {
-      const track = event.track
-      const remoteStream = event.streams[0] || new MediaStream([track])
-
-      if (track.kind === 'audio') {
-        // Separação determinística de áudio: voz (microfone) vs transmissão de tela (jogo)
-        let isScreen = false
-        const knownVoiceTrackId = peerVoiceTrackIdsRef.current.get(remoteUserId)
-
-        if (knownVoiceTrackId) {
-          // Se já conhecemos a faixa de voz deste usuário, qualquer outra faixa de áudio recebida é tela!
-          isScreen = track.id !== knownVoiceTrackId
-        } else {
-          // Primeira faixa de áudio recebida do par:
-          if (remoteStream.getVideoTracks().length > 0) {
-            isScreen = true
-          } else {
-            peerVoiceTrackIdsRef.current.set(remoteUserId, track.id)
-            isScreen = false
-          }
-        }
-
-        track.onended = () => {
-          if (peerVoiceTrackIdsRef.current.get(remoteUserId) === track.id) {
-            peerVoiceTrackIdsRef.current.delete(remoteUserId)
-          }
-        }
-
-        const key = isScreen ? `${remoteUserId}-screen` : `${remoteUserId}-voice`
-        
-        let audio = audioElementsRef.current.get(key)
-        if (!audio) {
-          audio = new Audio()
-          audio.autoplay = true
-          const savedVol = isScreen
-            ? (peerScreenVolumesRef.current.get(remoteUserId) !== undefined ? peerScreenVolumesRef.current.get(remoteUserId)! : 1.0)
-            : (peerVolumesRef.current.get(remoteUserId) !== undefined ? peerVolumesRef.current.get(remoteUserId)! : 1.0)
-          audio.volume = Math.max(0, Math.min(1, savedVol))
-          audio.muted = isDeafenedRef.current
-          audioElementsRef.current.set(key, audio)
-        }
-        audio.muted = isDeafenedRef.current
-
-        if (!isScreen) {
-          try {
-            // Clean up previous panner if any
-            const existingPanner = peerPannersRef.current.get(remoteUserId)
-            if (existingPanner) {
-              existingPanner.ctx.close().catch(() => {})
-              peerPannersRef.current.delete(remoteUserId)
-            }
-
-            const spatialCtx = new AudioContext()
-            spatialCtx.onstatechange = () => {
-              if (spatialCtx.state === 'suspended') {
-                spatialCtx.resume().catch(() => {})
-              }
-            }
-            const source = spatialCtx.createMediaStreamSource(remoteStream)
-            const panner = spatialCtx.createStereoPanner()
-            const dest = spatialCtx.createMediaStreamDestination()
-            
-            const savedPan = peerPansRef.current.get(remoteUserId) || 0
-            panner.pan.value = isSpatialAudioEnabledRef.current ? savedPan : 0
-            
-            source.connect(panner)
-            panner.connect(dest)
-            
-            peerPannersRef.current.set(remoteUserId, { panner, ctx: spatialCtx, source, dest })
-            audio.srcObject = dest.stream
-          } catch (e) {
-            audio.srcObject = remoteStream
-          }
-        } else {
-          audio.srcObject = remoteStream
-        }
-
-        audio.play().catch(e => {
-          console.warn('[WebRTC] Audio autoplay initial play:', e)
-        })
-
-        // Set output device if configured
-        if (typeof audio.setSinkId === 'function' && selectedOutputIdRef.current !== 'default') {
-          audio.setSinkId(selectedOutputIdRef.current).catch(err => {
-            console.error('Error setting sinkId during peer connection setup:', err)
-          })
-        }
-
-        // Set up speaking detection
-        try {
-          const ctx = new AudioContext()
-          ctx.onstatechange = () => {
-            if (ctx.state === 'suspended') {
-              ctx.resume().catch(() => {})
-            }
-          }
-          const source = ctx.createMediaStreamSource(remoteStream)
-          const analyser = ctx.createAnalyser()
-          analyser.fftSize = 512
-          source.connect(analyser)
-          analysersRef.current.set(remoteUserId, { analyser, ctx, source })
-        } catch {
-          // AudioContext may fail in some environments
-        }
-      } else if (track.kind === 'video') {
-        // This is a screen share stream from the remote user!
-        const current = participantsMapRef.current.get(remoteUserId) || { displayName: 'Membro' }
-        participantsMapRef.current.set(remoteUserId, {
-          ...current,
-          screenStream: remoteStream
-        })
-        syncParticipants()
-
-        track.onunmute = () => {
-          syncParticipants()
-        }
-
-        // Handle track stop cleanly
-        const handleStop = () => {
-          const info = participantsMapRef.current.get(remoteUserId)
-          if (info && info.screenStream) {
-            delete info.screenStream
-            syncParticipants()
-          }
-        }
-        track.onended = handleStop
-      }
-    }
-
-    // Handle ICE candidates
-    pc.onicecandidate = (event) => {
-      if (event.candidate && channelRef.current) {
-        channelRef.current.send({
-          type: 'broadcast',
-          event: 'ice-candidate',
-          payload: {
-            from: myInfoRef.current!.userId,
-            to: remoteUserId,
-            candidate: event.candidate.toJSON(),
-          },
-        })
-      }
-    }
-
-    pc.onconnectionstatechange = () => {
-      console.log(`[WebRTC] Peer ${remoteUserId} connection state: ${pc.connectionState}`)
-      if (pc.connectionState === 'disconnected') {
-        console.warn(`[WebRTC] Peer ${remoteUserId} disconnected. Scheduling ICE restart in 2.5s if not recovered...`)
-        setTimeout(() => {
-          if (pc.connectionState === 'disconnected') {
-            const myId = myInfoRef.current?.userId || ''
-            if (myId && myId > remoteUserId) {
-              console.log(`[WebRTC] Initiating ICE restart for peer ${remoteUserId}`)
-              initiateConnectionRef.current?.(remoteUserId, true)
-            }
-          }
-        }, 2500)
-      } else if (pc.connectionState === 'failed') {
-        setTimeout(() => {
-          if (pc.connectionState === 'failed') {
-            console.warn(`[WebRTC] Peer ${remoteUserId} connection permanently failed, cleaning up and attempting reconnect.`)
-            cleanupPeer(remoteUserId)
-            const myId = myInfoRef.current?.userId || ''
-            if (myId && myId > remoteUserId) {
-              setTimeout(() => {
-                initiateConnectionRef.current?.(remoteUserId)
-              }, 1000)
-            }
-          }
-        }, 3000)
-      }
-    }
-
-    peersRef.current.set(remoteUserId, pc)
-    return pc
-  }, [syncParticipants])
-
-  // Clean up a single peer
-  const cleanupPeer = useCallback((peerId: string) => {
-    const pc = peersRef.current.get(peerId)
-    if (pc) { pc.close(); peersRef.current.delete(peerId) }
-
-    audioElementsRef.current.forEach((audio, key) => {
-      if (key === peerId || key.startsWith(`${peerId}-`)) {
-        audio.srcObject = null
-        audioElementsRef.current.delete(key)
-      }
-    })
-
-    const a = analysersRef.current.get(peerId)
-    if (a) { a.ctx.close().catch(() => {}); analysersRef.current.delete(peerId) }
-
-    const pannerEntry = peerPannersRef.current.get(peerId)
-    if (pannerEntry) {
-      pannerEntry.ctx.close().catch(() => {})
-      peerPannersRef.current.delete(peerId)
-    }
-
-    screenSendersRef.current.delete(peerId)
-    peerVoiceTrackIdsRef.current.delete(peerId)
-    pendingCandidatesRef.current.delete(peerId)
-    participantsMapRef.current.delete(peerId)
-    syncParticipants()
-  }, [syncParticipants])
-
-  // Handle incoming signaling messages
-  const handleSignal = useCallback(async (event: string, payload: Record<string, unknown>) => {
-    const from = payload.from as string
-    const to = payload.to as string
-
-    // Ignore messages not meant for us
-    if (to !== myInfoRef.current?.userId) return
-
-    if (event === 'sdp-offer') {
-      const sdp = payload.sdp as RTCSessionDescriptionInit
-      let pc = peersRef.current.get(from)
-      if (!pc) pc = createPeerConnection(from)
-      if (!pc) return
-
-      try {
-        const isOfferCollision = pc.signalingState !== 'stable'
-        if (isOfferCollision) {
-          if (myInfoRef.current && myInfoRef.current.userId > from) {
-            await pc.setLocalDescription({ type: 'rollback' }).catch(() => {})
-          } else {
-            return
-          }
-        }
-
-        await pc.setRemoteDescription(new RTCSessionDescription(sdp))
-
-        // Apply any pending ICE candidates
-        const pending = pendingCandidatesRef.current.get(from) ?? []
-        for (const c of pending) {
-          await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})
-        }
-        pendingCandidatesRef.current.delete(from)
-
-        let answer = await pc.createAnswer()
-        const optimizedSdp = optimizeSDP(answer.sdp || '')
-        const finalAnswer = { type: answer.type, sdp: optimizedSdp }
-        await pc.setLocalDescription(finalAnswer)
-
-        channelRef.current?.send({
-          type: 'broadcast',
-          event: 'sdp-answer',
-          payload: { from: myInfoRef.current!.userId, to: from, sdp: finalAnswer },
-        })
-      } catch (err) {
-        console.warn('[WebRTC] sdp-offer negotiation error:', err)
-      }
-    }
-
-    if (event === 'sdp-answer') {
-      const sdp = payload.sdp as RTCSessionDescriptionInit
-      const pc = peersRef.current.get(from)
-      if (!pc) return
-
-      try {
-        if (pc.signalingState === 'have-local-offer') {
-          await pc.setRemoteDescription(new RTCSessionDescription(sdp))
-
-          // Apply any pending ICE candidates
-          const pending = pendingCandidatesRef.current.get(from) ?? []
-          for (const c of pending) {
-            await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})
-          }
-          pendingCandidatesRef.current.delete(from)
-        }
-      } catch (err) {
-        console.warn('[WebRTC] sdp-answer negotiation error:', err)
-      }
-    }
-
-    if (event === 'ice-candidate') {
-      const candidate = payload.candidate as RTCIceCandidateInit
-      const pc = peersRef.current.get(from)
-      if (pc && pc.remoteDescription && pc.remoteDescription.type) {
-        await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(err => {
-          console.warn('[WebRTC] Add ICE candidate failed:', err)
-        })
-      } else {
-        // Queue the candidate for later
-        const pending = pendingCandidatesRef.current.get(from) ?? []
-        pending.push(candidate)
-        pendingCandidatesRef.current.set(from, pending)
-      }
-    }
-  }, [createPeerConnection, syncParticipants])
-
-  const initiateConnection = useCallback(async (remoteUserId: string, isIceRestart = false) => {
-    let pc = peersRef.current.get(remoteUserId)
-    if (!pc) pc = createPeerConnection(remoteUserId)
-    if (!pc) return
-
+  // Toggle AI Noise Suppression
+  const toggleAiDenoise = useCallback(async () => {
+    const nextVal = !isAiDenoiseEnabledRef.current
+    isAiDenoiseEnabledRef.current = nextVal
+    setIsAiDenoiseEnabled(nextVal)
     try {
-      if (pc.signalingState !== 'stable' && !isIceRestart) return
+      localStorage.setItem('echo-ai-denoise-enabled', nextVal ? 'true' : 'false')
+    } catch (e) {}
 
-      let offer = await pc.createOffer(isIceRestart ? { iceRestart: true } : undefined)
-      const optimizedSdp = optimizeSDP(offer.sdp || '')
-      const finalOffer = { type: offer.type, sdp: optimizedSdp }
-      await pc.setLocalDescription(finalOffer)
-
-      channelRef.current?.send({
-        type: 'broadcast',
-        event: 'sdp-offer',
-        payload: { from: myInfoRef.current!.userId, to: remoteUserId, sdp: finalOffer },
-      })
-    } catch (err) {
-      console.warn('[WebRTC] initiateConnection error for peer', remoteUserId, err)
-    }
-  }, [createPeerConnection])
-
-  initiateConnectionRef.current = initiateConnection
-
-  // Start speaking detection interval
-  const startSpeakingDetection = useCallback(() => {
-    if (speakingIntervalRef.current) return
-
-    speakingIntervalRef.current = setInterval(() => {
-      const updates: Record<string, boolean> = {}
-
-      // Check local stream speaking (Glow own name)
-      if (localAnalyserRef.current && myInfoRef.current) {
-        const data = new Uint8Array(localAnalyserRef.current.analyser.frequencyBinCount)
-        localAnalyserRef.current.analyser.getByteFrequencyData(data)
-        const avg = data.reduce((sum, v) => sum + v, 0) / data.length
-        
-        // Muted local microphone shouldn't trigger speaking
-        const isLocalMuted = localStreamRef.current?.getAudioTracks()[0]?.enabled === false
-        const isLocalSpeaking = !isLocalMuted && avg > SPEAKING_THRESHOLD
-        updates[myInfoRef.current.userId] = isLocalSpeaking
-
-        // Ensure screen audio volume stays at the user's configured volume
-        for (const [key, audioEl] of audioElementsRef.current.entries()) {
-          if (key.endsWith('-screen')) {
-            const peerId = key.replace('-screen', '')
-            const savedVol = peerScreenVolumesRef.current.get(peerId) !== undefined ? peerScreenVolumesRef.current.get(peerId)! : 1.0
-            audioEl.volume = Math.max(0, Math.min(1, savedVol))
-          }
+    if (localDspNodesRef.current) {
+      if (nextVal && !localDspNodesRef.current.rnnoiseNode && localDspNodesRef.current.audioCtx) {
+        try {
+          const wasmBinary = await getRnnoiseWasmBinary()
+          await localDspNodesRef.current.audioCtx.audioWorklet.addModule(rnnoiseWorkletPath)
+          localDspNodesRef.current.rnnoiseNode = new RnnoiseWorkletNode(localDspNodesRef.current.audioCtx, {
+            wasmBinary,
+            maxChannels: 1
+          })
+        } catch (err) {
+          console.warn('[RNNoise] Falha ao carregar worklet de IA:', err)
         }
       }
-
-      // Check remote streams
-      analysersRef.current.forEach((a, peerId) => {
-        const data = new Uint8Array(a.analyser.frequencyBinCount)
-        a.analyser.getByteFrequencyData(data)
-        const avg = data.reduce((sum, v) => sum + v, 0) / data.length
-        updates[peerId] = avg > SPEAKING_THRESHOLD
-      })
-
-      setParticipants(prev =>
-        prev.map(p => ({
-          ...p,
-          isSpeaking: updates[p.userId] ?? p.isSpeaking,
-        }))
-      )
-    }, SPEAKING_CHECK_INTERVAL)
+      routeAiDenoise(localDspNodesRef.current, nextVal)
+    }
   }, [])
 
-  // Join a voice channel (with custom device selection inputs and optional spaceId)
-  const joinVoice = useCallback(async (channelId: string, userId: string, displayName: string, avatarUrl?: string, inputId?: string, outputId?: string, noiseSuppression = true, echoCancellation = true, spaceId?: string) => {
-    if (!supabase || isConnected) return
+  // Join a voice channel via LiveKit SFU
+  const joinVoice = useCallback(async (
+    channelId: string, 
+    userId: string, 
+    displayName: string, 
+    avatarUrl?: string, 
+    inputId?: string, 
+    outputId?: string, 
+    noiseSuppression = true, 
+    echoCancellation = true, 
+    spaceId?: string
+  ) => {
+    if (isConnected) return
 
     try {
       if (inputId) selectedInputIdRef.current = inputId
       if (outputId) selectedOutputIdRef.current = outputId
-
       activeChannelIdRef.current = channelId
       activeSpaceIdRef.current = spaceId || null
 
-      // Get microphone access with requested constraints
+      // Obter microfone do usuario com filtros de estudio
       const constraints = {
         audio: {
           deviceId: inputId && inputId !== 'default' ? { exact: inputId } : undefined,
-          echoCancellation: echoCancellation,
-          noiseSuppression: noiseSuppression,
+          echoCancellation,
+          noiseSuppression,
           autoGainControl: true,
-          channelCount: 1,
-          googEchoCancellation: echoCancellation,
-          googNoiseSuppression: noiseSuppression,
-          googAutoGainControl: true,
-          googHighpassFilter: true,
-          googNoiseReduction: noiseSuppression
+          channelCount: 1
         } as any,
         video: false
       }
-      
-      const stream = await navigator.mediaDevices.getUserMedia(constraints)
-      localRawStreamRef.current = stream
+
+      const rawStream = await navigator.mediaDevices.getUserMedia(constraints)
+      localRawStreamRef.current = rawStream
       myInfoRef.current = { userId, displayName, avatarUrl }
 
-      let finalStream = stream
+      let finalStream = rawStream
       try {
-        const { finalStream: dspStream, audioCtx, nodes } = createStudioMicrophoneDSP(stream)
+        const { finalStream: dspStream, audioCtx, nodes } = await createStudioMicrophoneDSP(rawStream, isAiDenoiseEnabledRef.current)
         localDspCtxRef.current = audioCtx
         localDspNodesRef.current = nodes
         finalStream = dspStream
       } catch (dspErr) {
         console.error('Failed to initialize local microphone DSP pipeline:', dspErr)
       }
-
       localStreamRef.current = finalStream
 
-      // Setup local audio analyser for speaking detection (connect to final filtered stream)
-      try {
-        const ctx = new AudioContext()
-        ctx.onstatechange = () => {
-          if (ctx.state === 'suspended') {
-            ctx.resume().catch(() => {})
-          }
+      // Conexao LiveKit SFU
+      let connectionUrl = 'wss://echo-v87jtd7c.livekit.cloud'
+      let token = ''
+
+      if (typeof (window as any).electronAPI?.getLiveKitConnection === 'function') {
+        const res = await (window as any).electronAPI.getLiveKitConnection({
+          room: channelId,
+          identity: userId,
+          name: displayName
+        })
+        if (res && res.success) {
+          connectionUrl = res.url
+          token = res.token
         }
-        const source = ctx.createMediaStreamSource(finalStream)
-        const analyser = ctx.createAnalyser()
-        analyser.fftSize = 512
-        source.connect(analyser)
-        localAnalyserRef.current = { analyser, ctx, source }
-      } catch (err) {
-        console.error('Failed to setup local audio analyser:', err)
       }
 
-      // Create the Supabase Realtime channel for WebRTC signaling
-      const realtimeChannel = supabase.channel(`voice-${channelId}`, {
-        config: { presence: { key: userId } },
+      const room = new Room({
+        adaptiveStream: true,
+        dynacast: true,
+        publishDefaults: {
+          simulcast: true,
+          dtx: false,
+        }
+      })
+      roomRef.current = room
+
+      // Setup LiveKit room events
+      room.on(RoomEvent.Connected, () => {
+        setIsConnected(true)
+        console.log('[LiveKit] Conectado com sucesso ao SFU na sala:', channelId)
       })
 
-      channelRef.current = realtimeChannel
+      room.on(RoomEvent.Disconnected, () => {
+        setIsConnected(false)
+        console.log('[LiveKit] Desconectado do SFU')
+      })
 
-      // Listen for signaling broadcasts
-      realtimeChannel.on('broadcast', { event: 'sdp-offer' }, ({ payload }) => {
-        handleSignal('sdp-offer', payload as Record<string, unknown>)
+      room.on(RoomEvent.ParticipantConnected, () => {
+        syncParticipants()
       })
-      realtimeChannel.on('broadcast', { event: 'sdp-answer' }, ({ payload }) => {
-        handleSignal('sdp-answer', payload as Record<string, unknown>)
+
+      room.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
+        const voiceKey = `${participant.identity}-voice`
+        const screenKey = `${participant.identity}-screen`
+        const vAudio = audioElementsRef.current.get(voiceKey)
+        if (vAudio) { vAudio.srcObject = null; audioElementsRef.current.delete(voiceKey) }
+        const sAudio = audioElementsRef.current.get(screenKey)
+        if (sAudio) { sAudio.srcObject = null; audioElementsRef.current.delete(screenKey) }
+        syncParticipants()
       })
-      realtimeChannel.on('broadcast', { event: 'ice-candidate' }, ({ payload }) => {
-        handleSignal('ice-candidate', payload as Record<string, unknown>)
-      })
-      realtimeChannel.on('broadcast', { event: 'screenshare-started' }, ({ payload }) => {
-        const peerId = (payload as Record<string, string>)?.from
-        if (peerId && peerId !== userId) {
-          ensurePeerConnection(peerId)
+
+      room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+        if (track.kind === Track.Kind.Audio) {
+          const isScreen = track.source === Track.Source.ScreenShareAudio
+          const key = isScreen ? `${participant.identity}-screen` : `${participant.identity}-voice`
+
+          let audio = audioElementsRef.current.get(key)
+          if (!audio) {
+            audio = new Audio()
+            audio.autoplay = true
+            audioElementsRef.current.set(key, audio)
+          }
+
+          const savedVol = isScreen
+            ? (peerScreenVolumesRef.current.get(participant.identity) ?? 1.0)
+            : (peerVolumesRef.current.get(participant.identity) ?? 1.0)
+          audio.volume = Math.max(0, Math.min(1, savedVol))
+          audio.muted = isDeafenedRef.current
+
+          const remoteStream = new MediaStream([track.mediaStreamTrack])
+
+          if (!isScreen) {
+            try {
+              const spatialCtx = new AudioContext()
+              const source = spatialCtx.createMediaStreamSource(remoteStream)
+              const panner = spatialCtx.createStereoPanner()
+              const dest = spatialCtx.createMediaStreamDestination()
+              const savedPan = peerPansRef.current.get(participant.identity) || 0
+              panner.pan.value = isSpatialAudioEnabledRef.current ? savedPan : 0
+              source.connect(panner)
+              panner.connect(dest)
+              peerPannersRef.current.set(participant.identity, { panner, ctx: spatialCtx, source, dest })
+              audio.srcObject = dest.stream
+            } catch (e) {
+              audio.srcObject = remoteStream
+            }
+          } else {
+            audio.srcObject = remoteStream
+          }
+
+          if (typeof (audio as any).setSinkId === 'function' && selectedOutputIdRef.current !== 'default') {
+            ;(audio as any).setSinkId(selectedOutputIdRef.current).catch(() => {})
+          }
+
+          audio.play().catch(e => console.warn('[LiveKit] Audio autoplay:', e))
+        } else if (track.kind === Track.Kind.Video) {
           syncParticipants()
         }
       })
-      realtimeChannel.on('broadcast', { event: 'screenshare-stopped' }, ({ payload }) => {
-        const peerId = (payload as Record<string, string>)?.from
-        if (peerId) {
-          const info = participantsMapRef.current.get(peerId)
-          if (info) {
-            delete info.screenStream
-            syncParticipants()
+
+      room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, _publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+        if (track.kind === Track.Kind.Audio) {
+          const isScreen = track.source === Track.Source.ScreenShareAudio
+          const key = isScreen ? `${participant.identity}-screen` : `${participant.identity}-voice`
+          const audio = audioElementsRef.current.get(key)
+          if (audio) {
+            audio.srcObject = null
+            audioElementsRef.current.delete(key)
           }
-        }
-      })
-      realtimeChannel.on('broadcast', { event: 'soundboard-play' }, ({ payload }) => {
-        const p = payload as { soundId: string; userId: string; displayName: string }
-        if (p && p.soundId) {
-          const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
-          playSoundboardEffect(p.soundId, sfxVol)
-          setLastSoundboardEvent({
-            soundId: p.soundId,
-            userId: p.userId,
-            displayName: p.displayName || 'Alguém',
-            timestamp: Date.now()
-          })
+        } else if (track.kind === Track.Kind.Video) {
+          syncParticipants()
         }
       })
 
-      const ensurePeerConnection = (peerId: string) => {
-        if (!peersRef.current.has(peerId)) {
-          if (userId < peerId) {
-            initiateConnection(peerId)
-          }
-        }
-      }
-
-      // Handle presence: unified state reconciliation for join, leave, and sync
-      const handlePresenceSync = () => {
-        const state = realtimeChannel.presenceState()
-        const currentPeerIds = new Set<string>()
-
-        Object.values(state).forEach((presences) => {
-          for (const presence of presences as any[]) {
-            const peerId = presence.user_id
-            if (peerId && peerId !== userId) {
-              currentPeerIds.add(peerId)
-              const existing = participantsMapRef.current.get(peerId)
-              if (!existing) {
-                const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
-                playJoinSound(sfxVol)
-              }
-              participantsMapRef.current.set(peerId, {
-                displayName: presence.display_name || 'Membro',
-                avatarUrl: presence.avatar_url,
-                screenStream: existing?.screenStream,
-                isMuted: !!presence.is_muted,
-                isDeafened: !!presence.is_deafened
-              })
-              ensurePeerConnection(peerId)
-            }
-          }
-        })
-
-        // Remove any peers that left the call
-        for (const peerId of Array.from(participantsMapRef.current.keys())) {
-          if (!currentPeerIds.has(peerId)) {
-            const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
-            playLeaveSound(sfxVol)
-            cleanupPeer(peerId)
-          }
-        }
-
+      room.on(RoomEvent.ActiveSpeakersChanged, (speakers: Participant[]) => {
+        const nextActive = new Set<string>()
+        speakers.forEach(s => nextActive.add(s.identity))
+        activeSpeakersRef.current = nextActive
         syncParticipants()
-      }
+      })
 
-      realtimeChannel
-        .on('presence', { event: 'sync' }, handlePresenceSync)
-        .on('presence', { event: 'join' }, handlePresenceSync)
-        .on('presence', { event: 'leave' }, handlePresenceSync)
+      room.on(RoomEvent.TrackMuted, () => syncParticipants())
+      room.on(RoomEvent.TrackUnmuted, () => syncParticipants())
 
-      // Subscribe and track presence on room channel
-      realtimeChannel.subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await realtimeChannel.track({
-            user_id: userId,
-            display_name: displayName,
-            avatar_url: avatarUrl,
-            online_at: new Date().toISOString(),
-            is_muted: isMutedRef.current,
-            is_deafened: isDeafenedRef.current,
-          })
-          handlePresenceSync()
+      room.on(RoomEvent.DataReceived, (payload: Uint8Array, participant?: RemoteParticipant) => {
+        try {
+          const str = new TextDecoder().decode(payload)
+          const data = JSON.parse(str)
+          if (data.type === 'soundboard') {
+            setLastSoundboardEvent({
+              soundId: data.soundId,
+              userId: participant?.identity || '',
+              displayName: participant?.name || 'Membro',
+              timestamp: Date.now()
+            })
+          }
+        } catch (e) {}
+      })
+
+      room.on(RoomEvent.ConnectionQualityChanged, (quality: ConnectionQuality, participant: Participant) => {
+        if (participant === room.localParticipant) {
+          const ping = quality === ConnectionQuality.Excellent ? 18 : quality === ConnectionQuality.Good ? 35 : 85
+          const packetLoss = quality === ConnectionQuality.Poor ? 4.5 : 0.0
+          setRtcStats({ ping, jitter: 2, packetLoss })
         }
       })
 
-      // Also track presence on space-wide channel for sidebar visibility
-      if (spaceId) {
-        const spacePresenceChannel = supabase.channel(`space-voice-${spaceId}`, {
+      // Conecta a sala LiveKit
+      if (token) {
+        await room.connect(connectionUrl, token)
+      } else {
+        console.warn('[LiveKit] Token nao obtido, conectando em modo de teste')
+      }
+
+      // Publica o microfone do usuario
+      const micTrack = finalStream.getAudioTracks()[0]
+      if (micTrack) {
+        const localAudio = new LocalAudioTrack(micTrack)
+        localAudioTrackRef.current = localAudio
+        await room.localParticipant.publishTrack(localAudio, {
+          source: Track.Source.Microphone,
+          name: 'microphone',
+          dtx: false
+        })
+      }
+
+      // Sincroniza presenca visual no Supabase para usuarios no chat de texto
+      if (supabase) {
+        const sbChannel = supabase.channel(`voice-${channelId}`, {
           config: { presence: { key: userId } }
         })
-        spaceVoiceChannelRef.current = spacePresenceChannel
-        spacePresenceChannel.subscribe(async (s) => {
-          if (s === 'SUBSCRIBED') {
-            await spacePresenceChannel.track({
+        channelRef.current = sbChannel
+        sbChannel.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await sbChannel.track({
               user_id: userId,
               display_name: displayName,
               avatar_url: avatarUrl,
-              channel_id: channelId,
               is_muted: isMutedRef.current,
               is_deafened: isDeafenedRef.current,
-              is_speaking: false,
-              has_screen: !!localScreenStreamRef.current
+              has_screen: false,
+              space_id: spaceId || null
             }).catch(() => {})
           }
         })
       }
 
-      setIsConnected(true)
-      const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
-      playJoinSound(sfxVol)
-      startSpeakingDetection()
+      syncParticipants()
     } catch (err) {
-      console.error('Failed to join voice channel:', err)
-      localStreamRef.current?.getTracks().forEach(t => t.stop())
-      localStreamRef.current = null
+      console.error('[LiveKit] Falha ao entrar no canal de voz:', err)
+      setIsConnected(false)
     }
-  }, [isConnected, handleSignal, initiateConnection, cleanupPeer, syncParticipants, startSpeakingDetection])
+  }, [isConnected, syncParticipants])
 
-  // Leave voice channel
-  const leaveVoice = useCallback(() => {
-    if (localStreamRef.current) {
-      const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
-      playLeaveSound(sfxVol)
+  // Stop screen share
+  const stopScreenShare = useCallback(() => {
+    const room = roomRef.current
+    if (localScreenVideoTrackRef.current) {
+      if (room) {
+        room.localParticipant.unpublishTrack(localScreenVideoTrackRef.current).catch(() => {})
+      }
+      localScreenVideoTrackRef.current.stop()
+      localScreenVideoTrackRef.current = null
     }
-
-    if (speakingIntervalRef.current) {
-      clearInterval(speakingIntervalRef.current)
-      speakingIntervalRef.current = null
+    if (localScreenAudioTrackRef.current) {
+      if (room) {
+        room.localParticipant.unpublishTrack(localScreenAudioTrackRef.current).catch(() => {})
+      }
+      localScreenAudioTrackRef.current.stop()
+      localScreenAudioTrackRef.current = null
     }
-
-    // Stop local analyser
-    if (localAnalyserRef.current) {
-      localAnalyserRef.current.ctx.close().catch(() => {})
-      localAnalyserRef.current = null
-    }
-
-    // Stop native process audio capture
     if (nativeAudioCleanupRef.current) {
       try { nativeAudioCleanupRef.current() } catch (e) {}
       nativeAudioCleanupRef.current = null
     }
+    localScreenStreamRef.current = null
+    setLocalScreenStream(null)
 
-    // Stop screen share
-    if (localScreenStreamRef.current) {
-      localScreenStreamRef.current.getTracks().forEach(t => t.stop())
-      localScreenStreamRef.current = null
-      setLocalScreenStream(null)
+    if (channelRef.current && myInfoRef.current) {
+      channelRef.current.track({
+        user_id: myInfoRef.current.userId,
+        display_name: myInfoRef.current.displayName,
+        avatar_url: myInfoRef.current.avatarUrl,
+        is_muted: isMutedRef.current,
+        is_deafened: isDeafenedRef.current,
+        has_screen: false
+      }).catch(() => {})
     }
-    screenSendersRef.current.clear()
-    screenAudioSendersRef.current.clear()
-    peerVoiceTrackIdsRef.current.clear()
 
-    // Close all peer connections
-    peersRef.current.forEach((pc) => pc.close())
-    peersRef.current.clear()
+    syncParticipants()
+  }, [syncParticipants])
 
-    // Stop local audio stream (both raw and processed)
+  // Leave voice channel cleanly
+  const leaveVoice = useCallback(() => {
+    stopScreenShare()
+
+    const room = roomRef.current
+    if (room) {
+      room.disconnect()
+      roomRef.current = null
+    }
+
+    if (localAudioTrackRef.current) {
+      localAudioTrackRef.current.stop()
+      localAudioTrackRef.current = null
+    }
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(t => t.stop())
+      localStreamRef.current = null
+    }
     if (localRawStreamRef.current) {
       localRawStreamRef.current.getTracks().forEach(t => t.stop())
       localRawStreamRef.current = null
     }
-    localStreamRef.current?.getTracks().forEach(t => t.stop())
-    localStreamRef.current = null
-
-    // Close local DSP context
     if (localDspCtxRef.current) {
       localDspCtxRef.current.close().catch(() => {})
       localDspCtxRef.current = null
     }
+    if (localDspNodesRef.current?.rnnoiseNode) {
+      try { localDspNodesRef.current.rnnoiseNode.destroy() } catch (e) {}
+    }
     localDspNodesRef.current = null
 
-    // Clean up audio elements
-    audioElementsRef.current.forEach(audio => { audio.srcObject = null })
+    audioElementsRef.current.forEach(audio => {
+      audio.srcObject = null
+    })
     audioElementsRef.current.clear()
 
-    // Clean up analysers
-    analysersRef.current.forEach(a => a.ctx.close().catch(() => {}))
-    analysersRef.current.clear()
-
-    // Clean up spatial audio panners
-    peerPannersRef.current.forEach(entry => {
-      try {
-        entry.ctx.close().catch(() => {})
-      } catch (e) {}
+    peerPannersRef.current.forEach(p => {
+      try { p.ctx.close() } catch (e) {}
     })
     peerPannersRef.current.clear()
 
-    // Untrack presence on space-wide realtime channel (do not removeChannel as it is shared with App.tsx)
-    if (spaceVoiceChannelRef.current) {
-      spaceVoiceChannelRef.current.untrack().catch(() => {})
-      spaceVoiceChannelRef.current = null
-    }
-
-    // Leave room realtime channel
-    if (channelRef.current && supabase) {
-      supabase.removeChannel(channelRef.current)
+    if (channelRef.current) {
+      channelRef.current.untrack().catch(() => {})
+      supabase?.removeChannel(channelRef.current)
       channelRef.current = null
     }
 
-    activeSpaceIdRef.current = null
-    activeChannelIdRef.current = null
-    pendingCandidatesRef.current.clear()
-    participantsMapRef.current.clear()
+    activeSpeakersRef.current.clear()
     myInfoRef.current = null
-    isMutedRef.current = false
-    isDeafenedRef.current = false
-    setParticipants([])
     setIsConnected(false)
-    setIsMuted(false)
-    setIsDeafened(false)
-  }, [])
+    setParticipants([])
+    setRtcStats(null)
+  }, [stopScreenShare])
 
-  // Toggle deafen (mutes all incoming audio + mutes own microphone)
-  const toggleDeafen = useCallback(() => {
-    const nextDeafened = !isDeafenedRef.current
-    isDeafenedRef.current = nextDeafened
-    setIsDeafened(nextDeafened)
+  // Toggle Mute
+  const toggleMute = useCallback(() => {
+    const next = !isMutedRef.current
+    isMutedRef.current = next
+    setIsMuted(next)
 
-    const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
-
-    if (nextDeafened) {
-      playDeafenSound(sfxVol)
-      // Mute all incoming audio streams (voice and screenshare)
-      audioElementsRef.current.forEach(audio => {
-        audio.muted = true
-      })
-      // Mute local microphone
-      if (localStreamRef.current) {
-        const audioTrack = localStreamRef.current.getAudioTracks()[0]
-        if (audioTrack) {
-          audioTrack.enabled = false
-        }
-      }
-    } else {
-      playUndeafenSound(sfxVol)
-      // Unmute all incoming audio streams
-      audioElementsRef.current.forEach(audio => {
-        audio.muted = false
-      })
-      // Restore microphone based on user's mute setting
-      if (localStreamRef.current) {
-        const audioTrack = localStreamRef.current.getAudioTracks()[0]
-        if (audioTrack) {
-          audioTrack.enabled = !isMutedRef.current
-        }
+    if (localAudioTrackRef.current) {
+      if (next) {
+        localAudioTrackRef.current.mute()
+      } else {
+        localAudioTrackRef.current.unmute()
       }
     }
 
@@ -1086,21 +639,8 @@ export function useVoiceChannel() {
         user_id: myInfoRef.current.userId,
         display_name: myInfoRef.current.displayName,
         avatar_url: myInfoRef.current.avatarUrl,
-        online_at: new Date().toISOString(),
-        is_muted: nextDeafened ? true : isMutedRef.current,
-        is_deafened: nextDeafened,
-      }).catch(() => {})
-    }
-
-    if (spaceVoiceChannelRef.current && myInfoRef.current) {
-      spaceVoiceChannelRef.current.track({
-        user_id: myInfoRef.current.userId,
-        display_name: myInfoRef.current.displayName,
-        avatar_url: myInfoRef.current.avatarUrl,
-        channel_id: activeChannelIdRef.current,
-        is_muted: nextDeafened ? true : isMutedRef.current,
-        is_deafened: nextDeafened,
-        is_speaking: false,
+        is_muted: next,
+        is_deafened: isDeafenedRef.current,
         has_screen: !!localScreenStreamRef.current
       }).catch(() => {})
     }
@@ -1108,194 +648,74 @@ export function useVoiceChannel() {
     syncParticipants()
   }, [syncParticipants])
 
-  // Toggle mute
-  const toggleMute = useCallback(() => {
-    if (isDeafenedRef.current) {
-      // If user is deafened and clicks mute/unmute, undeafen them and unmute
-      toggleDeafen()
-      return
+  // Toggle Deafen
+  const toggleDeafen = useCallback(() => {
+    const next = !isDeafenedRef.current
+    isDeafenedRef.current = next
+    setIsDeafened(next)
+
+    audioElementsRef.current.forEach(audio => {
+      audio.muted = next
+    })
+
+    if (next && !isMutedRef.current) {
+      toggleMute()
     }
 
-    if (!localStreamRef.current) return
-    const audioTrack = localStreamRef.current.getAudioTracks()[0]
-    if (audioTrack) {
-      const nextMuted = audioTrack.enabled // If enabled, we will mute it (next is muted = true)
-      audioTrack.enabled = !nextMuted
-      isMutedRef.current = nextMuted
-      setIsMuted(nextMuted)
-
-      const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
-      if (nextMuted) {
-        playMuteSound(sfxVol)
-      } else {
-        playUnmuteSound(sfxVol)
-      }
-
-      if (channelRef.current && myInfoRef.current) {
-        channelRef.current.track({
-          user_id: myInfoRef.current.userId,
-          display_name: myInfoRef.current.displayName,
-          avatar_url: myInfoRef.current.avatarUrl,
-          online_at: new Date().toISOString(),
-          is_muted: nextMuted,
-          is_deafened: isDeafenedRef.current,
-        }).catch(() => {})
-      }
-
-      if (spaceVoiceChannelRef.current && myInfoRef.current) {
-        spaceVoiceChannelRef.current.track({
-          user_id: myInfoRef.current.userId,
-          display_name: myInfoRef.current.displayName,
-          avatar_url: myInfoRef.current.avatarUrl,
-          channel_id: activeChannelIdRef.current,
-          is_muted: nextMuted,
-          is_deafened: isDeafenedRef.current,
-          is_speaking: false,
-          has_screen: !!localScreenStreamRef.current
-        }).catch(() => {})
-      }
-
-      syncParticipants()
+    if (channelRef.current && myInfoRef.current) {
+      channelRef.current.track({
+        user_id: myInfoRef.current.userId,
+        display_name: myInfoRef.current.displayName,
+        avatar_url: myInfoRef.current.avatarUrl,
+        is_muted: isMutedRef.current,
+        is_deafened: next,
+        has_screen: !!localScreenStreamRef.current
+      }).catch(() => {})
     }
-  }, [toggleDeafen, syncParticipants])
 
-  // Change input microphone device in real-time
-  const changeInputDevice = useCallback(async (deviceId: string, noiseSuppression = true, echoCancellation = true) => {
-    selectedInputIdRef.current = deviceId
-    if (!isConnected || !localStreamRef.current) return
+    syncParticipants()
+  }, [syncParticipants, toggleMute])
+
+  // Start Screen Sharing with Discord-Style SFU Architecture
+  const startScreenShare = useCallback(async (
+    sourceId?: string, 
+    width?: number, 
+    height?: number, 
+    fps?: number, 
+    audioMode: 'anti-echo' | 'full' | 'none' = 'anti-echo'
+  ) => {
+    const room = roomRef.current
+    if (!room || !isConnected || !myInfoRef.current) return
 
     try {
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        audio: { 
-          deviceId: { exact: deviceId },
-          echoCancellation: echoCancellation,
-          noiseSuppression: noiseSuppression,
-          autoGainControl: true,
-          channelCount: 1,
-          googEchoCancellation: echoCancellation,
-          googNoiseSuppression: noiseSuppression,
-          googAutoGainControl: true,
-          googHighpassFilter: true,
-          googNoiseReduction: noiseSuppression
-        } as any,
-        video: false
-      })
-      // Close old DSP context and stop raw tracks
-      if (localDspCtxRef.current) {
-        localDspCtxRef.current.close().catch(() => {})
-        localDspCtxRef.current = null
-      }
-      localDspNodesRef.current = null
-      if (localRawStreamRef.current) {
-        localRawStreamRef.current.getTracks().forEach(t => t.stop())
-      }
-      localRawStreamRef.current = newStream
-
-      let finalStream = newStream
-      try {
-        const { finalStream: dspStream, audioCtx, nodes } = createStudioMicrophoneDSP(newStream)
-        localDspCtxRef.current = audioCtx
-        localDspNodesRef.current = nodes
-        finalStream = dspStream
-      } catch (dspErr) {
-        console.error('Failed to initialize local microphone DSP pipeline on device change:', dspErr)
-      }
-
-      const newTrack = finalStream.getAudioTracks()[0]
-
-      const oldTracks = localStreamRef.current.getAudioTracks()
-      oldTracks.forEach(t => t.stop())
-
-      localStreamRef.current.removeTrack(oldTracks[0])
-      localStreamRef.current.addTrack(newTrack)
-
-      // Replace audio track on all active WebRTC peer connections
-      for (const pc of peersRef.current.values()) {
-        const senders = pc.getSenders()
-        const audioSender = senders.find(s => s.track?.kind === 'audio')
-        if (audioSender) {
-          await audioSender.replaceTrack(newTrack)
-        }
-      }
-
-      // Re-create local analyser for volume tracking (connect to final filtered stream)
-      if (localAnalyserRef.current) {
-        localAnalyserRef.current.ctx.close().catch(() => {})
-      }
-      try {
-        const ctx = new AudioContext()
-        ctx.onstatechange = () => {
-          if (ctx.state === 'suspended') {
-            ctx.resume().catch(() => {})
-          }
-        }
-        const source = ctx.createMediaStreamSource(finalStream)
-        const analyser = ctx.createAnalyser()
-        analyser.fftSize = 512
-        source.connect(analyser)
-        localAnalyserRef.current = { analyser, ctx, source }
-      } catch (e) {}
-
-    } catch (err) {
-      console.error('Failed to change input device:', err)
-    }
-  }, [isConnected])
-
-  // Change output speaker device in real-time
-  const changeOutputDevice = useCallback(async (deviceId: string) => {
-    selectedOutputIdRef.current = deviceId
-
-    for (const audio of audioElementsRef.current.values()) {
-      if (typeof audio.setSinkId === 'function') {
-        try {
-          await audio.setSinkId(deviceId)
-        } catch (err) {
-          console.error('Failed to setSinkId on audio element:', err)
-        }
-      }
-    }
-  }, [])
-
-  const screenDspCtxRef = useRef<AudioContext | null>(null)
-
-  // Start sharing screen
-  const startScreenShare = useCallback(async (sourceId?: string, width?: number, height?: number, fps?: number, audioMode: 'anti-echo' | 'full' | 'none' = 'anti-echo') => {
-    if (!isConnected || !myInfoRef.current) return
-    try {
-      if (screenDspCtxRef.current) {
-        try { screenDspCtxRef.current.close() } catch (e) {}
-        screenDspCtxRef.current = null
-      }
       if (nativeAudioCleanupRef.current) {
         try { nativeAudioCleanupRef.current() } catch (e) {}
         nativeAudioCleanupRef.current = null
       }
 
-      let stream: MediaStream | null = null
       const targetWidth = width || 1920
       const targetHeight = height || 1080
       const targetFps = fps || 60
 
       let nativeAudioTrack: MediaStreamTrack | null = null
 
-      // Tentativa de Captura Nativa de Áudio por Processo (WASAPI Loopback por PID estilo Discord)
+      // Captura de audio nativa por PID (Windows WASAPI loopback)
       if (sourceId && sourceId.startsWith('window:') && audioMode !== 'none') {
         try {
           const res = await (window as any).electronAPI?.startProcessAudioCapture(sourceId)
           if (res && res.success) {
-            console.log('[NativeAudio] Captura nativa de processo ativa (estilo Discord) para:', sourceId)
             const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext
             const procCtx = new AudioCtxClass({ sampleRate: 48000 })
             const dest = procCtx.createMediaStreamDestination()
 
-            const RING_SIZE = 48000 * 2 // 2 segundos de buffer circular em 48kHz
+            const RING_SIZE = 48000 * 2
             const ringL = new Float32Array(RING_SIZE)
             const ringR = new Float32Array(RING_SIZE)
             let writeIdx = 0
             let readIdx = 0
-            let available = 0;
+            let available = 0
 
-            (window as any).electronAPI?.onScreenshareAudioChunk((chunk: Uint8Array | ArrayBuffer) => {
+            ;(window as any).electronAPI?.onScreenshareAudioChunk((chunk: Uint8Array | ArrayBuffer) => {
               const raw = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk)
               const int16 = new Int16Array(raw.buffer, raw.byteOffset, Math.floor(raw.byteLength / 2))
               const samples = Math.floor(int16.length / 2)
@@ -1325,504 +745,262 @@ export function useVoiceChannel() {
               }
             }
 
-            nativeScriptNodeRef.current = scriptNode
-            nativeProcCtxRef.current = procCtx
-
             scriptNode.connect(dest)
             nativeAudioTrack = dest.stream.getAudioTracks()[0]
             nativeAudioCleanupRef.current = () => {
-              try { nativeScriptNodeRef.current?.disconnect() } catch (e) {}
-              nativeScriptNodeRef.current = null
-              try { nativeProcCtxRef.current?.close() } catch (e) {}
-              nativeProcCtxRef.current = null
+              try { scriptNode.disconnect() } catch (e) {}
+              try { procCtx.close() } catch (e) {}
               ;(window as any).electronAPI?.stopProcessAudioCapture()
             }
           }
         } catch (nativeErr) {
-          console.warn('[NativeAudio] Falha ao inicializar captura nativa por processo:', nativeErr)
+          console.warn('[LiveKit] Falha na captura nativa por processo:', nativeErr)
         }
       }
 
-      // Se obtivemos a faixa de áudio nativa por processo, não precisamos que o Chromium capture a saída mestre
-      const audioConstraint = (audioMode !== 'none' && !nativeAudioTrack) ? {
-        mandatory: {
-          chromeMediaSource: 'desktop'
-        }
-      } as any : false
+      // Captura de video
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: audioMode !== 'none' && !nativeAudioTrack ? {
+          mandatory: {
+            chromeMediaSource: 'desktop',
+            chromeMediaSourceId: sourceId || 'screen:0:0'
+          }
+        } as any : false,
+        video: {
+          mandatory: {
+            chromeMediaSource: 'desktop',
+            chromeMediaSourceId: sourceId || 'screen:0:0',
+            minWidth: targetWidth,
+            maxWidth: targetWidth,
+            minHeight: targetHeight,
+            maxHeight: targetHeight,
+            minFrameRate: targetFps,
+            maxFrameRate: targetFps
+          }
+        } as any
+      })
 
-      if (sourceId) {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            audio: audioConstraint,
-            video: {
-              mandatory: {
-                chromeMediaSource: 'desktop',
-                chromeMediaSourceId: sourceId,
-                maxWidth: targetWidth,
-                maxHeight: targetHeight,
-                maxFrameRate: targetFps
-              }
-            } as any
-          })
-        } catch (firstErr) {
-          console.warn('Initial desktop video+audio capture failed, trying basic capture:', firstErr)
-          try {
-            stream = await navigator.mediaDevices.getUserMedia({
-              audio: audioConstraint,
-              video: {
-                mandatory: {
-                  chromeMediaSource: 'desktop',
-                  chromeMediaSourceId: sourceId
-                }
-              } as any
-            })
-          } catch (secErr) {
-            console.warn('Direct window capture failed (likely Exclusive Fullscreen game). Automatically falling back to seamless screen capture:', secErr)
-            stream = await navigator.mediaDevices.getUserMedia({
-              audio: audioConstraint,
-              video: {
-                mandatory: {
-                  chromeMediaSource: 'desktop',
-                  chromeMediaSourceId: 'screen:0:0',
-                  maxWidth: targetWidth,
-                  maxHeight: targetHeight,
-                  maxFrameRate: targetFps
-                }
-              } as any
-            })
-          }
-        }
+      const videoTrack = stream.getVideoTracks()[0]
+      const audioTrack = nativeAudioTrack || (stream.getAudioTracks().length > 0 ? stream.getAudioTracks()[0] : null)
 
-        // Aplica o áudio isolado nativo (estilo Discord) ou fallback de game áudio limpo
-        if (stream) {
-          if (nativeAudioTrack) {
-            // Remove qualquer áudio padrão do Chromium e injeta a faixa isolada do executável do jogo
-            stream.getAudioTracks().forEach(t => {
-              stream!.removeTrack(t)
-              t.stop()
-            })
-            stream.addTrack(nativeAudioTrack)
-          } else if (audioMode === 'anti-echo') {
-            // Fallback (ex: transmissão de tela inteira): equalização e compressor dinâmico limpo sem corte de voz
-            const rawAudioTracks = stream.getAudioTracks()
-            if (rawAudioTracks.length > 0) {
-              try {
-                const rawAudioTrack = rawAudioTracks[0]
-                const rawAudioStream = new MediaStream([rawAudioTrack])
-                const { finalStream, audioCtx } = createCleanGameAudioDSP(rawAudioStream)
-                if (audioCtx) {
-                  screenDspCtxRef.current = audioCtx
-                  const cleanAudioTracks = finalStream.getAudioTracks()
-                  if (cleanAudioTracks.length > 0) {
-                    stream.removeTrack(rawAudioTrack)
-                    stream.addTrack(cleanAudioTracks[0])
-                  }
-                }
-              } catch (dspErr) {
-                console.warn('Game audio DSP fallback warning:', dspErr)
-              }
-            }
-          }
+      // Publica video da tela no LiveKit SFU (com Simulcast para adaptacao de rede)
+      const localVideoTrack = new LocalVideoTrack(videoTrack)
+      localScreenVideoTrackRef.current = localVideoTrack
+      await room.localParticipant.publishTrack(localVideoTrack, {
+        source: Track.Source.ScreenShare,
+        name: 'screen_video',
+        simulcast: true,
+        videoEncoding: {
+          maxBitrate: 8500000,
+          maxFramerate: targetFps
         }
-      } else {
-        stream = await navigator.mediaDevices.getDisplayMedia({
-          audio: audioMode !== 'none',
-          video: {
-            width: { ideal: targetWidth },
-            height: { ideal: targetHeight },
-            frameRate: { ideal: targetFps }
-          }
+      })
+
+      // Publica audio do jogo no LiveKit SFU (completamente isolado do microfone)
+      if (audioTrack && audioMode !== 'none') {
+        const localAudioTrack = new LocalAudioTrack(audioTrack)
+        localScreenAudioTrackRef.current = localAudioTrack
+        await room.localParticipant.publishTrack(localAudioTrack, {
+          source: Track.Source.ScreenShareAudio,
+          name: 'screen_audio',
+          dtx: false
         })
       }
 
-      if (!stream) {
-        throw new Error('Screen capture stream could not be initialized.')
+      const previewStream = new MediaStream([videoTrack])
+      localScreenStreamRef.current = previewStream
+      setLocalScreenStream(previewStream)
+
+      videoTrack.onended = () => {
+        stopScreenShare()
       }
 
-      localScreenStreamRef.current = stream
-      setLocalScreenStream(stream)
-
-      const videoTrack = stream.getVideoTracks()[0]
-      const audioTrack = stream.getAudioTracks()[0]
-
-      if (videoTrack) {
-        if ('contentHint' in videoTrack) {
-          (videoTrack as any).contentHint = 'motion';
-        }
-
-        for (const [peerId, pc] of peersRef.current.entries()) {
-          preferHardwareVideoCodecs(pc)
-          const existingVideoSender = screenSendersRef.current.get(peerId)
-          let sender: RTCRtpSender
-          if (existingVideoSender) {
-            await existingVideoSender.replaceTrack(videoTrack)
-            sender = existingVideoSender
-          } else {
-            sender = pc.addTrack(videoTrack, stream)
-            screenSendersRef.current.set(peerId, sender)
-          }
-
-          await applyVideoSenderParameters(sender, width, height, fps)
-
-          if (audioTrack) {
-            const existingAudioSender = screenAudioSendersRef.current.get(peerId)
-            if (existingAudioSender) {
-              await existingAudioSender.replaceTrack(audioTrack)
-            } else {
-              const sender = pc.addTrack(audioTrack, stream)
-              screenAudioSendersRef.current.set(peerId, sender)
-            }
-          }
-
-          // Trigger renegotiation with optimized SDP
-          let offer = await pc.createOffer()
-          const optimizedSdp = optimizeSDP(offer.sdp || '')
-          const finalOffer = { type: offer.type, sdp: optimizedSdp }
-          await pc.setLocalDescription(finalOffer)
-          channelRef.current?.send({
-            type: 'broadcast',
-            event: 'sdp-offer',
-            payload: {
-              from: myInfoRef.current.userId,
-              to: peerId,
-              sdp: finalOffer
-            }
-          })
-        }
-
-        videoTrack.onended = () => {
-          stopScreenShare()
-        }
-      }
-
-      if (spaceVoiceChannelRef.current && myInfoRef.current) {
-        spaceVoiceChannelRef.current.track({
+      if (channelRef.current && myInfoRef.current) {
+        channelRef.current.track({
           user_id: myInfoRef.current.userId,
           display_name: myInfoRef.current.displayName,
           avatar_url: myInfoRef.current.avatarUrl,
-          channel_id: activeChannelIdRef.current,
           is_muted: isMutedRef.current,
           is_deafened: isDeafenedRef.current,
-          is_speaking: false,
           has_screen: true
         }).catch(() => {})
       }
 
-      if (channelRef.current && myInfoRef.current) {
-        channelRef.current.send({
-          type: 'broadcast',
-          event: 'screenshare-started',
-          payload: {
-            from: myInfoRef.current.userId
-          }
-        })
-      }
-
-      const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
-      playScreenStartSound(sfxVol)
       syncParticipants()
     } catch (err) {
-      console.error('Error starting screen share:', err)
+      console.error('[LiveKit] Failed to start screen share:', err)
     }
-  }, [isConnected, syncParticipants])
+  }, [isConnected, stopScreenShare, syncParticipants])
 
-  // Stop sharing screen
-  const stopScreenShare = useCallback(async () => {
-    if (nativeAudioCleanupRef.current) {
-      try { nativeAudioCleanupRef.current() } catch (e) {}
-      nativeAudioCleanupRef.current = null
-    }
+  // Change input microphone device
+  const changeInputDevice = useCallback(async (deviceId: string, noiseSuppression = true, echoCancellation = true) => {
+    selectedInputIdRef.current = deviceId
+    if (!isConnected || !localRawStreamRef.current) return
 
-    if (localScreenStreamRef.current) {
-      if (screenDspCtxRef.current) {
-        try { screenDspCtxRef.current.close() } catch (e) {}
-        screenDspCtxRef.current = null
-      }
-      localScreenStreamRef.current.getTracks().forEach((t: MediaStreamTrack) => t.stop())
-      localScreenStreamRef.current = null
-      setLocalScreenStream(null)
-      const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
-      playScreenStopSound(sfxVol)
-    }
-
-    for (const [peerId, pc] of peersRef.current.entries()) {
-      const sender = screenSendersRef.current.get(peerId)
-      if (sender) {
-        try {
-          pc.removeTrack(sender)
-        } catch (e) {}
-        screenSendersRef.current.delete(peerId)
-      }
-
-      const audioSender = screenAudioSendersRef.current.get(peerId)
-      if (audioSender) {
-        try {
-          pc.removeTrack(audioSender)
-        } catch (e) {}
-        screenAudioSendersRef.current.delete(peerId)
-      }
-
-      try {
-        const offer = await pc.createOffer()
-        await pc.setLocalDescription(offer)
-        channelRef.current?.send({
-          type: 'broadcast',
-          event: 'sdp-offer',
-          payload: {
-            from: myInfoRef.current!.userId,
-            to: peerId,
-            sdp: offer
-          }
-        })
-      } catch (e) {}
-    }
-
-    if (channelRef.current && myInfoRef.current) {
-      channelRef.current.send({
-        type: 'broadcast',
-        event: 'screenshare-stopped',
-        payload: {
-          from: myInfoRef.current.userId
+    try {
+      localRawStreamRef.current.getTracks().forEach(t => t.stop())
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          deviceId: deviceId !== 'default' ? { exact: deviceId } : undefined,
+          echoCancellation,
+          noiseSuppression,
+          autoGainControl: true,
         }
       })
-    }
+      localRawStreamRef.current = newStream
 
-    if (spaceVoiceChannelRef.current && myInfoRef.current) {
-      spaceVoiceChannelRef.current.track({
-        user_id: myInfoRef.current.userId,
-        display_name: myInfoRef.current.displayName,
-        avatar_url: myInfoRef.current.avatarUrl,
-        channel_id: activeChannelIdRef.current,
-        is_muted: isMutedRef.current,
-        is_deafened: isDeafenedRef.current,
-        is_speaking: false,
-        has_screen: false
-      }).catch(() => {})
-    }
+      const { finalStream, audioCtx, nodes } = await createStudioMicrophoneDSP(newStream, isAiDenoiseEnabledRef.current)
+      localDspCtxRef.current = audioCtx
+      localDspNodesRef.current = nodes
+      localStreamRef.current = finalStream
 
-    syncParticipants()
-  }, [syncParticipants])
-
-  // Change screen share encoding settings on the fly (resolution/fps) without resetting native video track
-  const changeScreenShareSettings = useCallback(async (width?: number, height?: number, fps?: number) => {
-    if (!localScreenStreamRef.current) return
-    try {
-      for (const sender of screenSendersRef.current.values()) {
-        await applyVideoSenderParameters(sender, width, height, fps)
+      const newTrack = finalStream.getAudioTracks()[0]
+      if (newTrack && localAudioTrackRef.current) {
+        await localAudioTrackRef.current.setDeviceId(deviceId)
       }
-      console.log('Successfully adjusted live video sender encoding parameters:', { width, height, fps })
     } catch (err) {
-      console.error('Failed to update live video sender parameters:', err)
+      console.error('Failed to change input device:', err)
+    }
+  }, [isConnected])
+
+  // Change speaker output device
+  const changeOutputDevice = useCallback(async (deviceId: string) => {
+    selectedOutputIdRef.current = deviceId
+    for (const audio of audioElementsRef.current.values()) {
+      if (typeof (audio as any).setSinkId === 'function') {
+        try {
+          await (audio as any).setSinkId(deviceId)
+        } catch (err) {
+          console.error('Failed to setSinkId on audio element:', err)
+        }
+      }
     }
   }, [])
 
+  // Volume & Spatial Audio Controls
   const changePeerVolume = useCallback((peerId: string, volume: number) => {
-    const clamped = Math.max(0, Math.min(1, isNaN(volume) ? 1 : volume))
+    const clamped = Math.max(0, Math.min(2, volume))
     peerVolumesRef.current.set(peerId, clamped)
-    const audio = audioElementsRef.current.get(`${peerId}-voice`) || audioElementsRef.current.get(peerId)
-    if (audio) {
-      audio.volume = clamped
-    }
+    const audio = audioElementsRef.current.get(`${peerId}-voice`)
+    if (audio) audio.volume = Math.max(0, Math.min(1, clamped))
+  }, [])
+
+  const changePeerScreenVolume = useCallback((peerId: string, volume: number) => {
+    const clamped = Math.max(0, Math.min(2, volume))
+    peerScreenVolumesRef.current.set(peerId, clamped)
+    const audio = audioElementsRef.current.get(`${peerId}-screen`)
+    if (audio) audio.volume = Math.max(0, Math.min(1, clamped))
   }, [])
 
   const changePeerPan = useCallback((peerId: string, pan: number) => {
-    const clamped = Math.max(-1, Math.min(1, isNaN(pan) ? 0 : pan))
+    const clamped = Math.max(-1, Math.min(1, pan))
     peerPansRef.current.set(peerId, clamped)
-    const entry = peerPannersRef.current.get(peerId)
-    if (entry && entry.panner) {
-      entry.panner.pan.value = isSpatialAudioEnabledRef.current ? clamped : 0
+    const pannerObj = peerPannersRef.current.get(peerId)
+    if (pannerObj && isSpatialAudioEnabledRef.current) {
+      pannerObj.panner.pan.value = clamped
     }
   }, [])
 
   const setSpatialAudioEnabled = useCallback((enabled: boolean) => {
     isSpatialAudioEnabledRef.current = enabled
-    for (const [peerId, entry] of peerPannersRef.current.entries()) {
+    peerPannersRef.current.forEach((pannerObj, peerId) => {
       const savedPan = peerPansRef.current.get(peerId) || 0
-      entry.panner.pan.value = enabled ? savedPan : 0
-    }
+      pannerObj.panner.pan.value = enabled ? savedPan : 0
+    })
   }, [])
 
-  const changePeerScreenVolume = useCallback((peerId: string, volume: number) => {
-    const clamped = Math.max(0, Math.min(1, isNaN(volume) ? 1 : volume))
-    peerScreenVolumesRef.current.set(peerId, clamped)
-    const audio = audioElementsRef.current.get(`${peerId}-screen`)
-    if (audio) {
-      audio.volume = clamped
-    }
+  const changeScreenShareSettings = useCallback(async (_width?: number, _height?: number, _fps?: number) => {
+    // LiveKit SFU automatically optimizes bitrate and framerate via adaptiveStream/simulcast
   }, [])
 
-  // Push-to-Talk (PTT) controls
+  // Push-to-Talk
   const setPttMode = useCallback((enabled: boolean) => {
-    isPttModeRef.current = enabled
     setIsPttMode(enabled)
-    if (localStreamRef.current) {
-      const audioTrack = localStreamRef.current.getAudioTracks()[0]
-      if (audioTrack) {
-        if (enabled) {
-          audioTrack.enabled = isPttActiveRef.current
-        } else {
-          audioTrack.enabled = !isMutedRef.current
-        }
-      }
+    isPttModeRef.current = enabled
+    if (enabled) {
+      if (!isMutedRef.current) toggleMute()
     }
-  }, [])
+  }, [toggleMute])
 
   const setPttActive = useCallback((active: boolean) => {
-    isPttActiveRef.current = active
     setIsPttActive(active)
-    if (isPttModeRef.current && localStreamRef.current) {
-      const audioTrack = localStreamRef.current.getAudioTracks()[0]
-      if (audioTrack && !isMutedRef.current && !isDeafenedRef.current) {
-        audioTrack.enabled = active
-      }
+    isPttActiveRef.current = active
+    if (isPttModeRef.current) {
+      if (active && isMutedRef.current) toggleMute()
+      else if (!active && !isMutedRef.current) toggleMute()
     }
-  }, [])
+  }, [toggleMute])
 
-  // Soundboard Trigger
+  // Soundboard via LiveKit Data Messaging (<10ms latency)
   const playSoundboard = useCallback((soundId: string) => {
-    const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
-    playSoundboardEffect(soundId, sfxVol)
-    if (myInfoRef.current) {
-      setLastSoundboardEvent({
-        soundId,
-        userId: myInfoRef.current.userId,
-        displayName: myInfoRef.current.displayName,
-        timestamp: Date.now()
-      })
-    }
-    if (channelRef.current && myInfoRef.current) {
-      channelRef.current.send({
-        type: 'broadcast',
-        event: 'soundboard-play',
-        payload: {
-          soundId,
-          userId: myInfoRef.current.userId,
-          displayName: myInfoRef.current.displayName
-        }
-      }).catch(() => {})
-    }
+    const room = roomRef.current
+    if (!room || !myInfoRef.current) return
+    const payload = JSON.stringify({
+      type: 'soundboard',
+      soundId,
+      userId: myInfoRef.current.userId,
+      displayName: myInfoRef.current.displayName,
+      timestamp: Date.now()
+    })
+    const encoded = new TextEncoder().encode(payload)
+    room.localParticipant.publishData(encoded, { reliable: true }).catch(() => {})
   }, [])
 
-  // Local Call Recording (mixes local mic + all remote peers into downloadable webm)
+  // Call Recording
   const startCallRecording = useCallback(() => {
-    if (isRecordingCall) return
     try {
-      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext
-      const recCtx = new AudioCtxClass()
-      const dest = recCtx.createMediaStreamDestination()
-
+      recordedChunksRef.current = []
+      const mixedDest = new AudioContext().createMediaStreamDestination()
       if (localStreamRef.current) {
-        try {
-          const localSrc = recCtx.createMediaStreamSource(localStreamRef.current)
-          localSrc.connect(dest)
-        } catch (e) {}
+        const audioCtx = new AudioContext()
+        const src = audioCtx.createMediaStreamSource(localStreamRef.current)
+        src.connect(mixedDest)
       }
-
       audioElementsRef.current.forEach(audio => {
         if (audio.srcObject instanceof MediaStream) {
-          try {
-            const remoteSrc = recCtx.createMediaStreamSource(audio.srcObject)
-            remoteSrc.connect(dest)
-          } catch (e) {}
+          const audioCtx = new AudioContext()
+          const src = audioCtx.createMediaStreamSource(audio.srcObject)
+          src.connect(mixedDest)
         }
       })
-
-      const mediaRecorder = new MediaRecorder(dest.stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm'
-      })
-
-      recordedChunksRef.current = []
-      mediaRecorder.ondataavailable = (e) => {
+      const rec = new MediaRecorder(mixedDest.stream)
+      rec.ondataavailable = (e) => {
         if (e.data.size > 0) recordedChunksRef.current.push(e.data)
       }
-
-      mediaRecorder.onstop = () => {
-        if (recordedChunksRef.current.length > 0) {
-          const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' })
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.style.display = 'none'
-          a.href = url
-          a.download = `Echo-Chamada-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.webm`
-          document.body.appendChild(a)
-          a.click()
-          setTimeout(() => {
-            document.body.removeChild(a)
-            window.URL.revokeObjectURL(url)
-          }, 200)
-        }
-        recCtx.close().catch(() => {})
-      }
-
-      mediaRecorder.start(1000)
-      mediaRecorderRef.current = mediaRecorder
+      rec.start(1000)
+      mediaRecorderRef.current = rec
       setIsRecordingCall(true)
       setRecordingDuration(0)
-
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingDuration(prev => prev + 1)
-      }, 1000)
+      recordingTimerRef.current = setInterval(() => setRecordingDuration(d => d + 1), 1000)
     } catch (err) {
-      console.error('Failed to start call recording:', err)
+      console.warn('Call recording error:', err)
     }
-  }, [isRecordingCall])
+  }, [])
 
   const stopCallRecording = useCallback(() => {
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop()
+      mediaRecorderRef.current = null
+    }
     if (recordingTimerRef.current) {
       clearInterval(recordingTimerRef.current)
       recordingTimerRef.current = null
     }
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop()
-      mediaRecorderRef.current = null
-    }
     setIsRecordingCall(false)
+    setTimeout(() => {
+      const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `echo-call-recording-${Date.now()}.webm`
+      a.click()
+      URL.revokeObjectURL(url)
+    }, 500)
   }, [])
 
-  // Monitor RTC Connection quality metrics (ping, jitter, packet loss)
-  useEffect(() => {
-    if (!isConnected) {
-      setRtcStats(null)
-      return
-    }
-    const interval = setInterval(async () => {
-      if (peersRef.current.size === 0) {
-        setRtcStats(null)
-        return
-      }
-      try {
-        const pc = Array.from(peersRef.current.values())[0]
-        const stats = await pc.getStats()
-        let ping = 0
-        let jitter = 0
-        let packetLoss = 0
-
-        stats.forEach((report) => {
-          if (report.type === 'candidate-pair' && report.state === 'succeeded') {
-            ping = Math.round((report.currentRoundTripTime || 0) * 1000)
-          }
-          if (report.type === 'inbound-rtp' && report.kind === 'audio') {
-            jitter = Math.round((report.jitter || 0) * 1000)
-            const lost = report.packetsLost || 0
-            const received = report.packetsReceived || 1
-            packetLoss = Math.round((lost / (received + lost)) * 10000) / 100
-          }
-        })
-        setRtcStats({ ping, jitter, packetLoss })
-      } catch (e) {
-        console.error("Error reading RTC stats:", e)
-      }
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [isConnected])
-
-  // Cleanup on unmount
+  // Auto leave on unmount
   useEffect(() => {
     return () => {
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current)
-        recordingTimerRef.current = null
-      }
       leaveVoice()
     }
   }, [leaveVoice])
@@ -1856,6 +1034,8 @@ export function useVoiceChannel() {
     setPttActive,
     playSoundboard,
     startCallRecording,
-    stopCallRecording
+    stopCallRecording,
+    isAiDenoiseEnabled,
+    toggleAiDenoise
   }
 }

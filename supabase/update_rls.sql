@@ -16,10 +16,9 @@ CREATE POLICY "members join spaces" ON public.space_members
     user_id = (select auth.uid()) AND role = 'member'
   );
 
--- 3. Permitir que os membros de um espaço vejam os outros membros daquele espaço
+-- 3. Permitir que os membros de um espaço vejam todos os outros membros do servidor
+DROP POLICY IF EXISTS "members read their own membership" ON public.space_members;
 DROP POLICY IF EXISTS "members read space memberships" ON public.space_members;
 CREATE POLICY "members read space memberships" ON public.space_members
   FOR SELECT TO authenticated
-  USING (
-    public.is_space_member(space_id) OR (user_id = (select auth.uid()))
-  );
+  USING (true);
