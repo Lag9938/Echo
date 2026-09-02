@@ -9340,7 +9340,7 @@ function SettingsView({
                   <h3 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span>🎧 Áudio Espacial 3D (Posicionamento Estéreo)</span>
                     <span style={{ fontSize: '10.5px', background: 'rgba(0, 242, 254, 0.2)', color: '#00f2fe', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
-                      NOVO v0.23.5
+                      NOVO v0.23.6
                     </span>
                   </h3>
                   <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)' }}>

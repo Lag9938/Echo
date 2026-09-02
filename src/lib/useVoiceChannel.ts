@@ -35,8 +35,8 @@ function optimizeSDP(sdp: string): string {
       // A primeira seção de áudio encontrada é sempre a do microfone.
       // Qualquer seção subsequente é a da transmissão de tela (screenshare).
       if (isFirstAudio) {
-        // Voz (Microfone): Mono, 64kbps, DTX ativo
-        section = optimizeAudioSection(section, { stereo: 0, bitrate: 64000, dtx: 1 });
+        // Voz (Microfone): Mono, 64kbps, DTX inativo (mantém portas NAT de roteadores abertas em silêncio)
+        section = optimizeAudioSection(section, { stereo: 0, bitrate: 64000, dtx: 0 });
         isFirstAudio = false;
       } else {
         // Transmissão de tela (Jogo): Stereo, 128kbps, DTX inativo
@@ -72,9 +72,29 @@ function optimizeAudioSection(section: string, config: { stereo: number; bitrate
   return lines.join('\r\n');
 }
 
-function createStudioMicrophoneDSP(stream: MediaStream): { finalStream: MediaStream; audioCtx: AudioContext } {
+export interface StudioMicrophoneDSPNodes {
+  source: MediaStreamAudioSourceNode;
+  highpass: BiquadFilterNode;
+  lowpass: BiquadFilterNode;
+  compressor: DynamicsCompressorNode;
+  dest: MediaStreamAudioDestinationNode;
+}
+
+function createStudioMicrophoneDSP(stream: MediaStream): { 
+  finalStream: MediaStream; 
+  audioCtx: AudioContext; 
+  nodes: StudioMicrophoneDSPNodes 
+} {
   const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
   const audioCtx = new AudioCtxClass({ sampleRate: 48000 });
+
+  // Auto-resume se o contexto de áudio for suspenso pelo navegador ou SO
+  audioCtx.onstatechange = () => {
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+  };
+
   const source = audioCtx.createMediaStreamSource(stream);
 
   // 1. Filtro Passa-Alta em 85 Hz (elimina vibrações de mesa, sopro e vento de ventoinhas)
@@ -103,116 +123,50 @@ function createStudioMicrophoneDSP(stream: MediaStream): { finalStream: MediaStr
   lowpass.connect(compressor);
   compressor.connect(dest);
 
-  return { finalStream: dest.stream, audioCtx };
+  return { 
+    finalStream: dest.stream, 
+    audioCtx,
+    nodes: { source, highpass, lowpass, compressor, dest }
+  };
 }
 
-function createAntiEchoIsolationDSP(
-  sysStream: MediaStream,
-  remoteStreams: MediaStream[]
+function createCleanGameAudioDSP(
+  sysStream: MediaStream
 ): { finalStream: MediaStream; audioCtx: AudioContext | null } {
   try {
     const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtxClass) {
       return { finalStream: sysStream, audioCtx: null };
     }
-    const audioCtx = new AudioCtxClass();
+    const audioCtx = new AudioCtxClass({ sampleRate: 48000 });
+    audioCtx.onstatechange = () => {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+    };
     const sysSource = audioCtx.createMediaStreamSource(sysStream);
 
-    // 1. Path A: Graves e Agudos do Jogo (Impactos, Passos, Músicas, Explosões - 100% Intocados)
-    const lowpass = audioCtx.createBiquadFilter();
-    lowpass.type = 'lowpass';
-    lowpass.frequency.value = 260;
-
+    // Sub-rumble filter
     const highpass = audioCtx.createBiquadFilter();
     highpass.type = 'highpass';
-    highpass.frequency.value = 3800;
+    highpass.frequency.value = 40;
 
-    // 2. Path B: Faixa de Frequência da Voz Humana (260 Hz - 3800 Hz)
-    const vocalBandFilter = audioCtx.createBiquadFilter();
-    vocalBandFilter.type = 'bandpass';
-    vocalBandFilter.frequency.value = 1400;
-    vocalBandFilter.Q.value = 0.5;
-
-    const vocalBandGain = audioCtx.createGain();
-    vocalBandGain.gain.value = 1.0;
-
-    // Conexões de áudio
-    sysSource.connect(lowpass);
-    sysSource.connect(highpass);
-    sysSource.connect(vocalBandFilter);
-    vocalBandFilter.connect(vocalBandGain);
-
-    // 3. Master Mixer & Compressor dinâmico para nivelamento de som de jogo
-    const masterMixer = audioCtx.createGain();
-    lowpass.connect(masterMixer);
-    highpass.connect(masterMixer);
-    vocalBandGain.connect(masterMixer);
-
+    // Compressor dinâmico suave para jogabilidade (sem corte de frequências vocais)
     const compressor = audioCtx.createDynamicsCompressor();
-    compressor.threshold.value = -14;
+    compressor.threshold.value = -12;
     compressor.knee.value = 6;
-    compressor.ratio.value = 3;
+    compressor.ratio.value = 2.5;
     compressor.attack.value = 0.005;
     compressor.release.value = 0.1;
 
     const dest = audioCtx.createMediaStreamDestination();
-    masterMixer.connect(compressor);
+    sysSource.connect(highpass);
+    highpass.connect(compressor);
     compressor.connect(dest);
-
-    // 4. Sidechain Detector de Voz dos Participantes da Chamada
-    // Quando qualquer pessoa falar na chamada, a faixa vocal da transmissão é silenciada instantaneamente
-    const analysers: AnalyserNode[] = [];
-    if (remoteStreams && remoteStreams.length > 0) {
-      for (const rStream of remoteStreams) {
-        try {
-          if (rStream.getAudioTracks().length > 0 && rStream.getAudioTracks()[0].readyState === 'live') {
-            const rSource = audioCtx.createMediaStreamSource(rStream);
-            const analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 256;
-            rSource.connect(analyser);
-            analysers.push(analyser);
-          }
-        } catch (e) {}
-      }
-    }
-
-    if (analysers.length > 0) {
-      const buffer = new Uint8Array(128);
-      let lastVoiceDetectedTime = 0;
-
-      const checkVoiceActivity = () => {
-        if (audioCtx.state === 'closed') return;
-
-        let maxVolume = 0;
-        for (const an of analysers) {
-          an.getByteFrequencyData(buffer);
-          let sum = 0;
-          for (let i = 0; i < buffer.length; i++) {
-            sum += buffer[i];
-          }
-          const avg = sum / buffer.length;
-          if (avg > maxVolume) maxVolume = avg;
-        }
-
-        const now = Date.now();
-        if (maxVolume > 10) {
-          lastVoiceDetectedTime = now;
-          // Silencia imediatamente a faixa vocal do loopback em 10ms
-          vocalBandGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.01);
-        } else if (now - lastVoiceDetectedTime > 280) {
-          // Restaura o som ambiente do jogo quando ninguém estiver falando
-          vocalBandGain.gain.setTargetAtTime(1.0, audioCtx.currentTime, 0.06);
-        }
-
-        requestAnimationFrame(checkVoiceActivity);
-      };
-
-      requestAnimationFrame(checkVoiceActivity);
-    }
 
     return { finalStream: dest.stream, audioCtx };
   } catch (err) {
-    console.warn('createAntiEchoIsolationDSP fallback:', err);
+    console.warn('createCleanGameAudioDSP fallback:', err);
     return { finalStream: sysStream, audioCtx: null };
   }
 }
@@ -334,6 +288,7 @@ export function useVoiceChannel() {
   const localStreamRef = useRef<MediaStream | null>(null)
   const localRawStreamRef = useRef<MediaStream | null>(null)
   const localDspCtxRef = useRef<AudioContext | null>(null)
+  const localDspNodesRef = useRef<StudioMicrophoneDSPNodes | null>(null)
   const localScreenStreamRef = useRef<MediaStream | null>(null)
   const screenSendersRef = useRef<Map<string, RTCRtpSender>>(new Map()) // Tracks video senders per peer
   const screenAudioSendersRef = useRef<Map<string, RTCRtpSender>>(new Map()) // Tracks audio senders per peer
@@ -341,9 +296,9 @@ export function useVoiceChannel() {
   const myInfoRef = useRef<{ userId: string; displayName: string; avatarUrl?: string } | null>(null)
   const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map())
   
-  // Analysers
-  const analysersRef = useRef<Map<string, { analyser: AnalyserNode; ctx: AudioContext }>>(new Map())
-  const localAnalyserRef = useRef<{ analyser: AnalyserNode; ctx: AudioContext } | null>(null)
+  // Analysers (armazenam o nó source para evitar que o Garbage Collector descarte a captura de áudio)
+  const analysersRef = useRef<Map<string, { analyser: AnalyserNode; ctx: AudioContext; source?: MediaStreamAudioSourceNode }>>(new Map())
+  const localAnalyserRef = useRef<{ analyser: AnalyserNode; ctx: AudioContext; source?: MediaStreamAudioSourceNode } | null>(null)
   
   // Selected devices configuration
   const selectedInputIdRef = useRef<string>('default')
@@ -354,7 +309,10 @@ export function useVoiceChannel() {
   const peerVolumesRef = useRef<Map<string, number>>(new Map()) // Tracks local volume per peer
   const peerScreenVolumesRef = useRef<Map<string, number>>(new Map()) // Tracks local screenshare volume per peer
   const peerPansRef = useRef<Map<string, number>>(new Map()) // Tracks stereo panning per peer (-1 left, 0 center, +1 right)
-  const peerPannersRef = useRef<Map<string, { panner: StereoPannerNode; ctx: AudioContext }>>(new Map())
+  const peerPannersRef = useRef<Map<string, { panner: StereoPannerNode; ctx: AudioContext; source?: MediaStreamAudioSourceNode; dest?: MediaStreamAudioDestinationNode }>>(new Map())
+  const initiateConnectionRef = useRef<((remoteUserId: string, isIceRestart?: boolean) => Promise<void>) | null>(null)
+  const peerVoiceTrackIdsRef = useRef<Map<string, string>>(new Map()) // Maps remoteUserId -> original microphone voice trackId
+  const nativeAudioCleanupRef = useRef<(() => void) | null>(null)
   const isSpatialAudioEnabledRef = useRef(false)
   const participantsMapRef = useRef<Map<string, { displayName: string; avatarUrl?: string; screenStream?: MediaStream; isMuted?: boolean; isDeafened?: boolean }>>(new Map())
   const activeChannelIdRef = useRef<string | null>(null)
@@ -427,8 +385,29 @@ export function useVoiceChannel() {
       const remoteStream = event.streams[0] || new MediaStream([track])
 
       if (track.kind === 'audio') {
-        // Detect if this is screenshare audio (stream contains a video track) or normal microphone voice
-        const isScreen = remoteStream.getVideoTracks().length > 0
+        // Separação determinística de áudio: voz (microfone) vs transmissão de tela (jogo)
+        let isScreen = false
+        const knownVoiceTrackId = peerVoiceTrackIdsRef.current.get(remoteUserId)
+
+        if (knownVoiceTrackId) {
+          // Se já conhecemos a faixa de voz deste usuário, qualquer outra faixa de áudio recebida é tela!
+          isScreen = track.id !== knownVoiceTrackId
+        } else {
+          // Primeira faixa de áudio recebida do par:
+          if (remoteStream.getVideoTracks().length > 0) {
+            isScreen = true
+          } else {
+            peerVoiceTrackIdsRef.current.set(remoteUserId, track.id)
+            isScreen = false
+          }
+        }
+
+        track.onended = () => {
+          if (peerVoiceTrackIdsRef.current.get(remoteUserId) === track.id) {
+            peerVoiceTrackIdsRef.current.delete(remoteUserId)
+          }
+        }
+
         const key = isScreen ? `${remoteUserId}-screen` : `${remoteUserId}-voice`
         
         let audio = audioElementsRef.current.get(key)
@@ -454,6 +433,11 @@ export function useVoiceChannel() {
             }
 
             const spatialCtx = new AudioContext()
+            spatialCtx.onstatechange = () => {
+              if (spatialCtx.state === 'suspended') {
+                spatialCtx.resume().catch(() => {})
+              }
+            }
             const source = spatialCtx.createMediaStreamSource(remoteStream)
             const panner = spatialCtx.createStereoPanner()
             const dest = spatialCtx.createMediaStreamDestination()
@@ -464,7 +448,7 @@ export function useVoiceChannel() {
             source.connect(panner)
             panner.connect(dest)
             
-            peerPannersRef.current.set(remoteUserId, { panner, ctx: spatialCtx })
+            peerPannersRef.current.set(remoteUserId, { panner, ctx: spatialCtx, source, dest })
             audio.srcObject = dest.stream
           } catch (e) {
             audio.srcObject = remoteStream
@@ -487,11 +471,16 @@ export function useVoiceChannel() {
         // Set up speaking detection
         try {
           const ctx = new AudioContext()
+          ctx.onstatechange = () => {
+            if (ctx.state === 'suspended') {
+              ctx.resume().catch(() => {})
+            }
+          }
           const source = ctx.createMediaStreamSource(remoteStream)
           const analyser = ctx.createAnalyser()
           analyser.fftSize = 512
           source.connect(analyser)
-          analysersRef.current.set(remoteUserId, { analyser, ctx })
+          analysersRef.current.set(remoteUserId, { analyser, ctx, source })
         } catch {
           // AudioContext may fail in some environments
         }
@@ -537,15 +526,31 @@ export function useVoiceChannel() {
 
     pc.onconnectionstatechange = () => {
       console.log(`[WebRTC] Peer ${remoteUserId} connection state: ${pc.connectionState}`)
-      if (pc.connectionState === 'failed') {
+      if (pc.connectionState === 'disconnected') {
+        console.warn(`[WebRTC] Peer ${remoteUserId} disconnected. Scheduling ICE restart in 2.5s if not recovered...`)
+        setTimeout(() => {
+          if (pc.connectionState === 'disconnected') {
+            const myId = myInfoRef.current?.userId || ''
+            if (myId && myId > remoteUserId) {
+              console.log(`[WebRTC] Initiating ICE restart for peer ${remoteUserId}`)
+              initiateConnectionRef.current?.(remoteUserId, true)
+            }
+          }
+        }, 2500)
+      } else if (pc.connectionState === 'failed') {
         setTimeout(() => {
           if (pc.connectionState === 'failed') {
-            console.warn(`[WebRTC] Peer ${remoteUserId} connection permanently failed, cleaning up.`)
+            console.warn(`[WebRTC] Peer ${remoteUserId} connection permanently failed, cleaning up and attempting reconnect.`)
             cleanupPeer(remoteUserId)
+            const myId = myInfoRef.current?.userId || ''
+            if (myId && myId > remoteUserId) {
+              setTimeout(() => {
+                initiateConnectionRef.current?.(remoteUserId)
+              }, 1000)
+            }
           }
-        }, 5000)
+        }, 3000)
       }
-      // Note: 'disconnected' state is transient and can recover automatically!
     }
 
     peersRef.current.set(remoteUserId, pc)
@@ -574,6 +579,7 @@ export function useVoiceChannel() {
     }
 
     screenSendersRef.current.delete(peerId)
+    peerVoiceTrackIdsRef.current.delete(peerId)
     pendingCandidatesRef.current.delete(peerId)
     participantsMapRef.current.delete(peerId)
     syncParticipants()
@@ -664,16 +670,15 @@ export function useVoiceChannel() {
     }
   }, [createPeerConnection, syncParticipants])
 
-  // Initiate connection to a peer (we create the offer)
-  const initiateConnection = useCallback(async (remoteUserId: string) => {
+  const initiateConnection = useCallback(async (remoteUserId: string, isIceRestart = false) => {
     let pc = peersRef.current.get(remoteUserId)
     if (!pc) pc = createPeerConnection(remoteUserId)
     if (!pc) return
 
     try {
-      if (pc.signalingState !== 'stable') return
+      if (pc.signalingState !== 'stable' && !isIceRestart) return
 
-      let offer = await pc.createOffer()
+      let offer = await pc.createOffer(isIceRestart ? { iceRestart: true } : undefined)
       const optimizedSdp = optimizeSDP(offer.sdp || '')
       const finalOffer = { type: offer.type, sdp: optimizedSdp }
       await pc.setLocalDescription(finalOffer)
@@ -687,6 +692,8 @@ export function useVoiceChannel() {
       console.warn('[WebRTC] initiateConnection error for peer', remoteUserId, err)
     }
   }, [createPeerConnection])
+
+  initiateConnectionRef.current = initiateConnection
 
   // Start speaking detection interval
   const startSpeakingDetection = useCallback(() => {
@@ -706,18 +713,12 @@ export function useVoiceChannel() {
         const isLocalSpeaking = !isLocalMuted && avg > SPEAKING_THRESHOLD
         updates[myInfoRef.current.userId] = isLocalSpeaking
 
-        // PROTEÇÃO CONTRA RETORNO DO ESPECTADOR:
-        // Enquanto o usuário local estiver falando, o áudio das telas transmitidas é reduzido suavemente
-        // garantindo que ele NUNCA escute sua própria voz de volta com delay
+        // Ensure screen audio volume stays at the user's configured volume
         for (const [key, audioEl] of audioElementsRef.current.entries()) {
           if (key.endsWith('-screen')) {
             const peerId = key.replace('-screen', '')
             const savedVol = peerScreenVolumesRef.current.get(peerId) !== undefined ? peerScreenVolumesRef.current.get(peerId)! : 1.0
-            if (isLocalSpeaking) {
-              audioEl.volume = Math.max(0, Math.min(1, savedVol * 0.05))
-            } else {
-              audioEl.volume = Math.max(0, Math.min(1, savedVol))
-            }
+            audioEl.volume = Math.max(0, Math.min(1, savedVol))
           }
         }
       }
@@ -773,8 +774,9 @@ export function useVoiceChannel() {
 
       let finalStream = stream
       try {
-        const { finalStream: dspStream, audioCtx } = createStudioMicrophoneDSP(stream)
+        const { finalStream: dspStream, audioCtx, nodes } = createStudioMicrophoneDSP(stream)
         localDspCtxRef.current = audioCtx
+        localDspNodesRef.current = nodes
         finalStream = dspStream
       } catch (dspErr) {
         console.error('Failed to initialize local microphone DSP pipeline:', dspErr)
@@ -785,11 +787,16 @@ export function useVoiceChannel() {
       // Setup local audio analyser for speaking detection (connect to final filtered stream)
       try {
         const ctx = new AudioContext()
+        ctx.onstatechange = () => {
+          if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => {})
+          }
+        }
         const source = ctx.createMediaStreamSource(finalStream)
         const analyser = ctx.createAnalyser()
         analyser.fftSize = 512
         source.connect(analyser)
-        localAnalyserRef.current = { analyser, ctx }
+        localAnalyserRef.current = { analyser, ctx, source }
       } catch (err) {
         console.error('Failed to setup local audio analyser:', err)
       }
@@ -977,6 +984,12 @@ export function useVoiceChannel() {
       localAnalyserRef.current = null
     }
 
+    // Stop native process audio capture
+    if (nativeAudioCleanupRef.current) {
+      try { nativeAudioCleanupRef.current() } catch (e) {}
+      nativeAudioCleanupRef.current = null
+    }
+
     // Stop screen share
     if (localScreenStreamRef.current) {
       localScreenStreamRef.current.getTracks().forEach(t => t.stop())
@@ -985,6 +998,7 @@ export function useVoiceChannel() {
     }
     screenSendersRef.current.clear()
     screenAudioSendersRef.current.clear()
+    peerVoiceTrackIdsRef.current.clear()
 
     // Close all peer connections
     peersRef.current.forEach((pc) => pc.close())
@@ -1003,6 +1017,7 @@ export function useVoiceChannel() {
       localDspCtxRef.current.close().catch(() => {})
       localDspCtxRef.current = null
     }
+    localDspNodesRef.current = null
 
     // Clean up audio elements
     audioElementsRef.current.forEach(audio => { audio.srcObject = null })
@@ -1186,6 +1201,7 @@ export function useVoiceChannel() {
         localDspCtxRef.current.close().catch(() => {})
         localDspCtxRef.current = null
       }
+      localDspNodesRef.current = null
       if (localRawStreamRef.current) {
         localRawStreamRef.current.getTracks().forEach(t => t.stop())
       }
@@ -1193,8 +1209,9 @@ export function useVoiceChannel() {
 
       let finalStream = newStream
       try {
-        const { finalStream: dspStream, audioCtx } = createStudioMicrophoneDSP(newStream)
+        const { finalStream: dspStream, audioCtx, nodes } = createStudioMicrophoneDSP(newStream)
         localDspCtxRef.current = audioCtx
+        localDspNodesRef.current = nodes
         finalStream = dspStream
       } catch (dspErr) {
         console.error('Failed to initialize local microphone DSP pipeline on device change:', dspErr)
@@ -1223,11 +1240,16 @@ export function useVoiceChannel() {
       }
       try {
         const ctx = new AudioContext()
+        ctx.onstatechange = () => {
+          if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => {})
+          }
+        }
         const source = ctx.createMediaStreamSource(finalStream)
         const analyser = ctx.createAnalyser()
         analyser.fftSize = 512
         source.connect(analyser)
-        localAnalyserRef.current = { analyser, ctx }
+        localAnalyserRef.current = { analyser, ctx, source }
       } catch (e) {}
 
     } catch (err) {
@@ -1260,13 +1282,80 @@ export function useVoiceChannel() {
         try { screenDspCtxRef.current.close() } catch (e) {}
         screenDspCtxRef.current = null
       }
+      if (nativeAudioCleanupRef.current) {
+        try { nativeAudioCleanupRef.current() } catch (e) {}
+        nativeAudioCleanupRef.current = null
+      }
 
       let stream: MediaStream | null = null
       const targetWidth = width || 1920
       const targetHeight = height || 1080
       const targetFps = fps || 60
 
-      const audioConstraint = (audioMode !== 'none') ? {
+      let nativeAudioTrack: MediaStreamTrack | null = null
+
+      // Tentativa de Captura Nativa de Áudio por Processo (WASAPI Loopback por PID estilo Discord)
+      if (sourceId && sourceId.startsWith('window:') && audioMode !== 'none') {
+        try {
+          const res = await (window as any).electronAPI?.startProcessAudioCapture(sourceId)
+          if (res && res.success) {
+            console.log('[NativeAudio] Captura nativa de processo ativa (estilo Discord) para:', sourceId)
+            const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext
+            const procCtx = new AudioCtxClass({ sampleRate: 48000 })
+            const dest = procCtx.createMediaStreamDestination()
+
+            const RING_SIZE = 48000 * 2 // 2 segundos de buffer circular em 48kHz
+            const ringL = new Float32Array(RING_SIZE)
+            const ringR = new Float32Array(RING_SIZE)
+            let writeIdx = 0
+            let readIdx = 0
+            let available = 0;
+
+            (window as any).electronAPI?.onScreenshareAudioChunk((chunk: Uint8Array | ArrayBuffer) => {
+              const raw = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk)
+              const int16 = new Int16Array(raw.buffer, raw.byteOffset, Math.floor(raw.byteLength / 2))
+              const samples = Math.floor(int16.length / 2)
+              for (let i = 0; i < samples; i++) {
+                ringL[writeIdx] = int16[i * 2] / 32768.0
+                ringR[writeIdx] = int16[i * 2 + 1] / 32768.0
+                writeIdx = (writeIdx + 1) % RING_SIZE
+              }
+              available = Math.min(RING_SIZE, available + samples)
+            })
+
+            const scriptNode = procCtx.createScriptProcessor(2048, 0, 2)
+            scriptNode.onaudioprocess = (e) => {
+              const outL = e.outputBuffer.getChannelData(0)
+              const outR = e.outputBuffer.getChannelData(1)
+              const len = outL.length
+              if (available < len) {
+                outL.fill(0)
+                outR.fill(0)
+              } else {
+                for (let i = 0; i < len; i++) {
+                  outL[i] = ringL[readIdx]
+                  outR[i] = ringR[readIdx]
+                  readIdx = (readIdx + 1) % RING_SIZE
+                }
+                available -= len
+              }
+            }
+
+            scriptNode.connect(dest)
+            nativeAudioTrack = dest.stream.getAudioTracks()[0]
+            nativeAudioCleanupRef.current = () => {
+              try { scriptNode.disconnect() } catch (e) {}
+              try { procCtx.close() } catch (e) {}
+              (window as any).electronAPI?.stopProcessAudioCapture()
+            }
+          }
+        } catch (nativeErr) {
+          console.warn('[NativeAudio] Falha ao inicializar captura nativa por processo:', nativeErr)
+        }
+      }
+
+      // Se obtivemos a faixa de áudio nativa por processo, não precisamos que o Chromium capture a saída mestre
+      const audioConstraint = (audioMode !== 'none' && !nativeAudioTrack) ? {
         mandatory: {
           chromeMediaSource: 'desktop'
         }
@@ -1315,32 +1404,34 @@ export function useVoiceChannel() {
           }
         }
 
-        // Processamento Anti-Eco Inteligente (DSP) se habilitado
-        if (stream && audioMode === 'anti-echo') {
-          const rawAudioTracks = stream.getAudioTracks()
-          if (rawAudioTracks.length > 0) {
-            try {
-              const rawAudioTrack = rawAudioTracks[0]
-              const rawAudioStream = new MediaStream([rawAudioTrack])
-
-              const remoteVoiceStreams: MediaStream[] = []
-              for (const [key, audioEl] of audioElementsRef.current.entries()) {
-                if (key.endsWith('-voice') && audioEl.srcObject instanceof MediaStream) {
-                  remoteVoiceStreams.push(audioEl.srcObject)
+        // Aplica o áudio isolado nativo (estilo Discord) ou fallback de game áudio limpo
+        if (stream) {
+          if (nativeAudioTrack) {
+            // Remove qualquer áudio padrão do Chromium e injeta a faixa isolada do executável do jogo
+            stream.getAudioTracks().forEach(t => {
+              stream!.removeTrack(t)
+              t.stop()
+            })
+            stream.addTrack(nativeAudioTrack)
+          } else if (audioMode === 'anti-echo') {
+            // Fallback (ex: transmissão de tela inteira): equalização e compressor dinâmico limpo sem corte de voz
+            const rawAudioTracks = stream.getAudioTracks()
+            if (rawAudioTracks.length > 0) {
+              try {
+                const rawAudioTrack = rawAudioTracks[0]
+                const rawAudioStream = new MediaStream([rawAudioTrack])
+                const { finalStream, audioCtx } = createCleanGameAudioDSP(rawAudioStream)
+                if (audioCtx) {
+                  screenDspCtxRef.current = audioCtx
+                  const cleanAudioTracks = finalStream.getAudioTracks()
+                  if (cleanAudioTracks.length > 0) {
+                    stream.removeTrack(rawAudioTrack)
+                    stream.addTrack(cleanAudioTracks[0])
+                  }
                 }
+              } catch (dspErr) {
+                console.warn('Game audio DSP fallback warning:', dspErr)
               }
-
-              const { finalStream, audioCtx } = createAntiEchoIsolationDSP(rawAudioStream, remoteVoiceStreams)
-              if (audioCtx) {
-                screenDspCtxRef.current = audioCtx
-                const cleanAudioTracks = finalStream.getAudioTracks()
-                if (cleanAudioTracks.length > 0) {
-                  stream.removeTrack(rawAudioTrack)
-                  stream.addTrack(cleanAudioTracks[0])
-                }
-              }
-            } catch (dspErr) {
-              console.warn('Anti-echo DSP warning (continuing with clean system audio):', dspErr)
             }
           }
         }
@@ -1448,6 +1539,11 @@ export function useVoiceChannel() {
 
   // Stop sharing screen
   const stopScreenShare = useCallback(async () => {
+    if (nativeAudioCleanupRef.current) {
+      try { nativeAudioCleanupRef.current() } catch (e) {}
+      nativeAudioCleanupRef.current = null
+    }
+
     if (localScreenStreamRef.current) {
       if (screenDspCtxRef.current) {
         try { screenDspCtxRef.current.close() } catch (e) {}

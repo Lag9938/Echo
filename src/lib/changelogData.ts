@@ -14,15 +14,42 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.23.5'
+export const APP_CURRENT_VERSION = '0.23.6'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.23.6',
+    title: 'Transmissão Nativa com Isolamento de Áudio (Estilo Discord)',
+    date: '02 de Setembro de 2026',
+    tagline: 'Captura nativa de som exclusiva por processo via Windows WASAPI Loopback, eliminação total de eco e fim do mutamento de voz.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🛡️',
+        badge: 'ESTILO DISCORD',
+        title: 'Captura de Áudio Nativa por Processo (WASAPI Loopback)',
+        description: 'Ao transmitir um jogo ou janela, o Echo agora isola nativamente o som daquele aplicativo no Windows. As vozes da chamada nunca são capturadas, eliminando 100% o retorno de voz e eco.'
+      },
+      {
+        icon: '🎙️',
+        badge: 'VOZ & TELA',
+        title: 'Separação Definitiva de Faixas WebRTC',
+        description: 'O áudio da transmissão e o seu microfone agora trafegam em canais totalmente independentes, garantindo que sua voz nunca mais seja mutada ou substituída pela tela.'
+      },
+      {
+        icon: '🔊',
+        badge: 'FIDELIDADE',
+        title: 'Áudio Cristalino Sem Cortes',
+        description: 'Remoção de filtros destrutivos de frequências e ducking forçado, preservando toda a fidelidade do som dos seus jogos a 48kHz estéreo.'
+      }
+    ]
+  },
   {
     version: '0.23.5',
     title: 'Áudio Espacial 3D & Controles Granulares do Perfil',
     date: '02 de Setembro de 2026',
     tagline: 'Posicionamento estéreo de voz dos amigos em chamadas, distribuição 3D de squad e total liberdade de customização no perfil.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🎧',
