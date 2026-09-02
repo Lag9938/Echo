@@ -380,6 +380,50 @@ function MegaphoneIcon({ className, style }: { className?: string; style?: React
   )
 }
 
+function SoundboardIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+    </svg>
+  )
+}
+
+function RecordCallIcon({ className, style, isRecording }: { className?: string; style?: React.CSSProperties; isRecording?: boolean }) {
+  if (isRecording) {
+    return (
+      <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <rect x="4" y="4" width="16" height="16" rx="3" />
+      </svg>
+    )
+  }
+  return (
+    <svg className={className} style={style} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <circle cx="12" cy="12" r="3.5" fill="currentColor"/>
+    </svg>
+  )
+}
+
+function VoiceMessageIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+      <line x1="12" y1="19" x2="12" y2="22"/>
+    </svg>
+  )
+}
+
+function PaperclipIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+    </svg>
+  )
+}
+
 function PaletteIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <svg className={className} style={style} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -417,6 +461,37 @@ function SparklesIcon({ className, style }: { className?: string; style?: React.
   return (
     <svg className={className} style={style} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+    </svg>
+  )
+}
+
+function UserIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  )
+}
+
+function GamepadIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="6" y1="12" x2="10" y2="12" />
+      <line x1="8" y1="10" x2="8" y2="14" />
+      <line x1="15" y1="13" x2="15.01" y2="13" />
+      <line x1="18" y1="11" x2="18.01" y2="11" />
+      <rect x="2" y="6" width="20" height="12" rx="6" />
+    </svg>
+  )
+}
+
+function SaveIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+      <polyline points="17 21 17 13 7 13 7 21" />
+      <polyline points="7 3 7 8 15 8" />
     </svg>
   )
 }
@@ -1050,6 +1125,8 @@ function Echo({ user }: { user: User }) {
     changeOutputDevice,
     changeScreenShareSettings,
     changePeerVolume,
+    changePeerPan,
+    setSpatialAudioEnabled,
     changePeerScreenVolume,
     setPttMode,
     setPttActive,
@@ -1178,6 +1255,30 @@ function Echo({ user }: { user: User }) {
     })
   }, [participants, userVolumes, changePeerVolume])
 
+  // 3D Spatial Audio & Stereo Panning state
+  const [spatialAudioEnabled, setSpatialAudioEnabledState] = useState<boolean>(() => {
+    return localStorage.getItem('echo-spatial-audio-enabled') === 'true'
+  })
+  const [userStereoPans, setUserStereoPans] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem('echo-user-stereo-pans')
+    return saved ? JSON.parse(saved) : {}
+  })
+
+  // Sincronizar ativação global do Áudio Espacial 3D
+  useEffect(() => {
+    setSpatialAudioEnabled(spatialAudioEnabled)
+  }, [spatialAudioEnabled, setSpatialAudioEnabled])
+
+  // Sincronizar balanço estéreo (Pan) de cada participante
+  useEffect(() => {
+    participants.forEach(p => {
+      if (p.userId !== user.id) {
+        const pan = userStereoPans[p.userId] !== undefined ? userStereoPans[p.userId] : 0
+        changePeerPan(p.userId, pan)
+      }
+    })
+  }, [participants, userStereoPans, changePeerPan, user.id])
+
   // Local screenshare volumes state
   const [peerScreenVolumes, setPeerScreenVolumes] = useState<Record<string, number>>(() => {
     const saved = localStorage.getItem('echo-peer-screen-volumes')
@@ -1197,6 +1298,7 @@ function Echo({ user }: { user: User }) {
   const [selectedScreenSharerUserId, setSelectedScreenSharerUserId] = useState<string | null>(null)
   const [screenShareViewMode, setScreenShareViewMode] = useState<'focus' | 'grid'>('focus')
   const [isWatchingStreams, setIsWatchingStreams] = useState(true)
+  const [isPiPActive, setIsPiPActive] = useState(false)
 
   // Filter participants who have an active screenshare stream with live video track
   const activeScreenSharers = participants.filter(p => p.screenStream && p.screenStream.getVideoTracks().length > 0)
@@ -2416,31 +2518,68 @@ function Echo({ user }: { user: User }) {
 
   async function loadSpaceMembers(spaceId: string) {
     if (!supabase) return
-    const { data, error: queryError } = await supabase
-      .from('space_members')
-      .select('role, user:profiles(id, display_name, avatar_url)')
-      .eq('space_id', spaceId)
+    try {
+      const { data, error: queryError } = await supabase
+        .from('space_members')
+        .select('role, user:profiles(id, display_name, avatar_url)')
+        .eq('space_id', spaceId)
 
-    if (queryError) {
-      console.warn("loadSpaceMembers error", queryError)
-      return
+      if (queryError) {
+        console.warn("loadSpaceMembers error", queryError)
+        return
+      }
+
+      let members = (data ?? []).map((row: any) => ({
+        role: row.role,
+        user: Array.isArray(row.user) ? row.user[0] : row.user
+      })).filter(m => m.user !== null && m.user?.id)
+
+      // Se o usuário logado está visualizando o servidor mas ainda não foi inserido na tabela space_members, insere automaticamente
+      if (user && !members.some(m => m.user.id === user.id)) {
+        const myMemberObj = {
+          role: 'member',
+          user: { id: user.id, display_name: profileDisplayName || 'Membro', avatar_url: profileAvatarUrl }
+        }
+        members.push(myMemberObj)
+        supabase.from('space_members').upsert({ space_id: spaceId, user_id: user.id, role: 'member' }).then(() => {})
+      }
+
+      setSpaceMembers(members)
+    } catch (err) {
+      console.warn("loadSpaceMembers catch", err)
     }
-
-    const members = (data ?? []).map((row: any) => ({
-      role: row.role,
-      user: Array.isArray(row.user) ? row.user[0] : row.user
-    })).filter(m => m.user !== null)
-
-    setSpaceMembers(members)
   }
 
   useEffect(() => {
-    if (selectedChannel?.space_id) {
-      loadSpaceMembers(selectedChannel.space_id)
-    } else {
+    if (!supabase || !selectedChannel?.space_id) {
       setSpaceMembers([])
+      return
     }
-  }, [selectedChannel?.space_id])
+
+    const currentSpaceId = selectedChannel.space_id
+    loadSpaceMembers(currentSpaceId)
+
+    // Canal Realtime para sincronizar novos membros instantaneamente
+    const membersChannel = supabase
+      .channel(`public-space-members-${currentSpaceId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'space_members', filter: `space_id=eq.${currentSpaceId}` }, () => {
+        loadSpaceMembers(currentSpaceId)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        loadSpaceMembers(currentSpaceId)
+      })
+      .subscribe()
+
+    // Sincronização periódica de redundância (a cada 6s)
+    const syncInterval = setInterval(() => {
+      loadSpaceMembers(currentSpaceId)
+    }, 6000)
+
+    return () => {
+      clearInterval(syncInterval)
+      supabase?.removeChannel(membersChannel)
+    }
+  }, [selectedChannel?.space_id, user?.id])
 
   // Friends system APIs (Realtime Discord-style)
   async function loadFriendships() {
@@ -3859,10 +3998,10 @@ function Echo({ user }: { user: User }) {
                         {isDeafened ? <HeadphonesOffIcon /> : <HeadphonesIcon />}
                       </button>
                       <button className="voice-action-btn" onClick={() => setShowSoundboardModal(true)} title="Soundboard Gamer">
-                        📢
+                        <SoundboardIcon />
                       </button>
                       <button className={`voice-action-btn ${isRecordingCall ? 'muted' : ''}`} onClick={isRecordingCall ? stopCallRecording : startCallRecording} title={isRecordingCall ? `Gravando (${recordingDuration}s)` : "Gravar chamada"}>
-                        {isRecordingCall ? '⏹️' : '🎙️'}
+                        <RecordCallIcon isRecording={isRecordingCall} />
                       </button>
                       <button className="voice-action-btn disconnect-btn" onClick={handleLeaveVoice} title="Desconectar">
                         <PhoneOffIcon />
@@ -4337,8 +4476,8 @@ function Echo({ user }: { user: User }) {
                           ) : (
                             <form className="composer" onSubmit={send} style={{ position: 'relative' }}>
                               <input type="file" id="chat-file-input" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleChatFileUpload(f); e.target.value = '' }} />
-                              <button type="button" className="dm-attach-btn" onClick={() => document.getElementById('chat-file-input')?.click()} disabled={isUploading} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 8px 0 0' }}>
-                                {isUploading ? '⏳' : '📎'}
+                              <button type="button" className="dm-attach-btn" onClick={() => document.getElementById('chat-file-input')?.click()} disabled={isUploading} title="Anexar arquivo ou imagem" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 8px 0 0', display: 'flex', alignItems: 'center' }}>
+                                <PaperclipIcon />
                               </button>
 
                               {/* Voice Note Button */}
@@ -4347,9 +4486,9 @@ function Echo({ user }: { user: User }) {
                                 className="dm-attach-btn" 
                                 onClick={startVoiceNoteRecording} 
                                 title="Gravar Mensagem de Voz"
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 6px 0 0', display: 'flex', alignItems: 'center', fontSize: '16px' }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 6px 0 0', display: 'flex', alignItems: 'center' }}
                               >
-                                🎙️
+                                <VoiceMessageIcon />
                               </button>
 
                               {/* GIF Picker Button */}
@@ -4555,12 +4694,14 @@ function Echo({ user }: { user: User }) {
                     {showMembersList && currentSpace && (
                       <aside className="members-sidebar">
                         <div className="members-sidebar-inner">
-                          <div className="members-group-label">Membros ({spaceMembers.length})</div>
-                          <div className="members-list">
-                            {spaceMembers.map((member) => {
+                          {(() => {
+                            const onlineList = spaceMembers.filter(m => onlineUsers.has(m.user.id) || participants.some(p => p.userId === m.user.id))
+                            const offlineList = spaceMembers.filter(m => !onlineUsers.has(m.user.id) && !participants.some(p => p.userId === m.user.id))
+
+                            const renderCard = (member: any) => {
                               const isCreator = currentSpace.creator_id === member.user.id
                               const isVoiceUser = participants.some(p => p.userId === member.user.id)
-                              const isOnline = onlineUsers.has(member.user.id)
+                              const isOnline = onlineUsers.has(member.user.id) || isVoiceUser
                               const userPresenceStatus = isOnline ? (presenceData[member.user.id]?.presence_status || 'online') : 'offline'
                               const memberRole = getUserHighestRole(currentSpace.id, member.user.id)
 
@@ -4605,13 +4746,43 @@ function Echo({ user }: { user: User }) {
                                       ) : null}
                                     </div>
                                     <span className="member-status-text" title={presenceData[member.user.id]?.custom_status}>
-                                      {isVoiceUser ? 'Em chamada' : (presenceData[member.user.id]?.custom_status || 'Disponível')}
+                                      {isVoiceUser ? '🔊 Em chamada' : (presenceData[member.user.id]?.custom_status || (isOnline ? 'Disponível' : 'Offline'))}
                                     </span>
                                   </div>
                                 </div>
                               )
-                            })}
-                          </div>
+                            }
+
+                            return (
+                              <>
+                                {onlineList.length > 0 && (
+                                  <div style={{ marginBottom: '16px' }}>
+                                    <div className="members-group-label" style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                                      🟢 Disponível ({onlineList.length})
+                                    </div>
+                                    <div className="members-list">
+                                      {onlineList.map(renderCard)}
+                                    </div>
+                                  </div>
+                                )}
+                                {offlineList.length > 0 && (
+                                  <div>
+                                    <div className="members-group-label" style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                                      ⚪ Offline ({offlineList.length})
+                                    </div>
+                                    <div className="members-list" style={{ opacity: 0.7 }}>
+                                      {offlineList.map(renderCard)}
+                                    </div>
+                                  </div>
+                                )}
+                                {spaceMembers.length === 0 && (
+                                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', padding: '8px 0' }}>
+                                    Nenhum membro encontrado.
+                                  </div>
+                                )}
+                              </>
+                            )
+                          })()}
                         </div>
                       </aside>
                     )}
@@ -4706,6 +4877,30 @@ function Echo({ user }: { user: User }) {
                                       </>
                                     )}
 
+                                    {/* Mini Player (Picture-in-Picture) Toggle Button */}
+                                    <button
+                                      type="button"
+                                      className={`stream-pip-btn ${isPiPActive ? 'active' : ''}`}
+                                      onClick={() => setIsPiPActive(!isPiPActive)}
+                                      title={isPiPActive ? "Fechar Mini Player Flutuante" : "Ativar Mini Player Flutuante (Always-on-Top)"}
+                                      style={{
+                                        background: isPiPActive ? 'rgba(0, 242, 254, 0.2)' : 'var(--bg-tertiary)',
+                                        border: isPiPActive ? '1px solid #00f2fe' : '1px solid var(--border-color)',
+                                        color: isPiPActive ? '#00f2fe' : 'var(--text-secondary)',
+                                        padding: '5px 12px',
+                                        borderRadius: '8px',
+                                        fontSize: '12px',
+                                        fontWeight: 800,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        transition: 'all 0.2s'
+                                      }}
+                                    >
+                                      📌 {isPiPActive ? 'Mini Player ON' : 'Mini Player'}
+                                    </button>
+
                                     {/* Hide / Close Stream View Button */}
                                     <button
                                       type="button"
@@ -4766,6 +4961,8 @@ function Echo({ user }: { user: User }) {
                                         peerScreenVolumes={peerScreenVolumes}
                                         setPeerScreenVolumes={setPeerScreenVolumes}
                                         isGrid={true}
+                                        isPiPActive={isPiPActive}
+                                        onToggleFloatingPiP={() => setIsPiPActive(!isPiPActive)}
                                         onSelectFocus={() => {
                                           setSelectedScreenSharerUserId(sharer.userId)
                                           setScreenShareViewMode('focus')
@@ -4782,6 +4979,8 @@ function Echo({ user }: { user: User }) {
                                       setPeerScreenVolumes={setPeerScreenVolumes}
                                       isFullScreen={isScreenFullScreen}
                                       onToggleFullScreen={() => setIsScreenFullScreen(!isScreenFullScreen)}
+                                      isPiPActive={isPiPActive}
+                                      onToggleFloatingPiP={() => setIsPiPActive(!isPiPActive)}
                                     />
                                   </div>
                                 ) : null}
@@ -5028,9 +5227,8 @@ function Echo({ user }: { user: User }) {
                                   className="control-btn" 
                                   onClick={() => setShowSoundboardModal(true)}
                                   title="Mesa de Efeitos Sonoros (Soundboard)"
-                                  style={{ fontSize: '16px' }}
                                 >
-                                  📢
+                                  <SoundboardIcon />
                                 </button>
 
                                 {/* Call Recording Button */}
@@ -5038,9 +5236,9 @@ function Echo({ user }: { user: User }) {
                                   className={`control-btn ${isRecordingCall ? 'recording' : ''}`} 
                                   onClick={isRecordingCall ? stopCallRecording : startCallRecording}
                                   title={isRecordingCall ? `Gravando chamada (${recordingDuration}s) - Clique para parar e baixar` : "Gravar Áudio da Chamada"}
-                                  style={{ fontSize: '15px', color: isRecordingCall ? '#ff4655' : 'inherit' }}
+                                  style={{ color: isRecordingCall ? '#ff4655' : 'inherit' }}
                                 >
-                                  {isRecordingCall ? '⏹️' : '🎙️'}
+                                  <RecordCallIcon isRecording={isRecordingCall} />
                                 </button>
 
                                 <button 
@@ -5129,15 +5327,34 @@ function Echo({ user }: { user: User }) {
                     {currentSpace && (
                       <aside className="members-sidebar" style={!showVoiceMembers ? { display: 'none' } : undefined}>
                         <div className="members-sidebar-inner">
-                          <div className="members-group-label">Membros ({spaceMembers.length})</div>
-                          <div className="members-list">
-                            {spaceMembers.map((member) => {
+                          {(() => {
+                            const onlineList = spaceMembers.filter(m => onlineUsers.has(m.user.id) || participants.some(p => p.userId === m.user.id))
+                            const offlineList = spaceMembers.filter(m => !onlineUsers.has(m.user.id) && !participants.some(p => p.userId === m.user.id))
+
+                            const renderCard = (member: any) => {
                               const isCreator = currentSpace.creator_id === member.user.id
                               const isVoiceUser = participants.some(p => p.userId === member.user.id)
-                              const isOnline = onlineUsers.has(member.user.id)
+                              const isOnline = onlineUsers.has(member.user.id) || isVoiceUser
                               const userPresenceStatus = isOnline ? (presenceData[member.user.id]?.presence_status || 'online') : 'offline'
+                              const memberRole = getUserHighestRole(currentSpace.id, member.user.id)
+
                               return (
-                                <div className="member-card" key={member.user.id}>
+                                <div 
+                                  className="member-card" 
+                                  key={member.user.id}
+                                  onClick={() => {
+                                    const memRoles = memberRoleMap[member.user.id] || []
+                                    const matchingRoles = serverRoles.filter(r => memRoles.includes(r.id))
+                                    setInspectedMember({
+                                      user: member.user,
+                                      roleName: memberRole?.name,
+                                      roleColor: memberRole?.color,
+                                      roles: matchingRoles
+                                    })
+                                  }}
+                                  style={{ cursor: 'pointer' }}
+                                  title="Ver perfil"
+                                >
                                   <div className="member-avatar-container">
                                     <div className="member-avatar">
                                       {member.user.avatar_url ? (
@@ -5149,18 +5366,56 @@ function Echo({ user }: { user: User }) {
                                     <span className={`member-status-dot ${isVoiceUser ? 'voice-active' : userPresenceStatus}`} />
                                   </div>
                                   <div className="member-info">
-                                    <div className="member-name-row">
-                                      <span className="member-name">{member.user.display_name}</span>
-                                      {isCreator && <span className="member-badge creator">Criador</span>}
+                                    <div className="member-name-row" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <span className="member-name" style={{ color: memberRole?.color || 'var(--text-primary)', fontWeight: 700 }}>
+                                        {member.user.display_name}
+                                      </span>
+                                      {isCreator ? (
+                                        <span className="member-badge creator"><CrownIcon style={{ width: '11px', height: '11px' }} /> Dono</span>
+                                      ) : memberRole ? (
+                                        <span style={{ fontSize: '9.5px', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', color: memberRole.color, background: `${memberRole.color}18`, border: `1px solid ${memberRole.color}44` }}>
+                                          {memberRole.name}
+                                        </span>
+                                      ) : null}
                                     </div>
                                     <span className="member-status-text" title={presenceData[member.user.id]?.custom_status}>
-                                      {isVoiceUser ? 'Em chamada' : (presenceData[member.user.id]?.custom_status || 'Disponível')}
+                                      {isVoiceUser ? '🔊 Em chamada' : (presenceData[member.user.id]?.custom_status || (isOnline ? 'Disponível' : 'Offline'))}
                                     </span>
                                   </div>
                                 </div>
                               )
-                            })}
-                          </div>
+                            }
+
+                            return (
+                              <>
+                                {onlineList.length > 0 && (
+                                  <div style={{ marginBottom: '16px' }}>
+                                    <div className="members-group-label" style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                                      🟢 Disponível ({onlineList.length})
+                                    </div>
+                                    <div className="members-list">
+                                      {onlineList.map(renderCard)}
+                                    </div>
+                                  </div>
+                                )}
+                                {offlineList.length > 0 && (
+                                  <div>
+                                    <div className="members-group-label" style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                                      ⚪ Offline ({offlineList.length})
+                                    </div>
+                                    <div className="members-list" style={{ opacity: 0.7 }}>
+                                      {offlineList.map(renderCard)}
+                                    </div>
+                                  </div>
+                                )}
+                                {spaceMembers.length === 0 && (
+                                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', padding: '8px 0' }}>
+                                    Nenhum membro encontrado.
+                                  </div>
+                                )}
+                              </>
+                            )
+                          })()}
                         </div>
                       </aside>
                     )}
@@ -5305,6 +5560,18 @@ function Echo({ user }: { user: User }) {
           onNoiseGateThresholdChange={(val) => {
             setNoiseGateThreshold(val)
             localStorage.setItem('echo-noise-gate-threshold', val.toString())
+          }}
+          spatialAudioEnabled={spatialAudioEnabled}
+          onToggleSpatialAudio={(val) => {
+            setSpatialAudioEnabledState(val)
+            localStorage.setItem('echo-spatial-audio-enabled', val ? 'true' : 'false')
+          }}
+          onResetAllPans={() => {
+            setUserStereoPans({})
+            localStorage.removeItem('echo-user-stereo-pans')
+            participants.forEach(p => {
+              changePeerPan(p.userId, 0)
+            })
           }}
         />
       </div>
@@ -6959,22 +7226,30 @@ function Echo({ user }: { user: User }) {
         </div>
       )}
 
-      {/* User Volume Control Modal */}
+      {/* User Volume & 3D Spatial Audio Positioning Modal */}
       {volumeControlUser && (
         <div className="screen-picker-overlay" onClick={() => setVolumeControlUser(null)}>
-          <div className="screen-picker-modal volume-control-modal" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
-            <h2>Volume de Usuário</h2>
-            <p>Ajuste o volume local de <strong>{volumeControlUser.displayName}</strong>.</p>
+          <div className="screen-picker-modal volume-control-modal" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: '18px' }}>Áudio & Posição 3D</h2>
+              <button className="picker-close-btn" style={{ margin: 0, padding: '4px 8px' }} onClick={() => setVolumeControlUser(null)}>✕</button>
+            </div>
+            <p style={{ margin: '6px 0 16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+              Ajuste o volume e o posicionamento estéreo da voz de <strong>{volumeControlUser.displayName}</strong>.
+            </p>
             
-            <div className="volume-slider-container" style={{ margin: '20px 0' }}>
+            {/* Section 1: Volume */}
+            <div className="volume-slider-container" style={{ margin: '14px 0', padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13.5px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-                <span>Volume de Voz</span>
-                <span>{userVolumes[volumeControlUser.userId] !== undefined ? userVolumes[volumeControlUser.userId] : 100}%</span>
+                <span>🔊 Volume de Voz</span>
+                <span style={{ color: (userVolumes[volumeControlUser.userId] || 100) > 100 ? '#ff9f43' : 'inherit' }}>
+                  {userVolumes[volumeControlUser.userId] !== undefined ? userVolumes[volumeControlUser.userId] : 100}%
+                </span>
               </div>
               <input 
                 type="range" 
                 min="0" 
-                max="100" 
+                max="200" 
                 value={userVolumes[volumeControlUser.userId] !== undefined ? userVolumes[volumeControlUser.userId] : 100}
                 onChange={(e) => {
                   const val = parseInt(e.target.value)
@@ -6986,7 +7261,109 @@ function Echo({ user }: { user: User }) {
               />
             </div>
 
-            <button className="picker-close-btn" style={{ width: '100%', margin: 0 }} onClick={() => setVolumeControlUser(null)}>
+            {/* Section 2: 3D Spatial Stereo Panning */}
+            <div className="volume-slider-container" style={{ margin: '14px 0', padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '13.5px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>🎧 Posicionamento Estéreo (3D)</span>
+                </span>
+                <span style={{ fontSize: '12px', color: (userStereoPans[volumeControlUser.userId] || 0) === 0 ? '#10b981' : '#00f2fe', fontWeight: 800 }}>
+                  {(userStereoPans[volumeControlUser.userId] || 0) === 0 && '● Centro (Neutro)'}
+                  {(userStereoPans[volumeControlUser.userId] || 0) < 0 && `⬅️ ${Math.round(Math.abs(userStereoPans[volumeControlUser.userId]) * 100)}% Esquerda`}
+                  {(userStereoPans[volumeControlUser.userId] || 0) > 0 && `➡️ ${Math.round((userStereoPans[volumeControlUser.userId]) * 100)}% Direita`}
+                </span>
+              </div>
+
+              <input 
+                type="range" 
+                min="-100" 
+                max="100" 
+                step="5"
+                value={Math.round((userStereoPans[volumeControlUser.userId] !== undefined ? userStereoPans[volumeControlUser.userId] : 0) * 100)}
+                onChange={(e) => {
+                  const rawVal = parseInt(e.target.value, 10) / 100
+                  const newPans = { ...userStereoPans, [volumeControlUser.userId]: rawVal }
+                  setUserStereoPans(newPans)
+                  localStorage.setItem('echo-user-stereo-pans', JSON.stringify(newPans))
+                  changePeerPan(volumeControlUser.userId, rawVal)
+                  if (!spatialAudioEnabled) {
+                    setSpatialAudioEnabledState(true)
+                    localStorage.setItem('echo-spatial-audio-enabled', 'true')
+                  }
+                }}
+                style={{ width: '100%', accentColor: '#00f2fe', cursor: 'pointer' }}
+              />
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                <span>100% Esquerda</span>
+                <span>Centro</span>
+                <span>100% Direita</span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newPans = { ...userStereoPans, [volumeControlUser.userId]: 0 }
+                    setUserStereoPans(newPans)
+                    localStorage.setItem('echo-user-stereo-pans', JSON.stringify(newPans))
+                    changePeerPan(volumeControlUser.userId, 0)
+                  }}
+                  style={{
+                    flex: 1,
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid var(--border-color)',
+                    color: 'var(--text-primary)',
+                    padding: '6px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  🔄 Centralizar
+                </button>
+
+                {participants.filter(p => p.userId !== user.id).length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const otherPeers = participants.filter(p => p.userId !== user.id)
+                      const count = otherPeers.length
+                      const newPans = { ...userStereoPans }
+                      otherPeers.forEach((p, idx) => {
+                        const panVal = count === 1 ? 0 : -0.75 + (1.5 / (count - 1)) * idx
+                        const rounded = Math.round(panVal * 100) / 100
+                        newPans[p.userId] = rounded
+                        changePeerPan(p.userId, rounded)
+                      })
+                      setUserStereoPans(newPans)
+                      localStorage.setItem('echo-user-stereo-pans', JSON.stringify(newPans))
+                      if (!spatialAudioEnabled) {
+                        setSpatialAudioEnabledState(true)
+                        localStorage.setItem('echo-spatial-audio-enabled', 'true')
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      background: 'rgba(0, 242, 254, 0.12)',
+                      border: '1px solid rgba(0, 242, 254, 0.3)',
+                      color: '#00f2fe',
+                      padding: '6px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      cursor: 'pointer'
+                    }}
+                    title="Distribui todos os membros do squad em semicírculo no seu fone"
+                  >
+                    🌐 Distribuir Squad 3D
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <button className="picker-close-btn" style={{ width: '100%', margin: '6px 0 0 0' }} onClick={() => setVolumeControlUser(null)}>
               Pronto
             </button>
           </div>
@@ -7023,46 +7400,52 @@ function Echo({ user }: { user: User }) {
         </div>
       )}
 
-      {/* Discord-Style Member Profile Card Modal */}
+      {/* Holographic Echo Player Card Modal */}
       {inspectedMember && (
         <div className="screen-picker-overlay member-profile-overlay" onClick={() => setInspectedMember(null)}>
-          <div className="member-profile-card-modal" onClick={(e) => e.stopPropagation()}>
-            <div 
-              className="member-profile-banner" 
-              style={{
-                background: inspectedMember.roleColor 
-                  ? `linear-gradient(135deg, ${inspectedMember.roleColor}dd, var(--bg-tertiary))` 
-                  : 'linear-gradient(135deg, var(--accent-color), var(--bg-tertiary))'
-              }}
-            >
-              <button type="button" className="member-profile-close-btn" onClick={() => setInspectedMember(null)}>✕</button>
-            </div>
+          <div className="echo-player-card" style={{ maxWidth: '380px', width: '100%', margin: 'auto' }} onClick={(e) => e.stopPropagation()}>
+            <div className="card-texture-canvas texture-synthwave" />
+            <div className="card-content-layer">
+              <div className="card-top-bar">
+                <div className="card-brand-tag">
+                  <span>⚡ ECHO ID</span>
+                  <span style={{ opacity: 0.4 }}>//</span>
+                  <span style={{ color: '#00f2fe' }}>PLAYER CARD</span>
+                </div>
+                <button type="button" className="member-profile-close-btn" style={{ position: 'static', padding: '4px' }} onClick={() => setInspectedMember(null)}>✕</button>
+              </div>
 
-            <div className="member-profile-body">
-              <div className="member-profile-avatar-row">
-                <div className="member-profile-avatar-large">
-                  {inspectedMember.user.avatar_url ? (
-                    <img src={inspectedMember.user.avatar_url} alt={inspectedMember.user.display_name} />
-                  ) : (
-                    inspectedMember.user.display_name.slice(0, 1).toUpperCase()
-                  )}
-                  <span className={`member-profile-status-ring ${onlineUsers.has(inspectedMember.user.id) ? (presenceData[inspectedMember.user.id]?.presence_status || 'online') : 'offline'}`} />
+              <div className="card-hero-row">
+                <div className="card-avatar-squircle aura-cyan">
+                  <div className="squircle-inner-img">
+                    {inspectedMember.user.avatar_url ? (
+                      <img src={inspectedMember.user.avatar_url} alt={inspectedMember.user.display_name} style={{ width: '100%', height: '100%', borderRadius: '17px', objectFit: 'cover' }} />
+                    ) : (
+                      inspectedMember.user.display_name.slice(0, 1).toUpperCase()
+                    )}
+                  </div>
+                </div>
+
+                <div className="card-hero-meta">
+                  <div className="card-user-name">
+                    <span>{inspectedMember.user.display_name}</span>
+                  </div>
+                  <span className="member-profile-handle" style={{ fontSize: '11.5px', opacity: 0.7 }}>
+                    @{inspectedMember.user.display_name.toLowerCase().replace(/\s+/g, '')}
+                  </span>
                 </div>
               </div>
 
-              <div className="member-profile-header-info">
-                <h3 className="member-profile-display-name">{inspectedMember.user.display_name}</h3>
-                <span className="member-profile-handle">@{inspectedMember.user.display_name.toLowerCase().replace(/\s+/g, '')}</span>
-                {presenceData[inspectedMember.user.id]?.custom_status && (
-                  <p className="member-profile-custom-status">💬 {presenceData[inspectedMember.user.id].custom_status}</p>
-                )}
-              </div>
-
-              <div className="member-profile-divider" />
+              {presenceData[inspectedMember.user.id]?.custom_status && (
+                <div className="card-sound-status">
+                  <span style={{ color: '#00f2fe' }}>〰️</span>
+                  <span>{presenceData[inspectedMember.user.id].custom_status}</span>
+                </div>
+              )}
 
               {/* Roles Section */}
-              <div className="member-profile-roles-section">
-                <span className="member-profile-section-title">CARGOS NO SERVIDOR</span>
+              <div className="member-profile-roles-section" style={{ padding: '4px 0' }}>
+                <span className="card-bio-header">CARGOS NO SERVIDOR</span>
                 <div className="member-profile-roles-wrap">
                   {inspectedMember.roles && inspectedMember.roles.length > 0 ? (
                     inspectedMember.roles.map(r => (
@@ -7085,7 +7468,7 @@ function Echo({ user }: { user: User }) {
               </div>
 
               {/* Actions Section */}
-              <div className="member-profile-actions">
+              <div className="member-profile-actions" style={{ marginTop: '8px' }}>
                 {inspectedMember.user.id !== user.id && (
                   <button 
                     type="button" 
@@ -7120,6 +7503,11 @@ function Echo({ user }: { user: User }) {
                     <span>Ajustar Volume</span>
                   </button>
                 )}
+              </div>
+
+              <div className="card-bottom-footer">
+                <span>ECHO // VERIFIED PASS</span>
+                <span>STATUS: {onlineUsers.has(inspectedMember.user.id) ? 'ONLINE 🟢' : 'OFFLINE ⚪'}</span>
               </div>
             </div>
           </div>
@@ -7200,6 +7588,32 @@ function Echo({ user }: { user: User }) {
             </div>
           ))}
         </div>
+      )}
+      {/* Floating Picture-in-Picture Mini Player (Always on Top) */}
+      {isPiPActive && activeScreenSharer && (
+        <EchoFloatingMiniPlayer
+          activeScreenSharers={activeScreenSharers}
+          activeScreenSharer={activeScreenSharer}
+          onSelectSharer={(uid) => {
+            setSelectedScreenSharerUserId(uid)
+          }}
+          peerScreenVolumes={peerScreenVolumes}
+          setPeerScreenVolumes={setPeerScreenVolumes}
+          onClose={() => setIsPiPActive(false)}
+          onExpand={() => {
+            setIsPiPActive(false)
+            if (activeVoiceChannelId) {
+              const allChannels = Object.values(spaceChannels).flat()
+              const ch = allChannels.find(c => c.id === activeVoiceChannelId)
+              if (ch) {
+                setSelectedChannel(ch)
+                setPage('Servidores')
+                setIsWatchingStreams(true)
+                setScreenShareViewMode('focus')
+              }
+            }
+          }}
+        />
       )}
     </main>
   )
@@ -8001,7 +8415,10 @@ function SettingsView({
   noiseGateEnabled,
   noiseGateThreshold,
   onNoiseGateEnabledChange,
-  onNoiseGateThresholdChange
+  onNoiseGateThresholdChange,
+  spatialAudioEnabled,
+  onToggleSpatialAudio,
+  onResetAllPans
 }: {
   userId: string
   currentDisplayName: string
@@ -8035,13 +8452,30 @@ function SettingsView({
   noiseGateThreshold: number
   onNoiseGateEnabledChange: (val: boolean) => void
   onNoiseGateThresholdChange: (val: number) => void
+  spatialAudioEnabled: boolean
+  onToggleSpatialAudio: (val: boolean) => void
+  onResetAllPans: () => void
 }) {
   const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'audio' | 'appearance' | 'changelog'>('profile')
   
-  // Profile settings state
+  // Profile settings state & Echo Player Card Studio
+  const [profileSubTab, setProfileSubTab] = useState<'identity' | 'card' | 'gamer'>('identity')
   const [localDisplayName, setLocalDisplayName] = useState(currentDisplayName)
   const [localAvatarUrl, setLocalAvatarUrl] = useState(currentAvatarUrl)
   const [localCustomStatus, setLocalCustomStatus] = useState(customStatus)
+  const [localBio, setLocalBio] = useState(() => localStorage.getItem(`echo-bio-${userId}`) || '🎮 Jogador ativo no Echo • Pronto para squad e clutch.')
+  const [localPronouns, setLocalPronouns] = useState(() => localStorage.getItem(`echo-pronouns-${userId}`) || 'ele/dele')
+  const [localBannerPreset, setLocalBannerPreset] = useState(() => localStorage.getItem(`echo-banner-preset-${userId}`) || 'synthwave')
+  const [localBannerCustom, setLocalBannerCustom] = useState(() => localStorage.getItem(`echo-banner-custom-${userId}`) || '')
+  const [localAvatarFrame, setLocalAvatarFrame] = useState(() => localStorage.getItem(`echo-avatar-frame-${userId}`) || 'aura-cyan')
+  const [localBadge, setLocalBadge] = useState(() => localStorage.getItem(`echo-badge-${userId}`) || 'owner')
+  const [localPresenceStatus, setLocalPresenceStatus] = useState<'online' | 'idle' | 'dnd' | 'offline'>(() => (localStorage.getItem(`echo-presence-status-${userId}`) as any) || 'online')
+  const [localMainGame, setLocalMainGame] = useState(() => localStorage.getItem(`echo-main-game-${userId}`) || 'VALORANT')
+  const [localHardwareSetup, setLocalHardwareSetup] = useState(() => localStorage.getItem(`echo-setup-${userId}`) || '🎧 HyperX Cloud II')
+  const [localShowGamerProfile, setLocalShowGamerProfile] = useState<boolean>(() => localStorage.getItem(`echo-show-gamer-profile-${userId}`) !== 'false')
+  const [localShowMainGame, setLocalShowMainGame] = useState<boolean>(() => localStorage.getItem(`echo-show-main-game-${userId}`) !== 'false')
+  const [localShowHardwareSetup, setLocalShowHardwareSetup] = useState<boolean>(() => localStorage.getItem(`echo-show-hardware-${userId}`) !== 'false')
+  const [localShowBadge, setLocalShowBadge] = useState<boolean>(() => localStorage.getItem(`echo-show-badge-${userId}`) !== 'false')
   const [savingProfile, setSavingProfile] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
@@ -8085,6 +8519,20 @@ function SettingsView({
     if (!supabase) return
     setSavingProfile(true)
     try {
+      localStorage.setItem(`echo-bio-${userId}`, localBio)
+      localStorage.setItem(`echo-pronouns-${userId}`, localPronouns)
+      localStorage.setItem(`echo-banner-preset-${userId}`, localBannerPreset)
+      localStorage.setItem(`echo-banner-custom-${userId}`, localBannerCustom)
+      localStorage.setItem(`echo-avatar-frame-${userId}`, localAvatarFrame)
+      localStorage.setItem(`echo-badge-${userId}`, localBadge)
+      localStorage.setItem(`echo-presence-status-${userId}`, localPresenceStatus)
+      localStorage.setItem(`echo-main-game-${userId}`, localMainGame)
+      localStorage.setItem(`echo-setup-${userId}`, localHardwareSetup)
+      localStorage.setItem(`echo-show-gamer-profile-${userId}`, JSON.stringify(localShowGamerProfile))
+      localStorage.setItem(`echo-show-main-game-${userId}`, JSON.stringify(localShowMainGame))
+      localStorage.setItem(`echo-show-hardware-${userId}`, JSON.stringify(localShowHardwareSetup))
+      localStorage.setItem(`echo-show-badge-${userId}`, JSON.stringify(localShowBadge))
+
       const { error } = await supabase.from('profiles').upsert({
         id: userId,
         display_name: localDisplayName,
@@ -8093,7 +8541,7 @@ function SettingsView({
       if (error) throw error
       onProfileUpdate(localDisplayName, localAvatarUrl)
       onCustomStatusUpdate(localCustomStatus)
-      alert('Perfil salvo com sucesso!')
+      alert('Echo Player Card e perfil salvos com sucesso!')
     } catch (err: any) {
       alert('Erro ao salvar perfil: ' + err.message)
     } finally {
@@ -8153,28 +8601,28 @@ function SettingsView({
               className={`menu-item ${activeSettingsTab === 'profile' ? 'active' : ''}`}
               onClick={() => setActiveSettingsTab('profile')}
             >
-              <span className="menu-icon">👤</span>
+              <UserIcon className="menu-icon" style={{ width: '17px', height: '17px' }} />
               <span>Meu Perfil</span>
             </button>
             <button 
               className={`menu-item ${activeSettingsTab === 'audio' ? 'active' : ''}`}
               onClick={() => setActiveSettingsTab('audio')}
             >
-              <span className="menu-icon">🎙️</span>
+              <MicIcon className="menu-icon" style={{ width: '17px', height: '17px' }} />
               <span>Voz e Áudio</span>
             </button>
             <button 
               className={`menu-item ${activeSettingsTab === 'appearance' ? 'active' : ''}`}
               onClick={() => setActiveSettingsTab('appearance')}
             >
-              <span className="menu-icon">🎨</span>
+              <PaletteIcon className="menu-icon" style={{ width: '17px', height: '17px' }} />
               <span>Aparência</span>
             </button>
             <button 
               className={`menu-item ${activeSettingsTab === 'changelog' ? 'active' : ''}`}
               onClick={() => setActiveSettingsTab('changelog')}
             >
-              <span className="menu-icon">✨</span>
+              <SparklesIcon className="menu-icon" style={{ width: '17px', height: '17px' }} />
               <span>Novidades & Versões</span>
             </button>
           </div>
@@ -8210,122 +8658,526 @@ function SettingsView({
 
       <section className="settings-content">
         {activeSettingsTab === 'profile' && (
-          <div className="settings-container">
-            <h2>Meu Perfil</h2>
-            <p>Gerencie o seu nome de usuário e foto de exibição para todo o Echo.</p>
+          <div className="settings-container" style={{ maxWidth: '1120px' }}>
+            <div style={{ marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span>Estúdio de Identidade</span>
+                  <span style={{ fontSize: '11px', background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.4)', padding: '2px 8px', borderRadius: '6px', fontWeight: 800 }}>
+                    ECHO PASS // 2026
+                  </span>
+                </h2>
+                <p>Personalize seu Cartão Holográfico de Jogador, auras sonoras e dados gamer com visualização ao vivo.</p>
+              </div>
+            </div>
 
-            <form onSubmit={handleSaveProfile} className="profile-settings-form">
-              <div className="profile-preview-card">
-                <div className="profile-preview-avatar">
-                  {localAvatarUrl ? (
-                    <img src={localAvatarUrl} alt="Visualização do Avatar" className="round-avatar-img-large" />
-                  ) : (
-                    <span className="avatar-initial-large">
-                      {localDisplayName.slice(0, 1).toUpperCase()}
-                    </span>
-                  )}
+            <div className="echo-studio-layout">
+              {/* Left Column: Echo Player Card Preview */}
+              <div className="echo-player-card-wrapper">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '11.5px', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '1px' }}>
+                    ✦ ECHO PLAYER CARD
+                  </label>
+                  <span style={{ fontSize: '10.5px', color: '#10b981', fontWeight: 700 }}>● AO VIVO</span>
                 </div>
-                <div className="profile-preview-meta">
-                  <h3>{localDisplayName || 'Membro'}</h3>
-                  <p style={{ fontStyle: 'italic', opacity: 0.8, fontSize: '13px', margin: '2px 0 0 0' }}>{localCustomStatus || 'Nenhum status'}</p>
+
+                <div className="echo-player-card">
+                  {/* Texture Canvas */}
+                  <div 
+                    className={`card-texture-canvas ${!localBannerCustom ? `texture-${localBannerPreset}` : ''}`}
+                    style={localBannerCustom ? { backgroundImage: `url(${localBannerCustom})` } : undefined}
+                  />
+
+                  {/* Content Layer */}
+                  <div className="card-content-layer">
+                    {/* Top Bar */}
+                    <div className="card-top-bar">
+                      <div className="card-brand-tag">
+                        <span>⚡ ECHO ID</span>
+                        <span style={{ opacity: 0.4 }}>//</span>
+                        <span style={{ color: '#00f2fe' }}>VERIFIED</span>
+                      </div>
+                      <div className="card-status-pill">
+                        <span className={`member-status-dot ${localPresenceStatus}`} style={{ width: '8px', height: '8px' }} />
+                        <span>
+                          {localPresenceStatus === 'online' && 'Disponível'}
+                          {localPresenceStatus === 'idle' && 'Ausente'}
+                          {localPresenceStatus === 'dnd' && 'Ocupado'}
+                          {localPresenceStatus === 'offline' && 'Invisível'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Hero Row: Squircle Avatar + Soundwave Aura */}
+                    <div className="card-hero-row">
+                      <div className={`card-avatar-squircle ${localAvatarFrame}`}>
+                        <div className="squircle-inner-img">
+                          {localAvatarUrl ? (
+                            <img src={localAvatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '17px', objectFit: 'cover' }} />
+                          ) : (
+                            localDisplayName.slice(0, 1).toUpperCase()
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="card-hero-meta">
+                        <div className="card-user-name">
+                          <span>{localDisplayName || 'Jogador'}</span>
+                          {localPronouns && <span className="card-pronoun-tag">{localPronouns}</span>}
+                        </div>
+                        {localShowGamerProfile && localShowBadge && localBadge === 'owner' && <span className="card-esports-badge badge-owner">👑 Líder de Servidor</span>}
+                        {localShowGamerProfile && localShowBadge && localBadge === 'vip' && <span className="card-esports-badge badge-vip">💎 Echo VIP</span>}
+                        {localShowGamerProfile && localShowBadge && localBadge === 'early' && <span className="card-esports-badge badge-early">⚡ Fundador 2026</span>}
+                        {localShowGamerProfile && localShowBadge && localBadge === 'gamer' && <span className="card-esports-badge badge-gamer">🎯 Duelista / Pro</span>}
+                        {localShowGamerProfile && localShowBadge && localBadge === 'podcaster' && <span className="card-esports-badge badge-podcaster">🎙️ Streamer</span>}
+                      </div>
+                    </div>
+
+                    {/* Gamer Pills Row */}
+                    {localShowGamerProfile && ((localShowMainGame && localMainGame && localMainGame !== 'Nenhum') || (localShowHardwareSetup && localHardwareSetup)) && (
+                      <div className="card-pills-row">
+                        {localShowMainGame && localMainGame && localMainGame !== 'Nenhum' && (
+                          <span className="card-game-pill">
+                            <span>🎮</span>
+                            <span>{localMainGame}</span>
+                          </span>
+                        )}
+                        {localShowHardwareSetup && localHardwareSetup && (
+                          <span className="card-hardware-pill">
+                            <span>{localHardwareSetup}</span>
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Status Sonoro */}
+                    {localCustomStatus && (
+                      <div className="card-sound-status">
+                        <span style={{ color: '#00f2fe' }}>〰️</span>
+                        <span>{localCustomStatus}</span>
+                      </div>
+                    )}
+
+                    {/* Terminal Bio */}
+                    <div className="card-terminal-bio">
+                      <div className="card-bio-header">Sobre o Jogador // Bio</div>
+                      <div>{localBio || 'Nenhuma descrição adicionada.'}</div>
+                    </div>
+
+                    {/* Tech Footer */}
+                    <div className="card-bottom-footer">
+                      <span>MEMBER_PASS: #2026</span>
+                      <span>HASH: {userId.slice(0, 8).toUpperCase()}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="selector-card" style={{ marginTop: '20px' }}>
-                <label>Nome de Exibição (Username)</label>
-                <input 
-                  value={localDisplayName} 
-                  onChange={(e) => setLocalDisplayName(e.target.value)} 
-                  placeholder="Seu nome no Echo"
-                  required 
-                  minLength={2}
-                  maxLength={40}
-                  className="profile-input-text"
-                />
-              </div>
-
-              <div className="selector-card" style={{ marginTop: '16px' }}>
-                <label>Status de Atividade (ex: Jogando Minecraft)</label>
-                <input 
-                  value={localCustomStatus} 
-                  onChange={(e) => setLocalCustomStatus(e.target.value)} 
-                  placeholder="O que você está fazendo agora?"
-                  maxLength={100}
-                  className="profile-input-text"
-                />
-              </div>
-
-              <div className="selector-card" style={{ marginTop: '16px' }}>
-                <label>Foto de Perfil (URL da Imagem)</label>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <input 
-                    value={localAvatarUrl} 
-                    onChange={(e) => setLocalAvatarUrl(e.target.value)} 
-                    placeholder="Cole o link de qualquer imagem (.png, .jpg, .svg)"
-                    className="profile-input-text"
-                    style={{ flex: 1 }}
-                  />
-                  <input 
-                    type="file" 
-                    id="profile-avatar-upload-input" 
-                    accept="image/*" 
-                    style={{ display: 'none' }} 
-                    onChange={(e) => { 
-                      const f = e.target.files?.[0]; 
-                      if (f) handleAvatarUpload(f); 
-                      e.target.value = '' 
-                    }} 
-                  />
-                  <button 
-                    type="button" 
-                    className="ch-create-btn" 
-                    style={{ padding: '10px 16px', fontSize: '13px', whiteSpace: 'nowrap', width: 'auto', margin: 0 }}
-                    onClick={() => document.getElementById('profile-avatar-upload-input')?.click()}
-                    disabled={uploadingAvatar}
+              {/* Right Column: Modular Studio Controls */}
+              <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column' }}>
+                {/* Studio Sub-Tabs Nav */}
+                <div className="studio-nav-tabs">
+                  <button
+                    type="button"
+                    className={`studio-nav-btn ${profileSubTab === 'identity' ? 'active' : ''}`}
+                    onClick={() => setProfileSubTab('identity')}
                   >
-                    {uploadingAvatar ? 'Enviando...' : '📤 Enviar Imagem'}
+                    <UserIcon style={{ width: '15px', height: '15px' }} />
+                    <span>1. Identidade</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`studio-nav-btn ${profileSubTab === 'card' ? 'active' : ''}`}
+                    onClick={() => setProfileSubTab('card')}
+                  >
+                    <PaletteIcon style={{ width: '15px', height: '15px' }} />
+                    <span>2. Cartão & Efeitos</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`studio-nav-btn ${profileSubTab === 'gamer' ? 'active' : ''}`}
+                    onClick={() => setProfileSubTab('gamer')}
+                  >
+                    <GamepadIcon style={{ width: '15px', height: '15px' }} />
+                    <span>3. Perfil Gamer</span>
                   </button>
                 </div>
-              </div>
 
-              <div className="avatar-gallery-section" style={{ marginTop: '16px' }}>
-                <label style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-                  Ou escolha um Avatar de Robô rápido:
-                </label>
-                <div className="avatar-gallery-grid" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  {defaultAvatars.map((url, idx) => (
-                    <button 
-                      key={idx}
-                      type="button" 
-                      onClick={() => setLocalAvatarUrl(url)}
-                      className={`gallery-avatar-btn ${localAvatarUrl === url ? 'selected' : ''}`}
-                      style={{
-                        width: '50px',
-                        height: '50px',
-                        borderRadius: '50%',
-                        overflow: 'hidden',
-                        border: localAvatarUrl === url ? '3px solid var(--accent-color)' : '2px solid transparent',
-                        padding: 0,
-                        cursor: 'pointer',
-                        background: 'var(--bg-secondary)',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <img src={url} alt={`Avatar ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </button>
-                  ))}
-                </div>
-              </div>
+                {/* SubTab 1: Identidade */}
+                {profileSubTab === 'identity' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div className="selector-card">
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: '12px' }}>
+                        <div>
+                          <label>Nome de Jogador / Tag</label>
+                          <input 
+                            value={localDisplayName} 
+                            onChange={(e) => setLocalDisplayName(e.target.value)} 
+                            placeholder="Seu nome no Echo"
+                            required 
+                            minLength={2}
+                            maxLength={40}
+                            className="profile-input-text"
+                          />
+                        </div>
+                        <div>
+                          <label>Pronomes</label>
+                          <input 
+                            value={localPronouns} 
+                            onChange={(e) => setLocalPronouns(e.target.value)} 
+                            placeholder="ex: ele/dele"
+                            maxLength={20}
+                            className="profile-input-text"
+                          />
+                        </div>
+                      </div>
+                    </div>
 
-              <button 
-                type="submit" 
-                className="ch-create-btn" 
-                style={{ marginTop: '24px', padding: '12px', width: '100%', fontWeight: 'bold' }}
-                disabled={savingProfile}
-              >
-                {savingProfile ? 'Salvando…' : 'Salvar Alterações de Perfil'}
-              </button>
-            </form>
+                    <div className="selector-card">
+                      <label>Status de Presença</label>
+                      <div className="preset-chips-grid">
+                        {[
+                          { id: 'online', label: '🟢 Disponível (Online)' },
+                          { id: 'idle', label: '🟡 Ausente' },
+                          { id: 'dnd', label: '🔴 Ocupado / Não Perturbe' },
+                          { id: 'offline', label: '⚪ Invisível' }
+                        ].map(st => (
+                          <button
+                            key={st.id}
+                            type="button"
+                            className={`preset-chip ${localPresenceStatus === st.id ? 'active' : ''}`}
+                            onClick={() => setLocalPresenceStatus(st.id as any)}
+                          >
+                            {st.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div style={{ marginTop: '14px' }}>
+                        <label>Status Sonoro (Mensagem de Atividade)</label>
+                        <input 
+                          value={localCustomStatus} 
+                          onChange={(e) => setLocalCustomStatus(e.target.value)} 
+                          placeholder="Ex: Jogando ranked com squad"
+                          maxLength={100}
+                          className="profile-input-text"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="selector-card">
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <label>Sobre Mim (Biografia do Jogador)</label>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{localBio.length}/200</span>
+                      </div>
+                      <textarea 
+                        value={localBio} 
+                        onChange={(e) => setLocalBio(e.target.value.slice(0, 200))} 
+                        placeholder="Escreva sobre seus jogos, redes sociais ou estilo de jogo..."
+                        className="profile-input-text"
+                        style={{ minHeight: '80px', resize: 'vertical', fontFamily: 'inherit' }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* SubTab 2: Cartão & Efeitos */}
+                {profileSubTab === 'card' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div className="selector-card">
+                      <label>Texturas de Cartão Holográfico</label>
+                      <div className="banner-presets-grid">
+                        {[
+                          { id: 'synthwave', name: 'Synthwave 🌌' },
+                          { id: 'cybergrid', name: 'Cyber Grid ⚡' },
+                          { id: 'carbon', name: 'Carbon Fiber 🏎️' },
+                          { id: 'aurora', name: 'Aurora 🪐' },
+                          { id: 'solar', name: 'Solar Flare 🔥' },
+                          { id: 'obsidian', name: 'Stealth Dark 🖤' },
+                        ].map(tex => (
+                          <div 
+                            key={tex.id}
+                            className={`banner-preset-card texture-${tex.id} ${localBannerPreset === tex.id && !localBannerCustom ? 'active' : ''}`}
+                            onClick={() => { setLocalBannerPreset(tex.id); setLocalBannerCustom(''); }}
+                          >
+                            {tex.name}
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ marginTop: '12px' }}>
+                        <input 
+                          value={localBannerCustom} 
+                          onChange={(e) => setLocalBannerCustom(e.target.value)} 
+                          placeholder="Ou insira o link de uma imagem de fundo customizada (.png, .jpg, .gif)"
+                          className="profile-input-text"
+                          style={{ fontSize: '12.5px' }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="selector-card">
+                      <label>Aura Sonora do Avatar (Echo Waves)</label>
+                      <div className="preset-chips-grid">
+                        {[
+                          { id: 'aura-cyan', label: '💠 Ciano Neon Pulse' },
+                          { id: 'aura-purple', label: '🔮 Amethyst Wave' },
+                          { id: 'aura-crimson', label: '🔥 Crimson Surge' },
+                          { id: 'aura-gold', label: '👑 Solar Gold' },
+                          { id: 'aura-stealth', label: '⚪ Stealth Monochrome' }
+                        ].map(a => (
+                          <button
+                            key={a.id}
+                            type="button"
+                            className={`preset-chip ${localAvatarFrame === a.id ? 'active' : ''}`}
+                            onClick={() => setLocalAvatarFrame(a.id)}
+                          >
+                            {a.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="selector-card">
+                      <label>Foto de Perfil (Avatar)</label>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <input 
+                          value={localAvatarUrl} 
+                          onChange={(e) => setLocalAvatarUrl(e.target.value)} 
+                          placeholder="Link da imagem (.png, .jpg, .svg)"
+                          className="profile-input-text"
+                          style={{ flex: 1 }}
+                        />
+                        <input 
+                          type="file" 
+                          id="profile-avatar-upload-input" 
+                          accept="image/*" 
+                          style={{ display: 'none' }} 
+                          onChange={(e) => { 
+                            const f = e.target.files?.[0]; 
+                            if (f) handleAvatarUpload(f); 
+                            e.target.value = '' 
+                          }} 
+                        />
+                        <button 
+                          type="button" 
+                          className="ch-create-btn" 
+                          style={{ padding: '10px 16px', fontSize: '13px', whiteSpace: 'nowrap', width: 'auto', margin: 0 }}
+                          onClick={() => document.getElementById('profile-avatar-upload-input')?.click()}
+                          disabled={uploadingAvatar}
+                        >
+                          {uploadingAvatar ? 'Enviando...' : '📤 Upload'}
+                        </button>
+                      </div>
+
+                      <div style={{ marginTop: '12px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
+                          Ou selecione um avatar rápido:
+                        </span>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {defaultAvatars.map((url, idx) => (
+                            <button 
+                              key={idx}
+                              type="button" 
+                              onClick={() => setLocalAvatarUrl(url)}
+                              className={`gallery-avatar-btn ${localAvatarUrl === url ? 'selected' : ''}`}
+                              style={{
+                                width: '46px',
+                                height: '46px',
+                                borderRadius: '12px',
+                                overflow: 'hidden',
+                                border: localAvatarUrl === url ? '3px solid var(--accent-color)' : '2px solid transparent',
+                                padding: 0,
+                                cursor: 'pointer',
+                                background: 'var(--bg-secondary)',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <img src={url} alt={`Avatar ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SubTab 3: Perfil Gamer & Setup */}
+                {profileSubTab === 'gamer' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {/* Master Switch Card */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: 'rgba(255,255,255,0.03)', border: '1.5px solid rgba(0,242,254,0.25)', borderRadius: '12px', gap: '12px' }}>
+                      <div>
+                        <strong style={{ fontSize: '13.5px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <GamepadIcon style={{ width: '17px', height: '17px', color: '#00f2fe' }} />
+                          Exibir Perfil Gamer no Player Card
+                        </strong>
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginTop: '3px' }}>
+                          Se desativado, nenhum elemento gamer (jogo, setup ou títulos) será exibido no seu cartão para outros membros.
+                        </span>
+                      </div>
+                      <label className="echo-switch">
+                        <input 
+                          type="checkbox" 
+                          checked={localShowGamerProfile} 
+                          onChange={(e) => setLocalShowGamerProfile(e.target.checked)} 
+                        />
+                        <span className="echo-slider" />
+                      </label>
+                    </div>
+
+                    {localShowGamerProfile ? (
+                      <>
+                        {/* Section 1: Main Game */}
+                        <div className="selector-card">
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <label style={{ margin: 0 }}>Jogo Principal (Main Game)</label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={localShowMainGame} 
+                                onChange={(e) => setLocalShowMainGame(e.target.checked)} 
+                                style={{ accentColor: '#00f2fe', cursor: 'pointer' }}
+                              />
+                              <span>Exibir no Card</span>
+                            </label>
+                          </div>
+                          <div className="preset-chips-grid" style={{ opacity: localShowMainGame ? 1 : 0.45, pointerEvents: localShowMainGame ? 'auto' : 'none' }}>
+                            {[
+                              'VALORANT',
+                              'Counter-Strike 2',
+                              'League of Legends',
+                              'Minecraft',
+                              'GTA RP',
+                              'Apex Legends',
+                              'Fortnite',
+                              'Overwatch 2',
+                              'Nenhum'
+                            ].map(game => (
+                              <button
+                                key={game}
+                                type="button"
+                                className={`preset-chip ${localMainGame === game ? 'active' : ''}`}
+                                onClick={() => setLocalMainGame(game)}
+                              >
+                                🎮 {game}
+                              </button>
+                            ))}
+                          </div>
+                          <div style={{ marginTop: '10px', opacity: localShowMainGame ? 1 : 0.45 }}>
+                            <input 
+                              value={localMainGame} 
+                              onChange={(e) => setLocalMainGame(e.target.value)} 
+                              placeholder="Ou digite o nome de outro jogo"
+                              maxLength={30}
+                              disabled={!localShowMainGame}
+                              className="profile-input-text"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Section 2: Hardware / Setup */}
+                        <div className="selector-card">
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <label style={{ margin: 0 }}>Periféricos & Setup em Destaque</label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={localShowHardwareSetup} 
+                                onChange={(e) => setLocalShowHardwareSetup(e.target.checked)} 
+                                style={{ accentColor: '#00f2fe', cursor: 'pointer' }}
+                              />
+                              <span>Exibir no Card</span>
+                            </label>
+                          </div>
+                          <div className="preset-chips-grid" style={{ opacity: localShowHardwareSetup ? 1 : 0.45, pointerEvents: localShowHardwareSetup ? 'auto' : 'none' }}>
+                            {[
+                              '🎧 HyperX Cloud II',
+                              '🎧 Logitech G PRO X',
+                              '🖱️ 800 DPI // 0.3 Sens',
+                              '🎙️ Shure SM7B',
+                              '⚡ 240Hz OLED Gaming',
+                              '🎮 DualSense Edge'
+                            ].map(setup => (
+                              <button
+                                key={setup}
+                                type="button"
+                                className={`preset-chip ${localHardwareSetup === setup ? 'active' : ''}`}
+                                onClick={() => setLocalHardwareSetup(setup)}
+                              >
+                                {setup}
+                              </button>
+                            ))}
+                          </div>
+                          <div style={{ marginTop: '10px', opacity: localShowHardwareSetup ? 1 : 0.45 }}>
+                            <input 
+                              value={localHardwareSetup} 
+                              onChange={(e) => setLocalHardwareSetup(e.target.value)} 
+                              placeholder="Ex: Fone HyperX, Mouse Razer, Microfone..."
+                              maxLength={40}
+                              disabled={!localShowHardwareSetup}
+                              className="profile-input-text"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Section 3: Squad Title & Honor Badge */}
+                        <div className="selector-card">
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <label style={{ margin: 0 }}>Título de Squad / Badge de Honra</label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={localShowBadge} 
+                                onChange={(e) => setLocalShowBadge(e.target.checked)} 
+                                style={{ accentColor: '#00f2fe', cursor: 'pointer' }}
+                              />
+                              <span>Exibir no Card</span>
+                            </label>
+                          </div>
+                          <div className="preset-chips-grid" style={{ opacity: localShowBadge ? 1 : 0.45, pointerEvents: localShowBadge ? 'auto' : 'none' }}>
+                            {[
+                              { id: 'owner', label: '👑 Líder de Servidor' },
+                              { id: 'vip', label: '💎 Echo VIP' },
+                              { id: 'early', label: '⚡ Fundador 2026' },
+                              { id: 'gamer', label: '🎯 Duelista / Pro' },
+                              { id: 'podcaster', label: '🎙️ Streamer' },
+                              { id: 'none', label: 'Nenhum' }
+                            ].map(b => (
+                              <button
+                                key={b.id}
+                                type="button"
+                                className={`preset-chip ${localBadge === b.id ? 'active' : ''}`}
+                                onClick={() => setLocalBadge(b.id)}
+                              >
+                                {b.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ padding: '24px', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                        <span style={{ fontSize: '30px', display: 'block', marginBottom: '8px' }}>🛡️</span>
+                        <h4 style={{ margin: '0 0 6px 0', color: '#fff' }}>Perfil Gamer Desativado</h4>
+                        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+                          Seu cartão de jogador exibirá apenas sua identidade básica (Foto, Nome, Pronomes, Status Sonoro e Bio). Ative a chave acima se desejar destacar seus jogos ou setup.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <button 
+                  type="submit" 
+                  className="ch-create-btn" 
+                  style={{ marginTop: '20px', padding: '14px', width: '100%', fontWeight: 900, fontSize: '15px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  disabled={savingProfile}
+                >
+                  <SaveIcon style={{ width: '18px', height: '18px' }} />
+                  <span>{savingProfile ? 'Salvando Echo Player Card…' : 'Salvar Echo Player Card'}</span>
+                </button>
+              </form>
+            </div>
           </div>
         )}
 
@@ -8479,6 +9331,47 @@ function SettingsView({
                   {Math.round(sfxVolume * 100)}%
                 </span>
               </div>
+            </div>
+
+            {/* Spatial 3D Audio Card */}
+            <div className="mic-test-panel" style={{ marginTop: '20px', border: '1.5px solid rgba(0, 242, 254, 0.25)', background: 'rgba(0, 242, 254, 0.03)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>🎧 Áudio Espacial 3D (Posicionamento Estéreo)</span>
+                    <span style={{ fontSize: '10.5px', background: 'rgba(0, 242, 254, 0.2)', color: '#00f2fe', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
+                      NOVO v0.23.5
+                    </span>
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                    Permite posicionar a voz de cada amigo no espaço estéreo (esquerda, centro ou direita) para facilitar a comunicação e reconhecimento no squad.
+                  </p>
+                </div>
+                <label className="echo-switch">
+                  <input 
+                    type="checkbox" 
+                    checked={spatialAudioEnabled} 
+                    onChange={(e) => onToggleSpatialAudio(e.target.checked)} 
+                  />
+                  <span className="echo-slider" />
+                </label>
+              </div>
+
+              {spatialAudioEnabled && (
+                <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                  <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 700 }}>
+                    ✓ Áudio Espacial Ativo • Você pode ajustar a posição de cada amigo no menu de volume dele.
+                  </span>
+                  <button 
+                    type="button" 
+                    className="picker-close-btn" 
+                    style={{ margin: 0, padding: '5px 12px', fontSize: '11.5px' }}
+                    onClick={onResetAllPans}
+                  >
+                    🔄 Centralizar Todos os Amigos
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Push-to-Talk Gamer Configuration */}
@@ -8704,7 +9597,9 @@ function StreamTile({
   isFullScreen,
   onToggleFullScreen,
   onSelectFocus,
-  isGrid
+  isGrid,
+  isPiPActive,
+  onToggleFloatingPiP
 }: {
   participant: VoiceParticipant;
   user: User;
@@ -8714,11 +9609,12 @@ function StreamTile({
   onToggleFullScreen?: () => void;
   onSelectFocus?: () => void;
   isGrid?: boolean;
+  isPiPActive?: boolean;
+  onToggleFloatingPiP?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [streamResolution, setStreamResolution] = useState<string>('')
   const [showStatsHud, setShowStatsHud] = useState(false)
-  const [isPiPActive, setIsPiPActive] = useState(false)
 
   useEffect(() => {
     if (videoRef.current) {
@@ -8745,21 +9641,6 @@ function StreamTile({
       }
     }
   }, [participant.screenStream])
-
-  const handleTogglePiP = async () => {
-    if (!videoRef.current) return
-    try {
-      if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture()
-        setIsPiPActive(false)
-      } else if (document.pictureInPictureEnabled) {
-        await videoRef.current.requestPictureInPicture()
-        setIsPiPActive(true)
-      }
-    } catch (err) {
-      console.warn('PiP error:', err)
-    }
-  }
 
   const volumeVal = peerScreenVolumes[participant.userId] !== undefined ? peerScreenVolumes[participant.userId] : 100
 
@@ -8827,10 +9708,10 @@ function StreamTile({
         {/* Picture-in-Picture Button */}
         <button
           className={`stream-action-btn ${isPiPActive ? 'active' : ''}`}
-          onClick={handleTogglePiP}
-          title="Picture-in-Picture (Assistir em janela flutuante)"
+          onClick={onToggleFloatingPiP}
+          title={isPiPActive ? "Fechar Mini Player Flutuante" : "Ativar Mini Player Flutuante (Always-on-Top)"}
         >
-          🪟 PiP
+          📌 {isPiPActive ? 'Mini Player ON' : 'Mini Player'}
         </button>
 
         {/* Volume Booster Slider (0% - 200%) */}
@@ -8865,6 +9746,182 @@ function StreamTile({
             <FullscreenIcon />
           </button>
         )}
+      </div>
+    </div>
+  )
+}
+
+/* ── Echo Floating Mini Player (Always-On-Top PiP) Component ─────────────── */
+function EchoFloatingMiniPlayer({
+  activeScreenSharers,
+  activeScreenSharer,
+  onSelectSharer,
+  peerScreenVolumes,
+  setPeerScreenVolumes,
+  onClose,
+  onExpand,
+}: {
+  activeScreenSharers: VoiceParticipant[];
+  activeScreenSharer: VoiceParticipant | null;
+  onSelectSharer: (userId: string) => void;
+  peerScreenVolumes: Record<string, number>;
+  setPeerScreenVolumes: (v: Record<string, number>) => void;
+  onClose: () => void;
+  onExpand: () => void;
+}) {
+  const [position, setPosition] = useState<{ x: number; y: number }>(() => {
+    return { x: window.innerWidth - 370, y: window.innerHeight - 250 }
+  })
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStartRef = useRef<{ startX: number; startY: number; initialX: number; initialY: number }>({ startX: 0, startY: 0, initialX: 0, initialY: 0 })
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const [isMuted, setIsMuted] = useState(false)
+
+  useEffect(() => {
+    if (videoRef.current && activeScreenSharer?.screenStream) {
+      if (videoRef.current.srcObject !== activeScreenSharer.screenStream) {
+        videoRef.current.srcObject = activeScreenSharer.screenStream
+      }
+      videoRef.current.play().catch(() => {})
+    }
+  }, [activeScreenSharer?.screenStream])
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button, input, a')) return
+    setIsDragging(true)
+    dragStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initialX: position.x,
+      initialY: position.y
+    }
+  }
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return
+      const dx = e.clientX - dragStartRef.current.startX
+      const dy = e.clientY - dragStartRef.current.startY
+      const newX = Math.max(10, Math.min(window.innerWidth - 360, dragStartRef.current.initialX + dx))
+      const newY = Math.max(10, Math.min(window.innerHeight - 230, dragStartRef.current.initialY + dy))
+      setPosition({ x: newX, y: newY })
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+    }
+
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging])
+
+  if (!activeScreenSharer) return null
+
+  const volumeVal = peerScreenVolumes[activeScreenSharer.userId] !== undefined ? peerScreenVolumes[activeScreenSharer.userId] : 100
+
+  return (
+    <div 
+      className="echo-floating-pip-container"
+      style={{
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        cursor: isDragging ? 'grabbing' : 'default'
+      }}
+      onMouseDown={handleMouseDown}
+    >
+      <div className="echo-pip-card">
+        {/* Header Bar */}
+        <div className="echo-pip-header">
+          <div className="echo-pip-title-row">
+            <span className="echo-pip-live-badge">🔴 LIVE</span>
+            <span className="echo-pip-streamer-name" title={activeScreenSharer.displayName}>
+              {activeScreenSharer.displayName}
+            </span>
+            <AudioLevelMeter stream={activeScreenSharer.screenStream || null} />
+          </div>
+
+          <div className="echo-pip-actions">
+            {activeScreenSharers.length > 1 && (
+              <button 
+                type="button" 
+                className="echo-pip-btn" 
+                title="Alternar para outra transmissão"
+                onClick={() => {
+                  const currentIndex = activeScreenSharers.findIndex(s => s.userId === activeScreenSharer.userId)
+                  const nextIndex = (currentIndex + 1) % activeScreenSharers.length
+                  onSelectSharer(activeScreenSharers[nextIndex].userId)
+                }}
+              >
+                🔄
+              </button>
+            )}
+
+            <button 
+              type="button" 
+              className="echo-pip-btn" 
+              title="Expandir foco na chamada"
+              onClick={onExpand}
+            >
+              ⛶
+            </button>
+
+            <button 
+              type="button" 
+              className="echo-pip-btn close" 
+              title="Fechar mini player (✕)"
+              onClick={onClose}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Video Area */}
+        <div className="echo-pip-video-wrapper">
+          <video 
+            ref={videoRef}
+            autoPlay 
+            playsInline 
+            muted
+            className="echo-pip-video-el"
+          />
+
+          {/* Quick Volume & Sound Bar on Hover */}
+          <div className="echo-pip-hover-bar">
+            <button 
+              type="button" 
+              className="echo-pip-mini-action"
+              onClick={() => {
+                const nextVol = isMuted ? 100 : 0
+                setIsMuted(!isMuted)
+                setPeerScreenVolumes({ ...peerScreenVolumes, [activeScreenSharer.userId]: nextVol })
+              }}
+              title={isMuted ? 'Desmutar som do jogo' : 'Mutar som do jogo'}
+            >
+              {isMuted || volumeVal === 0 ? '🔇' : '🔊'}
+            </button>
+            <input 
+              type="range"
+              min="0"
+              max="200"
+              value={volumeVal}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10)
+                setPeerScreenVolumes({ ...peerScreenVolumes, [activeScreenSharer.userId]: val })
+                setIsMuted(val === 0)
+              }}
+              className="echo-pip-volume-slider"
+              title={`Volume do jogo: ${volumeVal}%`}
+            />
+            <span className="echo-pip-vol-text">{volumeVal}%</span>
+          </div>
+        </div>
       </div>
     </div>
   )

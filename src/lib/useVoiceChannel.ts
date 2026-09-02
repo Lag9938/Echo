@@ -353,6 +353,9 @@ export function useVoiceChannel() {
   const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map())
   const peerVolumesRef = useRef<Map<string, number>>(new Map()) // Tracks local volume per peer
   const peerScreenVolumesRef = useRef<Map<string, number>>(new Map()) // Tracks local screenshare volume per peer
+  const peerPansRef = useRef<Map<string, number>>(new Map()) // Tracks stereo panning per peer (-1 left, 0 center, +1 right)
+  const peerPannersRef = useRef<Map<string, { panner: StereoPannerNode; ctx: AudioContext }>>(new Map())
+  const isSpatialAudioEnabledRef = useRef(false)
   const participantsMapRef = useRef<Map<string, { displayName: string; avatarUrl?: string; screenStream?: MediaStream; isMuted?: boolean; isDeafened?: boolean }>>(new Map())
   const activeChannelIdRef = useRef<string | null>(null)
   const activeSpaceIdRef = useRef<string | null>(null)
@@ -440,7 +443,36 @@ export function useVoiceChannel() {
           audioElementsRef.current.set(key, audio)
         }
         audio.muted = isDeafenedRef.current
-        audio.srcObject = remoteStream
+
+        if (!isScreen) {
+          try {
+            // Clean up previous panner if any
+            const existingPanner = peerPannersRef.current.get(remoteUserId)
+            if (existingPanner) {
+              existingPanner.ctx.close().catch(() => {})
+              peerPannersRef.current.delete(remoteUserId)
+            }
+
+            const spatialCtx = new AudioContext()
+            const source = spatialCtx.createMediaStreamSource(remoteStream)
+            const panner = spatialCtx.createStereoPanner()
+            const dest = spatialCtx.createMediaStreamDestination()
+            
+            const savedPan = peerPansRef.current.get(remoteUserId) || 0
+            panner.pan.value = isSpatialAudioEnabledRef.current ? savedPan : 0
+            
+            source.connect(panner)
+            panner.connect(dest)
+            
+            peerPannersRef.current.set(remoteUserId, { panner, ctx: spatialCtx })
+            audio.srcObject = dest.stream
+          } catch (e) {
+            audio.srcObject = remoteStream
+          }
+        } else {
+          audio.srcObject = remoteStream
+        }
+
         audio.play().catch(e => {
           console.warn('[WebRTC] Audio autoplay initial play:', e)
         })
@@ -1494,6 +1526,23 @@ export function useVoiceChannel() {
     }
   }, [])
 
+  const changePeerPan = useCallback((peerId: string, pan: number) => {
+    const clamped = Math.max(-1, Math.min(1, isNaN(pan) ? 0 : pan))
+    peerPansRef.current.set(peerId, clamped)
+    const entry = peerPannersRef.current.get(peerId)
+    if (entry && entry.panner) {
+      entry.panner.pan.value = isSpatialAudioEnabledRef.current ? clamped : 0
+    }
+  }, [])
+
+  const setSpatialAudioEnabled = useCallback((enabled: boolean) => {
+    isSpatialAudioEnabledRef.current = enabled
+    for (const [peerId, entry] of peerPannersRef.current.entries()) {
+      const savedPan = peerPansRef.current.get(peerId) || 0
+      entry.panner.pan.value = enabled ? savedPan : 0
+    }
+  }, [])
+
   const changePeerScreenVolume = useCallback((peerId: string, volume: number) => {
     const clamped = Math.max(0, Math.min(1, isNaN(volume) ? 1 : volume))
     peerScreenVolumesRef.current.set(peerId, clamped)
@@ -1701,6 +1750,8 @@ export function useVoiceChannel() {
     changeOutputDevice,
     changeScreenShareSettings,
     changePeerVolume,
+    changePeerPan,
+    setSpatialAudioEnabled,
     changePeerScreenVolume,
     setPttMode,
     setPttActive,

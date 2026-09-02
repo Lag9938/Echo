@@ -14,15 +14,113 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.23.2'
+export const APP_CURRENT_VERSION = '0.23.5'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.23.5',
+    title: 'Áudio Espacial 3D & Controles Granulares do Perfil',
+    date: '02 de Setembro de 2026',
+    tagline: 'Posicionamento estéreo de voz dos amigos em chamadas, distribuição 3D de squad e total liberdade de customização no perfil.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎧',
+        badge: 'ÁUDIO 3D',
+        title: 'Áudio Espacial 3D (Posicionamento Estéreo)',
+        description: 'Ajuste individualmente a posição de cada amigo no seu fone de ouvido (esquerda, centro ou direita) para saber quem está falando apenas pela direção do som.'
+      },
+      {
+        icon: '🌐',
+        badge: 'SQUAD',
+        title: 'Distribuição 3D de Squad Automática',
+        description: 'Com 1 clique, distribua todos os membros da sua chamada de voz em um semicírculo estéreo natural.'
+      },
+      {
+        icon: '🎛️',
+        badge: 'PRIVACIDADE',
+        title: 'Controle Granular do Perfil Gamer',
+        description: 'Chave mestra para ativar/desativar o perfil gamer por completo ou individualmente (jogo principal, periféricos e badges de squad).'
+      },
+      {
+        icon: '📌',
+        badge: 'MINI PLAYER',
+        title: 'Mini Player Flutuante (Picture-in-Picture)',
+        description: 'Assista às transmissões dos seus amigos em uma janelinha flutuante arrastável com controles de volume rápidos.'
+      }
+    ]
+  },
+  {
+    version: '0.23.4',
+    title: 'Echo Player Card & Estúdio de Identidade Gamer',
+    date: '02 de Setembro de 2026',
+    tagline: 'Novo cartão holográfico de jogador com auras sonoras, jogo favorito, setup e painel modular.',
+    isLatest: false,
+    highlights: [
+      {
+        icon: '🎴',
+        badge: 'EXCLUSIVO',
+        title: 'Echo Player Card (Cartão Holográfico)',
+        description: 'Design autêntico e futurista de Cartão de Jogador com texturas de som Synthwave, Carbono, Aurora e Malha Cyberpunk.'
+      },
+      {
+        icon: '🔊',
+        badge: 'NOVO',
+        title: 'Aura Sonora Animada (Echo Waves)',
+        description: 'Seu avatar agora conta com pulsos de onda acústica reativos em cores neon selecionáveis (Ciano, Ametista, Rubro, Ouro e Stealth).'
+      },
+      {
+        icon: '🎮',
+        badge: 'GAMER',
+        title: 'Jogo Favorito & Setup de Periféricos',
+        description: 'Exiba seu Main Game (Valorant, CS2, LoL, etc.) e seus periféricos favoritos diretamente no seu cartão de jogador.'
+      },
+      {
+        icon: '🛠️',
+        badge: 'INTERFACE',
+        title: 'Editor de Perfil Modular em Abas',
+        description: 'Configuração dividida em 3 abas práticas: Identidade, Cartão & Efeitos e Perfil Gamer.'
+      }
+    ]
+  },
+  {
+    version: '0.23.3',
+    title: 'Novo Perfil Customizável, Ícones Vetoriais e Sincronização de Membros',
+    date: '02 de Setembro de 2026',
+    tagline: 'Personalização completa do perfil de usuário, ícones SVG modernos e sincronização de membros em tempo real.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎨',
+        badge: 'DESIGN',
+        title: 'Estúdio de Customização de Perfil',
+        description: 'Personalize seu perfil com Banners degradê exclusivos, molduras de avatar animadas (Neon Glow, Ouro, Cyber), biografia "Sobre Mim", pronomes e badges de prestígio com preview interativo em tempo real.'
+      },
+      {
+        icon: '👥',
+        badge: 'CORREÇÃO',
+        title: 'Lista de Membros do Servidor em Tempo Real',
+        description: 'A aba de membros agora atualiza instantaneamente quando alguém entra, separa membros por cargos (Dono, Moderador, Membro) e status online/offline com visualização de perfis.'
+      },
+      {
+        icon: '✨',
+        badge: 'VISUAL',
+        title: 'Ícones Vetoriais SVG Unificados',
+        description: 'Substituição completa de emojis antigos por ícones SVG elegantes nos controles de chamada, soundboard e barra de mensagens de voz.'
+      },
+      {
+        icon: '📌',
+        badge: 'CORREÇÃO',
+        title: 'Identificador Preciso de Versão Atual',
+        description: 'A aba de novidades agora destaca exclusivamente a sua versão instalada com o selo verde ATUAL.'
+      }
+    ]
+  },
   {
     version: '0.23.2',
     title: 'Isolamento Acústico Split-Band & Supressão de Retorno',
     date: '02 de Setembro de 2026',
     tagline: 'Eliminação total de retorno de voz durante transmissões com motor DSP Split-Band.',
-    isLatest: true,
     highlights: [
       {
         icon: '🛡️',
@@ -49,7 +147,6 @@ export const CHANGELOG_DATA: ReleaseNote[] = [
     title: 'Visualização de Múltiplas Transmissões e Estabilidade WebRTC',
     date: '02 de Setembro de 2026',
     tagline: 'Assista à tela de qualquer amigo com 1 clique e alterne transmissões instantaneamente.',
-    isLatest: true,
     highlights: [
       {
         icon: '📺',

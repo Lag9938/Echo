@@ -52,7 +52,7 @@ export function WhatsNewModal({
               onClick={() => setSelectedVersion(rel.version)}
             >
               <span className="version-name">v{rel.version}</span>
-              {rel.isLatest && <span className="version-badge-latest">ATUAL</span>}
+              {rel.version === APP_CURRENT_VERSION && <span className="version-badge-latest">ATUAL</span>}
             </button>
           )
         })}
