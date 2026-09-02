@@ -136,3 +136,29 @@ create policy "Users delete their own friendships" on public.friendships
   for delete to authenticated
   using (user_id = (select auth.uid()) or friend_id = (select auth.uid()));
 
+-- Tabela de mensagens diretas (DMs)
+create table if not exists public.direct_messages (
+  id uuid primary key default gen_random_uuid(),
+  sender_id uuid not null references public.profiles(id) on delete cascade,
+  receiver_id uuid not null references public.profiles(id) on delete cascade,
+  body text not null check (char_length(body) between 1 and 4000),
+  attachment_url text,
+  attachment_type text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.direct_messages enable row level security;
+
+create policy "Users read their direct messages" on public.direct_messages
+  for select to authenticated
+  using (sender_id = (select auth.uid()) or receiver_id = (select auth.uid()));
+
+create policy "Users send direct messages" on public.direct_messages
+  for insert to authenticated
+  with check (sender_id = (select auth.uid()));
+
+-- Adicionar tabelas a publicacao realtime para sincronizacao instantanea
+alter publication supabase_realtime add table public.messages;
+alter publication supabase_realtime add table public.friendships;
+alter publication supabase_realtime add table public.direct_messages;
+

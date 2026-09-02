@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { supabase } from './supabase'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound, playDeafenSound, playUndeafenSound, playScreenStartSound, playScreenStopSound } from './soundEffects'
+import { playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound, playDeafenSound, playUndeafenSound, playScreenStartSound, playScreenStopSound, playSoundboardEffect } from './soundEffects'
 
 export type VoiceParticipant = {
   userId: string
@@ -106,24 +106,95 @@ function createStudioMicrophoneDSP(stream: MediaStream): { finalStream: MediaStr
   return { finalStream: dest.stream, audioCtx };
 }
 
+function createAntiEchoIsolationDSP(
+  sysStream: MediaStream,
+  remoteStreams: MediaStream[]
+): { finalStream: MediaStream; audioCtx: AudioContext | null } {
+  try {
+    const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtxClass) {
+      return { finalStream: sysStream, audioCtx: null };
+    }
+    const audioCtx = new AudioCtxClass();
+    const sysSource = audioCtx.createMediaStreamSource(sysStream);
+
+    // 1. Equalização e realce de som de jogo
+    const bassEnhancer = audioCtx.createBiquadFilter();
+    bassEnhancer.type = 'lowshelf';
+    bassEnhancer.frequency.value = 110;
+    bassEnhancer.gain.value = 2.0;
+
+    const trebleClarity = audioCtx.createBiquadFilter();
+    trebleClarity.type = 'highshelf';
+    trebleClarity.frequency.value = 4500;
+    trebleClarity.gain.value = 1.2;
+
+    // 2. Compressor dinâmico para gameplay
+    const compressor = audioCtx.createDynamicsCompressor();
+    compressor.threshold.value = -16;
+    compressor.knee.value = 6;
+    compressor.ratio.value = 3;
+    compressor.attack.value = 0.005;
+    compressor.release.value = 0.1;
+
+    const dest = audioCtx.createMediaStreamDestination();
+    sysSource.connect(bassEnhancer);
+    bassEnhancer.connect(trebleClarity);
+    trebleClarity.connect(compressor);
+    compressor.connect(dest);
+
+    // 3. Nó de anulação acústica das vozes remotas da chamada
+    if (remoteStreams && remoteStreams.length > 0) {
+      const voiceMixer = audioCtx.createGain();
+      voiceMixer.gain.value = -0.90;
+
+      const voiceNotch = audioCtx.createBiquadFilter();
+      voiceNotch.type = 'bandpass';
+      voiceNotch.frequency.value = 1100;
+      voiceNotch.Q.value = 0.7;
+
+      let connectedAny = false;
+      for (const rStream of remoteStreams) {
+        try {
+          if (rStream.getAudioTracks().length > 0 && rStream.getAudioTracks()[0].readyState === 'live') {
+            const rSource = audioCtx.createMediaStreamSource(rStream);
+            rSource.connect(voiceMixer);
+            connectedAny = true;
+          }
+        } catch (e) {}
+      }
+
+      if (connectedAny) {
+        voiceMixer.connect(voiceNotch);
+        voiceNotch.connect(dest);
+      }
+    }
+
+    return { finalStream: dest.stream, audioCtx };
+  } catch (err) {
+    console.warn('createAntiEchoIsolationDSP fallback:', err);
+    return { finalStream: sysStream, audioCtx: null };
+  }
+}
+
 function optimizeVideoSection(section: string): string {
   let lines = section.split('\r\n');
   let hasBandwidth = false;
 
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].startsWith('b=AS:') || lines[i].startsWith('b=TIAS:')) {
-      lines[i] = 'b=AS:8000\r\nb=TIAS:8000000';
+      lines[i] = 'b=AS:8500\r\nb=TIAS:8500000';
       hasBandwidth = true;
       break;
     }
   }
 
   if (!hasBandwidth) {
-    lines.splice(1, 0, 'b=AS:8000', 'b=TIAS:8000000');
+    lines.splice(1, 0, 'b=AS:8500', 'b=TIAS:8500000');
   }
 
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes('a=rtpmap:') && (lines[i].toLowerCase().includes('h264/90000') || lines[i].toLowerCase().includes('vp8/90000') || lines[i].toLowerCase().includes('vp9/90000'))) {
+    if (lines[i].includes('a=rtpmap:') && (lines[i].toLowerCase().includes('h264/90000') || lines[i].toLowerCase().includes('vp8/90000') || lines[i].toLowerCase().includes('vp9/90000') || lines[i].toLowerCase().includes('av1/90000'))) {
       const match = lines[i].match(/a=rtpmap:(\d+)\s+/i);
       if (match) {
         const pt = match[1];
@@ -132,13 +203,13 @@ function optimizeVideoSection(section: string): string {
           if (lines[j].startsWith(`a=fmtp:${pt}`)) {
             foundFmtp = true;
             if (!lines[j].includes('x-google-max-bitrate')) {
-              lines[j] += ';x-google-min-bitrate=2000;x-google-max-bitrate=8000;x-google-start-bitrate=4500';
+              lines[j] += ';x-google-min-bitrate=2500;x-google-max-bitrate=8500;x-google-start-bitrate=5000';
             }
             break;
           }
         }
         if (!foundFmtp) {
-          lines.push(`a=fmtp:${pt} x-google-min-bitrate=2000;x-google-max-bitrate=8000;x-google-start-bitrate=4500`);
+          lines.push(`a=fmtp:${pt} x-google-min-bitrate=2500;x-google-max-bitrate=8500;x-google-start-bitrate=5000`);
         }
       }
     }
@@ -154,10 +225,10 @@ async function applyVideoSenderParameters(sender: RTCRtpSender, width?: number, 
       parameters.encodings = [{}];
     }
     const targetFps = fps || 60;
-    const isHighQuality = (width && width >= 1920) || targetFps === 60;
+    const isHighQuality = (width && width >= 1920) || targetFps === 60 || width === 0;
     
-    // Alta alocação de bitrate para eliminar pixelização e manter nitidez 60 FPS
-    const maxBitrate = isHighQuality ? 6000000 : (targetFps >= 60 ? 4000000 : 2500000);
+    // Alocação máxima de bitrate para ultra-definição 60 FPS (padrão Discord Nitro)
+    const maxBitrate = isHighQuality ? 8500000 : (targetFps >= 60 ? 5500000 : 3500000);
     
     parameters.encodings[0].maxBitrate = maxBitrate;
     parameters.encodings[0].maxFramerate = targetFps;
@@ -199,6 +270,22 @@ export function useVoiceChannel() {
   const [isConnected, setIsConnected] = useState(false)
   const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null)
   const [rtcStats, setRtcStats] = useState<{ ping: number; jitter: number; packetLoss: number } | null>(null)
+  
+  // Push-to-Talk (PTT)
+  const [isPttMode, setIsPttMode] = useState(false)
+  const [isPttActive, setIsPttActive] = useState(false)
+  const isPttModeRef = useRef(false)
+  const isPttActiveRef = useRef(false)
+
+  // Soundboard
+  const [lastSoundboardEvent, setLastSoundboardEvent] = useState<{ soundId: string; userId: string; displayName: string; timestamp: number } | null>(null)
+
+  // Call Recording
+  const [isRecordingCall, setIsRecordingCall] = useState(false)
+  const [recordingDuration, setRecordingDuration] = useState(0)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordedChunksRef = useRef<Blob[]>([])
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const isMutedRef = useRef(false)
   const isDeafenedRef = useRef(false)
@@ -661,6 +748,19 @@ export function useVoiceChannel() {
           }
         }
       })
+      realtimeChannel.on('broadcast', { event: 'soundboard-play' }, ({ payload }) => {
+        const p = payload as { soundId: string; userId: string; displayName: string }
+        if (p && p.soundId) {
+          const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
+          playSoundboardEffect(p.soundId, sfxVol)
+          setLastSoundboardEvent({
+            soundId: p.soundId,
+            userId: p.userId,
+            displayName: p.displayName || 'Alguém',
+            timestamp: Date.now()
+          })
+        }
+      })
 
       const ensurePeerConnection = (peerId: string) => {
         if (!peersRef.current.has(peerId)) {
@@ -1062,156 +1162,107 @@ export function useVoiceChannel() {
     }
   }, [])
 
+  const screenDspCtxRef = useRef<AudioContext | null>(null)
+
   // Start sharing screen
-  const startScreenShare = useCallback(async (sourceId?: string, width?: number, height?: number, fps?: number) => {
+  const startScreenShare = useCallback(async (sourceId?: string, width?: number, height?: number, fps?: number, audioMode: 'anti-echo' | 'full' | 'none' = 'anti-echo') => {
     if (!isConnected || !myInfoRef.current) return
     try {
+      if (screenDspCtxRef.current) {
+        try { screenDspCtxRef.current.close() } catch (e) {}
+        screenDspCtxRef.current = null
+      }
+
       let stream: MediaStream | null = null
-      if (sourceId) {
-        let captureSuccess = false
-        if (sourceId.startsWith('window:') && (window as any).electronAPI) {
-          try {
-            const res = await (window as any).electronAPI.startProcessAudioCapture(sourceId)
-            if (res && res.success) {
-              stream = await navigator.mediaDevices.getUserMedia({
-                audio: false,
-                video: {
-                  mandatory: {
-                    chromeMediaSource: 'desktop',
-                    chromeMediaSourceId: sourceId,
-                    minWidth: width || 1280,
-                    maxWidth: width || 1280,
-                    minHeight: height || 720,
-                    maxHeight: height || 720,
-                    minFrameRate: fps || 30,
-                    maxFrameRate: fps || 30
-                  }
-                } as any
-              })
+      const targetWidth = width || 1920
+      const targetHeight = height || 1080
+      const targetFps = fps || 60
 
-              const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext
-              const audioCtx = new AudioCtxClass({ sampleRate: 48000 })
-              const dest = audioCtx.createMediaStreamDestination()
-
-              const audioQueueL: Float32Array[] = []
-              const audioQueueR: Float32Array[] = []
-              let currentBufferL: Float32Array | null = null
-              let currentBufferR: Float32Array | null = null
-              let currentBufferIndex = 0
-
-              const scriptNode = audioCtx.createScriptProcessor(2048, 0, 2)
-              scriptNode.onaudioprocess = (e) => {
-                const outL = e.outputBuffer.getChannelData(0)
-                const outR = e.outputBuffer.getChannelData(1)
-                let written = 0
-
-                while (written < outL.length) {
-                  if (currentBufferL && currentBufferR && currentBufferIndex < currentBufferL.length) {
-                    outL[written] = currentBufferL[currentBufferIndex]
-                    outR[written] = currentBufferR[currentBufferIndex]
-                    currentBufferIndex++
-                    written++
-                  } else {
-                    if (audioQueueL.length > 0) {
-                      currentBufferL = audioQueueL.shift() || null
-                      currentBufferR = audioQueueR.shift() || null
-                      currentBufferIndex = 0
-                    } else {
-                      outL[written] = 0
-                      outR[written] = 0
-                      written++
-                    }
-                  }
-                }
-              }
-
-              scriptNode.connect(dest)
-
-              let leftoverBuffer: Uint8Array | null = null
-
-              ;(window as any).electronAPI.onScreenshareAudioChunk((chunk: Uint8Array) => {
-                let dataToProcess = chunk.slice()
-                if (leftoverBuffer && leftoverBuffer.length > 0) {
-                  const combined = new Uint8Array(leftoverBuffer.length + dataToProcess.length)
-                  combined.set(leftoverBuffer, 0)
-                  combined.set(dataToProcess, leftoverBuffer.length)
-                  dataToProcess = combined
-                  leftoverBuffer = null
-                }
-
-                const remainder = dataToProcess.length % 4
-                if (remainder > 0) {
-                  leftoverBuffer = dataToProcess.slice(dataToProcess.length - remainder)
-                  dataToProcess = dataToProcess.slice(0, dataToProcess.length - remainder)
-                }
-
-                if (dataToProcess.length === 0) return
-
-                const samplesCount = dataToProcess.length / 2
-                const view = new DataView(dataToProcess.buffer, dataToProcess.byteOffset, dataToProcess.byteLength)
-                const floatL = new Float32Array(samplesCount / 2)
-                const floatR = new Float32Array(samplesCount / 2)
-
-                for (let i = 0; i < samplesCount / 2; i++) {
-                  const leftInt = view.getInt16(i * 4, true)
-                  const rightInt = view.getInt16(i * 4 + 2, true)
-                  floatL[i] = leftInt / 32768.0
-                  floatR[i] = rightInt / 32768.0
-                }
-
-                audioQueueL.push(floatL)
-                audioQueueR.push(floatR)
-
-                if (audioQueueL.length > 40) {
-                  audioQueueL.splice(0, 15)
-                  audioQueueR.splice(0, 15)
-                }
-              })
-
-              const gameAudioTrack = dest.stream.getAudioTracks()[0]
-              if (gameAudioTrack) {
-                stream.addTrack(gameAudioTrack)
-              }
-
-              ;(stream as any)._audioCtx = audioCtx;
-              ;(stream as any)._scriptNode = scriptNode;
-              captureSuccess = true
-              console.log('Successfully initialized process-isolated audio capture via C# helper.')
-            }
-          } catch (captureErr) {
-            console.error('Failed to bind process loopback audio, falling back to system loopback:', captureErr)
-          }
+      const audioConstraint = (audioMode !== 'none') ? {
+        mandatory: {
+          chromeMediaSource: 'desktop'
         }
+      } as any : false
 
-        if (!captureSuccess) {
+      if (sourceId) {
+        try {
           stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              mandatory: {
-                chromeMediaSource: 'desktop',
-                chromeMediaSourceId: sourceId
-              }
-            } as any,
+            audio: audioConstraint,
             video: {
               mandatory: {
                 chromeMediaSource: 'desktop',
                 chromeMediaSourceId: sourceId,
-                minWidth: width || 1280,
-                maxWidth: width || 1280,
-                minHeight: height || 720,
-                maxHeight: height || 720,
-                minFrameRate: fps || 30,
-                maxFrameRate: fps || 30
+                maxWidth: targetWidth,
+                maxHeight: targetHeight,
+                maxFrameRate: targetFps
               }
             } as any
           })
+        } catch (firstErr) {
+          console.warn('Initial desktop video+audio capture failed, trying basic capture:', firstErr)
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: audioConstraint,
+              video: {
+                mandatory: {
+                  chromeMediaSource: 'desktop',
+                  chromeMediaSourceId: sourceId
+                }
+              } as any
+            })
+          } catch (secErr) {
+            console.warn('Direct window capture failed (likely Exclusive Fullscreen game). Automatically falling back to seamless screen capture:', secErr)
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: audioConstraint,
+              video: {
+                mandatory: {
+                  chromeMediaSource: 'desktop',
+                  chromeMediaSourceId: 'screen:0:0',
+                  maxWidth: targetWidth,
+                  maxHeight: targetHeight,
+                  maxFrameRate: targetFps
+                }
+              } as any
+            })
+          }
+        }
+
+        // Processamento Anti-Eco Inteligente (DSP) se habilitado
+        if (stream && audioMode === 'anti-echo') {
+          const rawAudioTracks = stream.getAudioTracks()
+          if (rawAudioTracks.length > 0) {
+            try {
+              const rawAudioTrack = rawAudioTracks[0]
+              const rawAudioStream = new MediaStream([rawAudioTrack])
+
+              const remoteVoiceStreams: MediaStream[] = []
+              for (const [key, audioEl] of audioElementsRef.current.entries()) {
+                if (key.endsWith('-voice') && audioEl.srcObject instanceof MediaStream) {
+                  remoteVoiceStreams.push(audioEl.srcObject)
+                }
+              }
+
+              const { finalStream, audioCtx } = createAntiEchoIsolationDSP(rawAudioStream, remoteVoiceStreams)
+              if (audioCtx) {
+                screenDspCtxRef.current = audioCtx
+                const cleanAudioTracks = finalStream.getAudioTracks()
+                if (cleanAudioTracks.length > 0) {
+                  stream.removeTrack(rawAudioTrack)
+                  stream.addTrack(cleanAudioTracks[0])
+                }
+              }
+            } catch (dspErr) {
+              console.warn('Anti-echo DSP warning (continuing with clean system audio):', dspErr)
+            }
+          }
         }
       } else {
         stream = await navigator.mediaDevices.getDisplayMedia({
-          audio: true,
+          audio: audioMode !== 'none',
           video: {
-            width: width ? { ideal: width } : 1280,
-            height: height ? { ideal: height } : 720,
-            frameRate: fps ? { ideal: fps } : 30
+            width: { ideal: targetWidth },
+            height: { ideal: targetHeight },
+            frameRate: { ideal: targetFps }
           }
         })
       }
@@ -1287,25 +1338,11 @@ export function useVoiceChannel() {
   // Stop sharing screen
   const stopScreenShare = useCallback(async () => {
     if (localScreenStreamRef.current) {
-      const stream = localScreenStreamRef.current
-      if ((stream as any)._audioCtx) {
-        try {
-          ((stream as any)._audioCtx as AudioContext).close()
-        } catch (e) {}
+      if (screenDspCtxRef.current) {
+        try { screenDspCtxRef.current.close() } catch (e) {}
+        screenDspCtxRef.current = null
       }
-      if ((stream as any)._scriptNode) {
-        try {
-          ((stream as any)._scriptNode as ScriptProcessorNode).disconnect()
-        } catch (e) {}
-      }
-
-      if ((window as any).electronAPI && typeof (window as any).electronAPI.stopProcessAudioCapture === 'function') {
-        try {
-          await (window as any).electronAPI.stopProcessAudioCapture()
-        } catch (e) {}
-      }
-
-      stream.getTracks().forEach(t => t.stop())
+      localScreenStreamRef.current.getTracks().forEach((t: MediaStreamTrack) => t.stop())
       localScreenStreamRef.current = null
       setLocalScreenStream(null)
       const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
@@ -1370,25 +1407,16 @@ export function useVoiceChannel() {
     syncParticipants()
   }, [syncParticipants])
 
-  // Change screen share constraints on the fly (resolution/fps)
+  // Change screen share encoding settings on the fly (resolution/fps) without resetting native video track
   const changeScreenShareSettings = useCallback(async (width?: number, height?: number, fps?: number) => {
     if (!localScreenStreamRef.current) return
-    const track = localScreenStreamRef.current.getVideoTracks()[0]
-    if (!track) return
-
     try {
-      const constraints: MediaTrackConstraints = {}
-      if (width) constraints.width = { ideal: width }
-      if (height) constraints.height = { ideal: height }
-      if (fps) constraints.frameRate = { ideal: fps }
-
-      await track.applyConstraints(constraints)
       for (const sender of screenSendersRef.current.values()) {
         await applyVideoSenderParameters(sender, width, height, fps)
       }
-      console.log('Successfully applied new video track constraints and sender parameters:', constraints)
+      console.log('Successfully adjusted live video sender encoding parameters:', { width, height, fps })
     } catch (err) {
-      console.error('Failed to apply video track constraints:', err)
+      console.error('Failed to update live video sender parameters:', err)
     }
   }, [])
 
@@ -1408,6 +1436,134 @@ export function useVoiceChannel() {
     if (audio) {
       audio.volume = clamped
     }
+  }, [])
+
+  // Push-to-Talk (PTT) controls
+  const setPttMode = useCallback((enabled: boolean) => {
+    isPttModeRef.current = enabled
+    setIsPttMode(enabled)
+    if (localStreamRef.current) {
+      const audioTrack = localStreamRef.current.getAudioTracks()[0]
+      if (audioTrack) {
+        if (enabled) {
+          audioTrack.enabled = isPttActiveRef.current
+        } else {
+          audioTrack.enabled = !isMutedRef.current
+        }
+      }
+    }
+  }, [])
+
+  const setPttActive = useCallback((active: boolean) => {
+    isPttActiveRef.current = active
+    setIsPttActive(active)
+    if (isPttModeRef.current && localStreamRef.current) {
+      const audioTrack = localStreamRef.current.getAudioTracks()[0]
+      if (audioTrack && !isMutedRef.current && !isDeafenedRef.current) {
+        audioTrack.enabled = active
+      }
+    }
+  }, [])
+
+  // Soundboard Trigger
+  const playSoundboard = useCallback((soundId: string) => {
+    const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
+    playSoundboardEffect(soundId, sfxVol)
+    if (myInfoRef.current) {
+      setLastSoundboardEvent({
+        soundId,
+        userId: myInfoRef.current.userId,
+        displayName: myInfoRef.current.displayName,
+        timestamp: Date.now()
+      })
+    }
+    if (channelRef.current && myInfoRef.current) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'soundboard-play',
+        payload: {
+          soundId,
+          userId: myInfoRef.current.userId,
+          displayName: myInfoRef.current.displayName
+        }
+      }).catch(() => {})
+    }
+  }, [])
+
+  // Local Call Recording (mixes local mic + all remote peers into downloadable webm)
+  const startCallRecording = useCallback(() => {
+    if (isRecordingCall) return
+    try {
+      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext
+      const recCtx = new AudioCtxClass()
+      const dest = recCtx.createMediaStreamDestination()
+
+      if (localStreamRef.current) {
+        try {
+          const localSrc = recCtx.createMediaStreamSource(localStreamRef.current)
+          localSrc.connect(dest)
+        } catch (e) {}
+      }
+
+      audioElementsRef.current.forEach(audio => {
+        if (audio.srcObject instanceof MediaStream) {
+          try {
+            const remoteSrc = recCtx.createMediaStreamSource(audio.srcObject)
+            remoteSrc.connect(dest)
+          } catch (e) {}
+        }
+      })
+
+      const mediaRecorder = new MediaRecorder(dest.stream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm'
+      })
+
+      recordedChunksRef.current = []
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data)
+      }
+
+      mediaRecorder.onstop = () => {
+        if (recordedChunksRef.current.length > 0) {
+          const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.style.display = 'none'
+          a.href = url
+          a.download = `Echo-Chamada-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.webm`
+          document.body.appendChild(a)
+          a.click()
+          setTimeout(() => {
+            document.body.removeChild(a)
+            window.URL.revokeObjectURL(url)
+          }, 200)
+        }
+        recCtx.close().catch(() => {})
+      }
+
+      mediaRecorder.start(1000)
+      mediaRecorderRef.current = mediaRecorder
+      setIsRecordingCall(true)
+      setRecordingDuration(0)
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1)
+      }, 1000)
+    } catch (err) {
+      console.error('Failed to start call recording:', err)
+    }
+  }, [isRecordingCall])
+
+  const stopCallRecording = useCallback(() => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
+      mediaRecorderRef.current = null
+    }
+    setIsRecordingCall(false)
   }, [])
 
   // Monitor RTC Connection quality metrics (ping, jitter, packet loss)
@@ -1449,7 +1605,13 @@ export function useVoiceChannel() {
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => { leaveVoice() }
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current)
+        recordingTimerRef.current = null
+      }
+      leaveVoice()
+    }
   }, [leaveVoice])
 
   return { 
@@ -1459,6 +1621,11 @@ export function useVoiceChannel() {
     isConnected, 
     localScreenStream,
     rtcStats,
+    isPttMode,
+    isPttActive,
+    lastSoundboardEvent,
+    isRecordingCall,
+    recordingDuration,
     joinVoice, 
     leaveVoice, 
     toggleMute,
@@ -1469,6 +1636,11 @@ export function useVoiceChannel() {
     changeOutputDevice,
     changeScreenShareSettings,
     changePeerVolume,
-    changePeerScreenVolume
+    changePeerScreenVolume,
+    setPttMode,
+    setPttActive,
+    playSoundboard,
+    startCallRecording,
+    stopCallRecording
   }
 }

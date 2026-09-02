@@ -8,45 +8,59 @@ export interface Theme {
 
 export const THEMES: Theme[] = [
   {
-    id: 'light',
-    name: 'Claro Padrão',
-    className: 'light-theme',
-    isPremium: false,
-    previewColors: ['#f5f7f6', '#df6d5d', '#2a3338']
-  },
-  {
     id: 'dark',
-    name: 'Escuro Padrão',
+    name: 'Echo Dark (Padrão)',
     className: 'dark-theme',
     isPremium: false,
-    previewColors: ['#121415', '#df6d5d', '#e3e7e8']
+    previewColors: ['#121415', '#5865f2', '#e3e7e8']
   },
   {
-    id: 'dracula',
-    name: 'Dracula',
-    className: 'theme-dracula',
-    isPremium: true,
-    previewColors: ['#282a36', '#ff79c6', '#f8f8f2']
+    id: 'amoled',
+    name: 'Amoled Pitch Black',
+    className: 'theme-amoled',
+    isPremium: false,
+    previewColors: ['#000000', '#5865f2', '#ffffff']
   },
   {
-    id: 'matrix',
-    name: 'Code Matrix',
-    className: 'theme-matrix',
-    isPremium: true,
-    previewColors: ['#0d0e0d', '#00ff66', '#00ff66']
+    id: 'valorant',
+    name: 'Valorant Red',
+    className: 'theme-valorant',
+    isPremium: false,
+    previewColors: ['#0f1923', '#ff4655', '#ece8e1']
+  },
+  {
+    id: 'midnight',
+    name: 'Midnight Ocean',
+    className: 'theme-midnight',
+    isPremium: false,
+    previewColors: ['#0b132b', '#48cae4', '#e0e1dd']
   },
   {
     id: 'cyberpunk',
-    name: 'Cyberpunk',
+    name: 'Cyberpunk Neon',
     className: 'theme-cyberpunk',
-    isPremium: true,
-    previewColors: ['#14051c', '#fffe00', '#00f6ff']
+    isPremium: false,
+    previewColors: ['#0f051d', '#ff007f', '#00ffff']
   },
   {
-    id: 'nord',
-    name: 'Nordic Frost',
-    className: 'theme-nord',
-    isPremium: true,
-    previewColors: ['#2e3440', '#88c0d0', '#d8dee9']
+    id: 'forest',
+    name: 'Forest Emerald',
+    className: 'theme-forest',
+    isPremium: false,
+    previewColors: ['#0a1f14', '#10b981', '#ecfdf5']
+  },
+  {
+    id: 'sunset',
+    name: 'Sunset Rose',
+    className: 'theme-sunset',
+    isPremium: false,
+    previewColors: ['#200e1f', '#f43f5e', '#fdf2f8']
+  },
+  {
+    id: 'light',
+    name: 'Echo Claro',
+    className: 'light-theme',
+    isPremium: false,
+    previewColors: ['#f5f7f6', '#5865f2', '#2a3338']
   }
 ];

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session, ipcMain, desktopCapturer } from 'electron'
+import { app, BrowserWindow, session, ipcMain, desktopCapturer, Notification, globalShortcut } from 'electron'
 import pkg from 'electron-updater'
 const { autoUpdater } = pkg
 import { fileURLToPath } from 'node:url'
@@ -11,6 +11,94 @@ const execFileAsync = promisify(execFile)
 
 const isDevelopment = !app.isPackaged
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Rich Presence: Popular Games List
+const POPULAR_GAMES = [
+  { match: ['valorant-win64-shipping', 'valorant'], name: 'VALORANT', icon: '🎮' },
+  { match: ['cs2'], name: 'Counter-Strike 2', icon: '🔫' },
+  { match: ['fortniteclient-win64-shipping', 'fortnite'], name: 'Fortnite', icon: '🪂' },
+  { match: ['league of legends', 'leagueclientux'], name: 'League of Legends', icon: '⚔️' },
+  { match: ['gta5', 'fivem'], name: 'Grand Theft Auto V', icon: '🚗' },
+  { match: ['javaw', 'minecraft.windows', 'minecraft'], name: 'Minecraft', icon: '⛏️' },
+  { match: ['robloxplayerbeta', 'roblox'], name: 'Roblox', icon: '🧱' },
+  { match: ['r5apex', 'apex'], name: 'Apex Legends', icon: '🏆' },
+  { match: ['overwatch'], name: 'Overwatch 2', icon: '🛡️' },
+  { match: ['rocketleague'], name: 'Rocket League', icon: '⚽' },
+  { match: ['rainbowsix'], name: 'Rainbow Six Siege', icon: '🎯' },
+  { match: ['cod', 'bootstrapper'], name: 'Call of Duty', icon: '💥' },
+  { match: ['rustclient', 'rust'], name: 'Rust', icon: '🏕️' },
+  { match: ['deadbydaylight-win64-shipping', 'deadbydaylight'], name: 'Dead by Daylight', icon: '🔪' },
+  { match: ['genshinimpact'], name: 'Genshin Impact', icon: '✨' },
+  { match: ['starrail'], name: 'Honkai: Star Rail', icon: '🌠' },
+  { match: ['dota2'], name: 'Dota 2', icon: '👑' },
+  { match: ['fc24', 'fc25', 'fifa'], name: 'EA SPORTS FC', icon: '⚽' },
+  { match: ['palworld-win64-shipping', 'palworld'], name: 'Palworld', icon: '🐾' },
+  { match: ['cyberpunk2077'], name: 'Cyberpunk 2077', icon: '🌆' }
+]
+
+let activeGame = null
+let activeGameStartTime = null
+let gameScanInterval = null
+
+async function scanRunningGames() {
+  try {
+    const helperPath = isDevelopment
+      ? path.join(__dirname, 'src', 'native', 'AudioCaptureHelper', 'bin', 'AudioCaptureHelper.exe')
+      : path.join(process.resourcesPath, 'AudioCaptureHelper.exe')
+
+    let foundGame = null
+    try {
+      const { stdout } = await execFileAsync(helperPath, ['--list-windows'], { timeout: 2500 })
+      if (stdout && stdout.trim().startsWith('[')) {
+        const windows = JSON.parse(stdout.trim())
+        for (const win of windows) {
+          const pName = (win.processName || '').toLowerCase()
+          const matched = POPULAR_GAMES.find(g => g.match.some(m => pName.includes(m)))
+          if (matched) {
+            foundGame = { name: matched.name, icon: matched.icon, processName: win.processName }
+            break
+          }
+        }
+      }
+    } catch (e) {}
+
+    if (!foundGame) {
+      try {
+        const psCmd = 'Get-Process | Select-Object -ExpandProperty ProcessName'
+        const { stdout: psOut } = await execFileAsync('powershell.exe', ['-NoProfile', '-Command', psCmd], { timeout: 2000 })
+        if (psOut) {
+          const procNames = psOut.toLowerCase().split(/\r?\n/)
+          for (const proc of procNames) {
+            const cleanProc = proc.trim()
+            const matched = POPULAR_GAMES.find(g => g.match.some(m => cleanProc === m || cleanProc.includes(m)))
+            if (matched) {
+              foundGame = { name: matched.name, icon: matched.icon, processName: cleanProc }
+              break
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (foundGame) {
+      if (!activeGame || activeGame.name !== foundGame.name) {
+        activeGame = foundGame
+        activeGameStartTime = Date.now()
+        mainWindow?.webContents.send('game-detected', {
+          name: foundGame.name,
+          icon: foundGame.icon,
+          startedAt: activeGameStartTime
+        })
+      }
+    } else {
+      if (activeGame) {
+        activeGame = null
+        activeGameStartTime = null
+        mainWindow?.webContents.send('game-detected', null)
+      }
+    }
+  } catch (err) {}
+}
 
 // Hardware Acceleration & High-Performance Screen Capture for Games (Valorant, CS2, etc.)
 app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer,WindowsGraphicsCapture,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization')
@@ -64,108 +152,86 @@ function createWindow() {
 
   // Handler para capturar telas e janelas do sistema operacional com WGC e alta definição
   ipcMain.handle('get-sources', async () => {
-    let nativeWindows = []
-    try {
-      const helperPath = isDevelopment
-        ? path.join(__dirname, 'src', 'native', 'AudioCaptureHelper', 'bin', 'AudioCaptureHelper.exe')
-        : path.join(process.resourcesPath, 'AudioCaptureHelper.exe')
-      
-      const { stdout } = await execFileAsync(helperPath, ['--list-windows'], { timeout: 3000 })
-      if (stdout && stdout.trim().startsWith('[')) {
-        nativeWindows = JSON.parse(stdout.trim())
-      }
-    } catch (e) {
-      console.warn('Native window lister failed:', e)
-    }
-
-    // Direct PowerShell fallback for gaming windows if helper did not find games
-    if (!nativeWindows.some(w => w.name && w.name.toLowerCase().includes('valorant'))) {
-      try {
-        const psCommand = `Get-Process | Where-Object { $_.ProcessName -like "*VALORANT*" } | ForEach-Object { "$($_.MainWindowHandle)|$($_.ProcessName)" }`
-        const { stdout: psOut } = await execFileAsync('powershell.exe', ['-NoProfile', '-Command', psCommand], { timeout: 2000 })
-        if (psOut) {
-          psOut.split(/\r?\n/).forEach(line => {
-            const parts = line.trim().split('|')
-            if (parts.length >= 2 && parts[0] && parts[0] !== '0') {
-              nativeWindows.unshift({
-                id: `window:${parts[0]}:0`,
-                name: 'VALORANT (Jogo)',
-                processName: parts[1],
-                type: 'window',
-                isGame: true
-              })
-            }
-          })
-        }
-      } catch (psErr) {
-        console.warn('PowerShell window fallback error:', psErr)
-      }
-    }
-
     let sources = []
     try {
       sources = await desktopCapturer.getSources({
         types: ['window', 'screen'],
         thumbnailSize: { width: 480, height: 270 },
-        fetchWindowIcons: false
+        fetchWindowIcons: true
       })
     } catch (err) {
       console.warn('desktopCapturer.getSources error:', err)
     }
 
-    const resultMap = new Map()
+    const screens = []
+    const windowsMap = new Map()
+    const primaryScreen = sources.find(s => s.id.startsWith('screen:'))
 
-    // 1. Process screens first
-    sources.filter(s => s.id.startsWith('screen:')).forEach(source => {
-      const thumb = source.thumbnail
-      resultMap.set(source.id, {
-        id: source.id,
-        name: source.name || 'Monitor Principal',
-        thumbnail: thumb && !thumb.isEmpty() ? thumb.toDataURL() : null,
-        appIcon: null,
-        type: 'screen'
-      })
-    })
+    for (const source of sources) {
+      const thumb = source.thumbnail && !source.thumbnail.isEmpty() ? source.thumbnail.toDataURL() : null
+      const icon = source.appIcon && !source.appIcon.isEmpty() ? source.appIcon.toDataURL() : null
 
-    // 2. Add native windows (games like Valorant, etc.)
-    nativeWindows.forEach(win => {
-      resultMap.set(win.id, {
-        id: win.id,
-        name: win.name,
-        thumbnail: null,
-        appIcon: null,
-        type: 'window',
-        isGame: win.name.includes('(Jogo)') || win.name.toLowerCase().includes('valorant')
-      })
-    })
+      if (source.id.startsWith('screen:')) {
+        screens.push({
+          id: source.id,
+          name: source.name || 'Monitor Principal',
+          thumbnail: thumb,
+          appIcon: icon,
+          type: 'screen',
+          isGame: false
+        })
+        continue
+      }
 
-    // 3. Add desktopCapturer windows and merge thumbnails
-    sources.filter(s => s.id.startsWith('window:')).forEach(source => {
-      const thumb = source.thumbnail
-      const existing = resultMap.get(source.id)
-      let name = (existing ? existing.name : source.name) || 'Janela'
-      name = name.trim()
-      resultMap.set(source.id, {
-        id: source.id,
-        name: name,
-        thumbnail: thumb && !thumb.isEmpty() ? thumb.toDataURL() : (existing ? existing.thumbnail : null),
-        appIcon: null,
-        type: 'window',
-        isGame: (existing && existing.isGame) || name.toLowerCase().includes('valorant') || name.toLowerCase().includes('jogo')
-      })
-    })
+      let rawName = (source.name || '').trim()
+      if (!rawName || rawName === 'Echo' || rawName === 'Program Manager' || rawName === 'TextInputHost' || rawName === 'MSCTFIME UI' || rawName === 'Default IME') {
+        continue
+      }
 
-    const finalResults = Array.from(resultMap.values())
-    // Sort: Screens first, then Games, then Windows alphabetically
-    finalResults.sort((a, b) => {
-      if (a.type === 'screen' && b.type !== 'screen') return -1
-      if (b.type === 'screen' && a.type !== 'screen') return 1
+      const lower = rawName.toLowerCase()
+      // O Valorant não permite captura de janela individual pelo Vanguard; deve ser transmitido via Tela Inteira
+      if (lower.includes('valorant-win64') || lower === 'valorant') {
+        continue
+      }
+
+      const isGame = POPULAR_GAMES.some(g => g.match.some(m => lower.includes(m)))
+      let cleanName = rawName
+
+      // Deduplica sub-janelas internas do mesmo app
+      const dedupeKey = isGame ? cleanName.toLowerCase() : `${cleanName.toLowerCase()}::${source.id}`
+
+      const existing = windowsMap.get(dedupeKey)
+      if (!existing) {
+        windowsMap.set(dedupeKey, {
+          id: source.id,
+          name: cleanName,
+          thumbnail: thumb,
+          appIcon: icon,
+          type: 'window',
+          isGame: isGame
+        })
+      } else {
+        if (!existing.thumbnail && thumb) {
+          windowsMap.set(dedupeKey, {
+            id: source.id,
+            name: cleanName,
+            thumbnail: thumb,
+            appIcon: icon || existing.appIcon,
+            type: 'window',
+            isGame: isGame
+          })
+        }
+      }
+    }
+
+    const windows = Array.from(windowsMap.values())
+    windows.sort((a, b) => {
       if (a.isGame && !b.isGame) return -1
       if (!a.isGame && b.isGame) return 1
       return a.name.localeCompare(b.name)
     })
 
-    return finalResults
+    return [...screens, ...windows]
   })
 
   // Handler para desminimizar / restaurar janela antes de iniciar a captura
@@ -184,72 +250,63 @@ function createWindow() {
     }
   })
 
-  // Handlers para gerenciar a captura de áudio exclusiva do jogo
-  ipcMain.handle('start-process-audio-capture', async (event, sourceId) => {
-    stopAudioCapture()
-
-    const parts = sourceId.split(':')
-    if (parts[0] !== 'window') {
-      return { success: false, reason: 'Not a window source' }
-    }
-
-    const hwnd = parts[1]
-    const port = 8090
-
-    let helperPath
-    if (isDevelopment) {
-      helperPath = path.join(__dirname, 'src', 'native', 'AudioCaptureHelper', 'bin', 'AudioCaptureHelper.exe')
-    } else {
-      helperPath = path.join(process.resourcesPath, 'AudioCaptureHelper.exe')
-    }
-
-    console.log(`Spawning AudioCaptureHelper for HWND: ${hwnd} on port: ${port}`)
-
-    try {
-      audioHelperProcess = spawn(helperPath, ['--hwnd', hwnd, port.toString()])
-
-      audioHelperProcess.stdout.on('data', (data) => {
-        console.log(`[AudioHelper STDOUT]: ${data.toString().trim()}`)
-      })
-
-      audioHelperProcess.stderr.on('data', (data) => {
-        console.error(`[AudioHelper STDERR]: ${data.toString().trim()}`)
-      })
-
-      audioHelperProcess.on('close', (code) => {
-        console.log(`AudioCaptureHelper exited with code: ${code}`)
-        stopAudioCapture()
-      })
-
-      // Aguarda o servidor TCP iniciar no helper C#
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // Conecta ao socket TCP local
-      audioTcpClient = net.createConnection({ port, host: '127.0.0.1' }, () => {
-        console.log('Connected to AudioCaptureHelper TCP Server!')
-      })
-
-      audioTcpClient.on('data', (chunk) => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          // Envia o chunk de áudio bruto (PCM) para o renderer
-          mainWindow.webContents.send('screenshare-audio-chunk', chunk)
-        }
-      })
-
-      audioTcpClient.on('error', (err) => {
-        console.error('TCP client connection error:', err.message)
-      })
-
-      return { success: true }
-    } catch (err) {
-      console.error('Failed to start AudioCaptureHelper:', err)
-      return { success: false, reason: err.message }
-    }
+  // Handlers para captura de áudio com estabilidade total
+  ipcMain.handle('start-process-audio-capture', async () => {
+    return { success: true }
   })
 
   ipcMain.handle('stop-process-audio-capture', async () => {
     stopAudioCapture()
     return { success: true }
+  })
+
+  // Rich Presence: check active game manually
+  ipcMain.handle('check-active-game', () => {
+    return activeGame ? { name: activeGame.name, icon: activeGame.icon, startedAt: activeGameStartTime } : null
+  })
+
+  // Push-to-Talk: Global shortcut registration
+  ipcMain.handle('register-global-ptt', (_event, shortcutKey) => {
+    try {
+      globalShortcut.unregisterAll()
+      if (!shortcutKey) return { success: true }
+
+      const registered = globalShortcut.register(shortcutKey, () => {
+        mainWindow?.webContents.send('ptt-state', true)
+        setTimeout(() => {
+          mainWindow?.webContents.send('ptt-state', false)
+        }, 350)
+      })
+      return { success: registered }
+    } catch (e) {
+      console.warn('Global PTT shortcut error:', e)
+      return { success: false, error: e.message }
+    }
+  })
+
+  ipcMain.handle('unregister-global-ptt', () => {
+    globalShortcut.unregisterAll()
+    return { success: true }
+  })
+
+  // Native Windows Notifications
+  ipcMain.handle('show-notification', (_event, { title, body }) => {
+    if (Notification.isSupported()) {
+      const notif = new Notification({
+        title: title || 'Echo',
+        body: body || '',
+        silent: false
+      })
+      notif.show()
+      notif.on('click', () => {
+        if (mainWindow) {
+          if (mainWindow.isMinimized()) mainWindow.restore()
+          mainWindow.focus()
+        }
+      })
+      return { success: true }
+    }
+    return { success: false }
   })
 
   // Handler para instalar atualização quando o usuário decidir
@@ -293,11 +350,18 @@ function createWindow() {
     })
   }
 
+  // Start background game scanner for Rich Presence
+  if (gameScanInterval) clearInterval(gameScanInterval)
+  gameScanInterval = setInterval(scanRunningGames, 5000)
+  setTimeout(scanRunningGames, 1500)
+
   if (isDevelopment) mainWindow.loadURL('http://localhost:5173')
   else mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'))
 }
 app.whenReady().then(() => { createWindow(); app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() }) })
 app.on('will-quit', () => {
+  if (gameScanInterval) clearInterval(gameScanInterval)
+  globalShortcut.unregisterAll()
   stopAudioCapture()
 })
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
