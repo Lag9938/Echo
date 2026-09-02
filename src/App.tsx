@@ -1485,7 +1485,7 @@ function Echo({ user }: { user: User }) {
 
         setSpaceVoiceUsers(prev => {
           const next = { ...prev }
-          const spaceChs = spaceChannels[sp.id] || []
+          const spaceChs = spaceChannelsRef.current[sp.id] || []
           spaceChs.forEach(c => {
             if (c.type === 'voice') {
               if (byChannel[c.id]) {
@@ -1513,10 +1513,10 @@ function Echo({ user }: { user: User }) {
         sb.removeChannel(ch)
       })
     }
-  }, [spaces, spaceChannels, user.id])
+  }, [spaces, user.id])
 
   async function handleJoinVoice(channelId: string) {
-    const spaceId = Object.keys(spaceChannels).find(sId => (spaceChannels[sId] || []).some(c => c.id === channelId))
+    const spaceId = selectedChannel?.space_id || Object.keys(spaceChannels).find(sId => (spaceChannels[sId] || []).some(c => c.id === channelId))
     await joinVoice(channelId, user.id, profileDisplayName, profileAvatarUrl, selectedInputId, selectedOutputId, noiseSuppressionEnabled, echoCancellationEnabled, spaceId)
     setActiveVoiceChannelId(channelId)
   }
@@ -2862,39 +2862,53 @@ function Echo({ user }: { user: User }) {
     })
     presenceChannelRef.current = presenceChannel
     
-    presenceChannel
-      .on('presence', { event: 'sync' }, () => {
-        const state = presenceChannel.presenceState()
-        const online = new Set<string>()
-        const pData: Record<string, any> = {}
-        
-        Object.keys(state).forEach(key => {
-          const userPresence = state[key]
-          if (userPresence && userPresence.length > 0) {
-            const p = userPresence[0] as any
-            pData[key] = p
-            if (p.presence_status !== 'invisible') {
-              online.add(key)
-            }
+    const handleGlobalPresenceUpdate = () => {
+      const state = presenceChannel.presenceState()
+      const online = new Set<string>()
+      const pData: Record<string, any> = {}
+      
+      Object.keys(state).forEach(key => {
+        const userPresence = state[key]
+        if (userPresence && userPresence.length > 0) {
+          const p = userPresence[0] as any
+          pData[key] = p
+          if (p.presence_status !== 'invisible') {
+            online.add(key)
           }
-        })
-        
-        setPresenceData(pData)
-        setOnlineUsers(online)
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          const savedStatus = localStorage.getItem('echo-custom-status') || ''
-          const savedPresStatus = localStorage.getItem('echo-presence-status') || 'online'
-          await presenceChannel.track({
-            user_id: user.id,
-            display_name: displayName,
-            online_at: new Date().toISOString(),
-            custom_status: savedStatus,
-            presence_status: savedPresStatus
-          })
         }
       })
+      
+      setPresenceData(pData)
+      setOnlineUsers(online)
+    }
+
+    const trackMyPresence = async () => {
+      const savedStatus = localStorage.getItem('echo-custom-status') || ''
+      const savedPresStatus = localStorage.getItem('echo-presence-status') || 'online'
+      await presenceChannel.track({
+        user_id: user.id,
+        display_name: displayName,
+        online_at: new Date().toISOString(),
+        custom_status: savedStatus,
+        presence_status: savedPresStatus
+      }).catch(() => {})
+    }
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, handleGlobalPresenceUpdate)
+      .on('presence', { event: 'join' }, handleGlobalPresenceUpdate)
+      .on('presence', { event: 'leave' }, handleGlobalPresenceUpdate)
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await trackMyPresence()
+          handleGlobalPresenceUpdate()
+        }
+      })
+
+    // Intervalo de redundância de presença global (a cada 20s)
+    const presenceKeepAlive = setInterval(() => {
+      trackMyPresence()
+    }, 20000)
 
     // Setup global realtime messages listener to detect unread messages
     const globalMessagesChannel = client.channel('global-messages')
@@ -2920,6 +2934,7 @@ function Echo({ user }: { user: User }) {
       .subscribe()
 
     return () => {
+      clearInterval(presenceKeepAlive)
       client.removeChannel(presenceChannel)
       client.removeChannel(globalMessagesChannel)
     }
@@ -3632,7 +3647,18 @@ function Echo({ user }: { user: User }) {
             }
 
             const isActive = activeVoiceChannelId === ch.id
-            const channelVoiceUsers = isActive ? participants : (spaceVoiceUsers[ch.id] || [])
+            let channelVoiceUsers: VoiceParticipant[]
+            if (isActive) {
+              const map = new Map<string, VoiceParticipant>()
+              participants.forEach(p => map.set(p.userId, p))
+              const spUsers = spaceVoiceUsers[ch.id] || []
+              spUsers.forEach(p => {
+                if (!map.has(p.userId)) map.set(p.userId, p)
+              })
+              channelVoiceUsers = Array.from(map.values())
+            } else {
+              channelVoiceUsers = spaceVoiceUsers[ch.id] || []
+            }
 
             return (
               <div key={ch.id} className="voice-channel-node">
@@ -4695,12 +4721,44 @@ function Echo({ user }: { user: User }) {
                       <aside className="members-sidebar">
                         <div className="members-sidebar-inner">
                           {(() => {
-                            const onlineList = spaceMembers.filter(m => onlineUsers.has(m.user.id) || participants.some(p => p.userId === m.user.id))
-                            const offlineList = spaceMembers.filter(m => !onlineUsers.has(m.user.id) && !participants.some(p => p.userId === m.user.id))
+                            // Combina membros do banco (spaceMembers) com usuários ativos em chamada ou presença deste espaço
+                            const allMembersMap = new Map<string, any>()
+                            spaceMembers.forEach(m => {
+                              if (m && m.user?.id) allMembersMap.set(m.user.id, m)
+                            })
+
+                            // Sintetiza participantes da chamada de voz ativa
+                            participants.forEach(p => {
+                              if (p && p.userId && !allMembersMap.has(p.userId)) {
+                                allMembersMap.set(p.userId, {
+                                  role: 'member',
+                                  user: { id: p.userId, display_name: p.displayName || 'Membro', avatar_url: p.avatarUrl }
+                                })
+                              }
+                            })
+
+                            // Sintetiza usuários em qualquer canal de voz deste servidor
+                            const spaceChList = spaceChannels[currentSpace.id] || []
+                            const currentSpaceVoiceUsers = Object.entries(spaceVoiceUsers)
+                              .filter(([chId]) => spaceChList.some(c => c.id === chId))
+                              .flatMap(([, uList]) => uList)
+
+                            currentSpaceVoiceUsers.forEach(p => {
+                              if (p && p.userId && !allMembersMap.has(p.userId)) {
+                                allMembersMap.set(p.userId, {
+                                  role: 'member',
+                                  user: { id: p.userId, display_name: p.displayName || 'Membro', avatar_url: p.avatarUrl }
+                                })
+                              }
+                            })
+
+                            const combinedMembers = Array.from(allMembersMap.values())
+                            const onlineList = combinedMembers.filter(m => onlineUsers.has(m.user.id) || participants.some(p => p.userId === m.user.id) || currentSpaceVoiceUsers.some(p => p.userId === m.user.id))
+                            const offlineList = combinedMembers.filter(m => !onlineUsers.has(m.user.id) && !participants.some(p => p.userId === m.user.id) && !currentSpaceVoiceUsers.some(p => p.userId === m.user.id))
 
                             const renderCard = (member: any) => {
                               const isCreator = currentSpace.creator_id === member.user.id
-                              const isVoiceUser = participants.some(p => p.userId === member.user.id)
+                              const isVoiceUser = participants.some(p => p.userId === member.user.id) || currentSpaceVoiceUsers.some(p => p.userId === member.user.id)
                               const isOnline = onlineUsers.has(member.user.id) || isVoiceUser
                               const userPresenceStatus = isOnline ? (presenceData[member.user.id]?.presence_status || 'online') : 'offline'
                               const memberRole = getUserHighestRole(currentSpace.id, member.user.id)
@@ -5328,12 +5386,44 @@ function Echo({ user }: { user: User }) {
                       <aside className="members-sidebar" style={!showVoiceMembers ? { display: 'none' } : undefined}>
                         <div className="members-sidebar-inner">
                           {(() => {
-                            const onlineList = spaceMembers.filter(m => onlineUsers.has(m.user.id) || participants.some(p => p.userId === m.user.id))
-                            const offlineList = spaceMembers.filter(m => !onlineUsers.has(m.user.id) && !participants.some(p => p.userId === m.user.id))
+                            // Combina membros do banco (spaceMembers) com usuários ativos em chamada ou presença deste espaço
+                            const allMembersMap = new Map<string, any>()
+                            spaceMembers.forEach(m => {
+                              if (m && m.user?.id) allMembersMap.set(m.user.id, m)
+                            })
+
+                            // Sintetiza participantes da chamada de voz ativa
+                            participants.forEach(p => {
+                              if (p && p.userId && !allMembersMap.has(p.userId)) {
+                                allMembersMap.set(p.userId, {
+                                  role: 'member',
+                                  user: { id: p.userId, display_name: p.displayName || 'Membro', avatar_url: p.avatarUrl }
+                                })
+                              }
+                            })
+
+                            // Sintetiza usuários em qualquer canal de voz deste servidor
+                            const spaceChList = spaceChannels[currentSpace.id] || []
+                            const currentSpaceVoiceUsers = Object.entries(spaceVoiceUsers)
+                              .filter(([chId]) => spaceChList.some(c => c.id === chId))
+                              .flatMap(([, uList]) => uList)
+
+                            currentSpaceVoiceUsers.forEach(p => {
+                              if (p && p.userId && !allMembersMap.has(p.userId)) {
+                                allMembersMap.set(p.userId, {
+                                  role: 'member',
+                                  user: { id: p.userId, display_name: p.displayName || 'Membro', avatar_url: p.avatarUrl }
+                                })
+                              }
+                            })
+
+                            const combinedMembers = Array.from(allMembersMap.values())
+                            const onlineList = combinedMembers.filter(m => onlineUsers.has(m.user.id) || participants.some(p => p.userId === m.user.id) || currentSpaceVoiceUsers.some(p => p.userId === m.user.id))
+                            const offlineList = combinedMembers.filter(m => !onlineUsers.has(m.user.id) && !participants.some(p => p.userId === m.user.id) && !currentSpaceVoiceUsers.some(p => p.userId === m.user.id))
 
                             const renderCard = (member: any) => {
                               const isCreator = currentSpace.creator_id === member.user.id
-                              const isVoiceUser = participants.some(p => p.userId === member.user.id)
+                              const isVoiceUser = participants.some(p => p.userId === member.user.id) || currentSpaceVoiceUsers.some(p => p.userId === member.user.id)
                               const isOnline = onlineUsers.has(member.user.id) || isVoiceUser
                               const userPresenceStatus = isOnline ? (presenceData[member.user.id]?.presence_status || 'online') : 'offline'
                               const memberRole = getUserHighestRole(currentSpace.id, member.user.id)
@@ -9340,7 +9430,7 @@ function SettingsView({
                   <h3 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span>🎧 Áudio Espacial 3D (Posicionamento Estéreo)</span>
                     <span style={{ fontSize: '10.5px', background: 'rgba(0, 242, 254, 0.2)', color: '#00f2fe', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
-                      NOVO v0.23.6
+                      NOVO v0.23.7
                     </span>
                   </h3>
                   <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)' }}>
@@ -9617,27 +9707,41 @@ function StreamTile({
   const [showStatsHud, setShowStatsHud] = useState(false)
 
   useEffect(() => {
-    if (videoRef.current) {
+    const videoEl = videoRef.current
+    if (videoEl) {
       const stream = participant.screenStream || null
-      if (videoRef.current.srcObject !== stream) {
-        videoRef.current.srcObject = stream
+      if (videoEl.srcObject !== stream) {
+        videoEl.srcObject = stream
       }
-      if (stream && videoRef.current.paused) {
-        videoRef.current.play().catch(() => {})
+      if (stream && videoEl.paused) {
+        videoEl.play().catch(() => {})
       }
 
       const updateDimensions = () => {
-        if (videoRef.current && videoRef.current.videoWidth > 0) {
-          setStreamResolution(`${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`)
+        if (videoEl && videoEl.videoWidth > 0) {
+          setStreamResolution(`${videoEl.videoWidth}x${videoEl.videoHeight}`)
         }
       }
 
-      videoRef.current.addEventListener('loadedmetadata', updateDimensions)
-      videoRef.current.addEventListener('resize', updateDimensions)
+      // Auto-retomada imediata caso o player trave ou pause devido a flutuações de rede ou alt-tab
+      const handleAutoResume = () => {
+        if (videoEl && videoEl.paused && videoEl.srcObject) {
+          videoEl.play().catch(() => {})
+        }
+      }
+
+      videoEl.addEventListener('loadedmetadata', updateDimensions)
+      videoEl.addEventListener('resize', updateDimensions)
+      videoEl.addEventListener('pause', handleAutoResume)
+      videoEl.addEventListener('stalled', handleAutoResume)
+      videoEl.addEventListener('waiting', handleAutoResume)
 
       return () => {
-        videoRef.current?.removeEventListener('loadedmetadata', updateDimensions)
-        videoRef.current?.removeEventListener('resize', updateDimensions)
+        videoEl.removeEventListener('loadedmetadata', updateDimensions)
+        videoEl.removeEventListener('resize', updateDimensions)
+        videoEl.removeEventListener('pause', handleAutoResume)
+        videoEl.removeEventListener('stalled', handleAutoResume)
+        videoEl.removeEventListener('waiting', handleAutoResume)
       }
     }
   }, [participant.screenStream])

@@ -109,6 +109,10 @@ app.commandLine.appendSwitch('ignore-gpu-blocklist')
 app.commandLine.appendSwitch('enable-accelerated-video-decode')
 app.commandLine.appendSwitch('enable-accelerated-mjpeg-decode')
 app.commandLine.appendSwitch('force_high_performance_gpu')
+// Impede que o Chromium congele / reduza o framerate da transmissão quando o Echo estiver em segundo plano durante um jogo
+app.commandLine.appendSwitch('disable-renderer-backgrounding')
+app.commandLine.appendSwitch('disable-background-timer-throttling')
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
 
 let mainWindow = null
 let audioHelperProcess = null

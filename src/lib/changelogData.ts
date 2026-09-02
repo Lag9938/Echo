@@ -14,15 +14,42 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.23.6'
+export const APP_CURRENT_VERSION = '0.23.7'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.23.7',
+    title: 'Sincronização em Tempo Real e Estabilidade de Transmissão',
+    date: '02 de Setembro de 2026',
+    tagline: 'Sincronização instantânea de membros e canais de voz, fim do throttling em segundo plano e blindagem da transmissão contra quedas.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '👥',
+        badge: 'SINCRONIZAÇÃO',
+        title: 'Membros e Chamadas 100% em Tempo Real',
+        description: 'A lista de membros do servidor e os canais de voz agora refletem todos os participantes ativos instantaneamente, sem travamentos na contagem ou dependência exclusiva de banco de dados.'
+      },
+      {
+        icon: '⚡',
+        badge: 'ESTABILIDADE',
+        title: 'Fim do Throttling em Jogos & Alt-Tab',
+        description: 'Adicionadas diretivas para impedir que o Chromium reduza o envio de vídeo quando você estiver jogando em tela cheia ou alternando janelas.'
+      },
+      {
+        icon: '🛡️',
+        badge: 'RESILIÊNCIA',
+        title: 'Proteção de Áudio e Auto-Recuperação de Vídeo',
+        description: 'O nó de áudio nativo foi blindado na memória contra o Garbage Collector e o player de vídeo agora retoma a reprodução automaticamente após oscilações de rede.'
+      }
+    ]
+  },
   {
     version: '0.23.6',
     title: 'Transmissão Nativa com Isolamento de Áudio (Estilo Discord)',
     date: '02 de Setembro de 2026',
     tagline: 'Captura nativa de som exclusiva por processo via Windows WASAPI Loopback, eliminação total de eco e fim do mutamento de voz.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🛡️',

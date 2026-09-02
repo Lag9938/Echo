@@ -313,6 +313,8 @@ export function useVoiceChannel() {
   const initiateConnectionRef = useRef<((remoteUserId: string, isIceRestart?: boolean) => Promise<void>) | null>(null)
   const peerVoiceTrackIdsRef = useRef<Map<string, string>>(new Map()) // Maps remoteUserId -> original microphone voice trackId
   const nativeAudioCleanupRef = useRef<(() => void) | null>(null)
+  const nativeScriptNodeRef = useRef<ScriptProcessorNode | null>(null)
+  const nativeProcCtxRef = useRef<AudioContext | null>(null)
   const isSpatialAudioEnabledRef = useRef(false)
   const participantsMapRef = useRef<Map<string, { displayName: string; avatarUrl?: string; screenStream?: MediaStream; isMuted?: boolean; isDeafened?: boolean }>>(new Map())
   const activeChannelIdRef = useRef<string | null>(null)
@@ -337,7 +339,7 @@ export function useVoiceChannel() {
     // Add others
     participantsMapRef.current.forEach((info, id) => {
       if (id !== myInfoRef.current?.userId) {
-        const isLive = info.screenStream && info.screenStream.getVideoTracks().some(t => t.readyState === 'live' && !t.muted)
+        const isLive = info.screenStream && info.screenStream.getVideoTracks().some(t => t.readyState === 'live')
         list.push({
           userId: id,
           displayName: info.displayName,
@@ -857,70 +859,52 @@ export function useVoiceChannel() {
         }
       }
 
-      // Handle presence: peer joins
-      realtimeChannel.on('presence', { event: 'join' }, ({ newPresences }) => {
-        for (const presence of newPresences) {
-          const p = presence as Record<string, any>
-          const peerId = p.user_id
-          const peerName = p.display_name
-          const peerAvatar = p.avatar_url
-          const peerMuted = !!p.is_muted
-          const peerDeafened = !!p.is_deafened
-          if (peerId && peerId !== userId) {
-            const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
-            playJoinSound(sfxVol)
+      // Handle presence: unified state reconciliation for join, leave, and sync
+      const handlePresenceSync = () => {
+        const state = realtimeChannel.presenceState()
+        const currentPeerIds = new Set<string>()
 
-            const existing = participantsMapRef.current.get(peerId)
-            participantsMapRef.current.set(peerId, { 
-              displayName: peerName || 'Membro',
-              avatarUrl: peerAvatar,
-              screenStream: existing?.screenStream,
-              isMuted: peerMuted,
-              isDeafened: peerDeafened
-            })
-            syncParticipants()
-
-            ensurePeerConnection(peerId)
+        Object.values(state).forEach((presences) => {
+          for (const presence of presences as any[]) {
+            const peerId = presence.user_id
+            if (peerId && peerId !== userId) {
+              currentPeerIds.add(peerId)
+              const existing = participantsMapRef.current.get(peerId)
+              if (!existing) {
+                const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
+                playJoinSound(sfxVol)
+              }
+              participantsMapRef.current.set(peerId, {
+                displayName: presence.display_name || 'Membro',
+                avatarUrl: presence.avatar_url,
+                screenStream: existing?.screenStream,
+                isMuted: !!presence.is_muted,
+                isDeafened: !!presence.is_deafened
+              })
+              ensurePeerConnection(peerId)
+            }
           }
-        }
-      })
+        })
 
-      // Handle presence: peer leaves
-      realtimeChannel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
-        for (const presence of leftPresences) {
-          const peerId = (presence as Record<string, string>).user_id
-          if (peerId && peerId !== userId) {
+        // Remove any peers that left the call
+        for (const peerId of Array.from(participantsMapRef.current.keys())) {
+          if (!currentPeerIds.has(peerId)) {
             const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')
             playLeaveSound(sfxVol)
             cleanupPeer(peerId)
           }
         }
-      })
 
-      // Handle presence sync (existing users when we join or status updates)
-      realtimeChannel.on('presence', { event: 'sync' }, () => {
-        const state = realtimeChannel.presenceState()
-        Object.entries(state).forEach(([_key, presences]) => {
-          for (const presence of presences) {
-            const p = presence as Record<string, any>
-            if (p.user_id && p.user_id !== userId) {
-              const existing = participantsMapRef.current.get(p.user_id)
-              participantsMapRef.current.set(p.user_id, { 
-                displayName: p.display_name || 'Membro',
-                avatarUrl: p.avatar_url,
-                screenStream: existing?.screenStream,
-                isMuted: !!p.is_muted,
-                isDeafened: !!p.is_deafened
-              })
-              ensurePeerConnection(p.user_id)
-            }
-          }
-        })
         syncParticipants()
-      })
+      }
+
+      realtimeChannel
+        .on('presence', { event: 'sync' }, handlePresenceSync)
+        .on('presence', { event: 'join' }, handlePresenceSync)
+        .on('presence', { event: 'leave' }, handlePresenceSync)
 
       // Subscribe and track presence on room channel
-      await realtimeChannel.subscribe(async (status) => {
+      realtimeChannel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await realtimeChannel.track({
             user_id: userId,
@@ -930,6 +914,7 @@ export function useVoiceChannel() {
             is_muted: isMutedRef.current,
             is_deafened: isDeafenedRef.current,
           })
+          handlePresenceSync()
         }
       })
 
@@ -1035,10 +1020,9 @@ export function useVoiceChannel() {
     })
     peerPannersRef.current.clear()
 
-    // Leave space-wide realtime channel
-    if (spaceVoiceChannelRef.current && supabase) {
+    // Untrack presence on space-wide realtime channel (do not removeChannel as it is shared with App.tsx)
+    if (spaceVoiceChannelRef.current) {
       spaceVoiceChannelRef.current.untrack().catch(() => {})
-      supabase.removeChannel(spaceVoiceChannelRef.current)
       spaceVoiceChannelRef.current = null
     }
 
@@ -1341,12 +1325,17 @@ export function useVoiceChannel() {
               }
             }
 
+            nativeScriptNodeRef.current = scriptNode
+            nativeProcCtxRef.current = procCtx
+
             scriptNode.connect(dest)
             nativeAudioTrack = dest.stream.getAudioTracks()[0]
             nativeAudioCleanupRef.current = () => {
-              try { scriptNode.disconnect() } catch (e) {}
-              try { procCtx.close() } catch (e) {}
-              (window as any).electronAPI?.stopProcessAudioCapture()
+              try { nativeScriptNodeRef.current?.disconnect() } catch (e) {}
+              nativeScriptNodeRef.current = null
+              try { nativeProcCtxRef.current?.close() } catch (e) {}
+              nativeProcCtxRef.current = null
+              ;(window as any).electronAPI?.stopProcessAudioCapture()
             }
           }
         } catch (nativeErr) {
