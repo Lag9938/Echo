@@ -118,56 +118,96 @@ function createAntiEchoIsolationDSP(
     const audioCtx = new AudioCtxClass();
     const sysSource = audioCtx.createMediaStreamSource(sysStream);
 
-    // 1. Equalização e realce de som de jogo
-    const bassEnhancer = audioCtx.createBiquadFilter();
-    bassEnhancer.type = 'lowshelf';
-    bassEnhancer.frequency.value = 110;
-    bassEnhancer.gain.value = 2.0;
+    // 1. Path A: Graves e Agudos do Jogo (Impactos, Passos, Músicas, Explosões - 100% Intocados)
+    const lowpass = audioCtx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 260;
 
-    const trebleClarity = audioCtx.createBiquadFilter();
-    trebleClarity.type = 'highshelf';
-    trebleClarity.frequency.value = 4500;
-    trebleClarity.gain.value = 1.2;
+    const highpass = audioCtx.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = 3800;
 
-    // 2. Compressor dinâmico para gameplay
+    // 2. Path B: Faixa de Frequência da Voz Humana (260 Hz - 3800 Hz)
+    const vocalBandFilter = audioCtx.createBiquadFilter();
+    vocalBandFilter.type = 'bandpass';
+    vocalBandFilter.frequency.value = 1400;
+    vocalBandFilter.Q.value = 0.5;
+
+    const vocalBandGain = audioCtx.createGain();
+    vocalBandGain.gain.value = 1.0;
+
+    // Conexões de áudio
+    sysSource.connect(lowpass);
+    sysSource.connect(highpass);
+    sysSource.connect(vocalBandFilter);
+    vocalBandFilter.connect(vocalBandGain);
+
+    // 3. Master Mixer & Compressor dinâmico para nivelamento de som de jogo
+    const masterMixer = audioCtx.createGain();
+    lowpass.connect(masterMixer);
+    highpass.connect(masterMixer);
+    vocalBandGain.connect(masterMixer);
+
     const compressor = audioCtx.createDynamicsCompressor();
-    compressor.threshold.value = -16;
+    compressor.threshold.value = -14;
     compressor.knee.value = 6;
     compressor.ratio.value = 3;
     compressor.attack.value = 0.005;
     compressor.release.value = 0.1;
 
     const dest = audioCtx.createMediaStreamDestination();
-    sysSource.connect(bassEnhancer);
-    bassEnhancer.connect(trebleClarity);
-    trebleClarity.connect(compressor);
+    masterMixer.connect(compressor);
     compressor.connect(dest);
 
-    // 3. Nó de anulação acústica das vozes remotas da chamada
+    // 4. Sidechain Detector de Voz dos Participantes da Chamada
+    // Quando qualquer pessoa falar na chamada, a faixa vocal da transmissão é silenciada instantaneamente
+    const analysers: AnalyserNode[] = [];
     if (remoteStreams && remoteStreams.length > 0) {
-      const voiceMixer = audioCtx.createGain();
-      voiceMixer.gain.value = -0.90;
-
-      const voiceNotch = audioCtx.createBiquadFilter();
-      voiceNotch.type = 'bandpass';
-      voiceNotch.frequency.value = 1100;
-      voiceNotch.Q.value = 0.7;
-
-      let connectedAny = false;
       for (const rStream of remoteStreams) {
         try {
           if (rStream.getAudioTracks().length > 0 && rStream.getAudioTracks()[0].readyState === 'live') {
             const rSource = audioCtx.createMediaStreamSource(rStream);
-            rSource.connect(voiceMixer);
-            connectedAny = true;
+            const analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            rSource.connect(analyser);
+            analysers.push(analyser);
           }
         } catch (e) {}
       }
+    }
 
-      if (connectedAny) {
-        voiceMixer.connect(voiceNotch);
-        voiceNotch.connect(dest);
-      }
+    if (analysers.length > 0) {
+      const buffer = new Uint8Array(128);
+      let lastVoiceDetectedTime = 0;
+
+      const checkVoiceActivity = () => {
+        if (audioCtx.state === 'closed') return;
+
+        let maxVolume = 0;
+        for (const an of analysers) {
+          an.getByteFrequencyData(buffer);
+          let sum = 0;
+          for (let i = 0; i < buffer.length; i++) {
+            sum += buffer[i];
+          }
+          const avg = sum / buffer.length;
+          if (avg > maxVolume) maxVolume = avg;
+        }
+
+        const now = Date.now();
+        if (maxVolume > 10) {
+          lastVoiceDetectedTime = now;
+          // Silencia imediatamente a faixa vocal do loopback em 10ms
+          vocalBandGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.01);
+        } else if (now - lastVoiceDetectedTime > 280) {
+          // Restaura o som ambiente do jogo quando ninguém estiver falando
+          vocalBandGain.gain.setTargetAtTime(1.0, audioCtx.currentTime, 0.06);
+        }
+
+        requestAnimationFrame(checkVoiceActivity);
+      };
+
+      requestAnimationFrame(checkVoiceActivity);
     }
 
     return { finalStream: dest.stream, audioCtx };
@@ -625,7 +665,23 @@ export function useVoiceChannel() {
         
         // Muted local microphone shouldn't trigger speaking
         const isLocalMuted = localStreamRef.current?.getAudioTracks()[0]?.enabled === false
-        updates[myInfoRef.current.userId] = !isLocalMuted && avg > SPEAKING_THRESHOLD
+        const isLocalSpeaking = !isLocalMuted && avg > SPEAKING_THRESHOLD
+        updates[myInfoRef.current.userId] = isLocalSpeaking
+
+        // PROTEÇÃO CONTRA RETORNO DO ESPECTADOR:
+        // Enquanto o usuário local estiver falando, o áudio das telas transmitidas é reduzido suavemente
+        // garantindo que ele NUNCA escute sua própria voz de volta com delay
+        for (const [key, audioEl] of audioElementsRef.current.entries()) {
+          if (key.endsWith('-screen')) {
+            const peerId = key.replace('-screen', '')
+            const savedVol = peerScreenVolumesRef.current.get(peerId) !== undefined ? peerScreenVolumesRef.current.get(peerId)! : 1.0
+            if (isLocalSpeaking) {
+              audioEl.volume = Math.max(0, Math.min(1, savedVol * 0.05))
+            } else {
+              audioEl.volume = Math.max(0, Math.min(1, savedVol))
+            }
+          }
+        }
       }
 
       // Check remote streams

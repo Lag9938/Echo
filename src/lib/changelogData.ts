@@ -14,9 +14,36 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.23.1'
+export const APP_CURRENT_VERSION = '0.23.2'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.23.2',
+    title: 'Isolamento Acústico Split-Band & Supressão de Retorno',
+    date: '02 de Setembro de 2026',
+    tagline: 'Eliminação total de retorno de voz durante transmissões com motor DSP Split-Band.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🛡️',
+        badge: 'ÁUDIO',
+        title: 'Motor DSP Split-Band em Tempo Real',
+        description: 'Separação acústica inteligente: o som do jogo (graves e agudos) permanece 100% livre enquanto a faixa de voz da chamada é isolada dinamicamente via sidechain.'
+      },
+      {
+        icon: '🔇',
+        badge: 'ESTABILIDADE',
+        title: 'Supressão Anti-Retorno do Espectador',
+        description: 'Enquanto você fala, o retorno acústico da tela é atenuado automaticamente para você nunca ouvir o eco da própria voz.'
+      },
+      {
+        icon: '📺',
+        badge: 'NOVO',
+        title: 'Assistir Transmissões com 1 Clique',
+        description: 'Cards da chamada com botões AO VIVO para escolher quem assistir, alternar telas ou ver tudo em grade.'
+      }
+    ]
+  },
   {
     version: '0.23.1',
     title: 'Visualização de Múltiplas Transmissões e Estabilidade WebRTC',
