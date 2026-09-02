@@ -380,10 +380,9 @@ export function useVoiceChannel() {
 
     // Handle remote tracks (audio or video)
     pc.ontrack = (event) => {
-      const remoteStream = event.streams[0]
-      if (!remoteStream) return
-
       const track = event.track
+      const remoteStream = event.streams[0] || new MediaStream([track])
+
       if (track.kind === 'audio') {
         // Detect if this is screenshare audio (stream contains a video track) or normal microphone voice
         const isScreen = remoteStream.getVideoTracks().length > 0
@@ -432,6 +431,10 @@ export function useVoiceChannel() {
           screenStream: remoteStream
         })
         syncParticipants()
+
+        track.onunmute = () => {
+          syncParticipants()
+        }
 
         // Handle track stop cleanly
         const handleStop = () => {
@@ -524,18 +527,6 @@ export function useVoiceChannel() {
 
         await pc.setRemoteDescription(new RTCSessionDescription(sdp))
 
-        // Check if remote peer stopped sharing video
-        const transceivers = pc.getTransceivers ? pc.getTransceivers() : []
-        const hasLiveVideoTrack = transceivers.some(t => t.receiver.track && t.receiver.track.kind === 'video' && t.currentDirection !== 'inactive' && t.currentDirection !== 'sendonly' && t.receiver.track.readyState === 'live')
-        if (!hasLiveVideoTrack) {
-          const info = participantsMapRef.current.get(from)
-          if (info && info.screenStream) {
-            info.screenStream.getTracks().forEach(t => t.stop())
-            delete info.screenStream
-            syncParticipants()
-          }
-        }
-
         // Apply any pending ICE candidates
         const pending = pendingCandidatesRef.current.get(from) ?? []
         for (const c of pending) {
@@ -566,18 +557,6 @@ export function useVoiceChannel() {
       try {
         if (pc.signalingState === 'have-local-offer') {
           await pc.setRemoteDescription(new RTCSessionDescription(sdp))
-
-          // Check if remote peer stopped sharing video
-          const transceivers = pc.getTransceivers ? pc.getTransceivers() : []
-          const hasLiveVideoTrack = transceivers.some(t => t.receiver.track && t.receiver.track.kind === 'video' && t.currentDirection !== 'inactive' && t.currentDirection !== 'sendonly' && t.receiver.track.readyState === 'live')
-          if (!hasLiveVideoTrack) {
-            const info = participantsMapRef.current.get(from)
-            if (info && info.screenStream) {
-              info.screenStream.getTracks().forEach(t => t.stop())
-              delete info.screenStream
-              syncParticipants()
-            }
-          }
 
           // Apply any pending ICE candidates
           const pending = pendingCandidatesRef.current.get(from) ?? []
@@ -737,6 +716,13 @@ export function useVoiceChannel() {
       })
       realtimeChannel.on('broadcast', { event: 'ice-candidate' }, ({ payload }) => {
         handleSignal('ice-candidate', payload as Record<string, unknown>)
+      })
+      realtimeChannel.on('broadcast', { event: 'screenshare-started' }, ({ payload }) => {
+        const peerId = (payload as Record<string, string>)?.from
+        if (peerId && peerId !== userId) {
+          ensurePeerConnection(peerId)
+          syncParticipants()
+        }
       })
       realtimeChannel.on('broadcast', { event: 'screenshare-stopped' }, ({ payload }) => {
         const peerId = (payload as Record<string, string>)?.from
@@ -1325,6 +1311,29 @@ export function useVoiceChannel() {
         videoTrack.onended = () => {
           stopScreenShare()
         }
+      }
+
+      if (spaceVoiceChannelRef.current && myInfoRef.current) {
+        spaceVoiceChannelRef.current.track({
+          user_id: myInfoRef.current.userId,
+          display_name: myInfoRef.current.displayName,
+          avatar_url: myInfoRef.current.avatarUrl,
+          channel_id: activeChannelIdRef.current,
+          is_muted: isMutedRef.current,
+          is_deafened: isDeafenedRef.current,
+          is_speaking: false,
+          has_screen: true
+        }).catch(() => {})
+      }
+
+      if (channelRef.current && myInfoRef.current) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'screenshare-started',
+          payload: {
+            from: myInfoRef.current.userId
+          }
+        })
       }
 
       const sfxVol = parseFloat(localStorage.getItem('echo-sfx-volume') || '0.5')

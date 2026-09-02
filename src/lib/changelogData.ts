@@ -14,9 +14,48 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.23.0'
+export const APP_CURRENT_VERSION = '0.23.1'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.23.1',
+    title: 'Visualização de Múltiplas Transmissões e Estabilidade WebRTC',
+    date: '02 de Setembro de 2026',
+    tagline: 'Assista à tela de qualquer amigo com 1 clique e alterne transmissões instantaneamente.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '📺',
+        badge: 'NOVO',
+        title: 'Assistir Transmissões com 1 Clique',
+        description: 'Agora os cards da chamada mostram botões claros de AO VIVO para você escolher exatamente quem deseja assistir, alternar foco ou assistir todas em grade dividida.'
+      },
+      {
+        icon: '🛡️',
+        badge: 'NOVO',
+        title: 'Modo Gamer Anti-Eco (DSP Inteligente)',
+        description: 'Ao transmitir a tela, o Echo anula automaticamente as vozes dos seus amigos na chamada. Eles ouvem o som do seu jogo em alta definição sem ouvir a própria voz ecoando!'
+      },
+      {
+        icon: '🎛️',
+        badge: 'NOVO',
+        title: 'Seletor de Áudio no Go Live',
+        description: 'Alterne com 1 clique entre Modo Gamer Anti-Eco, Áudio Completo do PC ou Apenas Vídeo antes de iniciar a stream.'
+      },
+      {
+        icon: '⚡',
+        badge: 'ESTABILIDADE',
+        title: 'Zero Quedas em Jogos com Anti-Cheat',
+        description: 'Otimização completa para Valorant, CS2 e jogos em tela cheia com taxa estável a 60 FPS e sem travamentos.'
+      },
+      {
+        icon: '✨',
+        badge: 'DESIGN',
+        title: 'Mural de Novidades & Versões',
+        description: 'Fique por dentro de todas as mudanças e melhorias a cada atualização de forma rápida e visual.'
+      }
+    ]
+  },
   {
     version: '0.23.0',
     title: 'Isolamento de Áudio Anti-Eco e Super Transmissão',

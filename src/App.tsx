@@ -1199,7 +1199,7 @@ function Echo({ user }: { user: User }) {
   const [isWatchingStreams, setIsWatchingStreams] = useState(true)
 
   // Filter participants who have an active screenshare stream with live video track
-  const activeScreenSharers = participants.filter(p => p.screenStream && p.screenStream.getVideoTracks().some(t => t.readyState === 'live'))
+  const activeScreenSharers = participants.filter(p => p.screenStream && p.screenStream.getVideoTracks().length > 0)
   const activeScreenSharer = (selectedScreenSharerUserId && activeScreenSharers.find(p => p.userId === selectedScreenSharerUserId)) || activeScreenSharers[0] || null
   const [activeVoiceChannelId, setActiveVoiceChannelId] = useState<string | null>(null)
   const [screenSources, setScreenSources] = useState<any[]>([])
@@ -1207,6 +1207,13 @@ function Echo({ user }: { user: User }) {
   const [screenPickerTab, setScreenPickerTab] = useState<'windows' | 'screens'>('windows')
   const [screenAudioMode, setScreenAudioMode] = useState<'anti-echo' | 'full' | 'none'>('anti-echo')
   const [isScreenFullScreen, setIsScreenFullScreen] = useState(false)
+
+  // Auto-switch to watching streams when a stream becomes available
+  useEffect(() => {
+    if (activeScreenSharers.length > 0 && !isWatchingStreams) {
+      setIsWatchingStreams(true)
+    }
+  }, [activeScreenSharers.length])
 
   // Auto-refresh screen sources while picker modal is open
   useEffect(() => {
@@ -4781,7 +4788,6 @@ function Echo({ user }: { user: User }) {
                               </div>
                             ) : (
                               <div className="participants-grid">
-                                {/* Floating Banner if streams are hidden */}
                                 {activeScreenSharers.length > 0 && !isWatchingStreams && (
                                   <div 
                                     className="streams-hidden-banner" 
@@ -4829,81 +4835,108 @@ function Echo({ user }: { user: User }) {
                                   </div>
                                 )}
 
-                                {participants.map(p => (
-                                  <div 
-                                    key={p.userId} 
-                                    className={`participant-card ${p.isSpeaking ? 'speaking' : ''}`}
-                                    onClick={() => {
-                                      if (p.userId !== user.id) {
-                                        setVolumeControlUser(p)
-                                      }
-                                    }}
-                                    style={{ cursor: p.userId !== user.id ? 'pointer' : 'default' }}
-                                    title={p.userId !== user.id ? "Ajustar volume de áudio" : ""}
-                                  >
-                                    <div className="participant-avatar-large" style={{ position: 'relative' }}>
-                                      {p.avatarUrl ? (
-                                        <img src={p.avatarUrl} alt={p.displayName} className="round-avatar-img-large" />
-                                      ) : (
-                                        <span className="avatar-initial-large">
-                                          {p.displayName.slice(0, 1).toUpperCase()}
-                                        </span>
-                                      )}
-                                      {(p.isDeafened || p.isMuted) && (
-                                        <div className="participant-avatar-badge" style={{
+                                {participants.map(p => {
+                                  const isSharer = !!(p.screenStream && p.screenStream.getVideoTracks().length > 0)
+                                  return (
+                                    <div 
+                                      key={p.userId} 
+                                      className={`participant-card ${p.isSpeaking ? 'speaking' : ''} ${isSharer ? 'has-live-screen' : ''}`}
+                                      onClick={() => {
+                                        if (isSharer) {
+                                          setSelectedScreenSharerUserId(p.userId)
+                                          setIsWatchingStreams(true)
+                                          setScreenShareViewMode('focus')
+                                        } else if (p.userId !== user.id) {
+                                          setVolumeControlUser(p)
+                                        }
+                                      }}
+                                      style={{ cursor: 'pointer', position: 'relative' }}
+                                      title={isSharer ? `Clique para assistir a tela de ${p.displayName}` : (p.userId !== user.id ? "Ajustar volume de áudio" : "")}
+                                    >
+                                      {isSharer && (
+                                        <div style={{
                                           position: 'absolute',
-                                          bottom: '-4px',
-                                          right: '-4px',
-                                          background: '#e0554c',
-                                          borderRadius: '50%',
-                                          width: '24px',
-                                          height: '24px',
+                                          top: '10px',
+                                          right: '10px',
+                                          background: '#eb3b5a',
+                                          color: '#fff',
+                                          fontSize: '10px',
+                                          fontWeight: 800,
+                                          padding: '3px 8px',
+                                          borderRadius: '20px',
                                           display: 'flex',
                                           alignItems: 'center',
-                                          justifyContent: 'center',
-                                          color: '#fff',
-                                          boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
-                                          border: '2px solid var(--bg-primary)'
+                                          gap: '4px',
+                                          boxShadow: '0 2px 8px rgba(235, 59, 90, 0.4)'
                                         }}>
-                                          {p.isDeafened ? <HeadphonesOffIcon style={{ width: '13px', height: '13px' }} /> : <MicOffIcon style={{ width: '13px', height: '13px' }} />}
+                                          <span>🔴</span> AO VIVO
                                         </div>
                                       )}
-                                    </div>
-                                    <div className="participant-card-bottom-info" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', width: '100%' }}>
-                                      <span className="participant-name">
-                                        {p.displayName}
-                                        {p.userId === user.id && " (Você)"}
-                                      </span>
-                                      {p.screenStream && (
-                                        <button
-                                          type="button"
-                                          className="watch-stream-badge-btn"
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            setSelectedScreenSharerUserId(p.userId)
-                                            setIsWatchingStreams(true)
-                                            setScreenShareViewMode('focus')
-                                          }}
-                                          style={{
-                                            background: 'rgba(255, 71, 87, 0.15)',
-                                            border: '1px solid rgba(255, 71, 87, 0.4)',
-                                            color: '#ff4757',
-                                            borderRadius: '12px',
-                                            padding: '2px 8px',
-                                            fontSize: '10px',
-                                            fontWeight: 800,
-                                            cursor: 'pointer',
+                                      <div className="participant-avatar-large" style={{ position: 'relative' }}>
+                                        {p.avatarUrl ? (
+                                          <img src={p.avatarUrl} alt={p.displayName} className="round-avatar-img-large" />
+                                        ) : (
+                                          <span className="avatar-initial-large">
+                                            {p.displayName.slice(0, 1).toUpperCase()}
+                                          </span>
+                                        )}
+                                        {(p.isDeafened || p.isMuted) && (
+                                          <div className="participant-avatar-badge" style={{
+                                            position: 'absolute',
+                                            bottom: '-4px',
+                                            right: '-4px',
+                                            background: '#e0554c',
+                                            borderRadius: '50%',
+                                            width: '24px',
+                                            height: '24px',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '4px'
-                                          }}
-                                        >
-                                          🔴 Assistir Tela
-                                        </button>
-                                      )}
+                                            justifyContent: 'center',
+                                            color: '#fff',
+                                            boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
+                                            border: '2px solid var(--bg-primary)'
+                                          }}>
+                                            {p.isDeafened ? <HeadphonesOffIcon style={{ width: '13px', height: '13px' }} /> : <MicOffIcon style={{ width: '13px', height: '13px' }} />}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="participant-card-bottom-info" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', width: '100%' }}>
+                                        <span className="participant-name">
+                                          {p.displayName}
+                                          {p.userId === user.id && " (Você)"}
+                                        </span>
+                                        {isSharer && (
+                                          <button
+                                            type="button"
+                                            className="watch-stream-badge-btn"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              setSelectedScreenSharerUserId(p.userId)
+                                              setIsWatchingStreams(true)
+                                              setScreenShareViewMode('focus')
+                                            }}
+                                            style={{
+                                              background: 'rgba(235, 59, 90, 0.18)',
+                                              border: '1px solid #eb3b5a',
+                                              color: '#eb3b5a',
+                                              borderRadius: '12px',
+                                              padding: '4px 10px',
+                                              fontSize: '11px',
+                                              fontWeight: 800,
+                                              cursor: 'pointer',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '4px',
+                                              marginTop: '4px'
+                                            }}
+                                          >
+                                            ▶ Assistir Tela
+                                          </button>
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                ))}
+                                  )
+                                })}
                               </div>
                             )}
 
