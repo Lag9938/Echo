@@ -50,6 +50,59 @@ async function getRnnoiseWasmBinary(): Promise<ArrayBuffer> {
   return rnnoiseWasmBinaryCache
 }
 
+function base64UrlEncode(str: string): string {
+  const bytes = new TextEncoder().encode(str)
+  let binary = ''
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+function base64UrlEncodeBytes(bytes: Uint8Array): string {
+  let binary = ''
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+async function createLiveKitTokenClient(
+  apiKey: string, 
+  apiSecret: string, 
+  { identity, name, room }: { identity: string; name: string; room: string }
+): Promise<string> {
+  const enc = new TextEncoder()
+  const now = Math.floor(Date.now() / 1000)
+  const header = { alg: 'HS256', typ: 'JWT' }
+  const payload = {
+    exp: now + 24 * 3600,
+    iss: apiKey,
+    nbf: now - 5,
+    sub: identity,
+    name: name,
+    video: {
+      room: room,
+      roomJoin: true,
+      canPublish: true,
+      canSubscribe: true,
+      canPublishData: true
+    }
+  }
+
+  const unsigned = `${base64UrlEncode(JSON.stringify(header))}.${base64UrlEncode(JSON.stringify(payload))}`
+  const key = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(apiSecret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const signatureBuffer = await crypto.subtle.sign('HMAC', key, enc.encode(unsigned))
+  const signature = base64UrlEncodeBytes(new Uint8Array(signatureBuffer))
+  return `${unsigned}.${signature}`
+}
+
 async function createStudioMicrophoneDSP(stream: MediaStream, enableAi = false): Promise<{ 
   finalStream: MediaStream; 
   audioCtx: AudioContext; 
@@ -540,15 +593,32 @@ export function useVoiceChannel() {
       let token = ''
 
       if (typeof (window as any).electronAPI?.getLiveKitConnection === 'function') {
-        const res = await (window as any).electronAPI.getLiveKitConnection({
-          room: channelId,
-          identity: userId,
-          name: displayName,
-          avatarUrl
-        })
-        if (res && res.success) {
-          connectionUrl = res.url
-          token = res.token
+        try {
+          const res = await (window as any).electronAPI.getLiveKitConnection({
+            room: channelId,
+            identity: userId,
+            name: displayName,
+            avatarUrl
+          })
+          if (res && res.success) {
+            connectionUrl = res.url
+            token = res.token
+          }
+        } catch (ipcErr) {
+          console.warn('[LiveKit] Falha no token IPC:', ipcErr)
+        }
+      }
+
+      if (!token) {
+        try {
+          token = await createLiveKitTokenClient('APIi5XDp34K5gP3', 'LTl6XQ3ozsSupX8Ydva6erDmcmIVnbi7BFS6H7GPQDQ', {
+            identity: userId,
+            name: displayName,
+            room: channelId
+          })
+          console.log('[LiveKit] Token gerado com sucesso via Web Crypto!')
+        } catch (tokErr) {
+          console.error('[LiveKit] Falha ao gerar token via Web Crypto:', tokErr)
         }
       }
 
@@ -678,6 +748,7 @@ export function useVoiceChannel() {
           syncParticipants()
         } catch (connErr) {
           console.error('[LiveKit] Erro ao conectar ao SFU:', connErr)
+          throw connErr
         }
       }
 
@@ -725,8 +796,8 @@ export function useVoiceChannel() {
       }
     } catch (err) {
       console.error('[LiveKit] Falha ao entrar no canal de voz:', err)
-      setIsConnected(false)
-      activeChannelIdRef.current = null
+      leaveVoice()
+      throw err
     } finally {
       isConnectingRef.current = false
     }

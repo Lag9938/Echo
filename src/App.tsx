@@ -1515,7 +1515,12 @@ function Echo({ user }: { user: User }) {
   async function handleJoinVoice(channelId: string) {
     setActiveVoiceChannelId(channelId)
     const spaceId = selectedChannel?.space_id || Object.keys(spaceChannels).find(sId => (spaceChannels[sId] || []).some(c => c.id === channelId))
-    await joinVoice(channelId, user.id, profileDisplayName, profileAvatarUrl, selectedInputId, selectedOutputId, noiseSuppressionEnabled, echoCancellationEnabled, spaceId)
+    try {
+      await joinVoice(channelId, user.id, profileDisplayName, profileAvatarUrl, selectedInputId, selectedOutputId, noiseSuppressionEnabled, echoCancellationEnabled, spaceId)
+    } catch (err) {
+      console.error('handleJoinVoice error:', err)
+      setActiveVoiceChannelId(null)
+    }
   }
 
   function handleLeaveVoice() {
@@ -3817,7 +3822,7 @@ function Echo({ user }: { user: User }) {
                   className={`channel-item voice-item ${selectedChannel?.id === ch.id ? 'active' : ''} ${isActive ? 'in-voice' : ''}`} 
                   onClick={() => {
                     setSelectedChannel(ch)
-                    if (activeVoiceChannelId !== ch.id) {
+                    if (activeVoiceChannelId !== ch.id || !isConnected) {
                       handleJoinVoice(ch.id)
                     }
                   }}
