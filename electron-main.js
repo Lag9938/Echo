@@ -447,13 +447,14 @@ function createWindow() {
   ipcMain.handle('get-livekit-connection', async (_event, params = {}) => {
     try {
       const { room, identity, name, cloudUrl, cloudApiKey, cloudApiSecret } = params
-      const livekitUrl = cloudUrl || process.env.LIVEKIT_URL || 'wss://echo-v87jtd7c.livekit.cloud'
+      const livekitUrl = cloudUrl || process.env.LIVEKIT_URL || 'wss://136-248-75-151.sslip.io'
       const apiKey = cloudApiKey || process.env.LIVEKIT_API_KEY || 'APIi5XDp34K5gP3'
       const apiSecret = cloudApiSecret || process.env.LIVEKIT_API_SECRET || 'LTl6XQ3ozsSupX8Ydva6erDmcmIVnbi7BFS6H7GPQDQ'
 
       const at = new AccessToken(apiKey, apiSecret, {
         identity: identity || 'anonymous',
         name: name || 'Membro',
+        metadata: JSON.stringify({ avatarUrl: params.avatarUrl || '' })
       })
       at.addGrant({
         roomJoin: true,

@@ -70,7 +70,7 @@ function base64UrlEncodeBytes(bytes: Uint8Array): string {
 async function createLiveKitTokenClient(
   apiKey: string, 
   apiSecret: string, 
-  { identity, name, room }: { identity: string; name: string; room: string }
+  { identity, name, room, avatarUrl }: { identity: string; name: string; room: string; avatarUrl?: string }
 ): Promise<string> {
   const enc = new TextEncoder()
   const now = Math.floor(Date.now() / 1000)
@@ -81,6 +81,7 @@ async function createLiveKitTokenClient(
     nbf: now - 5,
     sub: identity,
     name: name,
+    metadata: JSON.stringify({ avatarUrl: avatarUrl || '' }),
     video: {
       room: room,
       roomJoin: true,
@@ -588,8 +589,8 @@ export function useVoiceChannel() {
       }
       localStreamRef.current = finalStream
 
-      // Conexao LiveKit SFU
-      let connectionUrl = 'wss://echo-v87jtd7c.livekit.cloud'
+      // Conexao LiveKit SFU (Oracle Cloud Always Free Server)
+      let connectionUrl = 'wss://136-248-75-151.sslip.io'
       let token = ''
 
       if (typeof (window as any).electronAPI?.getLiveKitConnection === 'function') {
@@ -614,7 +615,8 @@ export function useVoiceChannel() {
           token = await createLiveKitTokenClient('APIi5XDp34K5gP3', 'LTl6XQ3ozsSupX8Ydva6erDmcmIVnbi7BFS6H7GPQDQ', {
             identity: userId,
             name: displayName,
-            room: channelId
+            room: channelId,
+            avatarUrl
           })
           console.log('[LiveKit] Token gerado com sucesso via Web Crypto!')
         } catch (tokErr) {
@@ -649,6 +651,14 @@ export function useVoiceChannel() {
       })
 
       room.on(RoomEvent.ParticipantConnected, () => {
+        syncParticipants()
+      })
+
+      room.on(RoomEvent.TrackPublished, () => {
+        syncParticipants()
+      })
+
+      room.on(RoomEvent.TrackUnpublished, () => {
         syncParticipants()
       })
 
