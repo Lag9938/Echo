@@ -142,6 +142,20 @@ app.commandLine.appendSwitch('disable-renderer-backgrounding')
 app.commandLine.appendSwitch('disable-background-timer-throttling')
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
 
+// Garante instância única (evita processos zumbis que travam atualizações e a abertura da janela)
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.show()
+      mainWindow.focus()
+    }
+  })
+}
+
 let mainWindow = null
 let audioHelperProcess = null
 let audioTcpClient = null
@@ -173,6 +187,11 @@ function createWindow() {
       nodeIntegration: false,
       backgroundThrottling: false
     } 
+  })
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show()
+    mainWindow.focus()
   })
   // Permitir acesso ao microfone para canais de voz (WebRTC)
   mainWindow.webContents.session.setPermissionRequestHandler((_webContents, permission, callback) => {
@@ -498,8 +517,14 @@ function createWindow() {
   gameScanInterval = setInterval(scanRunningGames, 5000)
   setTimeout(scanRunningGames, 1500)
 
-  if (isDevelopment) mainWindow.loadURL('http://localhost:5173')
-  else mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'))
+  if (isDevelopment) {
+    mainWindow.loadURL('http://localhost:5173')
+  } else {
+    mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html')).catch(() => {
+      mainWindow.loadFile('dist/index.html')
+    })
+  }
+  mainWindow.show()
 }
 app.whenReady().then(() => {
   ensureLocalLivekitServer()

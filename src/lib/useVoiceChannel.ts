@@ -547,6 +547,9 @@ export function useVoiceChannel() {
           if (!isScreen) {
             try {
               const spatialCtx = new AudioContext()
+              if (spatialCtx.state === 'suspended') {
+                spatialCtx.resume().catch(() => {})
+              }
               const source = spatialCtx.createMediaStreamSource(remoteStream)
               const panner = spatialCtx.createStereoPanner()
               const dest = spatialCtx.createMediaStreamDestination()
