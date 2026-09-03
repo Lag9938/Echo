@@ -7,6 +7,7 @@ import fs from 'node:fs'
 import { spawn, execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import net from 'node:net'
+import crypto from 'node:crypto'
 import { AccessToken } from 'livekit-server-sdk'
 
 const execFileAsync = promisify(execFile)
@@ -443,28 +444,38 @@ function createWindow() {
     return { success: false }
   })
 
-  // LiveKit SFU Connection & Token Generation Handler
+  // LiveKit SFU Connection & Token Generation Handler (com tolerância a relógio descalibrado)
   ipcMain.handle('get-livekit-connection', async (_event, params = {}) => {
     try {
-      const { room, identity, name, cloudUrl, cloudApiKey, cloudApiSecret } = params
+      const { room, identity, name, cloudUrl, cloudApiKey, cloudApiSecret, avatarUrl } = params
       const livekitUrl = cloudUrl || process.env.LIVEKIT_URL || 'wss://136-248-75-151.sslip.io'
       const apiKey = cloudApiKey || process.env.LIVEKIT_API_KEY || 'APIi5XDp34K5gP3'
       const apiSecret = cloudApiSecret || process.env.LIVEKIT_API_SECRET || 'LTl6XQ3ozsSupX8Ydva6erDmcmIVnbi7BFS6H7GPQDQ'
 
-      const at = new AccessToken(apiKey, apiSecret, {
-        identity: identity || 'anonymous',
+      const now = Math.floor(Date.now() / 1000)
+      const header = { alg: 'HS256', typ: 'JWT' }
+      const payload = {
+        exp: now + 24 * 3600,
+        iss: apiKey,
+        nbf: now - 3600, // Margem de 1 hora para relógios de usuários adiantados (evita "token is not valid yet")
+        sub: identity || 'anonymous',
         name: name || 'Membro',
-        metadata: JSON.stringify({ avatarUrl: params.avatarUrl || '' })
-      })
-      at.addGrant({
-        roomJoin: true,
-        room: room || 'general',
-        canPublish: true,
-        canSubscribe: true,
-        canPublishData: true,
-      })
+        metadata: JSON.stringify({ avatarUrl: avatarUrl || '' }),
+        video: {
+          room: room || 'general',
+          roomJoin: true,
+          canPublish: true,
+          canSubscribe: true,
+          canPublishData: true
+        }
+      }
 
-      const token = await at.toJwt()
+      const encHeader = Buffer.from(JSON.stringify(header)).toString('base64url')
+      const encPayload = Buffer.from(JSON.stringify(payload)).toString('base64url')
+      const toSign = `${encHeader}.${encPayload}`
+      const signature = crypto.createHmac('sha256', apiSecret).update(toSign).digest('base64url')
+      const token = `${toSign}.${signature}`
+
       return { success: true, url: livekitUrl, token }
     } catch (err) {
       console.error('[LiveKit] Failed to generate token:', err)

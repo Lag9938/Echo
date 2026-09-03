@@ -78,7 +78,7 @@ async function createLiveKitTokenClient(
   const payload = {
     exp: now + 24 * 3600,
     iss: apiKey,
-    nbf: now - 5,
+    nbf: now - 3600, // Margem de tolerância contra relógios adiantados
     sub: identity,
     name: name,
     metadata: JSON.stringify({ avatarUrl: avatarUrl || '' }),
@@ -1017,8 +1017,12 @@ export function useVoiceChannel() {
 
       const audioTrack = nativeAudioTrack || (stream.getAudioTracks().length > 0 ? stream.getAudioTracks()[0] : null)
 
-      // 3. Atualiza preview local imediatamente
-      const previewStream = new MediaStream([videoTrack])
+      // 3. Atualiza preview local imediatamente (com áudio para o medidor de volume detectar som)
+      const previewTracks: MediaStreamTrack[] = [videoTrack]
+      if (audioTrack) {
+        previewTracks.push(audioTrack)
+      }
+      const previewStream = new MediaStream(previewTracks)
       localScreenStreamRef.current = previewStream
       setLocalScreenStream(previewStream)
 
