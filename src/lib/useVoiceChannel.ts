@@ -260,6 +260,7 @@ export function useVoiceChannel() {
   const activeSpaceIdRef = useRef<string | null>(null)
   const isConnectingRef = useRef<boolean>(false)
   const nativeAudioCleanupRef = useRef<(() => void) | null>(null)
+  const remoteScreenStreamsRef = useRef<Map<string, MediaStream>>(new Map())
 
   // Sync all participants into React state
   const syncParticipants = useCallback(() => {
@@ -280,13 +281,22 @@ export function useVoiceChannel() {
       })
     }
 
-    // 2. Remote Participants from LiveKit SFU
+    // 2. Remote Participants from LiveKit SFU (com cache estável de MediaStream para Zero Piscadas)
     if (room) {
       room.remoteParticipants.forEach((rp) => {
         let screenStream: MediaStream | undefined = undefined
         const screenPub = rp.getTrackPublication(Track.Source.ScreenShare)
         if (screenPub && screenPub.track && screenPub.track.mediaStreamTrack) {
-          screenStream = new MediaStream([screenPub.track.mediaStreamTrack])
+          const track = screenPub.track.mediaStreamTrack
+          let existing = remoteScreenStreamsRef.current.get(rp.identity)
+          const curTrack = existing?.getVideoTracks()[0]
+          if (!existing || !curTrack || curTrack.id !== track.id) {
+            existing = new MediaStream([track])
+            remoteScreenStreamsRef.current.set(rp.identity, existing)
+          }
+          screenStream = existing
+        } else {
+          remoteScreenStreamsRef.current.delete(rp.identity)
         }
 
         const isMuted = !rp.isMicrophoneEnabled
@@ -459,6 +469,7 @@ export function useVoiceChannel() {
 
     stopLocalVad()
     stopScreenShare()
+    remoteScreenStreamsRef.current.clear()
 
     const room = roomRef.current
     if (room) {
@@ -663,6 +674,7 @@ export function useVoiceChannel() {
       })
 
       room.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
+        remoteScreenStreamsRef.current.delete(participant.identity)
         const voiceKey = `${participant.identity}-voice`
         const screenKey = `${participant.identity}-screen`
         const vAudio = audioElementsRef.current.get(voiceKey)
@@ -713,6 +725,7 @@ export function useVoiceChannel() {
             audioElementsRef.current.delete(key)
           }
         } else if (track.kind === Track.Kind.Video) {
+          remoteScreenStreamsRef.current.delete(participant.identity)
           syncParticipants()
         }
       })

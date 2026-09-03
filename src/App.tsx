@@ -9893,7 +9893,9 @@ function StreamTile({
     const videoEl = videoRef.current
     if (videoEl) {
       const stream = participant.screenStream || null
-      if (videoEl.srcObject !== stream) {
+      const currentTrackId = (videoEl.srcObject as MediaStream)?.getVideoTracks?.()[0]?.id
+      const newTrackId = stream?.getVideoTracks?.()[0]?.id
+      if (currentTrackId !== newTrackId) {
         videoEl.srcObject = stream
       }
       if (stream && videoEl.paused) {
@@ -10089,7 +10091,9 @@ function EchoFloatingMiniPlayer({
 
   useEffect(() => {
     if (videoRef.current && activeScreenSharer?.screenStream) {
-      if (videoRef.current.srcObject !== activeScreenSharer.screenStream) {
+      const currentTrackId = (videoRef.current.srcObject as MediaStream)?.getVideoTracks?.()[0]?.id
+      const newTrackId = activeScreenSharer.screenStream?.getVideoTracks?.()[0]?.id
+      if (currentTrackId !== newTrackId) {
         videoRef.current.srcObject = activeScreenSharer.screenStream
       }
       videoRef.current.play().catch(() => {})
