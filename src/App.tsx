@@ -1442,11 +1442,7 @@ function Echo({ user }: { user: User }) {
     }
   }, [activeScreenSharer?.screenStream, selectedChannel, page])
 
-  useEffect(() => {
-    if (!isConnected) {
-      setActiveVoiceChannelId(null)
-    }
-  }, [isConnected])
+
 
   // Subscrição em tempo real para visualizar participantes em todos os canais de voz mesmo sem entrar
   useEffect(() => {
@@ -3820,7 +3816,12 @@ function Echo({ user }: { user: User }) {
                 <button 
                   type="button"
                   className={`channel-item voice-item ${selectedChannel?.id === ch.id ? 'active' : ''} ${isActive ? 'in-voice' : ''}`} 
-                  onClick={() => setSelectedChannel(ch)}
+                  onClick={() => {
+                    setSelectedChannel(ch)
+                    if (activeVoiceChannelId !== ch.id) {
+                      handleJoinVoice(ch.id)
+                    }
+                  }}
                 >
                   <span className="ch-icon"><VolumeIcon /></span>
                   <span className="channel-item-name">{ch.name}</span>
@@ -5556,9 +5557,6 @@ function Echo({ user }: { user: User }) {
                           <button 
                             className="voice-join-submit-btn" 
                             onClick={async () => {
-                              if (activeVoiceChannelId) {
-                                handleLeaveVoice()
-                              }
                               await handleJoinVoice(selectedChannel.id)
                             }}
                           >

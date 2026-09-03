@@ -205,6 +205,7 @@ export function useVoiceChannel() {
   const selectedOutputIdRef = useRef<string>('default')
   const activeChannelIdRef = useRef<string | null>(null)
   const activeSpaceIdRef = useRef<string | null>(null)
+  const isConnectingRef = useRef<boolean>(false)
   const nativeAudioCleanupRef = useRef<(() => void) | null>(null)
 
   // Sync all participants into React state
@@ -287,6 +288,104 @@ export function useVoiceChannel() {
     }
   }, [])
 
+  // Stop screen share
+  const stopScreenShare = useCallback(() => {
+    const room = roomRef.current
+    if (localScreenVideoTrackRef.current) {
+      if (room) {
+        room.localParticipant.unpublishTrack(localScreenVideoTrackRef.current).catch(() => {})
+      }
+      localScreenVideoTrackRef.current.stop()
+      localScreenVideoTrackRef.current = null
+    }
+    if (localScreenAudioTrackRef.current) {
+      if (room) {
+        room.localParticipant.unpublishTrack(localScreenAudioTrackRef.current).catch(() => {})
+      }
+      localScreenAudioTrackRef.current.stop()
+      localScreenAudioTrackRef.current = null
+    }
+    if (nativeAudioCleanupRef.current) {
+      try { nativeAudioCleanupRef.current() } catch (e) {}
+      nativeAudioCleanupRef.current = null
+    }
+    localScreenStreamRef.current = null
+    setLocalScreenStream(null)
+
+    if (channelRef.current && myInfoRef.current) {
+      channelRef.current.track({
+        user_id: myInfoRef.current.userId,
+        display_name: myInfoRef.current.displayName,
+        avatar_url: myInfoRef.current.avatarUrl,
+        channel_id: activeChannelIdRef.current || '',
+        is_muted: isMutedRef.current,
+        is_deafened: isDeafenedRef.current,
+        has_screen: false,
+        space_id: activeSpaceIdRef.current || null
+      }).catch(() => {})
+    }
+
+    syncParticipants()
+  }, [syncParticipants])
+
+  // Leave voice channel cleanly
+  const leaveVoice = useCallback(() => {
+    isConnectingRef.current = false
+    activeChannelIdRef.current = null
+    activeSpaceIdRef.current = null
+
+    stopScreenShare()
+
+    const room = roomRef.current
+    if (room) {
+      try { room.disconnect() } catch (e) {}
+      roomRef.current = null
+    }
+
+    if (localAudioTrackRef.current) {
+      try { localAudioTrackRef.current.stop() } catch (e) {}
+      localAudioTrackRef.current = null
+    }
+    if (localStreamRef.current) {
+      try { localStreamRef.current.getTracks().forEach(t => t.stop()) } catch (e) {}
+      localStreamRef.current = null
+    }
+    if (localRawStreamRef.current) {
+      try { localRawStreamRef.current.getTracks().forEach(t => t.stop()) } catch (e) {}
+      localRawStreamRef.current = null
+    }
+    if (localDspCtxRef.current) {
+      localDspCtxRef.current.close().catch(() => {})
+      localDspCtxRef.current = null
+    }
+    if (localDspNodesRef.current?.rnnoiseNode) {
+      try { localDspNodesRef.current.rnnoiseNode.destroy() } catch (e) {}
+    }
+    localDspNodesRef.current = null
+
+    audioElementsRef.current.forEach(audio => {
+      audio.srcObject = null
+    })
+    audioElementsRef.current.clear()
+
+    peerPannersRef.current.forEach(p => {
+      try { p.ctx.close() } catch (e) {}
+    })
+    peerPannersRef.current.clear()
+
+    if (channelRef.current) {
+      channelRef.current.untrack().catch(() => {})
+      supabase?.removeChannel(channelRef.current)
+      channelRef.current = null
+    }
+
+    activeSpeakersRef.current.clear()
+    myInfoRef.current = null
+    setIsConnected(false)
+    setParticipants([])
+    setRtcStats(null)
+  }, [stopScreenShare])
+
   // Join a voice channel via LiveKit SFU
   const joinVoice = useCallback(async (
     channelId: string, 
@@ -299,15 +398,32 @@ export function useVoiceChannel() {
     echoCancellation = true, 
     spaceId?: string
   ) => {
-    if (isConnected) return
+    // Evita chamadas duplicadas simultaneas ao mesmo canal
+    if (isConnectingRef.current && activeChannelIdRef.current === channelId) {
+      console.log('[Voice] Conexao em andamento para o canal:', channelId)
+      return
+    }
+
+    // Se ja estiver conectado no mesmo canal, nao precisa reconectar
+    if (activeChannelIdRef.current === channelId && roomRef.current?.state === 'connected') {
+      console.log('[Voice] Ja conectado no canal:', channelId)
+      return
+    }
+
+    // Se estava em outro canal, sai do canal anterior primeiro
+    if (activeChannelIdRef.current && activeChannelIdRef.current !== channelId) {
+      leaveVoice()
+    }
+
+    isConnectingRef.current = true
+    activeChannelIdRef.current = channelId
+    activeSpaceIdRef.current = spaceId || null
 
     try {
       if (inputId) selectedInputIdRef.current = inputId
       if (outputId) selectedOutputIdRef.current = outputId
-      activeChannelIdRef.current = channelId
-      activeSpaceIdRef.current = spaceId || null
 
-      // Obter microfone do usuario com filtros de estudio
+      // Obter microfone do usuario com fallback seguro
       const constraints = {
         audio: {
           deviceId: inputId && inputId !== 'default' ? { exact: inputId } : undefined,
@@ -319,7 +435,21 @@ export function useVoiceChannel() {
         video: false
       }
 
-      const rawStream = await navigator.mediaDevices.getUserMedia(constraints)
+      let rawStream: MediaStream
+      try {
+        rawStream = await navigator.mediaDevices.getUserMedia(constraints)
+      } catch (devErr) {
+        console.warn('[Voice] Falha com deviceId especifico, usando dispositivo padrao:', devErr)
+        rawStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation,
+            noiseSuppression,
+            autoGainControl: true
+          },
+          video: false
+        })
+      }
+
       localRawStreamRef.current = rawStream
       myInfoRef.current = { userId, displayName, avatarUrl }
 
@@ -492,21 +622,33 @@ export function useVoiceChannel() {
 
       // Conecta a sala LiveKit
       if (token) {
-        await room.connect(connectionUrl, token)
+        try {
+          console.log('[LiveKit] Conectando ao SFU:', connectionUrl, 'sala:', channelId)
+          await room.connect(connectionUrl, token)
+          console.log('[LiveKit] Conectado com sucesso ao SFU!')
+        } catch (connErr) {
+          console.error('[LiveKit] Erro ao conectar ao SFU:', connErr)
+        }
       } else {
-        console.warn('[LiveKit] Token nao obtido, conectando em modo de teste')
+        console.warn('[LiveKit] Token nao obtido do Electron.')
       }
 
-      // Publica o microfone do usuario
-      const micTrack = finalStream.getAudioTracks()[0]
-      if (micTrack) {
-        const localAudio = new LocalAudioTrack(micTrack)
-        localAudioTrackRef.current = localAudio
-        await room.localParticipant.publishTrack(localAudio, {
-          source: Track.Source.Microphone,
-          name: 'microphone',
-          dtx: false
-        })
+      // Publica o microfone do usuario se a sala estiver conectada
+      if (room.state === 'connected') {
+        try {
+          const micTrack = finalStream.getAudioTracks()[0]
+          if (micTrack) {
+            const localAudio = new LocalAudioTrack(micTrack)
+            localAudioTrackRef.current = localAudio
+            await room.localParticipant.publishTrack(localAudio, {
+              source: Track.Source.Microphone,
+              name: 'microphone',
+              dtx: false
+            })
+          }
+        } catch (pubErr) {
+          console.error('[LiveKit] Erro ao publicar faixa de microfone:', pubErr)
+        }
       }
 
       // Sincroniza presenca visual no Supabase para usuarios no chat de texto
@@ -536,102 +678,11 @@ export function useVoiceChannel() {
     } catch (err) {
       console.error('[LiveKit] Falha ao entrar no canal de voz:', err)
       setIsConnected(false)
+      activeChannelIdRef.current = null
+    } finally {
+      isConnectingRef.current = false
     }
-  }, [isConnected, syncParticipants])
-
-  // Stop screen share
-  const stopScreenShare = useCallback(() => {
-    const room = roomRef.current
-    if (localScreenVideoTrackRef.current) {
-      if (room) {
-        room.localParticipant.unpublishTrack(localScreenVideoTrackRef.current).catch(() => {})
-      }
-      localScreenVideoTrackRef.current.stop()
-      localScreenVideoTrackRef.current = null
-    }
-    if (localScreenAudioTrackRef.current) {
-      if (room) {
-        room.localParticipant.unpublishTrack(localScreenAudioTrackRef.current).catch(() => {})
-      }
-      localScreenAudioTrackRef.current.stop()
-      localScreenAudioTrackRef.current = null
-    }
-    if (nativeAudioCleanupRef.current) {
-      try { nativeAudioCleanupRef.current() } catch (e) {}
-      nativeAudioCleanupRef.current = null
-    }
-    localScreenStreamRef.current = null
-    setLocalScreenStream(null)
-
-    if (channelRef.current && myInfoRef.current) {
-      channelRef.current.track({
-        user_id: myInfoRef.current.userId,
-        display_name: myInfoRef.current.displayName,
-        avatar_url: myInfoRef.current.avatarUrl,
-        channel_id: activeChannelIdRef.current || '',
-        is_muted: isMutedRef.current,
-        is_deafened: isDeafenedRef.current,
-        has_screen: false,
-        space_id: activeSpaceIdRef.current || null
-      }).catch(() => {})
-    }
-
-    syncParticipants()
-  }, [syncParticipants])
-
-  // Leave voice channel cleanly
-  const leaveVoice = useCallback(() => {
-    stopScreenShare()
-
-    const room = roomRef.current
-    if (room) {
-      room.disconnect()
-      roomRef.current = null
-    }
-
-    if (localAudioTrackRef.current) {
-      localAudioTrackRef.current.stop()
-      localAudioTrackRef.current = null
-    }
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(t => t.stop())
-      localStreamRef.current = null
-    }
-    if (localRawStreamRef.current) {
-      localRawStreamRef.current.getTracks().forEach(t => t.stop())
-      localRawStreamRef.current = null
-    }
-    if (localDspCtxRef.current) {
-      localDspCtxRef.current.close().catch(() => {})
-      localDspCtxRef.current = null
-    }
-    if (localDspNodesRef.current?.rnnoiseNode) {
-      try { localDspNodesRef.current.rnnoiseNode.destroy() } catch (e) {}
-    }
-    localDspNodesRef.current = null
-
-    audioElementsRef.current.forEach(audio => {
-      audio.srcObject = null
-    })
-    audioElementsRef.current.clear()
-
-    peerPannersRef.current.forEach(p => {
-      try { p.ctx.close() } catch (e) {}
-    })
-    peerPannersRef.current.clear()
-
-    if (channelRef.current) {
-      channelRef.current.untrack().catch(() => {})
-      supabase?.removeChannel(channelRef.current)
-      channelRef.current = null
-    }
-
-    activeSpeakersRef.current.clear()
-    myInfoRef.current = null
-    setIsConnected(false)
-    setParticipants([])
-    setRtcStats(null)
-  }, [stopScreenShare])
+  }, [syncParticipants, leaveVoice])
 
   // Toggle Mute
   const toggleMute = useCallback(() => {
