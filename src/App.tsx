@@ -1518,9 +1518,9 @@ function Echo({ user }: { user: User }) {
   }, [spaces, user.id])
 
   async function handleJoinVoice(channelId: string) {
+    setActiveVoiceChannelId(channelId)
     const spaceId = selectedChannel?.space_id || Object.keys(spaceChannels).find(sId => (spaceChannels[sId] || []).some(c => c.id === channelId))
     await joinVoice(channelId, user.id, profileDisplayName, profileAvatarUrl, selectedInputId, selectedOutputId, noiseSuppressionEnabled, echoCancellationEnabled, spaceId)
-    setActiveVoiceChannelId(channelId)
   }
 
   function handleLeaveVoice() {

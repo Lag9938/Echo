@@ -323,6 +323,10 @@ export function useVoiceChannel() {
       localRawStreamRef.current = rawStream
       myInfoRef.current = { userId, displayName, avatarUrl }
 
+      // Imediatamente marca conectado e exibe o participante local na grade (como no Discord)
+      setIsConnected(true)
+      syncParticipants()
+
       let finalStream = rawStream
       try {
         const { finalStream: dspStream, audioCtx, nodes } = await createStudioMicrophoneDSP(rawStream, isAiDenoiseEnabledRef.current)
@@ -363,7 +367,12 @@ export function useVoiceChannel() {
       // Setup LiveKit room events
       room.on(RoomEvent.Connected, () => {
         setIsConnected(true)
+        syncParticipants()
         console.log('[LiveKit] Conectado com sucesso ao SFU na sala:', channelId)
+      })
+
+      room.on(RoomEvent.LocalTrackPublished, () => {
+        syncParticipants()
       })
 
       room.on(RoomEvent.Disconnected, () => {
@@ -502,7 +511,8 @@ export function useVoiceChannel() {
 
       // Sincroniza presenca visual no Supabase para usuarios no chat de texto
       if (supabase) {
-        const sbChannel = supabase.channel(`voice-${channelId}`, {
+        const presenceChanName = spaceId ? `space-voice-${spaceId}` : `voice-${channelId}`
+        const sbChannel = supabase.channel(presenceChanName, {
           config: { presence: { key: userId } }
         })
         channelRef.current = sbChannel
@@ -512,6 +522,7 @@ export function useVoiceChannel() {
               user_id: userId,
               display_name: displayName,
               avatar_url: avatarUrl,
+              channel_id: channelId,
               is_muted: isMutedRef.current,
               is_deafened: isDeafenedRef.current,
               has_screen: false,
@@ -557,9 +568,11 @@ export function useVoiceChannel() {
         user_id: myInfoRef.current.userId,
         display_name: myInfoRef.current.displayName,
         avatar_url: myInfoRef.current.avatarUrl,
+        channel_id: activeChannelIdRef.current || '',
         is_muted: isMutedRef.current,
         is_deafened: isDeafenedRef.current,
-        has_screen: false
+        has_screen: false,
+        space_id: activeSpaceIdRef.current || null
       }).catch(() => {})
     }
 
@@ -639,9 +652,11 @@ export function useVoiceChannel() {
         user_id: myInfoRef.current.userId,
         display_name: myInfoRef.current.displayName,
         avatar_url: myInfoRef.current.avatarUrl,
+        channel_id: activeChannelIdRef.current || '',
         is_muted: next,
         is_deafened: isDeafenedRef.current,
-        has_screen: !!localScreenStreamRef.current
+        has_screen: !!localScreenStreamRef.current,
+        space_id: activeSpaceIdRef.current || null
       }).catch(() => {})
     }
 
@@ -667,9 +682,11 @@ export function useVoiceChannel() {
         user_id: myInfoRef.current.userId,
         display_name: myInfoRef.current.displayName,
         avatar_url: myInfoRef.current.avatarUrl,
+        channel_id: activeChannelIdRef.current || '',
         is_muted: isMutedRef.current,
         is_deafened: next,
-        has_screen: !!localScreenStreamRef.current
+        has_screen: !!localScreenStreamRef.current,
+        space_id: activeSpaceIdRef.current || null
       }).catch(() => {})
     }
 
@@ -820,9 +837,11 @@ export function useVoiceChannel() {
           user_id: myInfoRef.current.userId,
           display_name: myInfoRef.current.displayName,
           avatar_url: myInfoRef.current.avatarUrl,
+          channel_id: activeChannelIdRef.current || '',
           is_muted: isMutedRef.current,
           is_deafened: isDeafenedRef.current,
-          has_screen: true
+          has_screen: true,
+          space_id: activeSpaceIdRef.current || null
         }).catch(() => {})
       }
 
