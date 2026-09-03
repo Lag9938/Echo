@@ -1309,7 +1309,6 @@ function Echo({ user }: { user: User }) {
   const [screenSources, setScreenSources] = useState<any[]>([])
   const [showScreenPicker, setShowScreenPicker] = useState(false)
   const [screenPickerTab, setScreenPickerTab] = useState<'windows' | 'screens'>('windows')
-  const [screenAudioMode, setScreenAudioMode] = useState<'anti-echo' | 'full' | 'none'>('anti-echo')
   const [isScreenFullScreen, setIsScreenFullScreen] = useState(false)
 
   // Auto-switch to watching streams when a stream becomes available
@@ -2384,7 +2383,7 @@ function Echo({ user }: { user: User }) {
       }
     } else {
       const { w, h } = getQualityDimensions(quality)
-      await startScreenShare(undefined, w, h, fps, screenAudioMode)
+      await startScreenShare(undefined, w, h, fps)
     }
   }
 
@@ -2407,7 +2406,7 @@ function Echo({ user }: { user: User }) {
     setSelectedScreenSharerUserId(user.id)
     setScreenShareViewMode('focus')
     const { w, h } = getQualityDimensions(screenQuality)
-    await startScreenShare(sourceId, w, h, screenFps, screenAudioMode)
+    await startScreenShare(sourceId, w, h, screenFps)
   }
 
   async function ensureProfile() {
@@ -6172,51 +6171,6 @@ function Echo({ user }: { user: User }) {
                       {f === 60 ? '⚡ 60 FPS (Ultra Suave)' : `${f} FPS`}
                     </button>
                   ))}
-                </div>
-              </div>
-
-              <div className="picker-quality-col" style={{ width: '100%', marginTop: '6px' }}>
-                <span className="picker-section-label">MODO DE ÁUDIO DA TRANSMISSÃO</span>
-                <div className="picker-audio-modes-grid">
-                  <div 
-                    className={`picker-audio-mode-card ${screenAudioMode === 'anti-echo' ? 'active' : ''}`}
-                    onClick={() => setScreenAudioMode('anti-echo')}
-                  >
-                    <div className="picker-audio-mode-header">
-                      <span className="picker-audio-mode-icon">🛡️</span>
-                      <strong>Modo Gamer (Anti-Eco)</strong>
-                      <span className="picker-audio-badge-rec">RECOMENDADO</span>
-                    </div>
-                    <p className="picker-audio-mode-desc">
-                      Transmite o som do jogo e do PC, isolando e removendo as vozes da chamada para ninguém ouvir eco.
-                    </p>
-                  </div>
-
-                  <div 
-                    className={`picker-audio-mode-card ${screenAudioMode === 'full' ? 'active' : ''}`}
-                    onClick={() => setScreenAudioMode('full')}
-                  >
-                    <div className="picker-audio-mode-header">
-                      <span className="picker-audio-mode-icon">🔊</span>
-                      <strong>Áudio Completo</strong>
-                    </div>
-                    <p className="picker-audio-mode-desc">
-                      Transmite 100% de todos os sons do PC sem filtro (ideal para assistir vídeos/filmes juntos).
-                    </p>
-                  </div>
-
-                  <div 
-                    className={`picker-audio-mode-card ${screenAudioMode === 'none' ? 'active' : ''}`}
-                    onClick={() => setScreenAudioMode('none')}
-                  >
-                    <div className="picker-audio-mode-header">
-                      <span className="picker-audio-mode-icon">🔇</span>
-                      <strong>Sem Áudio</strong>
-                    </div>
-                    <p className="picker-audio-mode-desc">
-                      Compartilha somente o vídeo a 60 FPS sem transmitir nenhum som do computador.
-                    </p>
-                  </div>
                 </div>
               </div>
             </div>
