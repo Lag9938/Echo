@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import type { FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
@@ -6,7 +6,7 @@ import { useVoiceChannel } from './lib/useVoiceChannel'
 import type { VoiceParticipant } from './lib/useVoiceChannel'
 import './App.css'
 import { THEMES } from './lib/themes'
-import { SOUNDBOARD_SOUNDS, playFriendRequestSound, playFriendAcceptSound, playDmNotificationSound } from './lib/soundEffects'
+import { SOUNDBOARD_SOUNDS, playFriendRequestSound, playFriendAcceptSound, playDmNotificationSound, playSoundboardEffect } from './lib/soundEffects'
 import { WhatsNewModal } from './components/WhatsNewModal'
 import { APP_CURRENT_VERSION } from './lib/changelogData'
 
@@ -289,9 +289,9 @@ function ScreenIcon({ className }: { className?: string }) {
   )
 }
 
-function PhoneOffIcon({ className }: { className?: string }) {
+function PhoneOffIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(135deg)' }}>
+    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(135deg)', ...style }}>
       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 2.59 3.4z" fill="currentColor"/>
     </svg>
   )
@@ -341,9 +341,9 @@ function LogOutIcon({ className }: { className?: string }) {
   )
 }
 
-function LinkIcon({ className }: { className?: string }) {
+function LinkIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} style={style} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
       <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
     </svg>
@@ -361,9 +361,9 @@ function HashtagIcon({ className }: { className?: string }) {
   )
 }
 
-function VolumeIcon({ className }: { className?: string }) {
+function VolumeIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} style={style} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
       <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
       <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
@@ -474,24 +474,188 @@ function UserIcon({ className, style }: { className?: string; style?: React.CSSP
   )
 }
 
-function GamepadIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return (
-    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="6" y1="12" x2="10" y2="12" />
-      <line x1="8" y1="10" x2="8" y2="14" />
-      <line x1="15" y1="13" x2="15.01" y2="13" />
-      <line x1="18" y1="11" x2="18.01" y2="11" />
-      <rect x="2" y="6" width="20" height="12" rx="6" />
-    </svg>
-  )
-}
-
 function SaveIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
       <polyline points="17 21 17 13 7 13 7 21" />
       <polyline points="7 3 7 8 15 8" />
+    </svg>
+  )
+}
+
+function LockIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  )
+}
+
+function BadgeCrownIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <defs>
+        <linearGradient id="echoCrownGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#fde047" />
+          <stop offset="50%" stopColor="#eab308" />
+          <stop offset="100%" stopColor="#b45309" />
+        </linearGradient>
+        <filter id="echoCrownGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="0" stdDeviation="1.5" floodColor="#f59e0b" floodOpacity="0.7" />
+        </filter>
+      </defs>
+      <path 
+        d="M3 18L4.5 9L9 13.5L12 5L15 13.5L19.5 9L21 18H3Z" 
+        fill="url(#echoCrownGrad)" 
+        filter="url(#echoCrownGlow)"
+        stroke="#fef08a" 
+        strokeWidth="0.8" 
+        strokeLinejoin="round" 
+      />
+      <circle cx="12" cy="4.5" r="1.5" fill="#ffffff" />
+      <circle cx="4.5" cy="8.5" r="1.2" fill="#ffffff" />
+      <circle cx="19.5" cy="8.5" r="1.2" fill="#ffffff" />
+      <path d="M5 20H19" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function BadgeVipIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <defs>
+        <linearGradient id="echoVipGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#38bdf8" />
+          <stop offset="50%" stopColor="#818cf8" />
+          <stop offset="100%" stopColor="#c084fc" />
+        </linearGradient>
+        <filter id="echoVipGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="0" stdDeviation="1.5" floodColor="#818cf8" floodOpacity="0.7" />
+        </filter>
+      </defs>
+      <path 
+        d="M6 3L18 3L22 9L12 21L2 9L6 3Z" 
+        fill="url(#echoVipGrad)" 
+        filter="url(#echoVipGlow)" 
+        stroke="#e0e7ff" 
+        strokeWidth="0.8" 
+        strokeLinejoin="round" 
+      />
+      <path d="M2 9H22" stroke="#ffffff" strokeWidth="0.8" strokeOpacity="0.6" />
+      <path d="M7.5 3L12 21L16.5 3" stroke="#ffffff" strokeWidth="0.8" strokeOpacity="0.5" />
+      <path d="M12 3L6 9L12 21L18 9L12 3Z" fill="#ffffff" fillOpacity="0.15" />
+    </svg>
+  )
+}
+
+function BadgeFounderIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <defs>
+        <linearGradient id="echoFounderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#fbbf24" />
+          <stop offset="50%" stopColor="#f97316" />
+          <stop offset="100%" stopColor="#ef4444" />
+        </linearGradient>
+        <filter id="echoFounderGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="0" stdDeviation="1.5" floodColor="#f97316" floodOpacity="0.7" />
+        </filter>
+      </defs>
+      <path 
+        d="M12 2L4 7V17L12 22L20 17V7L12 2Z" 
+        fill="#1e1b4b" 
+        stroke="url(#echoFounderGrad)" 
+        strokeWidth="1.5" 
+      />
+      <path 
+        d="M13 3.5L6.5 12H12L11 20.5L17.5 11H12.5L13 3.5Z" 
+        fill="url(#echoFounderGrad)" 
+        filter="url(#echoFounderGlow)" 
+        stroke="#fef08a" 
+        strokeWidth="0.6" 
+      />
+    </svg>
+  )
+}
+
+function BadgeVeteranIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <defs>
+        <linearGradient id="echoVetGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f43f5e" />
+          <stop offset="50%" stopColor="#e11d48" />
+          <stop offset="100%" stopColor="#881337" />
+        </linearGradient>
+        <filter id="echoVetGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="0" stdDeviation="1.5" floodColor="#f43f5e" floodOpacity="0.7" />
+        </filter>
+      </defs>
+      <circle cx="12" cy="12" r="9" stroke="url(#echoVetGrad)" strokeWidth="1.5" strokeDasharray="3 2" />
+      <polygon 
+        points="12,4 14.5,9.5 20.5,10.2 16,14.2 17.2,20.2 12,17.2 6.8,20.2 8,14.2 3.5,10.2 9.5,9.5" 
+        fill="url(#echoVetGrad)" 
+        filter="url(#echoVetGlow)"
+        stroke="#fecdd3" 
+        strokeWidth="0.6" 
+      />
+      <circle cx="12" cy="12" r="2" fill="#ffffff" />
+    </svg>
+  )
+}
+
+function BadgeStreamerIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <defs>
+        <linearGradient id="echoStreamGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#10b981" />
+          <stop offset="50%" stopColor="#06b6d4" />
+          <stop offset="100%" stopColor="#3b82f6" />
+        </linearGradient>
+        <filter id="echoStreamGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="0" stdDeviation="1.5" floodColor="#06b6d4" floodOpacity="0.7" />
+        </filter>
+      </defs>
+      <circle cx="12" cy="12" r="3" fill="url(#echoStreamGrad)" filter="url(#echoStreamGlow)" />
+      <path d="M8 8C6 10 6 14 8 16" stroke="url(#echoStreamGrad)" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M16 8C18 10 18 14 16 16" stroke="url(#echoStreamGrad)" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M5 5C1.5 8.5 1.5 15.5 5 19" stroke="url(#echoStreamGrad)" strokeWidth="1.8" strokeLinecap="round" strokeOpacity="0.8" />
+      <path d="M19 5C22.5 8.5 22.5 15.5 19 19" stroke="url(#echoStreamGrad)" strokeWidth="1.8" strokeLinecap="round" strokeOpacity="0.8" />
+    </svg>
+  )
+}
+
+function SteamIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2a10 10 0 0 0-10 9.87l5.4 2.23a3.48 3.48 0 0 1 2.22-.8c.17 0 .34.02.5.05l2.67-3.87A4.47 4.47 0 0 1 12 7.5a4.5 4.5 0 1 1-4.47 4.96l-3.92-1.62A10 10 0 1 0 12 2zm4.5 7.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z" />
+    </svg>
+  )
+}
+
+function TwitchIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M2.5 3.5L4 7v13h4.5v2.5h2.5l2.5-2.5h3.5l4.5-4.5V3.5H2.5zm16 10.5l-3 3h-4l-2.5 2.5V17h-3V5.5h12.5V14zm-7.5-6h2v5h-2V8zm5 0h2v5h-2V8z" />
+    </svg>
+  )
+}
+
+function YoutubeIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+    </svg>
+  )
+}
+
+function KickIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M4 3h5v5.5l4-5.5h6l-6.5 8.5L19 21h-6l-4-6.5V21H4V3z" />
     </svg>
   )
 }
@@ -505,9 +669,9 @@ function PlusIcon({ className }: { className?: string }) {
   )
 }
 
-function UsersIcon({ className }: { className?: string }) {
+function UsersIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -516,17 +680,17 @@ function UsersIcon({ className }: { className?: string }) {
   )
 }
 
-function MessageSquareIcon({ className }: { className?: string }) {
+function MessageSquareIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   )
 }
 
-function ActivityIcon({ className }: { className?: string }) {
+function ActivityIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
     </svg>
   )
@@ -592,6 +756,301 @@ function ChevronRightIcon({ className, style }: { className?: string; style?: Re
       <polyline points="9 18 15 12 9 6" />
     </svg>
   )
+}
+
+function EchoAtomLogo({ className, style, size = 22 }: { className?: string; style?: React.CSSProperties; size?: number }) {
+  return (
+    <svg 
+      className={className} 
+      style={style}
+      width={size} 
+      height={size} 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <circle cx="12" cy="12" r="1.9" fill="currentColor" />
+      <ellipse cx="12" cy="12" rx="9.3" ry="3.5" transform="rotate(30 12 12)" stroke="currentColor" strokeWidth="1.6" />
+      <ellipse cx="12" cy="12" rx="9.3" ry="3.5" transform="rotate(90 12 12)" stroke="currentColor" strokeWidth="1.6" />
+      <ellipse cx="12" cy="12" rx="9.3" ry="3.5" transform="rotate(150 12 12)" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="20.0" cy="7.4" r="1.3" fill="currentColor" />
+      <circle cx="12.0" cy="2.7" r="1.3" fill="currentColor" />
+      <circle cx="4.0" cy="7.4" r="1.3" fill="currentColor" />
+    </svg>
+  )
+}
+
+function PipIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <rect x="12" y="11" width="8" height="7" rx="1.5" fill="currentColor" fillOpacity="0.25" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  )
+}
+
+function EyeOffIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+      <line x1="2" y1="2" x2="22" y2="22" />
+    </svg>
+  )
+}
+
+function StopSquareIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+    </svg>
+  )
+}
+
+function FocusIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="13" x="3" y="4" rx="2" />
+      <path d="m8 21 2-4" />
+      <path d="m16 21-2-4" />
+      <path d="M12 17v4" />
+    </svg>
+  )
+}
+
+function GridIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  )
+}
+
+function BarChartIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="14" />
+    </svg>
+  )
+}
+
+function GamepadIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="6" y1="12" x2="10" y2="12" />
+      <line x1="8" y1="10" x2="8" y2="14" />
+      <line x1="15" y1="13" x2="15.01" y2="13" />
+      <line x1="18" y1="11" x2="18.01" y2="11" />
+      <rect x="2" y="6" width="20" height="12" rx="6" />
+    </svg>
+  )
+}
+
+function CopyIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  )
+}
+
+function ZapIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  )
+}
+
+function UserPlusIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="8.5" cy="7" r="4" />
+      <line x1="20" y1="8" x2="20" y2="14" />
+      <line x1="23" y1="11" x2="17" y2="11" />
+    </svg>
+  )
+}
+
+function FlameIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+    </svg>
+  )
+}
+
+function PhoneIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+    </svg>
+  )
+}
+
+function InboxIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+      <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+    </svg>
+  )
+}
+
+function SendIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="22" y1="2" x2="11" y2="13" />
+      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+    </svg>
+  )
+}
+
+interface UnifiedUserProfileFooterProps {
+  displayName: string
+  avatarUrl?: string
+  presenceStatus: string
+  showStatusMenu?: boolean
+  setShowStatusMenu?: (show: any) => void
+  updatePresenceStatus: (status: 'online' | 'idle' | 'dnd' | 'invisible') => void
+  theme: string
+  toggleTheme: () => void
+  onOpenSettings?: () => void
+  onOpenWhatsNew?: () => void
+  onSignOut: () => void
+  myGamePresence?: { name: string; icon?: string } | null
+}
+
+function UnifiedUserProfileFooter({
+  displayName,
+  avatarUrl,
+  presenceStatus,
+  showStatusMenu,
+  setShowStatusMenu,
+  updatePresenceStatus,
+  theme,
+  toggleTheme,
+  onOpenSettings,
+  onOpenWhatsNew,
+  onSignOut,
+  myGamePresence
+}: UnifiedUserProfileFooterProps) {
+  return (
+    <div className="sidebar-profile-footer">
+      <div className="profile-footer-card">
+        <div className="profile-footer-top-row">
+          <div 
+            className="profile-footer-info" 
+            onClick={() => setShowStatusMenu?.(!showStatusMenu)} 
+            title="Alterar seu status online"
+          >
+            <div className="profile-footer-avatar">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={displayName} />
+              ) : (
+                displayName.slice(0, 1).toUpperCase()
+              )}
+              <span className={`my-status-dot ${presenceStatus}`} />
+            </div>
+            <div className="profile-footer-meta">
+              <span className="profile-footer-name" title={displayName}>{displayName}</span>
+              <span className="profile-footer-status">
+                <span className={`status-dot-bullet ${presenceStatus}`} style={{ width: '7px', height: '7px' }} />
+                <span>
+                  {presenceStatus === 'online' ? 'Online' :
+                   presenceStatus === 'idle' ? 'Ausente' :
+                   presenceStatus === 'dnd' ? 'Não Perturbe' : 'Invisível'}
+                </span>
+              </span>
+            </div>
+
+            {showStatusMenu && (
+              <div className="status-picker-popover" onClick={(e) => e.stopPropagation()}>
+                <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('online'); setShowStatusMenu?.(false); }}>
+                  <span className="status-dot-bullet online" />
+                  <div className="status-meta">
+                    <strong>Online</strong>
+                    <span>Disponível</span>
+                  </div>
+                </button>
+                <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('idle'); setShowStatusMenu?.(false); }}>
+                  <span className="status-dot-bullet idle" />
+                  <div className="status-meta">
+                    <strong>Ausente</strong>
+                    <span>Inativo</span>
+                  </div>
+                </button>
+                <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('dnd'); setShowStatusMenu?.(false); }}>
+                  <span className="status-dot-bullet dnd" />
+                  <div className="status-meta">
+                    <strong>Não perturbe</strong>
+                    <span>Silenciar</span>
+                  </div>
+                </button>
+                <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('invisible'); setShowStatusMenu?.(false); }}>
+                  <span className="status-dot-bullet invisible" />
+                  <div className="status-meta">
+                    <strong>Invisível</strong>
+                    <span>Aparecer offline</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="profile-footer-actions">
+            <button type="button" className="profile-footer-btn" onClick={toggleTheme} title="Alternar tema">
+              {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+            </button>
+            {onOpenWhatsNew && (
+              <button type="button" className="profile-footer-btn" onClick={onOpenWhatsNew} title="Novidades & Versões">
+                <SparklesIcon style={{ width: '13px', height: '13px', color: '#facc15' }} />
+              </button>
+            )}
+            {onOpenSettings && (
+              <button type="button" className="profile-footer-btn" onClick={onOpenSettings} title="Configurações">
+                <SettingsIcon />
+              </button>
+            )}
+            <button type="button" className="profile-footer-btn logout" onClick={onSignOut} title="Sair da conta">
+              <LogOutIcon />
+            </button>
+          </div>
+        </div>
+
+        {myGamePresence && presenceStatus !== 'invisible' && (
+          <div className="profile-footer-activity-row" title={`Jogando ${myGamePresence.name}`}>
+            <span className="game-presence-badge">
+              <GamepadIcon className="game-presence-icon" style={{ width: '12px', height: '12px' }} />
+              <span className="game-presence-text">Jogando {myGamePresence.name}</span>
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function formatChatDateDivider(date: Date): string {
+  const today = new Date()
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  if (date.toDateString() === today.toDateString()) {
+    return 'Hoje'
+  }
+  if (date.toDateString() === yesterday.toDateString()) {
+    return 'Ontem'
+  }
+  return date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined })
 }
 
 function formatMessageText(text: string, userDisplayName?: string, serverEmojis?: ServerEmoji[]): React.ReactNode {
@@ -805,6 +1264,346 @@ function fallbackCopyToClipboard(text: string): boolean {
   }
 }
 
+interface MemberProfileModalProps {
+  inspectedMember: {
+    user: { id: string; display_name: string; avatar_url?: string }
+    joined_at?: string
+    roleName?: string
+    roleColor?: string
+    roles?: ServerRole[]
+  }
+  onClose: () => void
+  currentUser: User | null
+  isOnline: boolean
+  userPresenceStatus: string
+  validCustomStatus: string | null
+  memberClanTag: string | null
+  memberClanTagColor: string
+  activeGame: string | null
+  isVoiceUser: boolean
+  voiceChannelName?: string
+  isServerOwner: boolean
+  onOpenDM: (targetId: string) => void
+  onAdjustVolume?: (peer: VoiceParticipant) => void
+  voicePeer?: VoiceParticipant
+  showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend') => void
+}
+
+function MemberProfileModal({
+  inspectedMember,
+  onClose,
+  currentUser,
+  isOnline,
+  userPresenceStatus,
+  validCustomStatus,
+  memberClanTag,
+  memberClanTagColor,
+  activeGame,
+  isVoiceUser,
+  voiceChannelName,
+  isServerOwner,
+  onOpenDM,
+  onAdjustVolume,
+  voicePeer,
+  showToast
+}: MemberProfileModalProps) {
+  const [pokeCount, setPokeCount] = useState(0)
+  const [isPoking, setIsPoking] = useState(false)
+  const [copiedHandle, setCopiedHandle] = useState(false)
+
+  const memberId = inspectedMember.user.id
+  const isMe = currentUser?.id === memberId
+  const noteStorageKey = `echo-member-note-${memberId}`
+  const [personalNote, setPersonalNote] = useState<string>(() => {
+    return localStorage.getItem(noteStorageKey) || ''
+  })
+
+  const handleNoteChange = (val: string) => {
+    setPersonalNote(val)
+    localStorage.setItem(noteStorageKey, val)
+  }
+
+  const handlePoke = () => {
+    const nextCount = pokeCount + 1
+    setPokeCount(nextCount)
+    setIsPoking(true)
+    setTimeout(() => setIsPoking(false), 450)
+
+    try {
+      if (nextCount >= 5) {
+        playSoundboardEffect('levelup', 0.5)
+      } else {
+        playSoundboardEffect('ping', 0.5)
+      }
+    } catch {
+      // AudioContext fallback
+    }
+
+    const name = inspectedMember.user.display_name
+    if (nextCount === 1) {
+      showToast('⚡ Cutucada enviada!', `Você cutucou ${name}!`, 'info')
+    } else if (nextCount === 2) {
+      showToast('⚡ Cutucou de novo!', `${name} recebeu o aviso!`, 'info')
+    } else if (nextCount === 3) {
+      showToast('💥 Combo Triplo!', `${name} recebeu 3 cutucadas seguidas!`, 'friend')
+    } else if (nextCount >= 5) {
+      showToast(`🔥 Super Combo (x${nextCount})!`, `Deixe ${name} respirar um pouco! 😂`, 'message')
+    }
+  }
+
+  const handleCopyHandle = () => {
+    const handle = `@${inspectedMember.user.display_name.toLowerCase().replace(/\s+/g, '')}`
+    copyToClipboard(handle)
+    setCopiedHandle(true)
+    showToast('Nome Copiado!', `${handle} copiado para a área de transferência.`, 'info')
+    setTimeout(() => setCopiedHandle(false), 2000)
+  }
+
+  const roleColor = inspectedMember.roleColor || 'var(--accent-color, #00f2fe)'
+  const handleName = inspectedMember.user.display_name.toLowerCase().replace(/\s+/g, '')
+
+  return (
+    <div className="screen-picker-overlay member-profile-overlay" onClick={onClose}>
+      <div className="member-profile-card-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Banner with dynamic aurora mesh gradient & badges */}
+        <div 
+          className="member-profile-banner" 
+          style={{ 
+            background: `linear-gradient(135deg, ${roleColor}ee 0%, #1e1b4b 60%, #0b0f19 100%)` 
+          }}
+        >
+          <div className="member-profile-banner-badges">
+            {isServerOwner && (
+              <span className="member-banner-badge" title="Dono deste servidor">
+                <CrownIcon style={{ width: '12px', height: '12px' }} />
+                <span>Dono</span>
+              </span>
+            )}
+            {isVoiceUser && (
+              <span className="member-banner-badge" style={{ background: 'rgba(34, 197, 94, 0.45)', borderColor: '#22c55e' }}>
+                <MicIcon style={{ width: '12px', height: '12px' }} />
+                <span>Em Call</span>
+              </span>
+            )}
+            {activeGame && (
+              <span className="member-banner-badge" style={{ background: 'rgba(59, 130, 246, 0.45)', borderColor: '#3b82f6' }}>
+                <GamepadIcon style={{ width: '12px', height: '12px' }} />
+                <span>Jogando</span>
+              </span>
+            )}
+          </div>
+
+          <button 
+            type="button" 
+            className="member-profile-close-btn" 
+            onClick={onClose}
+            title="Fechar perfil"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="member-profile-body">
+          {/* Avatar row with poke trigger */}
+          <div className="member-profile-avatar-row">
+            <div className={`member-profile-avatar-large ${isPoking ? 'poke-animate' : ''}`}>
+              {inspectedMember.user.avatar_url ? (
+                <img src={inspectedMember.user.avatar_url} alt={inspectedMember.user.display_name} />
+              ) : (
+                inspectedMember.user.display_name.slice(0, 1).toUpperCase()
+              )}
+              <span className={`member-profile-status-ring ${userPresenceStatus}`} />
+            </div>
+
+            {!isMe && (
+              <button 
+                type="button" 
+                className="member-profile-poke-trigger"
+                onClick={handlePoke}
+                title="Cutucar com efeito de som divertido"
+              >
+                <ZapIcon style={{ width: '13px', height: '13px' }} />
+                <span>{pokeCount > 0 ? `Cutucar (x${pokeCount})` : 'Cutucar'}</span>
+              </button>
+            )}
+          </div>
+
+          {/* User Display Name, Clan Tag, Copyable @handle */}
+          <div className="member-profile-header-info">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <h3 className="member-profile-display-name">{inspectedMember.user.display_name}</h3>
+              {memberClanTag && (
+                <span 
+                  className="member-clan-tag" 
+                  style={{ 
+                    color: memberClanTagColor, 
+                    borderColor: `${memberClanTagColor}55`, 
+                    background: `${memberClanTagColor}15` 
+                  }}
+                >
+                  [{memberClanTag}]
+                </span>
+              )}
+            </div>
+
+            <div className="member-profile-handle-row">
+              <button 
+                type="button" 
+                className="member-profile-handle-btn" 
+                onClick={handleCopyHandle}
+                title="Clique para copiar menção @"
+              >
+                <span>@{handleName}</span>
+                <span style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px', color: copiedHandle ? '#10b981' : 'var(--text-muted)' }}>
+                  {copiedHandle ? '✓ Copiado!' : (
+                    <>
+                      <CopyIcon style={{ width: '11px', height: '11px' }} />
+                      <span>Copiar</span>
+                    </>
+                  )}
+                </span>
+              </button>
+            </div>
+
+            {validCustomStatus && (
+              <div className="member-profile-custom-status">
+                <MessageSquareIcon style={{ width: '13px', height: '13px', color: 'var(--accent-color, #00f2fe)', flexShrink: 0 }} />
+                <span>{validCustomStatus}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Activity Presence Card */}
+          {activeGame ? (
+            <div className="member-activity-card gaming">
+              <div className="member-activity-header">
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <GamepadIcon style={{ width: '13px', height: '13px' }} />
+                  <span>Jogando Agora</span>
+                </span>
+                <span style={{ fontSize: '10px', background: 'rgba(34, 197, 94, 0.2)', padding: '2px 6px', borderRadius: '4px', color: '#4ade80' }}>
+                  AO VIVO
+                </span>
+              </div>
+              <div className="member-activity-body">
+                <div className="member-activity-icon-wrap" style={{ color: '#4ade80' }}>
+                  <GamepadIcon style={{ width: '20px', height: '20px' }} />
+                </div>
+                <div>
+                  <h4 className="member-activity-name">{activeGame}</h4>
+                  <p className="member-activity-sub">Echo Game Presence • Em partida</p>
+                </div>
+              </div>
+            </div>
+          ) : isVoiceUser ? (
+            <div className="member-activity-card voice">
+              <div className="member-activity-header">
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <VolumeIcon style={{ width: '13px', height: '13px' }} />
+                  <span>Em Chamada de Voz</span>
+                </span>
+                <div className="voice-equalizer-wave">
+                  <span className="voice-wave-bar" />
+                  <span className="voice-wave-bar" />
+                  <span className="voice-wave-bar" />
+                </div>
+              </div>
+              <div className="member-activity-body">
+                <div className="member-activity-icon-wrap" style={{ color: '#818cf8' }}>
+                  <MicIcon style={{ width: '18px', height: '18px' }} />
+                </div>
+                <div>
+                  <h4 className="member-activity-name">{voiceChannelName || 'Canal de Voz'}</h4>
+                  <p className="member-activity-sub">Conectado na sala de áudio</p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Private Personal Note */}
+          <div className="member-private-note-section">
+            <label className="member-private-note-label">
+              <LockIcon style={{ width: '11px', height: '11px' }} />
+              <span>NOTA PESSOAL (APENAS VOCÊ VÊ)</span>
+            </label>
+            <textarea
+              className="member-private-note-input"
+              rows={2}
+              value={personalNote}
+              onChange={(e) => handleNoteChange(e.target.value)}
+              placeholder="Clique para adicionar uma anotação privada sobre este membro..."
+            />
+          </div>
+
+          {/* Roles Section */}
+          <div className="member-profile-roles-section">
+            <span className="member-profile-section-title">CARGOS NO SERVIDOR</span>
+            <div className="member-profile-roles-wrap">
+              {inspectedMember.roles && inspectedMember.roles.length > 0 ? (
+                inspectedMember.roles.map(r => {
+                  const isOwnerRole = r.name.toLowerCase().includes('dono') || isServerOwner
+                  const cleanRoleName = r.name.replace(/^[\p{Emoji}\s]+/gu, '').trim() || r.name
+                  return (
+                    <span 
+                      key={r.id} 
+                      className="member-role-pill" 
+                      style={{ color: r.color, borderColor: `${r.color}66`, background: `${r.color}15`, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                    >
+                      <span className="role-dot" style={{ background: r.color }} />
+                      {isOwnerRole && <CrownIcon style={{ width: '11px', height: '11px', color: r.color }} />}
+                      <span>{cleanRoleName}</span>
+                    </span>
+                  )
+                })
+              ) : (
+                <span className="member-role-pill default" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span className="role-dot" />
+                  {isServerOwner && <CrownIcon style={{ width: '11px', height: '11px', color: '#ffb703' }} />}
+                  <span>{inspectedMember.roleName?.replace(/^[\p{Emoji}\s]+/gu, '').trim() || 'Membro'}</span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Actions Section */}
+          <div className="member-profile-actions">
+            {!isMe && (
+              <button 
+                type="button" 
+                className="member-profile-action-btn primary"
+                onClick={() => onOpenDM(inspectedMember.user.id)}
+              >
+                <MessageSquareIcon />
+                <span>Conversar no Privado</span>
+              </button>
+            )}
+
+            {voicePeer && !isMe && onAdjustVolume && (
+              <button 
+                type="button" 
+                className="member-profile-action-btn secondary"
+                onClick={() => onAdjustVolume(voicePeer)}
+              >
+                <VolumeIcon />
+                <span>Ajustar Volume</span>
+              </button>
+            )}
+          </div>
+
+          <div className="member-profile-footer">
+            <span>ECHO // VERIFIED PASS</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+              <span>STATUS:</span>
+              <span className={`status-dot-bullet ${isOnline ? 'online' : 'offline'}`} style={{ width: '6px', height: '6px' }} />
+              <span>{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -944,10 +1743,28 @@ function Echo({ user }: { user: User }) {
   const [slowmodeCooldown, setSlowmodeCooldown] = useState<number>(0)
   const [spaceVoiceUsers, setSpaceVoiceUsers] = useState<Record<string, VoiceParticipant[]>>({})
   const [channelSearchQuery, setChannelSearchQuery] = useState('')
+  const channelSearchInputRef = useRef<HTMLInputElement | null>(null)
   const [showServerDropdown, setShowServerDropdown] = useState(false)
 
-  // Inspected Member Card Popover
+  // Inspected Member Card Modal
   const [inspectedMember, setInspectedMember] = useState<{ user: { id: string; display_name: string; avatar_url?: string }; joined_at?: string; roleName?: string; roleColor?: string; roles?: ServerRole[] } | null>(null)
+
+  // Hover Popover State for Member List
+  const [hoveredMemberPopover, setHoveredMemberPopover] = useState<{
+    user: { id: string; display_name: string; avatar_url?: string }
+    roleName?: string
+    roleColor?: string
+    roles?: ServerRole[]
+    clanTag?: string | null
+    clanTagColor?: string
+    activeGame?: string | null
+    isVoiceUser?: boolean
+    userPresenceStatus: string
+    isOnline: boolean
+    customStatus?: string | null
+    rect: { top: number; left: number; height: number; bottom: number }
+  } | null>(null)
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Audit Logs States
   const [serverAuditLogs, setServerAuditLogs] = useState<ServerAuditLog[]>([])
@@ -1058,6 +1875,71 @@ function Echo({ user }: { user: User }) {
     }
     localStorage.setItem('echo-theme', theme)
   }, [theme])
+
+  // Custom Accent Color, Chat Density, and Performance Mode
+  const [customAccentColor, setCustomAccentColor] = useState<string>(() => localStorage.getItem('echo-custom-accent') || '')
+  const [chatDensity, setChatDensity] = useState<'cozy' | 'compact'>(() => (localStorage.getItem('echo-chat-density') as any) || 'cozy')
+  const [performanceMode, setPerformanceMode] = useState<boolean>(() => localStorage.getItem('echo-performance-mode') === 'true')
+
+  useEffect(() => {
+    const applyAccent = (color: string) => {
+      const clean = color.replace('#', '').trim()
+      let r = 0, g = 242, b = 254
+      if (clean.length === 6) {
+        r = parseInt(clean.slice(0, 2), 16)
+        g = parseInt(clean.slice(2, 4), 16)
+        b = parseInt(clean.slice(4, 6), 16)
+      } else if (clean.length === 3) {
+        r = parseInt(clean[0] + clean[0], 16)
+        g = parseInt(clean[1] + clean[1], 16)
+        b = parseInt(clean[2] + clean[2], 16)
+      }
+
+      const light = `rgba(${r}, ${g}, ${b}, 0.16)`
+      const glow = `0 0 16px rgba(${r}, ${g}, ${b}, 0.45)`
+      const rgbStr = `${r}, ${g}, ${b}`
+
+      document.body.style.setProperty('--accent-color', color, 'important')
+      document.body.style.setProperty('--accent-hover', color, 'important')
+      document.body.style.setProperty('--accent-light', light, 'important')
+      document.body.style.setProperty('--accent-glow', glow, 'important')
+      document.body.style.setProperty('--accent-color-rgb', rgbStr, 'important')
+
+      document.documentElement.style.setProperty('--accent-color', color, 'important')
+      document.documentElement.style.setProperty('--accent-hover', color, 'important')
+      document.documentElement.style.setProperty('--accent-light', light, 'important')
+      document.documentElement.style.setProperty('--accent-glow', glow, 'important')
+      document.documentElement.style.setProperty('--accent-color-rgb', rgbStr, 'important')
+    }
+
+    if (customAccentColor) {
+      applyAccent(customAccentColor)
+    } else {
+      ['--accent-color', '--accent-hover', '--accent-light', '--accent-glow', '--accent-color-rgb'].forEach(prop => {
+        document.body.style.removeProperty(prop)
+        document.documentElement.style.removeProperty(prop)
+      })
+    }
+    localStorage.setItem('echo-custom-accent', customAccentColor)
+  }, [customAccentColor, theme])
+
+  useEffect(() => {
+    if (chatDensity === 'compact') {
+      document.body.classList.add('density-compact')
+    } else {
+      document.body.classList.remove('density-compact')
+    }
+    localStorage.setItem('echo-chat-density', chatDensity)
+  }, [chatDensity])
+
+  useEffect(() => {
+    if (performanceMode) {
+      document.body.classList.add('theme-performance-opaque')
+    } else {
+      document.body.classList.remove('theme-performance-opaque')
+    }
+    localStorage.setItem('echo-performance-mode', performanceMode ? 'true' : 'false')
+  }, [performanceMode])
 
   function selectTheme(themeId: string) {
     const selected = THEMES.find(t => t.id === themeId)
@@ -1199,6 +2081,22 @@ function Echo({ user }: { user: User }) {
       })
     }
   }, [])
+
+  // Global Shortcut: Ctrl+K / Cmd+K to search channels
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        if (channelSearchInputRef.current) {
+          channelSearchInputRef.current.focus()
+          channelSearchInputRef.current.select()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [])
+
 
   // Chat Features: Reply, Reactions, Voice Notes, GIFs
   const [replyingToMessage, setReplyingToMessage] = useState<any | null>(null)
@@ -3464,7 +4362,13 @@ function Echo({ user }: { user: User }) {
     if (ytMatch) {
       const videoId = ytMatch[1]
       return (
-        <div className="link-embed-card">
+        <div className="link-embed-card youtube-embed">
+          <div className="link-embed-header">
+            <span className="link-embed-brand-badge">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="#ff0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+              <span>YouTube Video</span>
+            </span>
+          </div>
           <div className="link-embed-video-wrap">
             <iframe 
               src={`https://www.youtube-nocookie.com/embed/${videoId}`} 
@@ -3592,18 +4496,63 @@ function Echo({ user }: { user: User }) {
       )}
 
       <header className="topbar">
-        <Brand />
-        <nav>
-          {(['Servidores', 'Amigos', 'Configurações', 'Descobrir'] as Page[]).map((item) => {
-            const totalUnread = item === 'Amigos' ? pendingFriendCount + Object.values(unreadDMs).reduce((a, b) => a + b, 0) : 0
-            return (
-              <button key={item} className={page === item ? 'nav-active' : ''} onClick={() => setPage(item)} style={{ position: 'relative' }}>
-                {item}
-                {totalUnread > 0 && <span className="nav-badge">{totalUnread}</span>}
-              </button>
-            )
-          })}
-        </nav>
+        <div className="topbar-left">
+          <Brand />
+          <nav className="topbar-nav">
+            {(['Servidores', 'Amigos', 'Configurações', 'Descobrir'] as Page[]).map((item) => {
+              const totalUnread = item === 'Amigos' ? pendingFriendCount + Object.values(unreadDMs).reduce((a, b) => a + b, 0) : 0
+              return (
+                <button 
+                  key={item} 
+                  className={`topbar-nav-btn ${page === item ? 'nav-active' : ''}`} 
+                  onClick={() => setPage(item)}
+                >
+                  <span>{item}</span>
+                  {totalUnread > 0 && <span className="nav-badge">{totalUnread}</span>}
+                </button>
+              )
+            })}
+          </nav>
+        </div>
+
+        <div className="topbar-right">
+          <button 
+            type="button" 
+            className="topbar-search-trigger"
+            onClick={() => {
+              if (page !== 'Servidores') setPage('Servidores')
+              setTimeout(() => {
+                if (channelSearchInputRef.current) {
+                  channelSearchInputRef.current.focus()
+                  channelSearchInputRef.current.select()
+                }
+              }, 50)
+            }}
+            title="Buscar canais e membros (Ctrl+K)"
+          >
+            <SearchIcon style={{ width: '14px', height: '14px' }} />
+            <span className="topbar-search-text">Buscar...</span>
+            <kbd className="topbar-search-kbd">Ctrl K</kbd>
+          </button>
+
+          <div 
+            className="topbar-user-pill" 
+            onClick={() => setPage('Configurações')}
+            title="Abrir Configurações de Perfil"
+          >
+            <div className="topbar-user-avatar">
+              {profileAvatarUrl ? (
+                <img src={profileAvatarUrl} alt="" />
+              ) : (
+                <span>{(profileDisplayName || displayName || 'U').slice(0, 1).toUpperCase()}</span>
+              )}
+              <span className={`topbar-status-dot ${presenceStatus}`} />
+            </div>
+            <span className="topbar-user-name">
+              {profileDisplayName || displayName}
+            </span>
+          </div>
+        </div>
       </header>
 
       <section className="workspace" style={{ display: page === 'Servidores' ? undefined : 'none' }}>
@@ -3732,7 +4681,9 @@ function Echo({ user }: { user: User }) {
             return (
               <aside className="sidebar channels-sidebar channels-sidebar-empty">
                 <div className="empty-servers-prompt">
-                  <div className="empty-servers-icon">🏰</div>
+                  <div className="empty-servers-icon">
+                    <UsersIcon style={{ width: '40px', height: '40px', color: 'var(--text-muted)', opacity: 0.6 }} />
+                  </div>
                   <h3>Nenhum servidor encontrado</h3>
                   <p>Crie sua própria comunidade gamer ou explore servidores públicos.</p>
                   <button 
@@ -3743,21 +4694,20 @@ function Echo({ user }: { user: User }) {
                     ＋ Criar um Servidor
                   </button>
                 </div>
-                <div className="sidebar-profile-footer">
-                  <div className="profile-footer-info" onClick={() => setShowStatusMenu(!showStatusMenu)} style={{ cursor: 'pointer', position: 'relative' }}>
-                    <div className="profile-footer-avatar" style={{ position: 'relative' }}>
-                      {profileAvatarUrl ? (
-                        <img src={profileAvatarUrl} alt={profileDisplayName} />
-                      ) : (
-                        profileDisplayName.slice(0, 1).toUpperCase()
-                      )}
-                      <span className={`my-status-dot ${presenceStatus}`} />
-                    </div>
-                    <div className="profile-footer-meta">
-                      <span className="profile-footer-name" title={profileDisplayName}>{profileDisplayName}</span>
-                    </div>
-                  </div>
-                </div>
+                <UnifiedUserProfileFooter
+                  displayName={profileDisplayName}
+                  avatarUrl={profileAvatarUrl}
+                  presenceStatus={presenceStatus}
+                  showStatusMenu={showStatusMenu}
+                  setShowStatusMenu={setShowStatusMenu}
+                  updatePresenceStatus={updatePresenceStatus}
+                  theme={theme}
+                  toggleTheme={toggleTheme}
+                  onOpenSettings={() => setPage('Configurações')}
+                  onOpenWhatsNew={() => setShowWhatsNewModal(true)}
+                  onSignOut={() => supabase?.auth.signOut()}
+                  myGamePresence={myGamePresence}
+                />
               </aside>
             )
           }
@@ -3886,14 +4836,19 @@ function Echo({ user }: { user: User }) {
                   background: activeSpace.banner_url ? `url(${activeSpace.banner_url}) center/cover` : undefined
                 }}
               >
-                <div className="server-header-card-content">
-                  <div className="server-header-info">
-                    <h3 className="server-title" title={activeSpace.name}>{activeSpace.name}</h3>
+                <div className="server-header-card-content" style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
+                  <div className="server-avatar-squircle">
+                    {activeSpace.name.slice(0, 1).toUpperCase()}
+                  </div>
+                  <div className="server-header-info" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <h3 className="server-title" title={activeSpace.name} style={{ margin: 0, fontSize: '15px', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {activeSpace.name}
+                    </h3>
                     {activeSpace.creator_id === user.id && (
-                      <span className="server-crown-badge" title="Você é o Dono do Servidor">👑</span>
+                      <span className="server-crown-badge" title="Você é o Dono do Servidor" style={{ flexShrink: 0 }}>👑</span>
                     )}
                   </div>
-                  <span className={`server-dropdown-chevron ${showServerDropdown ? 'open' : ''}`}>▾</span>
+                  <span className={`server-dropdown-chevron ${showServerDropdown ? 'open' : ''}`} style={{ transition: 'transform 0.2s ease', transform: showServerDropdown ? 'rotate(180deg)' : 'none', color: 'var(--text-muted)' }}>▾</span>
                 </div>
 
                 {/* Echo Server Command Hub */}
@@ -3966,11 +4921,12 @@ function Echo({ user }: { user: User }) {
 
               {/* Quick Channel Search Input */}
               <div className="channels-search-wrap">
-                <div className="channels-search-box">
-                  <span className="channels-search-icon">🔍</span>
+                <div className="channels-search-box" onClick={() => channelSearchInputRef.current?.focus()}>
+                  <span className="channels-search-icon"><SearchIcon style={{ width: '13px', height: '13px' }} /></span>
                   <input
+                    ref={channelSearchInputRef}
                     type="text"
-                    placeholder="Buscar canais..."
+                    placeholder="Buscar canais... (Ctrl+K)"
                     value={channelSearchQuery}
                     onChange={e => setChannelSearchQuery(e.target.value)}
                     className="channels-search-input"
@@ -3991,14 +4947,38 @@ function Echo({ user }: { user: User }) {
                 <div className="channels-tree">
                   {uncategorizedText.length > 0 && (
                     <div className="channel-group">
-                      <span className="channel-group-label">CANAIS DE TEXTO</span>
+                      <div className="channel-category-header-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px 4px 10px' }}>
+                        <span className="channel-group-label" style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.6px' }}>CANAIS DE TEXTO</span>
+                        {currentSpace && (canUserDo(currentSpace.id, user.id, 'manageChannels') || currentSpace.creator_id === user.id) && (
+                          <button 
+                            type="button" 
+                            onClick={() => { setShowNewChannel(activeSpace.id); setNewChannelCategory(''); }} 
+                            title="Criar canal de texto" 
+                            className="category-add-channel-btn"
+                          >
+                            ＋
+                          </button>
+                        )}
+                      </div>
                       {uncategorizedText.map(renderChannelNode)}
                     </div>
                   )}
 
                   {uncategorizedVoice.length > 0 && (
                     <div className="channel-group">
-                      <span className="channel-group-label">CANAIS DE VOZ</span>
+                      <div className="channel-category-header-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px 4px 10px' }}>
+                        <span className="channel-group-label" style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.6px' }}>CANAIS DE VOZ</span>
+                        {currentSpace && (canUserDo(currentSpace.id, user.id, 'manageChannels') || currentSpace.creator_id === user.id) && (
+                          <button 
+                            type="button" 
+                            onClick={() => { setShowNewChannel(activeSpace.id); setNewChannelCategory(''); }} 
+                            title="Criar canal de voz" 
+                            className="category-add-channel-btn"
+                          >
+                            ＋
+                          </button>
+                        )}
+                      </div>
                       {uncategorizedVoice.map(renderChannelNode)}
                     </div>
                   )}
@@ -4154,29 +5134,42 @@ function Echo({ user }: { user: User }) {
                   </div>
                 )}
 
-                {/* Docked Voice Status Panel */}
+                {/* Docked Voice Status Panel (Ergonomic 2-row layout) */}
                 {activeVoiceChannelId && (
                   <div className="voice-status-panel">
-                    <div className="voice-status-info">
-                      <div className="connection-quality-indicator" style={{ position: 'relative', cursor: 'pointer' }}>
-                        <div className={`connection-bars ${rtcStats && rtcStats.ping < 100 ? 'good' : rtcStats && rtcStats.ping < 200 ? 'medium' : 'bad'}`}>
-                          <i /><i /><i />
+                    <div className="voice-status-header-row">
+                      <div className="voice-status-info">
+                        <div className="connection-quality-indicator" style={{ position: 'relative', cursor: 'pointer' }}>
+                          <div className={`connection-bars ${rtcStats && rtcStats.ping < 100 ? 'good' : rtcStats && rtcStats.ping < 200 ? 'medium' : 'bad'}`}>
+                            <i /><i /><i />
+                          </div>
+                          
+                          {/* Tooltip de Estatísticas RTC */}
+                          <div className="connection-stats-tooltip">
+                            <strong>Conexão RTC</strong>
+                            <div className="stat-row"><span>Latência (Ping):</span> <strong>{rtcStats ? `${rtcStats.ping} ms` : 'Medindo...'}</strong></div>
+                            <div className="stat-row"><span>Jitter:</span> <strong>{rtcStats ? `${rtcStats.jitter} ms` : '0 ms'}</strong></div>
+                            <div className="stat-row"><span>Perda de Pacotes:</span> <strong>{rtcStats ? `${rtcStats.packetLoss} %` : '0 %'}</strong></div>
+                          </div>
                         </div>
-                        
-                        {/* Tooltip de Estatísticas RTC */}
-                        <div className="connection-stats-tooltip">
-                          <strong>Conexão RTC</strong>
-                          <div className="stat-row"><span>Latência (Ping):</span> <strong>{rtcStats ? `${rtcStats.ping} ms` : 'Medindo...'}</strong></div>
-                          <div className="stat-row"><span>Jitter:</span> <strong>{rtcStats ? `${rtcStats.jitter} ms` : '0 ms'}</strong></div>
-                          <div className="stat-row"><span>Perda de Pacotes:</span> <strong>{rtcStats ? `${rtcStats.packetLoss} %` : '0 %'}</strong></div>
+                        <div className="voice-status-text">
+                          <span className="voice-status-label">Voz conectada</span>
+                          <span className="voice-status-channel" title={activeVoiceChannel?.name}>{activeVoiceChannel?.name}</span>
                         </div>
                       </div>
-                      <div className="voice-status-text">
-                        <span className="voice-status-label">Voz conectada</span>
-                        <span className="voice-status-channel">{activeVoiceChannel?.name}</span>
-                      </div>
+
+                      <button 
+                        type="button" 
+                        className="voice-disconnect-btn" 
+                        onClick={handleLeaveVoice} 
+                        title="Desconectar da chamada de voz"
+                      >
+                        <PhoneOffIcon style={{ width: '12px', height: '12px' }} />
+                        <span>Sair</span>
+                      </button>
                     </div>
-                    <div className="voice-status-actions">
+
+                    <div className="voice-status-actions-grid">
                       <button className={`voice-action-btn ${isMuted ? 'muted' : ''}`} onClick={handleToggleMute} title={isMuted ? "Desmutar microfone" : "Mutar microfone"}>
                         {isMuted ? <MicOffIcon /> : <MicIcon />}
                       </button>
@@ -4186,11 +5179,8 @@ function Echo({ user }: { user: User }) {
                       <button className="voice-action-btn" onClick={() => setShowSoundboardModal(true)} title="Soundboard Gamer">
                         <SoundboardIcon />
                       </button>
-                      <button className={`voice-action-btn ${isRecordingCall ? 'muted' : ''}`} onClick={isRecordingCall ? stopCallRecording : startCallRecording} title={isRecordingCall ? `Gravando (${recordingDuration}s)` : "Gravar chamada"}>
+                      <button className={`voice-action-btn ${isRecordingCall ? 'recording' : ''}`} onClick={isRecordingCall ? stopCallRecording : startCallRecording} title={isRecordingCall ? `Gravando chamada (${recordingDuration}s)` : "Gravar chamada"}>
                         <RecordCallIcon isRecording={isRecordingCall} />
-                      </button>
-                      <button className="voice-action-btn disconnect-btn" onClick={handleLeaveVoice} title="Desconectar">
-                        <PhoneOffIcon />
                       </button>
                     </div>
                   </div>
@@ -4198,86 +5188,20 @@ function Echo({ user }: { user: User }) {
               </div>
 
               {/* User Profile Footer */}
-              <div className="sidebar-profile-footer">
-                <div className="profile-footer-card">
-                  <div className="profile-footer-top-row">
-                    <div className="profile-footer-info" onClick={() => setShowStatusMenu(!showStatusMenu)} style={{ cursor: 'pointer', position: 'relative' }}>
-                      <div className="profile-footer-avatar" style={{ position: 'relative' }}>
-                        {profileAvatarUrl ? (
-                          <img src={profileAvatarUrl} alt={profileDisplayName} />
-                        ) : (
-                          profileDisplayName.slice(0, 1).toUpperCase()
-                        )}
-                        <span className={`my-status-dot ${presenceStatus}`} />
-                      </div>
-                      <div className="profile-footer-meta">
-                        <span className="profile-footer-name" title={profileDisplayName}>{profileDisplayName}</span>
-                        <span className="profile-footer-status">
-                          {presenceStatus === 'online' ? '🟢 Online' :
-                           presenceStatus === 'idle' ? '🟡 Ausente' :
-                           presenceStatus === 'dnd' ? '🔴 Não Perturbe' : '⚪ Invisível'}
-                        </span>
-                      </div>
-
-                      {showStatusMenu && (
-                        <div className="status-picker-popover" onClick={(e) => e.stopPropagation()}>
-                          <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('online'); setShowStatusMenu(false); }}>
-                            <span className="status-dot-bullet online" />
-                            <div className="status-meta">
-                              <strong>Online</strong>
-                              <span>Disponível</span>
-                            </div>
-                          </button>
-                          <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('idle'); setShowStatusMenu(false); }}>
-                            <span className="status-dot-bullet idle" />
-                            <div className="status-meta">
-                              <strong>Ausente</strong>
-                              <span>Inativo</span>
-                            </div>
-                          </button>
-                          <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('dnd'); setShowStatusMenu(false); }}>
-                            <span className="status-dot-bullet dnd" />
-                            <div className="status-meta">
-                              <strong>Não perturbe</strong>
-                              <span>Silenciar</span>
-                            </div>
-                          </button>
-                          <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('invisible'); setShowStatusMenu(false); }}>
-                            <span className="status-dot-bullet invisible" />
-                            <div className="status-meta">
-                              <strong>Invisível</strong>
-                              <span>Aparecer offline</span>
-                            </div>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    <div className="profile-footer-actions">
-                      <button type="button" className="profile-footer-btn" onClick={toggleTheme} title="Alternar tema">
-                        {theme === 'light' ? <MoonIcon /> : <SunIcon />}
-                      </button>
-                      <button type="button" className="profile-footer-btn" onClick={() => setShowWhatsNewModal(true)} title="Novidades & Atualizações ✨">
-                        <span style={{ fontSize: '12px' }}>✨</span>
-                      </button>
-                      <button type="button" className="profile-footer-btn" onClick={() => setPage('Configurações')} title="Configurações">
-                        <SettingsIcon />
-                      </button>
-                      <button type="button" className="profile-footer-btn logout" onClick={() => supabase?.auth.signOut()} title="Sair">
-                        <LogOutIcon />
-                      </button>
-                    </div>
-                  </div>
-
-                  {myGamePresence && presenceStatus !== 'invisible' && (
-                    <div className="profile-footer-activity-row" title={`Jogando ${myGamePresence.name}`}>
-                      <span className="game-presence-badge">
-                        <span className="game-presence-icon">{myGamePresence.icon || '🎮'}</span>
-                        <span className="game-presence-text">Jogando {myGamePresence.name}</span>
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <UnifiedUserProfileFooter
+                displayName={profileDisplayName}
+                avatarUrl={profileAvatarUrl}
+                presenceStatus={presenceStatus}
+                showStatusMenu={showStatusMenu}
+                setShowStatusMenu={setShowStatusMenu}
+                updatePresenceStatus={updatePresenceStatus}
+                theme={theme}
+                toggleTheme={toggleTheme}
+                onOpenSettings={() => setPage('Configurações')}
+                onOpenWhatsNew={() => setShowWhatsNewModal(true)}
+                onSignOut={() => supabase?.auth.signOut()}
+                myGamePresence={myGamePresence}
+              />
             </aside>
           )
         })()}
@@ -4358,11 +5282,14 @@ function Echo({ user }: { user: User }) {
                         )}
                       </button>
 
-                      <span className="live-badge">● ao vivo</span>
+                      {activeScreenSharers.length > 0 && (
+                        <span className="live-badge" title="Transmissão de tela em andamento">● ao vivo</span>
+                      )}
+
                       <button 
                         className={`profile-footer-btn ${showMembersList ? 'active' : ''}`} 
                         onClick={() => setShowMembersList(!showMembersList)}
-                        title="Lista de Membros"
+                        title={showMembersList ? "Ocultar Lista de Membros" : "Mostrar Lista de Membros"}
                         style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
                         <UsersIcon />
@@ -4383,231 +5310,310 @@ function Echo({ user }: { user: User }) {
                             return m.body.toLowerCase().includes(q) || (m.profile?.display_name || '').toLowerCase().includes(q)
                           })
 
-                          if (filtered.length === 0) {
-                            return (
-                              <div className="no-messages">
-                                <span className="no-msg-icon">{searchQuery ? '🔍' : '✉'}</span>
-                                <p>{searchQuery ? `Nenhuma mensagem encontrada para "${searchQuery}"` : 'Ainda não há mensagens.\nDiga olá!'}</p>
-                              </div>
-                            )
-                          }
-
-                          return filtered.map((message) => {
-                            const isMentioned = message.author_id !== user.id && message.body.toLowerCase().includes(`@${profileDisplayName.toLowerCase()}`)
-                            const msgRole = currentSpace ? getUserHighestRole(currentSpace.id, message.author_id) : null
-                            const isPinned = (pinnedMessages[selectedChannel.id] || []).some(p => p.message_id === message.id)
-                            const canManagePins = currentSpace && (canUserDo(currentSpace.id, user.id, 'manageMessages') || currentSpace.creator_id === user.id)
-                            const reactions = messageReactions[message.id] || {}
-
-                            // Parse reply quote if present
-                            let displayedBody = message.body
-                            let replyQuoteText: string | null = null
-                            if (displayedBody.startsWith('> @')) {
-                              const firstLineEnd = displayedBody.indexOf('\n')
-                              if (firstLineEnd !== -1) {
-                                replyQuoteText = displayedBody.slice(2, firstLineEnd)
-                                displayedBody = displayedBody.slice(firstLineEnd + 1)
-                              }
-                            }
-
-                            return (
-                              <article className={`msg-card ${message.author_id === user.id ? 'msg-own' : ''} ${isMentioned ? 'mention-highlight' : ''}`} key={message.id} style={{ position: 'relative' }}>
-                                {/* Message Hover Action Bar */}
-                                <div className="message-hover-actions">
-                                  {['👍', '❤️', '😂', '🔥', '🎮', '💀'].map(emoji => (
-                                    <button 
-                                      key={emoji}
-                                      type="button" 
-                                      className="hover-action-btn"
-                                      onClick={() => toggleReaction(message.id, emoji)}
-                                      title={`Reagir com ${emoji}`}
-                                    >
-                                      {emoji}
-                                    </button>
-                                  ))}
-                                  <button 
-                                    type="button" 
-                                    className="hover-action-btn"
-                                    onClick={() => setReplyingToMessage(message)}
-                                    title="Responder a esta mensagem"
-                                  >
-                                    ↩️
-                                  </button>
-                                </div>
-
-                                <div 
-                                  className={`msg-avatar ${message.author_id === user.id ? 'avatar-self' : 'avatar-other'}`} 
-                                  style={{ overflow: 'hidden', cursor: 'pointer' }}
-                                  onClick={() => {
-                                    if (currentSpace) {
-                                      const memRoles = memberRoleMap[message.author_id] || []
-                                      const matchingRoles = serverRoles.filter(r => memRoles.includes(r.id))
-                                      setInspectedMember({
-                                        user: {
-                                          id: message.author_id,
-                                          display_name: message.profile?.display_name || 'Membro',
-                                          avatar_url: message.profile?.avatar_url
-                                        },
-                                        roleName: msgRole?.name,
-                                        roleColor: msgRole?.color,
-                                        roles: matchingRoles
-                                      })
-                                    }
-                                  }}
-                                  title="Ver perfil do membro"
-                                >
-                                  {message.profile?.avatar_url ? (
-                                    <img src={message.profile.avatar_url} alt={message.profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
-                                  ) : (
-                                    (message.profile?.display_name ?? 'E').slice(0, 1).toUpperCase()
-                                  )}
-                                </div>
-                                <div className="msg-body">
-                                  {/* Reply Quote Header */}
-                                  {replyQuoteText && (
-                                    <div className="reply-preview-in-message">
-                                      <span>↩️</span>
-                                      <em>{replyQuoteText}</em>
-                                    </div>
-                                  )}
-
-                                  <div className="msg-meta">
-                                    <strong 
-                                      style={{ color: msgRole?.color || 'var(--text-primary)', cursor: 'pointer' }}
-                                      onClick={() => {
-                                        if (currentSpace) {
-                                          const memRoles = memberRoleMap[message.author_id] || []
-                                          const matchingRoles = serverRoles.filter(r => memRoles.includes(r.id))
-                                          setInspectedMember({
-                                            user: {
-                                              id: message.author_id,
-                                              display_name: message.profile?.display_name || 'Membro',
-                                              avatar_url: message.profile?.avatar_url
-                                            },
-                                            roleName: msgRole?.name,
-                                            roleColor: msgRole?.color,
-                                            roles: matchingRoles
-                                          })
-                                        }
-                                      }}
-                                    >
-                                      {message.profile?.display_name ?? 'Membro'}
-                                    </strong>
-                                    {msgRole && (
-                                      <span 
-                                        style={{ 
-                                          fontSize: '10px', 
-                                          fontWeight: 700, 
-                                          padding: '1px 6px', 
-                                          borderRadius: '4px', 
-                                          color: msgRole.color, 
-                                          background: `${msgRole.color}18`, 
-                                          border: `1px solid ${msgRole.color}44` 
-                                        }}
-                                      >
-                                        {msgRole.name}
-                                      </span>
-                                    )}
-                                    <time>{new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
-                                    
-                                    {isPinned && (
-                                      <span title="Mensagem Fixada" style={{ fontSize: '11px', color: 'var(--accent-color)', marginLeft: '4px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                                        📌 <span style={{ fontSize: '10px', fontWeight: 700 }}>Fixada</span>
-                                      </span>
-                                    )}
-
-                                    {/* Action button to Pin/Unpin */}
-                                    {canManagePins && (
-                                      <button 
-                                        type="button" 
-                                        onClick={() => togglePinMessage(message, currentSpace.id, selectedChannel.id)}
-                                        title={isPinned ? "Desafixar Mensagem" : "Fixar Mensagem no Canal"}
-                                        style={{ marginLeft: 'auto', border: 'none', background: 'transparent', cursor: 'pointer', opacity: 0.5, padding: '2px', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
-                                        onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                                        onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.5')}
-                                      >
-                                        <PinIcon style={{ width: '12px', height: '12px', color: isPinned ? 'var(--accent-color)' : 'inherit' }} />
-                                      </button>
-                                    )}
+                          return (
+                            <>
+                              {/* Channel Welcome Hero */}
+                              {!searchQuery.trim() && (
+                                <div className="channel-welcome-hero">
+                                  <div className="channel-welcome-icon-box">
+                                    {selectedChannel.is_announcement ? <MegaphoneIcon /> : <HashtagIcon />}
                                   </div>
-                                  
-                                  {message.attachment_url && message.attachment_type === 'image' ? (
-                                    <img src={message.attachment_url} alt="anexo" className="msg-attachment-img" onClick={() => window.open(message.attachment_url, '_blank')} />
-                                  ) : message.attachment_url && message.attachment_type === 'audio' ? (
-                                    <div className="voice-note-player-card">
-                                      <button 
-                                        type="button" 
-                                        className="voice-note-play-btn"
-                                        onClick={() => {
-                                          if (activePlayingVoiceNote === message.id) {
-                                            voiceNoteAudioRef.current?.pause()
-                                            setActivePlayingVoiceNote(null)
-                                          } else {
-                                            if (voiceNoteAudioRef.current) voiceNoteAudioRef.current.pause()
-                                            const audio = new Audio(message.attachment_url)
-                                            audio.playbackRate = voiceNotePlaySpeed
-                                            audio.play()
-                                            audio.onended = () => setActivePlayingVoiceNote(null)
-                                            voiceNoteAudioRef.current = audio
-                                            setActivePlayingVoiceNote(message.id)
-                                          }
-                                        }}
-                                      >
-                                        {activePlayingVoiceNote === message.id ? '⏸️' : '▶️'}
-                                      </button>
-                                      <div style={{ flex: 1 }}>
-                                        <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                                          Mensagem de Áudio
-                                        </div>
-                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                          {activePlayingVoiceNote === message.id ? 'Reproduzindo...' : 'Clique para ouvir'}
-                                        </div>
-                                      </div>
-                                      <button 
-                                        type="button" 
-                                        className="voice-note-speed-btn"
-                                        onClick={() => {
-                                          const nextSpeed = voiceNotePlaySpeed === 1 ? 1.5 : voiceNotePlaySpeed === 1.5 ? 2 : 1
-                                          setVoiceNotePlaySpeed(nextSpeed)
-                                          if (voiceNoteAudioRef.current) voiceNoteAudioRef.current.playbackRate = nextSpeed
-                                        }}
-                                      >
-                                        {voiceNotePlaySpeed}x
-                                      </button>
-                                    </div>
-                                  ) : message.attachment_url && message.attachment_type !== 'image' ? (
-                                    <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-file">📎 {displayedBody}</a>
-                                  ) : (
-                                    <>
-                                      <p>{formatMessageText(displayedBody, profileDisplayName, serverEmojis)}</p>
-                                      {renderRichEmbed(displayedBody)}
-                                    </>
-                                  )}
-
-                                  {/* Emoji Reactions Pills */}
-                                  {Object.keys(reactions).length > 0 && (
-                                    <div className="message-reactions-row">
-                                      {Object.entries(reactions).map(([em, userIds]) => {
-                                        const hasReacted = userIds.includes(user.id)
-                                        return (
-                                          <button
-                                            key={em}
-                                            type="button"
-                                            className={`reaction-pill ${hasReacted ? 'reacted' : ''}`}
-                                            onClick={() => toggleReaction(message.id, em)}
-                                            title={hasReacted ? "Remover sua reação" : "Adicionar reação"}
-                                          >
-                                            <span>{em}</span>
-                                            <span>{userIds.length}</span>
-                                          </button>
-                                        )
-                                      })}
-                                    </div>
-                                  )}
+                                  <h2 className="channel-welcome-title">Bem-vindo ao canal #{selectedChannel.name}!</h2>
+                                  <p className="channel-welcome-desc">
+                                    {selectedChannel.topic || `Este é o início do canal #${selectedChannel.name} da comunidade ${currentSpace?.name || 'Echo'}. Envie uma mensagem para iniciar o papo!`}
+                                  </p>
+                                  <div className="channel-welcome-meta">
+                                    <span>🔒 Canal seguro</span>
+                                    <span>•</span>
+                                    <span>💬 {filtered.length} {filtered.length === 1 ? 'mensagem' : 'mensagens'} no histórico</span>
+                                  </div>
                                 </div>
-                              </article>
-                            )
-                          })
+                              )}
+
+                              {filtered.length === 0 && searchQuery && (
+                                <div className="no-messages">
+                                  <span className="no-msg-icon">🔍</span>
+                                  <p>{`Nenhuma mensagem encontrada para "${searchQuery}"`}</p>
+                                </div>
+                              )}
+
+                              {filtered.map((message, index) => {
+                                const prevMessage = index > 0 ? filtered[index - 1] : null
+                                const msgDate = new Date(message.created_at)
+                                const prevDate = prevMessage ? new Date(prevMessage.created_at) : null
+                                const isDifferentDay = !prevDate || msgDate.toDateString() !== prevDate.toDateString()
+
+                                // Parse reply quote if present
+                                let displayedBody = message.body
+                                let replyQuoteText: string | null = null
+                                if (displayedBody.startsWith('> @')) {
+                                  const firstLineEnd = displayedBody.indexOf('\n')
+                                  if (firstLineEnd !== -1) {
+                                    replyQuoteText = displayedBody.slice(2, firstLineEnd)
+                                    displayedBody = displayedBody.slice(firstLineEnd + 1)
+                                  }
+                                }
+
+                                // Consecutive Message Grouping (Same author within 5 min, same calendar day, and not a reply)
+                                const isSameAuthor = prevMessage && prevMessage.author_id === message.author_id
+                                const isWithinWindow = prevMessage && (msgDate.getTime() - prevDate!.getTime() < 5 * 60 * 1000)
+                                const isConsecutive = !isDifferentDay && isSameAuthor && isWithinWindow && !replyQuoteText
+
+                                const isMentioned = message.author_id !== user.id && message.body.toLowerCase().includes(`@${profileDisplayName.toLowerCase()}`)
+                                const msgRole = currentSpace ? getUserHighestRole(currentSpace.id, message.author_id) : null
+                                const isPinned = (pinnedMessages[selectedChannel.id] || []).some(p => p.message_id === message.id)
+                                const canManagePins = currentSpace && (canUserDo(currentSpace.id, user.id, 'manageMessages') || currentSpace.creator_id === user.id)
+                                const reactions = messageReactions[message.id] || {}
+
+                                const authorClanTag = localStorage.getItem(`echo-clan-tag-${message.author_id}`) || (message.author_id === user.id ? localStorage.getItem(`echo-clan-tag-${user.id}`) : null)
+                                const authorClanTagColor = localStorage.getItem(`echo-clan-tag-color-${message.author_id}`) || (message.author_id === user.id ? localStorage.getItem(`echo-clan-tag-color-${user.id}`) : '#00f2fe') || '#00f2fe'
+
+                                return (
+                                  <React.Fragment key={message.id}>
+                                    {isDifferentDay && (
+                                      <div className="chat-date-divider">
+                                        <div className="chat-date-line" />
+                                        <span className="chat-date-pill">
+                                          {formatChatDateDivider(msgDate)}
+                                        </span>
+                                        <div className="chat-date-line" />
+                                      </div>
+                                    )}
+
+                                    <article 
+                                      className={`msg-card ${isConsecutive ? 'msg-consecutive' : ''} ${message.author_id === user.id ? 'msg-own' : ''} ${isMentioned ? 'mention-highlight' : ''}`} 
+                                      style={{ position: 'relative' }}
+                                    >
+                                      {/* Message Hover Action Bar */}
+                                      <div className="message-hover-actions">
+                                        {['👍', '❤️', '😂', '🔥', '🎮', '💀'].map(emoji => (
+                                          <button 
+                                            key={emoji}
+                                            type="button" 
+                                            className="hover-action-btn"
+                                            onClick={() => toggleReaction(message.id, emoji)}
+                                            title={`Reagir com ${emoji}`}
+                                          >
+                                            {emoji}
+                                          </button>
+                                        ))}
+                                        <button 
+                                          type="button" 
+                                          className="hover-action-btn"
+                                          onClick={() => setReplyingToMessage(message)}
+                                          title="Responder a esta mensagem"
+                                        >
+                                          ↩️
+                                        </button>
+                                      </div>
+
+                                      {isConsecutive ? (
+                                        <div className="msg-consecutive-gutter">
+                                          <time className="consecutive-time" title={msgDate.toLocaleTimeString('pt-BR')}>
+                                            {msgDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                          </time>
+                                        </div>
+                                      ) : (
+                                        <div 
+                                          className={`msg-avatar ${message.author_id === user.id ? 'avatar-self' : 'avatar-other'}`} 
+                                          style={{ overflow: 'hidden', cursor: 'pointer' }}
+                                          onClick={() => {
+                                            if (currentSpace) {
+                                              const memRoles = memberRoleMap[message.author_id] || []
+                                              const matchingRoles = serverRoles.filter(r => memRoles.includes(r.id))
+                                              setInspectedMember({
+                                                user: {
+                                                  id: message.author_id,
+                                                  display_name: message.profile?.display_name || 'Membro',
+                                                  avatar_url: message.profile?.avatar_url
+                                                },
+                                                roleName: msgRole?.name,
+                                                roleColor: msgRole?.color,
+                                                roles: matchingRoles
+                                              })
+                                            }
+                                          }}
+                                          title="Ver perfil do membro"
+                                        >
+                                          {message.profile?.avatar_url ? (
+                                            <img src={message.profile.avatar_url} alt={message.profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                                          ) : (
+                                            (message.profile?.display_name ?? 'E').slice(0, 1).toUpperCase()
+                                          )}
+                                        </div>
+                                      )}
+
+                                      <div className="msg-body">
+                                        {!isConsecutive && (
+                                          <>
+                                            {replyQuoteText && (
+                                              <div className="reply-preview-in-message">
+                                                <span>↩️</span>
+                                                <em>{replyQuoteText}</em>
+                                              </div>
+                                            )}
+
+                                            <div className="msg-meta">
+                                              <strong 
+                                                style={{ color: msgRole?.color || 'var(--text-primary)', cursor: 'pointer' }}
+                                                onClick={() => {
+                                                  if (currentSpace) {
+                                                    const memRoles = memberRoleMap[message.author_id] || []
+                                                    const matchingRoles = serverRoles.filter(r => memRoles.includes(r.id))
+                                                    setInspectedMember({
+                                                      user: {
+                                                        id: message.author_id,
+                                                        display_name: message.profile?.display_name || 'Membro',
+                                                        avatar_url: message.profile?.avatar_url
+                                                      },
+                                                      roleName: msgRole?.name,
+                                                      roleColor: msgRole?.color,
+                                                      roles: matchingRoles
+                                                    })
+                                                  }
+                                                }}
+                                              >
+                                                {message.profile?.display_name ?? 'Membro'}
+                                              </strong>
+
+                                              {authorClanTag && (
+                                                <span 
+                                                  className="echo-clan-tag" 
+                                                  style={{ 
+                                                    color: authorClanTagColor, 
+                                                    borderColor: `${authorClanTagColor}66`, 
+                                                    background: `${authorClanTagColor}15`, 
+                                                    fontSize: '9.5px', 
+                                                    padding: '1px 5px', 
+                                                    borderRadius: '4px' 
+                                                  }}
+                                                >
+                                                  [{authorClanTag}]
+                                                </span>
+                                              )}
+
+                                              {msgRole && (
+                                                <span 
+                                                  style={{ 
+                                                    fontSize: '10px', 
+                                                    fontWeight: 700, 
+                                                    padding: '1px 6px', 
+                                                    borderRadius: '4px', 
+                                                    color: msgRole.color, 
+                                                    background: `${msgRole.color}18`, 
+                                                    border: `1px solid ${msgRole.color}44` 
+                                                  }}
+                                                >
+                                                  {msgRole.name}
+                                                </span>
+                                              )}
+
+                                              <time>{msgDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
+                                              
+                                              {isPinned && (
+                                                <span title="Mensagem Fixada" style={{ fontSize: '11px', color: 'var(--accent-color)', marginLeft: '4px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                                                  📌 <span style={{ fontSize: '10px', fontWeight: 700 }}>Fixada</span>
+                                                </span>
+                                              )}
+
+                                              {/* Action button to Pin/Unpin */}
+                                              {canManagePins && (
+                                                <button 
+                                                  type="button" 
+                                                  onClick={() => togglePinMessage(message, currentSpace.id, selectedChannel.id)}
+                                                  title={isPinned ? "Desafixar Mensagem" : "Fixar Mensagem no Canal"}
+                                                  style={{ marginLeft: 'auto', border: 'none', background: 'transparent', cursor: 'pointer', opacity: 0.5, padding: '2px', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
+                                                  onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                                                  onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.5')}
+                                                >
+                                                  <PinIcon style={{ width: '12px', height: '12px', color: isPinned ? 'var(--accent-color)' : 'inherit' }} />
+                                                </button>
+                                              )}
+                                            </div>
+                                          </>
+                                        )}
+
+                                        {/* Message content */}
+                                        {message.attachment_url && message.attachment_type === 'image' ? (
+                                          <img src={message.attachment_url} alt="anexo" className="msg-attachment-img" onClick={() => window.open(message.attachment_url, '_blank')} />
+                                        ) : message.attachment_url && message.attachment_type === 'audio' ? (
+                                          <div className="voice-note-player-card">
+                                            <button 
+                                              type="button" 
+                                              className="voice-note-play-btn"
+                                              onClick={() => {
+                                                if (activePlayingVoiceNote === message.id) {
+                                                  voiceNoteAudioRef.current?.pause()
+                                                  setActivePlayingVoiceNote(null)
+                                                } else {
+                                                  if (voiceNoteAudioRef.current) voiceNoteAudioRef.current.pause()
+                                                  const audio = new Audio(message.attachment_url)
+                                                  audio.playbackRate = voiceNotePlaySpeed
+                                                  audio.play()
+                                                  audio.onended = () => setActivePlayingVoiceNote(null)
+                                                  voiceNoteAudioRef.current = audio
+                                                  setActivePlayingVoiceNote(message.id)
+                                                }
+                                              }}
+                                            >
+                                              {activePlayingVoiceNote === message.id ? '⏸️' : '▶️'}
+                                            </button>
+                                            <div style={{ flex: 1 }}>
+                                              <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                                                Mensagem de Áudio
+                                              </div>
+                                              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                                {activePlayingVoiceNote === message.id ? 'Reproduzindo...' : 'Clique para ouvir'}
+                                              </div>
+                                            </div>
+                                            <button 
+                                              type="button" 
+                                              className="voice-note-speed-btn"
+                                              onClick={() => {
+                                                const nextSpeed = voiceNotePlaySpeed === 1 ? 1.5 : voiceNotePlaySpeed === 1.5 ? 2 : 1
+                                                setVoiceNotePlaySpeed(nextSpeed)
+                                                if (voiceNoteAudioRef.current) voiceNoteAudioRef.current.playbackRate = nextSpeed
+                                              }}
+                                            >
+                                              {voiceNotePlaySpeed}x
+                                            </button>
+                                          </div>
+                                        ) : message.attachment_url && message.attachment_type !== 'image' ? (
+                                          <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-file">📎 {displayedBody}</a>
+                                        ) : (
+                                          <>
+                                            <p>{formatMessageText(displayedBody, profileDisplayName, serverEmojis)}</p>
+                                            {renderRichEmbed(displayedBody)}
+                                          </>
+                                        )}
+
+                                        {/* Emoji Reactions Pills */}
+                                        {Object.keys(reactions).length > 0 && (
+                                          <div className="message-reactions-row">
+                                            {Object.entries(reactions).map(([em, userIds]) => {
+                                              const hasReacted = userIds.includes(user.id)
+                                              return (
+                                                <button
+                                                  key={em}
+                                                  type="button"
+                                                  className={`reaction-pill ${hasReacted ? 'reacted' : ''}`}
+                                                  onClick={() => toggleReaction(message.id, em)}
+                                                  title={hasReacted ? "Remover sua reação" : "Adicionar reação"}
+                                                >
+                                                  <span>{em}</span>
+                                                  <span>{userIds.length}</span>
+                                                </button>
+                                              )
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </article>
+                                  </React.Fragment>
+                                )
+                              })}
+                            </>
+                          )
                         })()}
                         <div ref={messagesEndRef} />
                       </div>
@@ -4923,11 +5929,24 @@ function Echo({ user }: { user: User }) {
                               const userPresenceStatus = isOnline ? (presenceData[member.user.id]?.presence_status || 'online') : 'offline'
                               const memberRole = getUserHighestRole(currentSpace.id, member.user.id)
 
+                              const memberClanTag = localStorage.getItem(`echo-clan-tag-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-${user.id}`) : null)
+                              const memberClanTagColor = localStorage.getItem(`echo-clan-tag-color-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-color-${user.id}`) : '#00f2fe') || '#00f2fe'
+
+                              const activeGame = member.user.id === user.id 
+                                ? (presenceStatus !== 'invisible' ? myGamePresence?.name : null)
+                                : (presenceData[member.user.id]?.game_presence?.name || null)
+
+                              const rawCustomStatus = presenceData[member.user.id]?.custom_status
+                              const isSameAsName = rawCustomStatus && (rawCustomStatus.trim().toLowerCase() === member.user.display_name.trim().toLowerCase())
+                              const validCustomStatus = (rawCustomStatus && !isSameAsName) ? rawCustomStatus : null
+
                               return (
                                 <div 
                                   className="member-card" 
                                   key={member.user.id}
                                   onClick={() => {
+                                    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+                                    setHoveredMemberPopover(null)
                                     const memRoles = memberRoleMap[member.user.id] || []
                                     const matchingRoles = serverRoles.filter(r => memRoles.includes(r.id))
                                     setInspectedMember({
@@ -4937,7 +5956,39 @@ function Echo({ user }: { user: User }) {
                                       roles: matchingRoles
                                     })
                                   }}
-                                  style={{ cursor: 'pointer' }}
+                                  onMouseEnter={(e) => {
+                                    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+                                    const rect = e.currentTarget.getBoundingClientRect()
+                                    const memRoles = memberRoleMap[member.user.id] || []
+                                    const matchingRoles = serverRoles.filter(r => memRoles.includes(r.id))
+                                    hoverTimeoutRef.current = setTimeout(() => {
+                                      setHoveredMemberPopover({
+                                        user: member.user,
+                                        roleName: memberRole?.name,
+                                        roleColor: memberRole?.color,
+                                        roles: matchingRoles,
+                                        clanTag: memberClanTag,
+                                        clanTagColor: memberClanTagColor,
+                                        activeGame,
+                                        isVoiceUser,
+                                        userPresenceStatus,
+                                        isOnline,
+                                        customStatus: validCustomStatus,
+                                        rect: {
+                                          top: rect.top,
+                                          left: rect.left,
+                                          height: rect.height,
+                                          bottom: rect.bottom
+                                        }
+                                      })
+                                    }, 200)
+                                  }}
+                                  onMouseLeave={() => {
+                                    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+                                    hoverTimeoutRef.current = setTimeout(() => {
+                                      setHoveredMemberPopover(null)
+                                    }, 150)
+                                  }}
                                   title="Ver perfil"
                                 >
                                   <div className="member-avatar-container">
@@ -4951,48 +6002,136 @@ function Echo({ user }: { user: User }) {
                                     <span className={`member-status-dot ${isVoiceUser ? 'voice-active' : userPresenceStatus}`} />
                                   </div>
                                   <div className="member-info">
-                                    <div className="member-name-row" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                      <span className="member-name" style={{ color: memberRole?.color || 'var(--text-primary)', fontWeight: 700 }}>
+                                    <div className="member-name-row">
+                                      <span className="member-name" style={{ color: memberRole?.color || 'var(--text-primary)' }}>
                                         {member.user.display_name}
                                       </span>
+
+                                      {memberClanTag && (
+                                        <span 
+                                          className="member-clan-tag" 
+                                          style={{ 
+                                            color: memberClanTagColor, 
+                                            borderColor: `${memberClanTagColor}55`, 
+                                            background: `${memberClanTagColor}15` 
+                                          }}
+                                        >
+                                          [{memberClanTag}]
+                                        </span>
+                                      )}
+
                                       {isCreator ? (
-                                        <span className="member-badge creator"><CrownIcon style={{ width: '11px', height: '11px' }} /> Dono</span>
+                                        <span className="member-badge creator"><CrownIcon style={{ width: '10px', height: '10px' }} /> Dono</span>
                                       ) : memberRole ? (
-                                        <span style={{ fontSize: '9.5px', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', color: memberRole.color, background: `${memberRole.color}18`, border: `1px solid ${memberRole.color}44` }}>
+                                        <span 
+                                          className="member-badge role" 
+                                          style={{ 
+                                            color: memberRole.color, 
+                                            borderColor: `${memberRole.color}44`, 
+                                            background: `${memberRole.color}15` 
+                                          }}
+                                        >
                                           {memberRole.name}
                                         </span>
                                       ) : null}
                                     </div>
-                                    <span className="member-status-text" title={presenceData[member.user.id]?.custom_status}>
-                                      {isVoiceUser ? '🔊 Em chamada' : (presenceData[member.user.id]?.custom_status || (isOnline ? 'Disponível' : 'Offline'))}
-                                    </span>
+
+                                    {activeGame ? (
+                                      <span className="member-status-text activity-game" title={`Jogando ${activeGame}`}>
+                                        🎮 Jogando {activeGame}
+                                      </span>
+                                    ) : isVoiceUser ? (
+                                      <span className="member-status-text activity-voice">
+                                        🔊 Em chamada
+                                      </span>
+                                    ) : validCustomStatus ? (
+                                      <span className="member-status-text custom" title={validCustomStatus}>
+                                        {validCustomStatus}
+                                      </span>
+                                    ) : null}
                                   </div>
                                 </div>
                               )
                             }
 
+                            // Role Hierarchy Categorization
+                            const creatorOnlineMembers: any[] = []
+                            const roleBuckets: { role: ServerRole; members: any[] }[] = []
+                            const unassignedOnlineMembers: any[] = []
+
+                            const spaceRoles = (serverRoles || []).slice().sort((a, b) => b.position - a.position)
+                            spaceRoles.forEach(r => {
+                              roleBuckets.push({ role: r, members: [] })
+                            })
+
+                            onlineList.forEach(m => {
+                              if (m.user.id === currentSpace.creator_id) {
+                                creatorOnlineMembers.push(m)
+                                return
+                              }
+                              const highestRole = getUserHighestRole(currentSpace.id, m.user.id)
+                              const targetBucket = highestRole ? roleBuckets.find(b => b.role.id === highestRole.id) : null
+                              if (targetBucket) {
+                                targetBucket.members.push(m)
+                              } else {
+                                unassignedOnlineMembers.push(m)
+                              }
+                            })
+
                             return (
                               <>
-                                {onlineList.length > 0 && (
-                                  <div style={{ marginBottom: '16px' }}>
-                                    <div className="members-group-label" style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                                      🟢 Disponível ({onlineList.length})
+                                {/* 1. Creator / Owner Group */}
+                                {creatorOnlineMembers.length > 0 && (
+                                  <div className="members-group-section">
+                                    <div className="members-group-label" style={{ color: '#f59e0b' }}>
+                                      <span className="members-group-dot" style={{ background: '#f59e0b' }} />
+                                      <span>👑 DONO — {creatorOnlineMembers.length}</span>
                                     </div>
                                     <div className="members-list">
-                                      {onlineList.map(renderCard)}
+                                      {creatorOnlineMembers.map(renderCard)}
                                     </div>
                                   </div>
                                 )}
-                                {offlineList.length > 0 && (
-                                  <div>
-                                    <div className="members-group-label" style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                                      ⚪ Offline ({offlineList.length})
+
+                                {/* 2. Custom Server Roles */}
+                                {roleBuckets.filter(b => b.members.length > 0).map(b => (
+                                  <div key={b.role.id} className="members-group-section">
+                                    <div className="members-group-label" style={{ color: b.role.color }}>
+                                      <span className="members-group-dot" style={{ background: b.role.color }} />
+                                      <span>{b.role.name.toUpperCase()} — {b.members.length}</span>
                                     </div>
-                                    <div className="members-list" style={{ opacity: 0.7 }}>
+                                    <div className="members-list">
+                                      {b.members.map(renderCard)}
+                                    </div>
+                                  </div>
+                                ))}
+
+                                {/* 3. Online Members without special role */}
+                                {unassignedOnlineMembers.length > 0 && (
+                                  <div className="members-group-section">
+                                    <div className="members-group-label">
+                                      <span className="members-group-dot" style={{ background: '#22c55e' }} />
+                                      <span>DISPONÍVEL — {unassignedOnlineMembers.length}</span>
+                                    </div>
+                                    <div className="members-list">
+                                      {unassignedOnlineMembers.map(renderCard)}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* 4. Offline Members */}
+                                {offlineList.length > 0 && (
+                                  <div className="members-group-section offline">
+                                    <div className="members-group-label">
+                                      <span className="members-group-dot" style={{ background: '#64748b' }} />
+                                      <span>OFFLINE — {offlineList.length}</span>
+                                    </div>
+                                    <div className="members-list">
                                       {offlineList.map(renderCard)}
                                     </div>
                                   </div>
                                 )}
+
                                 {spaceMembers.length === 0 && (
                                   <div style={{ fontSize: '12px', color: 'var(--text-muted)', padding: '8px 0' }}>
                                     Nenhum membro encontrado.
@@ -5067,22 +6206,26 @@ function Echo({ user }: { user: User }) {
                                             )}
                                           </div>
                                           <span className="stream-tab-name">{sharer.displayName}</span>
-                                          <span className="stream-tab-live-badge">🔴 AO VIVO</span>
+                                          <span className="stream-tab-live-badge">
+                                            <span className="stream-tab-live-dot" />
+                                            AO VIVO
+                                          </span>
                                         </button>
                                       )
                                     })}
                                   </div>
 
-                                  <div className="streams-view-mode-toggles" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <div className="streams-view-mode-toggles">
                                     {activeScreenSharers.length > 1 && (
-                                      <>
+                                      <div className="stream-segmented-group">
                                         <button
                                           type="button"
                                           className={`stream-view-toggle-btn ${screenShareViewMode === 'focus' ? 'active' : ''}`}
                                           onClick={() => setScreenShareViewMode('focus')}
                                           title="Modo Foco (Uma tela em destaque)"
                                         >
-                                          🖥️ Foco
+                                          <FocusIcon />
+                                          <span>Foco</span>
                                         </button>
                                         <button
                                           type="button"
@@ -5090,80 +6233,44 @@ function Echo({ user }: { user: User }) {
                                           onClick={() => setScreenShareViewMode('grid')}
                                           title="Modo Grade (Ver todas as telas divididas)"
                                         >
-                                          🔲 Grade ({activeScreenSharers.length})
+                                          <GridIcon />
+                                          <span>Grade ({activeScreenSharers.length})</span>
                                         </button>
-                                      </>
+                                      </div>
                                     )}
 
                                     {/* Mini Player (Picture-in-Picture) Toggle Button */}
                                     <button
                                       type="button"
-                                      className={`stream-pip-btn ${isPiPActive ? 'active' : ''}`}
+                                      className={`stream-control-btn ${isPiPActive ? 'pip-active' : ''}`}
                                       onClick={() => setIsPiPActive(!isPiPActive)}
                                       title={isPiPActive ? "Fechar Mini Player Flutuante" : "Ativar Mini Player Flutuante (Always-on-Top)"}
-                                      style={{
-                                        background: isPiPActive ? 'rgba(0, 242, 254, 0.2)' : 'var(--bg-tertiary)',
-                                        border: isPiPActive ? '1px solid #00f2fe' : '1px solid var(--border-color)',
-                                        color: isPiPActive ? '#00f2fe' : 'var(--text-secondary)',
-                                        padding: '5px 12px',
-                                        borderRadius: '8px',
-                                        fontSize: '12px',
-                                        fontWeight: 800,
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        transition: 'all 0.2s'
-                                      }}
                                     >
-                                      📌 {isPiPActive ? 'Mini Player ON' : 'Mini Player'}
+                                      <PipIcon />
+                                      <span>{isPiPActive ? 'Mini Player ON' : 'Mini Player'}</span>
                                     </button>
 
                                     {/* Hide / Close Stream View Button */}
                                     <button
                                       type="button"
-                                      className="stream-hide-btn"
+                                      className="stream-control-btn"
                                       onClick={() => setIsWatchingStreams(false)}
                                       title="Ocultar vídeo (Ver apenas os avatares de voz)"
-                                      style={{
-                                        background: 'var(--bg-tertiary)',
-                                        border: '1px solid var(--border-color)',
-                                        color: 'var(--text-secondary)',
-                                        padding: '5px 12px',
-                                        borderRadius: '8px',
-                                        fontSize: '12px',
-                                        fontWeight: 700,
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px'
-                                      }}
                                     >
-                                      👁️ Ocultar Vídeo
+                                      <EyeOffIcon />
+                                      <span>Ocultar Vídeo</span>
                                     </button>
 
                                     {/* Quick Stop Stream for the streamer */}
                                     {localScreenStream && (
                                       <button
                                         type="button"
-                                        className="stream-stop-quick-btn"
+                                        className="stream-control-btn stop-btn"
                                         onClick={stopScreenShare}
                                         title="Parar de transmitir minha tela"
-                                        style={{
-                                          background: 'rgba(235, 59, 90, 0.18)',
-                                          border: '1px solid #eb3b5a',
-                                          color: '#eb3b5a',
-                                          padding: '5px 12px',
-                                          borderRadius: '8px',
-                                          fontSize: '12px',
-                                          fontWeight: 800,
-                                          cursor: 'pointer',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: '6px'
-                                        }}
                                       >
-                                        ⏹️ Parar Transmissão
+                                        <StopSquareIcon />
+                                        <span>Parar Transmissão</span>
                                       </button>
                                     )}
                                   </div>
@@ -5615,11 +6722,24 @@ function Echo({ user }: { user: User }) {
                               const userPresenceStatus = isOnline ? (presenceData[member.user.id]?.presence_status || 'online') : 'offline'
                               const memberRole = getUserHighestRole(currentSpace.id, member.user.id)
 
+                              const memberClanTag = localStorage.getItem(`echo-clan-tag-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-${user.id}`) : null)
+                              const memberClanTagColor = localStorage.getItem(`echo-clan-tag-color-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-color-${user.id}`) : '#00f2fe') || '#00f2fe'
+
+                              const activeGame = member.user.id === user.id 
+                                ? (presenceStatus !== 'invisible' ? myGamePresence?.name : null)
+                                : (presenceData[member.user.id]?.game_presence?.name || null)
+
+                              const rawCustomStatus = presenceData[member.user.id]?.custom_status
+                              const isSameAsName = rawCustomStatus && (rawCustomStatus.trim().toLowerCase() === member.user.display_name.trim().toLowerCase())
+                              const validCustomStatus = (rawCustomStatus && !isSameAsName) ? rawCustomStatus : null
+
                               return (
                                 <div 
                                   className="member-card" 
                                   key={member.user.id}
                                   onClick={() => {
+                                    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+                                    setHoveredMemberPopover(null)
                                     const memRoles = memberRoleMap[member.user.id] || []
                                     const matchingRoles = serverRoles.filter(r => memRoles.includes(r.id))
                                     setInspectedMember({
@@ -5629,7 +6749,39 @@ function Echo({ user }: { user: User }) {
                                       roles: matchingRoles
                                     })
                                   }}
-                                  style={{ cursor: 'pointer' }}
+                                  onMouseEnter={(e) => {
+                                    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+                                    const rect = e.currentTarget.getBoundingClientRect()
+                                    const memRoles = memberRoleMap[member.user.id] || []
+                                    const matchingRoles = serverRoles.filter(r => memRoles.includes(r.id))
+                                    hoverTimeoutRef.current = setTimeout(() => {
+                                      setHoveredMemberPopover({
+                                        user: member.user,
+                                        roleName: memberRole?.name,
+                                        roleColor: memberRole?.color,
+                                        roles: matchingRoles,
+                                        clanTag: memberClanTag,
+                                        clanTagColor: memberClanTagColor,
+                                        activeGame,
+                                        isVoiceUser,
+                                        userPresenceStatus,
+                                        isOnline,
+                                        customStatus: validCustomStatus,
+                                        rect: {
+                                          top: rect.top,
+                                          left: rect.left,
+                                          height: rect.height,
+                                          bottom: rect.bottom
+                                        }
+                                      })
+                                    }, 200)
+                                  }}
+                                  onMouseLeave={() => {
+                                    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+                                    hoverTimeoutRef.current = setTimeout(() => {
+                                      setHoveredMemberPopover(null)
+                                    }, 150)
+                                  }}
                                   title="Ver perfil"
                                 >
                                   <div className="member-avatar-container">
@@ -5643,48 +6795,136 @@ function Echo({ user }: { user: User }) {
                                     <span className={`member-status-dot ${isVoiceUser ? 'voice-active' : userPresenceStatus}`} />
                                   </div>
                                   <div className="member-info">
-                                    <div className="member-name-row" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                      <span className="member-name" style={{ color: memberRole?.color || 'var(--text-primary)', fontWeight: 700 }}>
+                                    <div className="member-name-row">
+                                      <span className="member-name" style={{ color: memberRole?.color || 'var(--text-primary)' }}>
                                         {member.user.display_name}
                                       </span>
+
+                                      {memberClanTag && (
+                                        <span 
+                                          className="member-clan-tag" 
+                                          style={{ 
+                                            color: memberClanTagColor, 
+                                            borderColor: `${memberClanTagColor}55`, 
+                                            background: `${memberClanTagColor}15` 
+                                          }}
+                                        >
+                                          [{memberClanTag}]
+                                        </span>
+                                      )}
+
                                       {isCreator ? (
-                                        <span className="member-badge creator"><CrownIcon style={{ width: '11px', height: '11px' }} /> Dono</span>
+                                        <span className="member-badge creator"><CrownIcon style={{ width: '10px', height: '10px' }} /> Dono</span>
                                       ) : memberRole ? (
-                                        <span style={{ fontSize: '9.5px', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', color: memberRole.color, background: `${memberRole.color}18`, border: `1px solid ${memberRole.color}44` }}>
+                                        <span 
+                                          className="member-badge role" 
+                                          style={{ 
+                                            color: memberRole.color, 
+                                            borderColor: `${memberRole.color}44`, 
+                                            background: `${memberRole.color}15` 
+                                          }}
+                                        >
                                           {memberRole.name}
                                         </span>
                                       ) : null}
                                     </div>
-                                    <span className="member-status-text" title={presenceData[member.user.id]?.custom_status}>
-                                      {isVoiceUser ? '🔊 Em chamada' : (presenceData[member.user.id]?.custom_status || (isOnline ? 'Disponível' : 'Offline'))}
-                                    </span>
+
+                                    {activeGame ? (
+                                      <span className="member-status-text activity-game" title={`Jogando ${activeGame}`}>
+                                        🎮 Jogando {activeGame}
+                                      </span>
+                                    ) : isVoiceUser ? (
+                                      <span className="member-status-text activity-voice">
+                                        🔊 Em chamada
+                                      </span>
+                                    ) : validCustomStatus ? (
+                                      <span className="member-status-text custom" title={validCustomStatus}>
+                                        {validCustomStatus}
+                                      </span>
+                                    ) : null}
                                   </div>
                                 </div>
                               )
                             }
 
+                            // Role Hierarchy Categorization
+                            const creatorOnlineMembers: any[] = []
+                            const roleBuckets: { role: ServerRole; members: any[] }[] = []
+                            const unassignedOnlineMembers: any[] = []
+
+                            const spaceRoles = (serverRoles || []).slice().sort((a, b) => b.position - a.position)
+                            spaceRoles.forEach(r => {
+                              roleBuckets.push({ role: r, members: [] })
+                            })
+
+                            onlineList.forEach(m => {
+                              if (m.user.id === currentSpace.creator_id) {
+                                creatorOnlineMembers.push(m)
+                                return
+                              }
+                              const highestRole = getUserHighestRole(currentSpace.id, m.user.id)
+                              const targetBucket = highestRole ? roleBuckets.find(b => b.role.id === highestRole.id) : null
+                              if (targetBucket) {
+                                targetBucket.members.push(m)
+                              } else {
+                                unassignedOnlineMembers.push(m)
+                              }
+                            })
+
                             return (
                               <>
-                                {onlineList.length > 0 && (
-                                  <div style={{ marginBottom: '16px' }}>
-                                    <div className="members-group-label" style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                                      🟢 Disponível ({onlineList.length})
+                                {/* 1. Creator / Owner Group */}
+                                {creatorOnlineMembers.length > 0 && (
+                                  <div className="members-group-section">
+                                    <div className="members-group-label" style={{ color: '#f59e0b' }}>
+                                      <span className="members-group-dot" style={{ background: '#f59e0b' }} />
+                                      <span>👑 DONO — {creatorOnlineMembers.length}</span>
                                     </div>
                                     <div className="members-list">
-                                      {onlineList.map(renderCard)}
+                                      {creatorOnlineMembers.map(renderCard)}
                                     </div>
                                   </div>
                                 )}
-                                {offlineList.length > 0 && (
-                                  <div>
-                                    <div className="members-group-label" style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                                      ⚪ Offline ({offlineList.length})
+
+                                {/* 2. Custom Server Roles */}
+                                {roleBuckets.filter(b => b.members.length > 0).map(b => (
+                                  <div key={b.role.id} className="members-group-section">
+                                    <div className="members-group-label" style={{ color: b.role.color }}>
+                                      <span className="members-group-dot" style={{ background: b.role.color }} />
+                                      <span>{b.role.name.toUpperCase()} — {b.members.length}</span>
                                     </div>
-                                    <div className="members-list" style={{ opacity: 0.7 }}>
+                                    <div className="members-list">
+                                      {b.members.map(renderCard)}
+                                    </div>
+                                  </div>
+                                ))}
+
+                                {/* 3. Online Members without special role */}
+                                {unassignedOnlineMembers.length > 0 && (
+                                  <div className="members-group-section">
+                                    <div className="members-group-label">
+                                      <span className="members-group-dot" style={{ background: '#22c55e' }} />
+                                      <span>DISPONÍVEL — {unassignedOnlineMembers.length}</span>
+                                    </div>
+                                    <div className="members-list">
+                                      {unassignedOnlineMembers.map(renderCard)}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* 4. Offline Members */}
+                                {offlineList.length > 0 && (
+                                  <div className="members-group-section offline">
+                                    <div className="members-group-label">
+                                      <span className="members-group-dot" style={{ background: '#64748b' }} />
+                                      <span>OFFLINE — {offlineList.length}</span>
+                                    </div>
+                                    <div className="members-list">
                                       {offlineList.map(renderCard)}
                                     </div>
                                   </div>
                                 )}
+
                                 {spaceMembers.length === 0 && (
                                   <div style={{ fontSize: '12px', color: 'var(--text-muted)', padding: '8px 0' }}>
                                     Nenhum membro encontrado.
@@ -5766,12 +7006,15 @@ function Echo({ user }: { user: User }) {
           spaceMembers={spaceMembers}
           showToast={showToast}
           onInspectMember={(member) => setInspectedMember(member)}
+          onOpenWhatsNew={() => setShowWhatsNewModal(true)}
         />
       </div>
 
       <div style={{ display: page === 'Configurações' ? undefined : 'none' }}>
         <SettingsView 
           userId={user.id}
+          userCreatedAt={user.created_at}
+          isServerOwner={spaces.some(s => s.creator_id === user.id)}
           currentDisplayName={profileDisplayName}
           currentAvatarUrl={profileAvatarUrl}
           customStatus={customStatus}
@@ -5801,6 +7044,12 @@ function Echo({ user }: { user: User }) {
           onRefreshDevices={loadAudioDevices}
           profileDisplayName={profileDisplayName}
           profileAvatarUrl={profileAvatarUrl}
+          presenceStatus={presenceStatus}
+          showStatusMenu={showStatusMenu}
+          setShowStatusMenu={setShowStatusMenu}
+          updatePresenceStatus={updatePresenceStatus}
+          onOpenWhatsNew={() => setShowWhatsNewModal(true)}
+          myGamePresence={myGamePresence}
           theme={theme}
           toggleTheme={toggleTheme}
           selectTheme={selectTheme}
@@ -5852,6 +7101,12 @@ function Echo({ user }: { user: User }) {
           }}
           isAiDenoiseEnabled={isAiDenoiseEnabled}
           onToggleAiDenoise={toggleAiDenoise}
+          customAccentColor={customAccentColor}
+          onCustomAccentColorChange={setCustomAccentColor}
+          chatDensity={chatDensity}
+          onChatDensityChange={setChatDensity}
+          performanceMode={performanceMode}
+          onPerformanceModeChange={setPerformanceMode}
         />
       </div>
 
@@ -7634,115 +8889,160 @@ function Echo({ user }: { user: User }) {
         </div>
       )}
 
-      {/* Holographic Echo Player Card Modal */}
-      {inspectedMember && (
-        <div className="screen-picker-overlay member-profile-overlay" onClick={() => setInspectedMember(null)}>
-          <div className="echo-player-card" style={{ maxWidth: '380px', width: '100%', margin: 'auto' }} onClick={(e) => e.stopPropagation()}>
-            <div className="card-texture-canvas texture-synthwave" />
-            <div className="card-content-layer">
-              <div className="card-top-bar">
-                <div className="card-brand-tag">
-                  <span>⚡ ECHO ID</span>
-                  <span style={{ opacity: 0.4 }}>//</span>
-                  <span style={{ color: '#00f2fe' }}>PLAYER CARD</span>
-                </div>
-                <button type="button" className="member-profile-close-btn" style={{ position: 'static', padding: '4px' }} onClick={() => setInspectedMember(null)}>✕</button>
+      {/* Member Profile Card Modal */}
+      {inspectedMember && (() => {
+        const isOnline = onlineUsers.has(inspectedMember.user.id) || participants.some(p => p.userId === inspectedMember.user.id)
+        const userPresenceStatus = isOnline ? (presenceData[inspectedMember.user.id]?.presence_status || 'online') : 'offline'
+        const rawCustomStatus = presenceData[inspectedMember.user.id]?.custom_status
+        const isSameAsName = rawCustomStatus && (rawCustomStatus.trim().toLowerCase() === inspectedMember.user.display_name.trim().toLowerCase())
+        const validCustomStatus = (rawCustomStatus && !isSameAsName) ? rawCustomStatus : null
+        const memberClanTag = localStorage.getItem(`echo-clan-tag-${inspectedMember.user.id}`) || (inspectedMember.user.id === user.id ? localStorage.getItem(`echo-clan-tag-${user.id}`) : null)
+        const memberClanTagColor = localStorage.getItem(`echo-clan-tag-color-${inspectedMember.user.id}`) || (inspectedMember.user.id === user.id ? localStorage.getItem(`echo-clan-tag-color-${user.id}`) : '#00f2fe') || '#00f2fe'
+        const activeGame = inspectedMember.user.id === user.id 
+          ? (presenceStatus !== 'invisible' ? myGamePresence?.name : null)
+          : (presenceData[inspectedMember.user.id]?.game_presence?.name || null)
+        const isVoiceUser = participants.some(p => p.userId === inspectedMember.user.id)
+        const currentActiveSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || null
+        const isServerOwner = currentActiveSpace?.creator_id === inspectedMember.user.id
+        const voicePeer = participants.find(p => p.userId === inspectedMember.user.id)
+
+        return (
+          <MemberProfileModal
+            inspectedMember={inspectedMember}
+            onClose={() => setInspectedMember(null)}
+            currentUser={user}
+            isOnline={isOnline}
+            userPresenceStatus={userPresenceStatus}
+            validCustomStatus={validCustomStatus}
+            memberClanTag={memberClanTag}
+            memberClanTagColor={memberClanTagColor}
+            activeGame={activeGame}
+            isVoiceUser={isVoiceUser}
+            voiceChannelName={activeVoiceChannel?.name}
+            isServerOwner={isServerOwner}
+            voicePeer={voicePeer}
+            showToast={showToast}
+            onOpenDM={(targetId) => {
+              setInspectedMember(null)
+              setPage('Amigos')
+              setSelectedDMUserId(targetId)
+              setUnreadDMs(prev => { const next = { ...prev }; delete next[targetId]; return next })
+              loadDirectMessages(targetId)
+            }}
+            onAdjustVolume={(peer) => {
+              setVolumeControlUser(peer)
+              setInspectedMember(null)
+            }}
+          />
+        )
+      })()}
+
+      {/* Member Hover Popover Card */}
+      {hoveredMemberPopover && (
+        <div 
+          className="member-hover-popover"
+          style={{
+            position: 'fixed',
+            top: `${Math.min(Math.max(12, hoveredMemberPopover.rect.top - 16), window.innerHeight - 280)}px`,
+            left: `${Math.max(10, hoveredMemberPopover.rect.left - 275)}px`,
+            zIndex: 1100
+          }}
+          onMouseEnter={() => {
+            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+          }}
+          onMouseLeave={() => {
+            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+            hoverTimeoutRef.current = setTimeout(() => {
+              setHoveredMemberPopover(null)
+            }, 120)
+          }}
+          onClick={() => {
+            setInspectedMember({
+              user: hoveredMemberPopover.user,
+              roleName: hoveredMemberPopover.roleName,
+              roleColor: hoveredMemberPopover.roleColor,
+              roles: hoveredMemberPopover.roles
+            })
+            setHoveredMemberPopover(null)
+          }}
+        >
+          <div 
+            className="hover-popover-banner" 
+            style={{ 
+              background: `linear-gradient(135deg, ${hoveredMemberPopover.roleColor || 'var(--accent-color, #00f2fe)'}aa, #1e1b4b)` 
+            }} 
+          />
+          <div className="hover-popover-body">
+            <div className="hover-popover-avatar-wrap">
+              <div className="hover-popover-avatar">
+                {hoveredMemberPopover.user.avatar_url ? (
+                  <img src={hoveredMemberPopover.user.avatar_url} alt={hoveredMemberPopover.user.display_name} />
+                ) : (
+                  hoveredMemberPopover.user.display_name.slice(0, 1).toUpperCase()
+                )}
               </div>
+              <span className={`member-status-dot ${hoveredMemberPopover.isVoiceUser ? 'voice-active' : hoveredMemberPopover.userPresenceStatus}`} />
+            </div>
 
-              <div className="card-hero-row">
-                <div className="card-avatar-squircle aura-cyan">
-                  <div className="squircle-inner-img">
-                    {inspectedMember.user.avatar_url ? (
-                      <img src={inspectedMember.user.avatar_url} alt={inspectedMember.user.display_name} style={{ width: '100%', height: '100%', borderRadius: '17px', objectFit: 'cover' }} />
-                    ) : (
-                      inspectedMember.user.display_name.slice(0, 1).toUpperCase()
-                    )}
-                  </div>
-                </div>
-
-                <div className="card-hero-meta">
-                  <div className="card-user-name">
-                    <span>{inspectedMember.user.display_name}</span>
-                  </div>
-                  <span className="member-profile-handle" style={{ fontSize: '11.5px', opacity: 0.7 }}>
-                    @{inspectedMember.user.display_name.toLowerCase().replace(/\s+/g, '')}
-                  </span>
-                </div>
-              </div>
-
-              {presenceData[inspectedMember.user.id]?.custom_status && (
-                <div className="card-sound-status">
-                  <span style={{ color: '#00f2fe' }}>〰️</span>
-                  <span>{presenceData[inspectedMember.user.id].custom_status}</span>
-                </div>
+            <div className="hover-popover-name-row">
+              <span className="hover-popover-display-name" style={{ color: hoveredMemberPopover.roleColor || 'var(--text-primary)' }}>
+                {hoveredMemberPopover.user.display_name}
+              </span>
+              {hoveredMemberPopover.clanTag && (
+                <span 
+                  className="member-clan-tag" 
+                  style={{ 
+                    color: hoveredMemberPopover.clanTagColor || '#00f2fe', 
+                    borderColor: `${hoveredMemberPopover.clanTagColor || '#00f2fe'}55`, 
+                    background: `${hoveredMemberPopover.clanTagColor || '#00f2fe'}15` 
+                  }}
+                >
+                  [{hoveredMemberPopover.clanTag}]
+                </span>
               )}
+            </div>
 
-              {/* Roles Section */}
-              <div className="member-profile-roles-section" style={{ padding: '4px 0' }}>
-                <span className="card-bio-header">CARGOS NO SERVIDOR</span>
-                <div className="member-profile-roles-wrap">
-                  {inspectedMember.roles && inspectedMember.roles.length > 0 ? (
-                    inspectedMember.roles.map(r => (
-                      <span 
-                        key={r.id} 
-                        className="member-role-pill" 
-                        style={{ color: r.color, borderColor: `${r.color}66`, background: `${r.color}15` }}
-                      >
-                        <span className="role-dot" style={{ background: r.color }} />
-                        {r.name}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="member-role-pill default">
-                      <span className="role-dot" />
-                      {inspectedMember.roleName || 'Membro'}
+            <span className="hover-popover-handle">
+              @{hoveredMemberPopover.user.display_name.toLowerCase().replace(/\s+/g, '')}
+            </span>
+
+            {hoveredMemberPopover.activeGame && (
+              <div className="hover-popover-activity game">
+                <span>🎮 Jogando <strong>{hoveredMemberPopover.activeGame}</strong></span>
+              </div>
+            )}
+
+            {hoveredMemberPopover.isVoiceUser && !hoveredMemberPopover.activeGame && (
+              <div className="hover-popover-activity voice">
+                <span>🔊 Conectado na chamada de voz</span>
+              </div>
+            )}
+
+            {hoveredMemberPopover.customStatus && (
+              <div className="hover-popover-quote">
+                <span>〰️ {hoveredMemberPopover.customStatus}</span>
+              </div>
+            )}
+
+            {hoveredMemberPopover.roles && hoveredMemberPopover.roles.length > 0 && (
+              <div className="hover-popover-roles">
+                <span className="hover-popover-roles-title">CARGOS</span>
+                <div className="hover-popover-roles-pills">
+                  {hoveredMemberPopover.roles.slice(0, 3).map(r => (
+                    <span key={r.id} className="hover-popover-role-pill" style={{ color: r.color, borderColor: `${r.color}55`, background: `${r.color}15` }}>
+                      <span className="role-dot" style={{ background: r.color }} />
+                      {r.name}
                     </span>
+                  ))}
+                  {hoveredMemberPopover.roles.length > 3 && (
+                    <span className="hover-popover-role-pill more">+{hoveredMemberPopover.roles.length - 3}</span>
                   )}
                 </div>
               </div>
+            )}
 
-              {/* Actions Section */}
-              <div className="member-profile-actions" style={{ marginTop: '8px' }}>
-                {inspectedMember.user.id !== user.id && (
-                  <button 
-                    type="button" 
-                    className="member-profile-action-btn primary"
-                    onClick={() => {
-                      const targetId = inspectedMember.user.id
-                      setInspectedMember(null)
-                      setPage('Amigos')
-                      setSelectedDMUserId(targetId)
-                      setUnreadDMs(prev => { const next = { ...prev }; delete next[targetId]; return next })
-                      loadDirectMessages(targetId)
-                    }}
-                  >
-                    <MessageSquareIcon />
-                    <span>Conversar no Privado</span>
-                  </button>
-                )}
-
-                {participants.some(p => p.userId === inspectedMember.user.id) && inspectedMember.user.id !== user.id && (
-                  <button 
-                    type="button" 
-                    className="member-profile-action-btn secondary"
-                    onClick={() => {
-                      const peer = participants.find(p => p.userId === inspectedMember.user.id)
-                      if (peer) {
-                        setVolumeControlUser(peer)
-                        setInspectedMember(null)
-                      }
-                    }}
-                  >
-                    <VolumeIcon />
-                    <span>Ajustar Volume</span>
-                  </button>
-                )}
-              </div>
-
-              <div className="card-bottom-footer">
-                <span>ECHO // VERIFIED PASS</span>
-                <span>STATUS: {onlineUsers.has(inspectedMember.user.id) ? 'ONLINE 🟢' : 'OFFLINE ⚪'}</span>
-              </div>
+            <div className="hover-popover-footer-hint">
+              <span>Clique para ver perfil completo</span>
             </div>
           </div>
         </div>
@@ -7856,8 +9156,10 @@ function Echo({ user }: { user: User }) {
 function Brand() {
   return (
     <div className="brand">
-      <span className="brand-mark"><i /><i /><i /></span>
-      <span>echo</span>
+      <div className="brand-mark-atom" title="Echo">
+        <EchoAtomLogo size={20} />
+      </div>
+      <span className="brand-name">echo</span>
     </div>
   )
 }
@@ -7909,7 +9211,8 @@ function FriendsView({
   updatePresenceStatus,
   spaceMembers = [],
   showToast,
-  onInspectMember
+  onInspectMember,
+  onOpenWhatsNew
 }: {
   friendships: FriendshipRequest[]
   friendTab: 'online' | 'all' | 'pending' | 'add'
@@ -7947,6 +9250,7 @@ function FriendsView({
   spaceMembers?: any[]
   showToast?: (title: string, message: string, type?: 'info' | 'message' | 'friend') => void
   onInspectMember?: (member: any) => void
+  onOpenWhatsNew?: () => void
 }) {
   const dmFileRef = useRef<HTMLInputElement>(null)
   const dmMessagesEndRef = useRef<HTMLDivElement>(null)
@@ -8032,83 +9336,20 @@ function FriendsView({
           </div>
         </div>
 
-        <div className="sidebar-profile-footer">
-          <div className="profile-footer-card">
-            <div className="profile-footer-top-row">
-              <div className="profile-footer-info" onClick={() => setShowStatusMenu(!showStatusMenu)} style={{ cursor: 'pointer', position: 'relative' }}>
-                <div className="profile-footer-avatar" style={{ position: 'relative' }}>
-                  {profileAvatarUrl ? (
-                    <img src={profileAvatarUrl} alt={profileDisplayName} />
-                  ) : (
-                    profileDisplayName.slice(0, 1).toUpperCase()
-                  )}
-                  <span className={`my-status-dot ${presenceStatus}`} />
-                </div>
-                <div className="profile-footer-meta">
-                  <span className="profile-footer-name" title={profileDisplayName}>{profileDisplayName}</span>
-                  <span className="profile-footer-status">
-                    {presenceStatus === 'online' ? '🟢 Online' :
-                     presenceStatus === 'idle' ? '🟡 Ausente' :
-                     presenceStatus === 'dnd' ? '🔴 Não Perturbe' : '⚪ Invisível'}
-                  </span>
-                </div>
-
-                {showStatusMenu && (
-                  <div className="status-picker-popover" onClick={(e) => e.stopPropagation()}>
-                    <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('online'); setShowStatusMenu(false); }}>
-                      <span className="status-dot-bullet online" />
-                      <div className="status-meta">
-                        <strong>Online</strong>
-                        <span>Disponível</span>
-                      </div>
-                    </button>
-                    <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('idle'); setShowStatusMenu(false); }}>
-                      <span className="status-dot-bullet idle" />
-                      <div className="status-meta">
-                        <strong>Ausente</strong>
-                        <span>Inativo</span>
-                      </div>
-                    </button>
-                    <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('dnd'); setShowStatusMenu(false); }}>
-                      <span className="status-dot-bullet dnd" />
-                      <div className="status-meta">
-                        <strong>Não perturbe</strong>
-                        <span>Silenciar</span>
-                      </div>
-                    </button>
-                    <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('invisible'); setShowStatusMenu(false); }}>
-                      <span className="status-dot-bullet invisible" />
-                      <div className="status-meta">
-                        <strong>Invisível</strong>
-                        <span>Aparecer offline</span>
-                      </div>
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className="profile-footer-actions">
-                <button className="profile-footer-btn" onClick={toggleTheme} title="Alternar tema">
-                  {theme === 'light' ? <MoonIcon /> : <SunIcon />}
-                </button>
-                <button className="profile-footer-btn" onClick={() => setPage('Configurações')} title="Configurações">
-                  <SettingsIcon />
-                </button>
-                <button className="profile-footer-btn logout" onClick={onSignOut} title="Sair">
-                  <LogOutIcon />
-                </button>
-              </div>
-            </div>
-
-            {myGamePresence && presenceStatus !== 'invisible' && (
-              <div className="profile-footer-activity-row" title={`Jogando ${myGamePresence.name}`}>
-                <span className="game-presence-badge">
-                  <span className="game-presence-icon">{myGamePresence.icon || '🎮'}</span>
-                  <span className="game-presence-text">Jogando {myGamePresence.name}</span>
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
+        <UnifiedUserProfileFooter
+          displayName={profileDisplayName}
+          avatarUrl={profileAvatarUrl}
+          presenceStatus={presenceStatus}
+          showStatusMenu={showStatusMenu}
+          setShowStatusMenu={setShowStatusMenu}
+          updatePresenceStatus={updatePresenceStatus}
+          theme={theme as 'light' | 'dark'}
+          toggleTheme={toggleTheme}
+          onOpenSettings={() => setPage('Configurações')}
+          onOpenWhatsNew={onOpenWhatsNew}
+          onSignOut={onSignOut}
+          myGamePresence={myGamePresence}
+        />
       </aside>
 
       {/* 2. Center Content Area */}
@@ -8116,7 +9357,7 @@ function FriendsView({
         {/* Top Header & Search Bar */}
         <div className="friends-header-toolbar">
           <div className="friends-search-row">
-            <span style={{ fontSize: '15px' }}>🔍</span>
+            <SearchIcon style={{ width: '15px', height: '15px', color: 'var(--text-muted)', flexShrink: 0 }} />
             <input 
               type="text" 
               className="friends-search-input" 
@@ -8137,19 +9378,24 @@ function FriendsView({
 
           <div className="friends-filter-tabs">
             <button className={`friends-filter-chip ${friendTab === 'online' && filterMode === 'all' ? 'active' : ''}`} onClick={() => { setFriendTab('online'); setFilterMode('all'); }}>
-              🟢 Online ({onlineFriends.length})
+              <span className="status-dot-bullet online" style={{ width: '8px', height: '8px' }} />
+              <span>Online ({onlineFriends.length})</span>
             </button>
             <button className={`friends-filter-chip ${filterMode === 'gaming' ? 'active' : ''}`} onClick={() => { setFriendTab('online'); setFilterMode('gaming'); }}>
-              🎮 Em Jogo ({playingFriends.length})
+              <GamepadIcon style={{ width: '13px', height: '13px' }} />
+              <span>Em Jogo ({playingFriends.length})</span>
             </button>
             <button className={`friends-filter-chip ${friendTab === 'all' && filterMode === 'all' ? 'active' : ''}`} onClick={() => { setFriendTab('all'); setFilterMode('all'); }}>
-              👥 Todos ({acceptedFriends.length})
+              <UsersIcon style={{ width: '13px', height: '13px' }} />
+              <span>Todos ({acceptedFriends.length})</span>
             </button>
             <button className={`friends-filter-chip ${friendTab === 'pending' ? 'active' : ''}`} onClick={() => { setFriendTab('pending'); setFilterMode('all'); }}>
-              🕒 Pendentes ({pendingRequests.length})
+              <ClockIcon style={{ width: '13px', height: '13px' }} />
+              <span>Pendentes ({pendingRequests.length})</span>
             </button>
             <button className={`friends-filter-chip ${friendTab === 'add' ? 'active' : ''}`} onClick={() => { setFriendTab('add'); setFilterMode('all'); }} style={{ marginLeft: 'auto', background: friendTab === 'add' ? 'var(--accent-color)' : 'rgba(16, 185, 129, 0.15)', color: friendTab === 'add' ? '#fff' : '#10b981', borderColor: 'transparent' }}>
-              ➕ Adicionar Amigo
+              <UserPlusIcon style={{ width: '13px', height: '13px' }} />
+              <span>Adicionar Amigo</span>
             </button>
           </div>
         </div>
@@ -8162,7 +9408,9 @@ function FriendsView({
             </h3>
             {filterList(onlineFriends).length === 0 ? (
               <div className="empty-activity-box" style={{ marginTop: '20px' }}>
-                <div className="empty-activity-icon">🎮</div>
+                <div className="empty-activity-icon">
+                  <GamepadIcon style={{ width: '48px', height: '48px', color: 'var(--text-muted)', opacity: 0.6 }} />
+                </div>
                 <div className="empty-activity-title">Nenhum amigo online no momento</div>
                 <div className="empty-activity-desc">
                   Seus amigos estão descansando ou offline. Adicione mais jogadores de seus servidores ou convide pessoas novas!
@@ -8171,9 +9419,10 @@ function FriendsView({
                   type="button" 
                   className="activity-action-btn" 
                   onClick={() => setFriendTab('add')}
-                  style={{ width: 'auto', padding: '8px 20px', marginTop: '10px' }}
+                  style={{ width: 'auto', padding: '8px 20px', marginTop: '10px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 >
-                  ➕ Adicionar Novos Amigos
+                  <UserPlusIcon style={{ width: '14px', height: '14px' }} />
+                  <span>Adicionar Novos Amigos</span>
                 </button>
               </div>
             ) : (
@@ -8198,7 +9447,8 @@ function FriendsView({
                           <span className="friend-status-modern" title={customText}>
                             {customText.toLowerCase().includes('jogando') ? (
                               <span className="game-presence-badge" style={{ fontSize: '11px', padding: '2px 6px' }}>
-                                <span>🎮</span> {customText}
+                                <GamepadIcon style={{ width: '12px', height: '12px', flexShrink: 0 }} />
+                                <span>{customText}</span>
                               </span>
                             ) : (
                               customText
@@ -8215,7 +9465,7 @@ function FriendsView({
                           title="Enviar Mensagem Direta"
                           style={{ position: 'relative' }}
                         >
-                          💬
+                          <MessageSquareIcon style={{ width: '14px', height: '14px' }} />
                           {unreadDMs[friend.user.id] && <span className="unread-badge">{unreadDMs[friend.user.id]}</span>}
                         </button>
                         <button 
@@ -8224,7 +9474,7 @@ function FriendsView({
                           onClick={() => onOpenDM(friend.user.id)} 
                           title="Iniciar Chamada Direta 1v1"
                         >
-                          📞
+                          <PhoneIcon style={{ width: '14px', height: '14px' }} />
                         </button>
                         {onInspectMember && (
                           <button 
@@ -8233,7 +9483,7 @@ function FriendsView({
                             onClick={() => onInspectMember({ user: friend.user, role: 'Amigo' })} 
                             title="Ver Perfil Completo"
                           >
-                            👤
+                            <UserIcon style={{ width: '14px', height: '14px' }} />
                           </button>
                         )}
                         <button 
@@ -8261,7 +9511,9 @@ function FriendsView({
             </h3>
             {filterList(acceptedFriends).length === 0 ? (
               <div className="empty-activity-box" style={{ marginTop: '20px' }}>
-                <div className="empty-activity-icon">👥</div>
+                <div className="empty-activity-icon">
+                  <UsersIcon style={{ width: '48px', height: '48px', color: 'var(--text-muted)', opacity: 0.6 }} />
+                </div>
                 <div className="empty-activity-title">Você ainda não tem amigos adicionados</div>
                 <div className="empty-activity-desc">
                   O Echo fica muito mais divertido com seu squad! Envie convites de amizade para conversar por DM e jogar junto.
@@ -8270,9 +9522,10 @@ function FriendsView({
                   type="button" 
                   className="activity-action-btn" 
                   onClick={() => setFriendTab('add')}
-                  style={{ width: 'auto', padding: '8px 20px', marginTop: '10px' }}
+                  style={{ width: 'auto', padding: '8px 20px', marginTop: '10px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 >
-                  ➕ Adicionar Amigos
+                  <UserPlusIcon style={{ width: '14px', height: '14px' }} />
+                  <span>Adicionar Amigos</span>
                 </button>
               </div>
             ) : (
@@ -8298,7 +9551,8 @@ function FriendsView({
                           <span className="friend-status-modern" title={customText}>
                             {customText.toLowerCase().includes('jogando') ? (
                               <span className="game-presence-badge" style={{ fontSize: '11px', padding: '2px 6px' }}>
-                                <span>🎮</span> {customText}
+                                <GamepadIcon style={{ width: '12px', height: '12px', flexShrink: 0 }} />
+                                <span>{customText}</span>
                               </span>
                             ) : (
                               customText
@@ -8315,7 +9569,7 @@ function FriendsView({
                           title="Enviar Mensagem Direta"
                           style={{ position: 'relative' }}
                         >
-                          💬
+                          <MessageSquareIcon style={{ width: '14px', height: '14px' }} />
                           {unreadDMs[friend.user.id] && <span className="unread-badge">{unreadDMs[friend.user.id]}</span>}
                         </button>
                         <button 
@@ -8324,7 +9578,7 @@ function FriendsView({
                           onClick={() => onOpenDM(friend.user.id)} 
                           title="Iniciar Chamada Direta 1v1"
                         >
-                          📞
+                          <PhoneIcon style={{ width: '14px', height: '14px' }} />
                         </button>
                         {onInspectMember && (
                           <button 
@@ -8333,7 +9587,7 @@ function FriendsView({
                             onClick={() => onInspectMember({ user: friend.user, role: 'Amigo' })} 
                             title="Ver Perfil Completo"
                           >
-                            👤
+                            <UserIcon style={{ width: '14px', height: '14px' }} />
                           </button>
                         )}
                         <button 
@@ -8361,7 +9615,9 @@ function FriendsView({
             </h3>
             {filterList(pendingRequests).length === 0 ? (
               <div className="empty-activity-box" style={{ marginTop: '20px' }}>
-                <div className="empty-activity-icon">🕒</div>
+                <div className="empty-activity-icon">
+                  <ClockIcon style={{ width: '48px', height: '48px', color: 'var(--text-muted)', opacity: 0.6 }} />
+                </div>
                 <div className="empty-activity-title">Nenhuma solicitação pendente</div>
                 <div className="empty-activity-desc">
                   Você não possui convites pendentes de envio ou recebimento no momento.
@@ -8384,7 +9640,17 @@ function FriendsView({
                         <div className="friend-meta-modern">
                           <span className="friend-name-modern">{req.user.display_name}</span>
                           <span className="friend-status-modern" style={{ color: isReceived ? '#10b981' : 'var(--text-muted)' }}>
-                            {isReceived ? '📥 Quer ser seu amigo' : '📤 Solicitação enviada'}
+                            {isReceived ? (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <InboxIcon style={{ width: '12px', height: '12px' }} />
+                                <span>Quer ser seu amigo</span>
+                              </span>
+                            ) : (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <SendIcon style={{ width: '12px', height: '12px' }} />
+                                <span>Solicitação enviada</span>
+                              </span>
+                            )}
                           </span>
                         </div>
                       </div>
@@ -8419,7 +9685,7 @@ function FriendsView({
             {/* Share My Link Banner */}
             <div className="add-friend-hero-card">
               <div className="add-friend-hero-title">
-                <span>🔗</span>
+                <LinkIcon style={{ width: '16px', height: '16px', color: 'var(--accent-color)' }} />
                 <span>Compartilhe seu Link de Amigo</span>
               </div>
               <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
@@ -8427,8 +9693,9 @@ function FriendsView({
               </p>
               <div className="add-friend-link-row">
                 <span className="add-friend-link-text">echo.lobby/add/@{profileDisplayName || 'gamer'}</span>
-                <button type="button" className="add-friend-copy-btn" onClick={copyFriendLink}>
-                  📋 Copiar Link
+                <button type="button" className="add-friend-copy-btn" onClick={copyFriendLink} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <CopyIcon style={{ width: '12px', height: '12px' }} />
+                  <span>Copiar Link</span>
                 </button>
               </div>
             </div>
@@ -8465,8 +9732,9 @@ function FriendsView({
             {/* Friend Suggestions */}
             {suggestedMembers.length > 0 && (
               <div style={{ marginTop: '10px' }}>
-                <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                  🤝 Sugestões de Jogadores dos seus Servidores
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <UsersIcon style={{ width: '15px', height: '15px', color: 'var(--accent-color)' }} />
+                  <span>Sugestões de Jogadores dos seus Servidores</span>
                 </h4>
                 <div className="friend-suggestions-grid">
                   {suggestedMembers.map(m => (
@@ -8524,7 +9792,7 @@ function FriendsView({
             </div>
             <div className="dm-messages-list">
               {directMessages.length === 0 ? (
-                <div className="dm-empty">Nenhuma mensagem ainda. Diga oi! 👋</div>
+                <div className="dm-empty">Nenhuma mensagem ainda. Diga oi!</div>
               ) : (
                 directMessages.map(msg => (
                   <div key={msg.id} className={`dm-message ${msg.sender_id === user.id ? 'dm-sent' : 'dm-received'}`}>
@@ -8546,17 +9814,22 @@ function FriendsView({
             <form className="dm-compose" onSubmit={onSendDM}>
               <input type="file" ref={dmFileRef} style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadFile(f); e.target.value = '' }} />
               <button type="button" className="dm-attach-btn" onClick={() => dmFileRef.current?.click()} disabled={isUploading} title="Anexar arquivo">
-                {isUploading ? '⏳' : '📎'}
+                {isUploading ? <ClockIcon style={{ width: '14px', height: '14px' }} /> : <PaperclipIcon style={{ width: '14px', height: '14px' }} />}
               </button>
               <input value={dmDraft} onChange={(e) => setDmDraft(e.target.value)} placeholder="Escreva uma mensagem…" />
-              <button type="submit" disabled={!dmDraft.trim() && !isUploading}>➤</button>
+              <button type="submit" disabled={!dmDraft.trim() && !isUploading}>
+                <SendIcon style={{ width: '14px', height: '14px' }} />
+              </button>
             </form>
           </aside>
         )
       })() : (
         <aside className="friends-activity-panel">
           <div className="activity-panel-header">
-            <h3>🔥 Atividade Ativa</h3>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <FlameIcon style={{ width: '16px', height: '16px', color: '#f97316' }} />
+              <span>Atividade Ativa</span>
+            </h3>
             <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: 700 }}>
               {activeFeedFriends.length} online
             </span>
@@ -8564,7 +9837,9 @@ function FriendsView({
 
           {activeFeedFriends.length === 0 ? (
             <div className="empty-activity-box">
-              <div className="empty-activity-icon">🎮</div>
+              <div className="empty-activity-icon">
+                <GamepadIcon style={{ width: '40px', height: '40px', color: 'var(--text-muted)', opacity: 0.6 }} />
+              </div>
               <div className="empty-activity-title">Tudo calmo por aqui</div>
               <div className="empty-activity-desc">
                 Quando seus amigos começarem a jogar ou entrarem em canais de voz, a atividade deles em tempo real aparecerá aqui!
@@ -8589,7 +9864,13 @@ function FriendsView({
                     </div>
 
                     <div className="activity-game-body">
-                      <span className="activity-game-icon">{isGaming ? '🎮' : '🟢'}</span>
+                      <span className="activity-game-icon">
+                        {isGaming ? (
+                          <GamepadIcon style={{ width: '14px', height: '14px', color: '#4ade80' }} />
+                        ) : (
+                          <span className="status-dot-bullet online" style={{ width: '8px', height: '8px' }} />
+                        )}
+                      </span>
                       <div className="activity-game-info">
                         <span className="activity-game-title">
                           {pres?.custom_status || 'Online no Echo'}
@@ -8602,8 +9883,10 @@ function FriendsView({
                       type="button" 
                       className="activity-action-btn" 
                       onClick={() => onOpenDM(friend.user.id)}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                     >
-                      💬 Enviar Mensagem
+                      <MessageSquareIcon style={{ width: '13px', height: '13px' }} />
+                      <span>Enviar Mensagem</span>
                     </button>
                   </div>
                 )
@@ -8619,6 +9902,8 @@ function FriendsView({
 /* ── Settings View Component ────────────────────── */
 function SettingsView({
   userId,
+  userCreatedAt,
+  isServerOwner,
   currentDisplayName,
   currentAvatarUrl,
   customStatus,
@@ -8640,6 +9925,12 @@ function SettingsView({
   isPremiumUser,
   setPage,
   onSignOut,
+  presenceStatus = 'online',
+  showStatusMenu = false,
+  setShowStatusMenu,
+  updatePresenceStatus,
+  onOpenWhatsNew,
+  myGamePresence,
   noiseSuppressionEnabled,
   echoCancellationEnabled,
   onNoiseSuppressionChange,
@@ -8654,9 +9945,17 @@ function SettingsView({
   onToggleSpatialAudio,
   onResetAllPans,
   isAiDenoiseEnabled,
-  onToggleAiDenoise
+  onToggleAiDenoise,
+  customAccentColor = '',
+  onCustomAccentColorChange,
+  chatDensity = 'cozy',
+  onChatDensityChange,
+  performanceMode = false,
+  onPerformanceModeChange
 }: {
   userId: string
+  userCreatedAt?: string
+  isServerOwner?: boolean
   currentDisplayName: string
   currentAvatarUrl: string
   customStatus: string
@@ -8678,6 +9977,12 @@ function SettingsView({
   isPremiumUser: boolean
   setPage: (page: Page) => void
   onSignOut: () => void
+  presenceStatus?: 'online' | 'idle' | 'dnd' | 'invisible'
+  showStatusMenu?: boolean
+  setShowStatusMenu?: (val: boolean) => void
+  updatePresenceStatus?: (status: 'online' | 'idle' | 'dnd' | 'invisible') => void
+  onOpenWhatsNew?: () => void
+  myGamePresence?: { name: string; icon: string; startedAt: number } | null
   noiseSuppressionEnabled: boolean
   echoCancellationEnabled: boolean
   onNoiseSuppressionChange: (val: boolean) => void
@@ -8693,11 +9998,17 @@ function SettingsView({
   onResetAllPans: () => void
   isAiDenoiseEnabled: boolean
   onToggleAiDenoise: (val: boolean) => void
+  customAccentColor?: string
+  onCustomAccentColorChange?: (color: string) => void
+  chatDensity?: 'cozy' | 'compact'
+  onChatDensityChange?: (density: 'cozy' | 'compact') => void
+  performanceMode?: boolean
+  onPerformanceModeChange?: (val: boolean) => void
 }) {
   const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'audio' | 'appearance' | 'changelog'>('profile')
   
-  // Profile settings state & Echo Player Card Studio
-  const [profileSubTab, setProfileSubTab] = useState<'identity' | 'card' | 'gamer'>('identity')
+  // Profile settings state & Echo Player Identity
+  const [profileSubTab, setProfileSubTab] = useState<'identity' | 'appearance' | 'badges'>('identity')
   const [localDisplayName, setLocalDisplayName] = useState(currentDisplayName)
   const [localAvatarUrl, setLocalAvatarUrl] = useState(currentAvatarUrl)
   const [localCustomStatus, setLocalCustomStatus] = useState(customStatus)
@@ -8708,30 +10019,201 @@ function SettingsView({
   const [localAvatarFrame, setLocalAvatarFrame] = useState(() => localStorage.getItem(`echo-avatar-frame-${userId}`) || 'aura-cyan')
   const [localBadge, setLocalBadge] = useState(() => localStorage.getItem(`echo-badge-${userId}`) || 'owner')
   const [localPresenceStatus, setLocalPresenceStatus] = useState<'online' | 'idle' | 'dnd' | 'offline'>(() => (localStorage.getItem(`echo-presence-status-${userId}`) as any) || 'online')
-  const [localMainGame, setLocalMainGame] = useState(() => localStorage.getItem(`echo-main-game-${userId}`) || 'VALORANT')
-  const [localHardwareSetup, setLocalHardwareSetup] = useState(() => localStorage.getItem(`echo-setup-${userId}`) || '🎧 HyperX Cloud II')
-  const [localShowGamerProfile, setLocalShowGamerProfile] = useState<boolean>(() => localStorage.getItem(`echo-show-gamer-profile-${userId}`) !== 'false')
-  const [localShowMainGame, setLocalShowMainGame] = useState<boolean>(() => localStorage.getItem(`echo-show-main-game-${userId}`) !== 'false')
-  const [localShowHardwareSetup, setLocalShowHardwareSetup] = useState<boolean>(() => localStorage.getItem(`echo-show-hardware-${userId}`) !== 'false')
   const [localShowBadge, setLocalShowBadge] = useState<boolean>(() => localStorage.getItem(`echo-show-badge-${userId}`) !== 'false')
+  
+  // Advanced Profile Appearance states
+  const [localCardFinish, setLocalCardFinish] = useState<'none' | 'holographic' | 'glass' | 'carbon'>(() => (localStorage.getItem(`echo-card-finish-${userId}`) as any) || 'none')
+  const [localClanTag, setLocalClanTag] = useState(() => localStorage.getItem(`echo-clan-tag-${userId}`) || '')
+  const [localClanTagColor, setLocalClanTagColor] = useState(() => localStorage.getItem(`echo-clan-tag-color-${userId}`) || '#00f2fe')
+  const [localSocialSteam, setLocalSocialSteam] = useState(() => localStorage.getItem(`echo-social-steam-${userId}`) || '')
+  const [localSocialTwitch, setLocalSocialTwitch] = useState(() => localStorage.getItem(`echo-social-twitch-${userId}`) || '')
+  const [localSocialYoutube, setLocalSocialYoutube] = useState(() => localStorage.getItem(`echo-social-youtube-${userId}`) || '')
+  const [localSocialKick, setLocalSocialKick] = useState(() => localStorage.getItem(`echo-social-kick-${userId}`) || '')
+
   const [savingProfile, setSavingProfile] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [uploadingBanner, setUploadingBanner] = useState(false)
+  const [devUnlockBadges, setDevUnlockBadges] = useState(false)
+  const [profileSavedToast, setProfileSavedToast] = useState(false)
+
+  // Unconditional file input references for Avatar and Banner
+  const avatarFileInputRef = useRef<HTMLInputElement>(null)
+  const bannerFileInputRef = useRef<HTMLInputElement>(null)
+
+  // Account age and tenure calculation for Badge unlocks
+  const accountCreatedDate = userCreatedAt ? new Date(userCreatedAt) : new Date()
+  const accountDays = Math.max(0, Math.floor((Date.now() - accountCreatedDate.getTime()) / (1000 * 60 * 60 * 24)))
+
+  const badgesList = [
+    { 
+      id: 'owner', 
+      label: 'Líder de Servidor', 
+      icon: <BadgeCrownIcon />, 
+      unlocked: Boolean(isServerOwner) || devUnlockBadges,
+      requirement: 'Requer ser proprietário/criador de servidor',
+      desc: 'Fundadores de comunidade e construtores de servidores no Echo' 
+    },
+    { 
+      id: 'vip', 
+      label: 'Echo VIP', 
+      icon: <BadgeVipIcon />, 
+      unlocked: Boolean(isPremiumUser) || devUnlockBadges,
+      requirement: 'Requer assinatura Echo Pass ativa',
+      desc: 'Membros apoiadores com acesso prioritário e suporte VIP' 
+    },
+    { 
+      id: 'early', 
+      label: 'Fundador 2026', 
+      icon: <BadgeFounderIcon />, 
+      unlocked: accountCreatedDate.getFullYear() <= 2026 || devUnlockBadges,
+      requirement: 'Conta criada na fase de lançamento (2026)',
+      desc: 'Pioneiros presentes no nascimento e lançamento da plataforma' 
+    },
+    { 
+      id: 'gamer', 
+      label: 'Membro Veterano', 
+      icon: <BadgeVeteranIcon />, 
+      unlocked: accountDays >= 7 || devUnlockBadges,
+      requirement: `Requer no mínimo 7 dias de conta ativa (${accountDays} ${accountDays === 1 ? 'dia' : 'dias'} de conta)`,
+      desc: 'Membros com presença contínua em canais e salas de voz' 
+    },
+    { 
+      id: 'podcaster', 
+      label: 'Streamer Oficial', 
+      icon: <BadgeStreamerIcon />, 
+      unlocked: devUnlockBadges,
+      requirement: 'Requer parceria verificada de transmissão ao vivo',
+      desc: 'Criadores de conteúdo e transmissores parceiros no Echo' 
+    },
+    { 
+      id: 'none', 
+      label: 'Sem Insígnia', 
+      icon: <span style={{ fontSize: '18px', opacity: 0.4 }}>✕</span>, 
+      unlocked: true,
+      requirement: 'Livre',
+      desc: 'Ocultar insígnias do perfil' 
+    }
+  ]
+
+  const savedValuesRef = useRef({
+    displayName: currentDisplayName,
+    avatarUrl: currentAvatarUrl,
+    customStatus: customStatus,
+    bio: localStorage.getItem(`echo-bio-${userId}`) || '🎮 Jogador ativo no Echo • Pronto para squad e clutch.',
+    pronouns: localStorage.getItem(`echo-pronouns-${userId}`) || 'ele/dele',
+    bannerPreset: localStorage.getItem(`echo-banner-preset-${userId}`) || 'synthwave',
+    bannerCustom: localStorage.getItem(`echo-banner-custom-${userId}`) || '',
+    avatarFrame: localStorage.getItem(`echo-avatar-frame-${userId}`) || 'aura-cyan',
+    badge: localStorage.getItem(`echo-badge-${userId}`) || 'owner',
+    presenceStatus: (localStorage.getItem(`echo-presence-status-${userId}`) as any) || 'online',
+    showBadge: localStorage.getItem(`echo-show-badge-${userId}`) !== 'false',
+    cardFinish: (localStorage.getItem(`echo-card-finish-${userId}`) as any) || 'none',
+    clanTag: localStorage.getItem(`echo-clan-tag-${userId}`) || '',
+    clanTagColor: localStorage.getItem(`echo-clan-tag-color-${userId}`) || '#00f2fe',
+    socialSteam: localStorage.getItem(`echo-social-steam-${userId}`) || '',
+    socialTwitch: localStorage.getItem(`echo-social-twitch-${userId}`) || '',
+    socialYoutube: localStorage.getItem(`echo-social-youtube-${userId}`) || '',
+    socialKick: localStorage.getItem(`echo-social-kick-${userId}`) || '',
+  })
+
+  const hasChanges = (
+    localDisplayName !== savedValuesRef.current.displayName ||
+    localAvatarUrl !== savedValuesRef.current.avatarUrl ||
+    localCustomStatus !== savedValuesRef.current.customStatus ||
+    localBio !== savedValuesRef.current.bio ||
+    localPronouns !== savedValuesRef.current.pronouns ||
+    localBannerPreset !== savedValuesRef.current.bannerPreset ||
+    localBannerCustom !== savedValuesRef.current.bannerCustom ||
+    localAvatarFrame !== savedValuesRef.current.avatarFrame ||
+    localBadge !== savedValuesRef.current.badge ||
+    localPresenceStatus !== savedValuesRef.current.presenceStatus ||
+    localShowBadge !== savedValuesRef.current.showBadge ||
+    localCardFinish !== savedValuesRef.current.cardFinish ||
+    localClanTag !== savedValuesRef.current.clanTag ||
+    localClanTagColor !== savedValuesRef.current.clanTagColor ||
+    localSocialSteam !== savedValuesRef.current.socialSteam ||
+    localSocialTwitch !== savedValuesRef.current.socialTwitch ||
+    localSocialYoutube !== savedValuesRef.current.socialYoutube ||
+    localSocialKick !== savedValuesRef.current.socialKick
+  )
+
+  function handleDiscardChanges() {
+    const s = savedValuesRef.current
+    setLocalDisplayName(s.displayName)
+    setLocalAvatarUrl(s.avatarUrl)
+    setLocalCustomStatus(s.customStatus)
+    setLocalBio(s.bio)
+    setLocalPronouns(s.pronouns)
+    setLocalBannerPreset(s.bannerPreset)
+    setLocalBannerCustom(s.bannerCustom)
+    setLocalAvatarFrame(s.avatarFrame)
+    setLocalBadge(s.badge)
+    setLocalPresenceStatus(s.presenceStatus)
+    setLocalShowBadge(s.showBadge)
+    setLocalCardFinish(s.cardFinish)
+    setLocalClanTag(s.clanTag)
+    setLocalClanTagColor(s.clanTagColor)
+    setLocalSocialSteam(s.socialSteam)
+    setLocalSocialTwitch(s.socialTwitch)
+    setLocalSocialYoutube(s.socialYoutube)
+    setLocalSocialKick(s.socialKick)
+  }
 
   async function handleAvatarUpload(file: File) {
-    if (!supabase) return
     setUploadingAvatar(true)
     try {
-      const ext = file.name.split('.').pop()
-      const path = `avatars/${userId}/${Date.now()}.${ext}`
-      const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file)
-      if (uploadError) throw uploadError
+      const reader = new FileReader()
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setLocalAvatarUrl(reader.result)
+        }
+      }
+      reader.readAsDataURL(file)
 
-      const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
-      setLocalAvatarUrl(urlData.publicUrl)
+      if (supabase) {
+        const ext = file.name.split('.').pop()
+        const path = `avatars/${userId}/${Date.now()}.${ext}`
+        const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file)
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
+          if (urlData?.publicUrl) {
+            setLocalAvatarUrl(urlData.publicUrl)
+          }
+        }
+      }
     } catch (err: any) {
-      alert('Erro ao fazer upload da imagem: ' + err.message)
+      console.warn('Avatar upload fallback to local data URL:', err)
     } finally {
       setUploadingAvatar(false)
+    }
+  }
+
+  async function handleBannerUpload(file: File) {
+    setUploadingBanner(true)
+    try {
+      const reader = new FileReader()
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setLocalBannerCustom(reader.result)
+        }
+      }
+      reader.readAsDataURL(file)
+
+      if (supabase) {
+        const ext = file.name.split('.').pop()
+        const path = `banners/${userId}/${Date.now()}.${ext}`
+        const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file)
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
+          if (urlData?.publicUrl) {
+            setLocalBannerCustom(urlData.publicUrl)
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn('Banner upload fallback to local data URL:', err)
+    } finally {
+      setUploadingBanner(false)
     }
   }
 
@@ -8752,8 +10234,8 @@ function SettingsView({
     'https://api.dicebear.com/7.x/bottts/svg?seed=Robot-Echo6'
   ]
 
-  async function handleSaveProfile(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleSaveProfile(e?: React.FormEvent) {
+    if (e) e.preventDefault()
     if (!supabase) return
     setSavingProfile(true)
     try {
@@ -8764,12 +10246,14 @@ function SettingsView({
       localStorage.setItem(`echo-avatar-frame-${userId}`, localAvatarFrame)
       localStorage.setItem(`echo-badge-${userId}`, localBadge)
       localStorage.setItem(`echo-presence-status-${userId}`, localPresenceStatus)
-      localStorage.setItem(`echo-main-game-${userId}`, localMainGame)
-      localStorage.setItem(`echo-setup-${userId}`, localHardwareSetup)
-      localStorage.setItem(`echo-show-gamer-profile-${userId}`, JSON.stringify(localShowGamerProfile))
-      localStorage.setItem(`echo-show-main-game-${userId}`, JSON.stringify(localShowMainGame))
-      localStorage.setItem(`echo-show-hardware-${userId}`, JSON.stringify(localShowHardwareSetup))
       localStorage.setItem(`echo-show-badge-${userId}`, JSON.stringify(localShowBadge))
+      localStorage.setItem(`echo-card-finish-${userId}`, localCardFinish)
+      localStorage.setItem(`echo-clan-tag-${userId}`, localClanTag)
+      localStorage.setItem(`echo-clan-tag-color-${userId}`, localClanTagColor)
+      localStorage.setItem(`echo-social-steam-${userId}`, localSocialSteam)
+      localStorage.setItem(`echo-social-twitch-${userId}`, localSocialTwitch)
+      localStorage.setItem(`echo-social-youtube-${userId}`, localSocialYoutube)
+      localStorage.setItem(`echo-social-kick-${userId}`, localSocialKick)
 
       const { error } = await supabase.from('profiles').upsert({
         id: userId,
@@ -8777,9 +10261,32 @@ function SettingsView({
         avatar_url: localAvatarUrl
       })
       if (error) throw error
+
+      savedValuesRef.current = {
+        displayName: localDisplayName,
+        avatarUrl: localAvatarUrl,
+        customStatus: localCustomStatus,
+        bio: localBio,
+        pronouns: localPronouns,
+        bannerPreset: localBannerPreset,
+        bannerCustom: localBannerCustom,
+        avatarFrame: localAvatarFrame,
+        badge: localBadge,
+        presenceStatus: localPresenceStatus,
+        showBadge: localShowBadge,
+        cardFinish: localCardFinish,
+        clanTag: localClanTag,
+        clanTagColor: localClanTagColor,
+        socialSteam: localSocialSteam,
+        socialTwitch: localSocialTwitch,
+        socialYoutube: localSocialYoutube,
+        socialKick: localSocialKick,
+      }
+
       onProfileUpdate(localDisplayName, localAvatarUrl)
       onCustomStatusUpdate(localCustomStatus)
-      alert('Echo Player Card e perfil salvos com sucesso!')
+      setProfileSavedToast(true)
+      setTimeout(() => setProfileSavedToast(false), 3000)
     } catch (err: any) {
       alert('Erro ao salvar perfil: ' + err.message)
     } finally {
@@ -8866,556 +10373,713 @@ function SettingsView({
           </div>
         </div>
 
-        <div className="sidebar-profile-footer">
-          <div className="profile-footer-info">
-            <div className="profile-footer-avatar">
-              {profileAvatarUrl ? (
-                <img src={profileAvatarUrl} alt={profileDisplayName} />
-              ) : (
-                profileDisplayName.slice(0, 1).toUpperCase()
-              )}
-            </div>
-            <div className="profile-footer-meta">
-              <span className="profile-footer-name" title={profileDisplayName}>{profileDisplayName}</span>
-              <span className="profile-footer-status">Online</span>
-            </div>
-          </div>
-          <div className="profile-footer-actions">
-            <button className="profile-footer-btn" onClick={toggleTheme} title="Alternar tema">
-              {theme === 'light' ? <MoonIcon /> : <SunIcon />}
-            </button>
-            <button className="profile-footer-btn" onClick={() => setPage('Configurações')} title="Configurações">
-              <SettingsIcon />
-            </button>
-            <button className="profile-footer-btn logout" onClick={onSignOut} title="Sair">
-              <LogOutIcon />
-            </button>
-          </div>
-        </div>
+        <UnifiedUserProfileFooter
+          displayName={profileDisplayName}
+          avatarUrl={profileAvatarUrl}
+          presenceStatus={presenceStatus}
+          showStatusMenu={showStatusMenu}
+          setShowStatusMenu={setShowStatusMenu || (() => {})}
+          updatePresenceStatus={updatePresenceStatus || (() => {})}
+          theme={theme as 'light' | 'dark'}
+          toggleTheme={toggleTheme}
+          onOpenSettings={() => setPage('Configurações')}
+          onOpenWhatsNew={onOpenWhatsNew}
+          onSignOut={onSignOut}
+          myGamePresence={myGamePresence}
+        />
       </aside>
 
       <section className="settings-content">
         {activeSettingsTab === 'profile' && (
-          <div className="settings-container" style={{ maxWidth: '1120px' }}>
-            <div style={{ marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+          <div className="settings-container echo-profile-page" style={{ maxWidth: '960px' }}>
+            {/* Permanent hidden file inputs for Avatar and Banner */}
+            <input 
+              ref={avatarFileInputRef}
+              type="file" 
+              accept="image/*" 
+              style={{ display: 'none' }} 
+              onChange={(e) => { 
+                const f = e.target.files?.[0]
+                if (f) handleAvatarUpload(f)
+                e.target.value = '' 
+              }} 
+            />
+            <input 
+              ref={bannerFileInputRef}
+              type="file" 
+              accept="image/*" 
+              style={{ display: 'none' }} 
+              onChange={(e) => { 
+                const f = e.target.files?.[0]
+                if (f) handleBannerUpload(f)
+                e.target.value = '' 
+              }} 
+            />
+
+            <div className="profile-studio-header">
               <div>
                 <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span>Estúdio de Identidade</span>
-                  <span style={{ fontSize: '11px', background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.4)', padding: '2px 8px', borderRadius: '6px', fontWeight: 800 }}>
-                    ECHO PASS // 2026
-                  </span>
+                  <span>Meu Perfil</span>
+                  <span className="profile-studio-badge">ECHO PASS // 2026</span>
                 </h2>
-                <p>Personalize seu Cartão Holográfico de Jogador, auras sonoras e dados gamer com visualização ao vivo.</p>
+                <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  Personalize sua identidade, capa e presença no Echo com visualização em tempo real.
+                </p>
+              </div>
+
+              {profileSavedToast && (
+                <div className="profile-saved-toast">
+                  <span>✓</span> Perfil salvo com sucesso!
+                </div>
+              )}
+            </div>
+
+            {/* Top: Echo Identity Hero (Inspirado no prestígio de perfil da Steam com acabamento moderno do Echo) */}
+            <div className={`echo-hero-showcase finish-${localCardFinish}`}>
+              {/* Panoramic Profile Banner */}
+              <div 
+                className={`echo-hero-banner ${!localBannerCustom ? `texture-${localBannerPreset}` : ''}`}
+                style={localBannerCustom ? { backgroundImage: `url(${localBannerCustom})` } : undefined}
+                onClick={() => bannerFileInputRef.current?.click()}
+                title="Clique para escolher uma imagem de capa do computador"
+              >
+                <div className="echo-hero-banner-overlay" />
+                <button 
+                  type="button" 
+                  className="echo-hero-banner-edit-btn"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    bannerFileInputRef.current?.click()
+                  }}
+                >
+                  <CameraIcon style={{ width: '14px', height: '14px' }} />
+                  <span>Alterar Capa</span>
+                </button>
+              </div>
+
+              {/* Profile Card Main Info Section */}
+              <div className="echo-hero-info-section">
+                <div className="echo-hero-avatar-wrap">
+                  <div 
+                    className={`echo-hero-avatar-squircle ${localAvatarFrame}`}
+                    onClick={() => avatarFileInputRef.current?.click()}
+                    title="Clique para trocar foto de perfil"
+                  >
+                    <div className="echo-hero-avatar-inner">
+                      {localAvatarUrl ? (
+                        <img src={localAvatarUrl} alt="Avatar" />
+                      ) : (
+                        localDisplayName.slice(0, 1).toUpperCase()
+                      )}
+                    </div>
+                    <div className="echo-hero-avatar-overlay">
+                      <CameraIcon style={{ width: '22px', height: '22px' }} />
+                    </div>
+                    <span className={`echo-hero-status-dot status-${localPresenceStatus}`} />
+                  </div>
+                </div>
+
+                <div className="echo-hero-details">
+                  <div className="echo-hero-identity-row">
+                    <div className="echo-hero-name-block">
+                      <div className="echo-hero-display-name">
+                        {localClanTag && (
+                          <span 
+                            className="echo-clan-tag" 
+                            style={{ borderColor: localClanTagColor, color: localClanTagColor, boxShadow: `0 0 10px ${localClanTagColor}40` }}
+                            title={`Squad Tag: ${localClanTag.toUpperCase()}`}
+                          >
+                            [{localClanTag.toUpperCase()}]
+                          </span>
+                        )}
+                        <span>{localDisplayName || 'Jogador'}</span>
+                        {localPronouns && <span className="echo-hero-pronoun-tag">{localPronouns}</span>}
+                      </div>
+                      <div className="echo-hero-handle">
+                        @{localDisplayName.toLowerCase().replace(/\s+/g, '_') || 'echo_user'}
+                      </div>
+                    </div>
+
+                    {/* Community Badges (Prestige Showcase - Sem nível) */}
+                    <div className="echo-hero-prestige-block">
+                      {localShowBadge && localBadge !== 'none' && (
+                        <div className={`echo-prestige-badge badge-${localBadge}`}>
+                          {localBadge === 'owner' && <><BadgeCrownIcon style={{ width: '15px', height: '15px' }} /> <span>Líder de Servidor</span></>}
+                          {localBadge === 'vip' && <><BadgeVipIcon style={{ width: '15px', height: '15px' }} /> <span>Echo VIP</span></>}
+                          {localBadge === 'early' && <><BadgeFounderIcon style={{ width: '15px', height: '15px' }} /> <span>Fundador 2026</span></>}
+                          {localBadge === 'gamer' && <><BadgeVeteranIcon style={{ width: '15px', height: '15px' }} /> <span>Membro Veterano</span></>}
+                          {localBadge === 'podcaster' && <><BadgeStreamerIcon style={{ width: '15px', height: '15px' }} /> <span>Streamer Oficial</span></>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Status / Activity Quote */}
+                  {localCustomStatus && (
+                    <div className="echo-hero-status-quote">
+                      <span className="echo-status-wave">〰️</span>
+                      <span className="echo-status-text">{localCustomStatus}</span>
+                    </div>
+                  )}
+
+                  {/* Bio Preview */}
+                  {localBio && (
+                    <p className="echo-hero-bio-snippet">
+                      {localBio}
+                    </p>
+                  )}
+
+                  {/* Connected Socials Showcase */}
+                  {(localSocialSteam || localSocialTwitch || localSocialYoutube || localSocialKick) && (
+                    <div className="echo-hero-socials-row">
+                      {localSocialSteam && (
+                        <a 
+                          href={localSocialSteam.startsWith('http') ? localSocialSteam : `https://steamcommunity.com/id/${localSocialSteam}`} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="echo-social-link-btn steam" 
+                          title={`Steam: ${localSocialSteam}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <SteamIcon style={{ width: '13px', height: '13px' }} />
+                          <span>Steam</span>
+                        </a>
+                      )}
+                      {localSocialTwitch && (
+                        <a 
+                          href={localSocialTwitch.startsWith('http') ? localSocialTwitch : `https://twitch.tv/${localSocialTwitch}`} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="echo-social-link-btn twitch" 
+                          title={`Twitch: ${localSocialTwitch}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <TwitchIcon style={{ width: '13px', height: '13px' }} />
+                          <span>Twitch</span>
+                        </a>
+                      )}
+                      {localSocialYoutube && (
+                        <a 
+                          href={localSocialYoutube.startsWith('http') ? localSocialYoutube : `https://youtube.com/@${localSocialYoutube.replace('@', '')}`} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="echo-social-link-btn youtube" 
+                          title={`YouTube: ${localSocialYoutube}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <YoutubeIcon style={{ width: '13px', height: '13px' }} />
+                          <span>YouTube</span>
+                        </a>
+                      )}
+                      {localSocialKick && (
+                        <a 
+                          href={localSocialKick.startsWith('http') ? localSocialKick : `https://kick.com/${localSocialKick}`} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="echo-social-link-btn kick" 
+                          title={`Kick: ${localSocialKick}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <KickIcon style={{ width: '13px', height: '13px' }} />
+                          <span>Kick</span>
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="echo-studio-layout">
-              {/* Left Column: Echo Player Card Preview */}
-              <div className="echo-player-card-wrapper">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <label style={{ fontSize: '11.5px', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '1px' }}>
-                    ✦ ECHO PLAYER CARD
-                  </label>
-                  <span style={{ fontSize: '10.5px', color: '#10b981', fontWeight: 700 }}>● AO VIVO</span>
-                </div>
-
-                <div className="echo-player-card">
-                  {/* Texture Canvas */}
-                  <div 
-                    className={`card-texture-canvas ${!localBannerCustom ? `texture-${localBannerPreset}` : ''}`}
-                    style={localBannerCustom ? { backgroundImage: `url(${localBannerCustom})` } : undefined}
-                  />
-
-                  {/* Content Layer */}
-                  <div className="card-content-layer">
-                    {/* Top Bar */}
-                    <div className="card-top-bar">
-                      <div className="card-brand-tag">
-                        <span>⚡ ECHO ID</span>
-                        <span style={{ opacity: 0.4 }}>//</span>
-                        <span style={{ color: '#00f2fe' }}>VERIFIED</span>
-                      </div>
-                      <div className="card-status-pill">
-                        <span className={`member-status-dot ${localPresenceStatus}`} style={{ width: '8px', height: '8px' }} />
-                        <span>
-                          {localPresenceStatus === 'online' && 'Disponível'}
-                          {localPresenceStatus === 'idle' && 'Ausente'}
-                          {localPresenceStatus === 'dnd' && 'Ocupado'}
-                          {localPresenceStatus === 'offline' && 'Invisível'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Hero Row: Squircle Avatar + Soundwave Aura */}
-                    <div className="card-hero-row">
-                      <div className={`card-avatar-squircle ${localAvatarFrame}`}>
-                        <div className="squircle-inner-img">
-                          {localAvatarUrl ? (
-                            <img src={localAvatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '17px', objectFit: 'cover' }} />
-                          ) : (
-                            localDisplayName.slice(0, 1).toUpperCase()
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="card-hero-meta">
-                        <div className="card-user-name">
-                          <span>{localDisplayName || 'Jogador'}</span>
-                          {localPronouns && <span className="card-pronoun-tag">{localPronouns}</span>}
-                        </div>
-                        {localShowGamerProfile && localShowBadge && localBadge === 'owner' && <span className="card-esports-badge badge-owner">👑 Líder de Servidor</span>}
-                        {localShowGamerProfile && localShowBadge && localBadge === 'vip' && <span className="card-esports-badge badge-vip">💎 Echo VIP</span>}
-                        {localShowGamerProfile && localShowBadge && localBadge === 'early' && <span className="card-esports-badge badge-early">⚡ Fundador 2026</span>}
-                        {localShowGamerProfile && localShowBadge && localBadge === 'gamer' && <span className="card-esports-badge badge-gamer">🎯 Duelista / Pro</span>}
-                        {localShowGamerProfile && localShowBadge && localBadge === 'podcaster' && <span className="card-esports-badge badge-podcaster">🎙️ Streamer</span>}
-                      </div>
-                    </div>
-
-                    {/* Gamer Pills Row */}
-                    {localShowGamerProfile && ((localShowMainGame && localMainGame && localMainGame !== 'Nenhum') || (localShowHardwareSetup && localHardwareSetup)) && (
-                      <div className="card-pills-row">
-                        {localShowMainGame && localMainGame && localMainGame !== 'Nenhum' && (
-                          <span className="card-game-pill">
-                            <span>🎮</span>
-                            <span>{localMainGame}</span>
-                          </span>
-                        )}
-                        {localShowHardwareSetup && localHardwareSetup && (
-                          <span className="card-hardware-pill">
-                            <span>{localHardwareSetup}</span>
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Status Sonoro */}
-                    {localCustomStatus && (
-                      <div className="card-sound-status">
-                        <span style={{ color: '#00f2fe' }}>〰️</span>
-                        <span>{localCustomStatus}</span>
-                      </div>
-                    )}
-
-                    {/* Terminal Bio */}
-                    <div className="card-terminal-bio">
-                      <div className="card-bio-header">Sobre o Jogador // Bio</div>
-                      <div>{localBio || 'Nenhuma descrição adicionada.'}</div>
-                    </div>
-
-                    {/* Tech Footer */}
-                    <div className="card-bottom-footer">
-                      <span>MEMBER_PASS: #2026</span>
-                      <span>HASH: {userId.slice(0, 8).toUpperCase()}</span>
-                    </div>
-                  </div>
-                </div>
+            {/* Modular Customization Controls (Ergonomia limpa do Discord) */}
+            <div className="echo-editor-card">
+              <div className="echo-editor-nav">
+                <button
+                  type="button"
+                  className={`echo-editor-tab-btn ${profileSubTab === 'identity' ? 'active' : ''}`}
+                  onClick={() => setProfileSubTab('identity')}
+                >
+                  <UserIcon style={{ width: '16px', height: '16px' }} />
+                  <span>Identidade & Presença</span>
+                </button>
+                <button
+                  type="button"
+                  className={`echo-editor-tab-btn ${profileSubTab === 'appearance' ? 'active' : ''}`}
+                  onClick={() => setProfileSubTab('appearance')}
+                >
+                  <PaletteIcon style={{ width: '16px', height: '16px' }} />
+                  <span>Estilo Visual (Avatar & Capa)</span>
+                </button>
+                <button
+                  type="button"
+                  className={`echo-editor-tab-btn ${profileSubTab === 'badges' ? 'active' : ''}`}
+                  onClick={() => setProfileSubTab('badges')}
+                >
+                  <SparklesIcon style={{ width: '16px', height: '16px' }} />
+                  <span>Insígnias da Comunidade</span>
+                </button>
               </div>
 
-              {/* Right Column: Modular Studio Controls */}
-              <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column' }}>
-                {/* Studio Sub-Tabs Nav */}
-                <div className="studio-nav-tabs">
-                  <button
-                    type="button"
-                    className={`studio-nav-btn ${profileSubTab === 'identity' ? 'active' : ''}`}
-                    onClick={() => setProfileSubTab('identity')}
-                  >
-                    <UserIcon style={{ width: '15px', height: '15px' }} />
-                    <span>1. Identidade</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`studio-nav-btn ${profileSubTab === 'card' ? 'active' : ''}`}
-                    onClick={() => setProfileSubTab('card')}
-                  >
-                    <PaletteIcon style={{ width: '15px', height: '15px' }} />
-                    <span>2. Cartão & Efeitos</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`studio-nav-btn ${profileSubTab === 'gamer' ? 'active' : ''}`}
-                    onClick={() => setProfileSubTab('gamer')}
-                  >
-                    <GamepadIcon style={{ width: '15px', height: '15px' }} />
-                    <span>3. Perfil Gamer</span>
-                  </button>
-                </div>
-
-                {/* SubTab 1: Identidade */}
-                {profileSubTab === 'identity' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div className="selector-card">
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: '12px' }}>
-                        <div>
-                          <label>Nome de Jogador / Tag</label>
-                          <input 
-                            value={localDisplayName} 
-                            onChange={(e) => setLocalDisplayName(e.target.value)} 
-                            placeholder="Seu nome no Echo"
-                            required 
-                            minLength={2}
-                            maxLength={40}
-                            className="profile-input-text"
-                          />
-                        </div>
-                        <div>
-                          <label>Pronomes</label>
-                          <input 
-                            value={localPronouns} 
-                            onChange={(e) => setLocalPronouns(e.target.value)} 
-                            placeholder="ex: ele/dele"
-                            maxLength={20}
-                            className="profile-input-text"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="selector-card">
-                      <label>Status de Presença</label>
-                      <div className="preset-chips-grid">
-                        {[
-                          { id: 'online', label: '🟢 Disponível (Online)' },
-                          { id: 'idle', label: '🟡 Ausente' },
-                          { id: 'dnd', label: '🔴 Ocupado / Não Perturbe' },
-                          { id: 'offline', label: '⚪ Invisível' }
-                        ].map(st => (
-                          <button
-                            key={st.id}
-                            type="button"
-                            className={`preset-chip ${localPresenceStatus === st.id ? 'active' : ''}`}
-                            onClick={() => setLocalPresenceStatus(st.id as any)}
-                          >
-                            {st.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      <div style={{ marginTop: '14px' }}>
-                        <label>Status Sonoro (Mensagem de Atividade)</label>
-                        <input 
-                          value={localCustomStatus} 
-                          onChange={(e) => setLocalCustomStatus(e.target.value)} 
-                          placeholder="Ex: Jogando ranked com squad"
-                          maxLength={100}
-                          className="profile-input-text"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="selector-card">
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <label>Sobre Mim (Biografia do Jogador)</label>
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{localBio.length}/200</span>
-                      </div>
-                      <textarea 
-                        value={localBio} 
-                        onChange={(e) => setLocalBio(e.target.value.slice(0, 200))} 
-                        placeholder="Escreva sobre seus jogos, redes sociais ou estilo de jogo..."
-                        className="profile-input-text"
-                        style={{ minHeight: '80px', resize: 'vertical', fontFamily: 'inherit' }}
+              {/* Tab 1: Identidade & Presença */}
+              {profileSubTab === 'identity' && (
+                <div className="echo-editor-tab-body">
+                  <div className="echo-form-row two-cols">
+                    <div className="echo-input-group">
+                      <label className="echo-input-label">NOME DE EXIBIÇÃO</label>
+                      <input 
+                        value={localDisplayName} 
+                        onChange={(e) => setLocalDisplayName(e.target.value)} 
+                        placeholder="Como você quer ser chamado"
+                        required 
+                        minLength={2}
+                        maxLength={40}
+                        className="echo-text-input"
                       />
+                      <span className="echo-input-desc">Este é o nome visível em todas as conversas e canais.</span>
+                    </div>
+
+                    <div className="echo-input-group">
+                      <label className="echo-input-label">PRONOMES</label>
+                      <input 
+                        value={localPronouns} 
+                        onChange={(e) => setLocalPronouns(e.target.value)} 
+                        placeholder="ex: ele/dele, ela/dela"
+                        maxLength={20}
+                        className="echo-text-input"
+                      />
+                      <span className="echo-input-desc">Opcional. Exibido ao lado do seu nome.</span>
                     </div>
                   </div>
-                )}
 
-                {/* SubTab 2: Cartão & Efeitos */}
-                {profileSubTab === 'card' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div className="selector-card">
-                      <label>Texturas de Cartão Holográfico</label>
-                      <div className="banner-presets-grid">
-                        {[
-                          { id: 'synthwave', name: 'Synthwave 🌌' },
-                          { id: 'cybergrid', name: 'Cyber Grid ⚡' },
-                          { id: 'carbon', name: 'Carbon Fiber 🏎️' },
-                          { id: 'aurora', name: 'Aurora 🪐' },
-                          { id: 'solar', name: 'Solar Flare 🔥' },
-                          { id: 'obsidian', name: 'Stealth Dark 🖤' },
-                        ].map(tex => (
-                          <div 
-                            key={tex.id}
-                            className={`banner-preset-card texture-${tex.id} ${localBannerPreset === tex.id && !localBannerCustom ? 'active' : ''}`}
-                            onClick={() => { setLocalBannerPreset(tex.id); setLocalBannerCustom(''); }}
-                          >
-                            {tex.name}
-                          </div>
-                        ))}
-                      </div>
-                      <div style={{ marginTop: '12px' }}>
-                        <input 
-                          value={localBannerCustom} 
-                          onChange={(e) => setLocalBannerCustom(e.target.value)} 
-                          placeholder="Ou insira o link de uma imagem de fundo customizada (.png, .jpg, .gif)"
-                          className="profile-input-text"
-                          style={{ fontSize: '12.5px' }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="selector-card">
-                      <label>Aura Sonora do Avatar (Echo Waves)</label>
-                      <div className="preset-chips-grid">
-                        {[
-                          { id: 'aura-cyan', label: '💠 Ciano Neon Pulse' },
-                          { id: 'aura-purple', label: '🔮 Amethyst Wave' },
-                          { id: 'aura-crimson', label: '🔥 Crimson Surge' },
-                          { id: 'aura-gold', label: '👑 Solar Gold' },
-                          { id: 'aura-stealth', label: '⚪ Stealth Monochrome' }
-                        ].map(a => (
-                          <button
-                            key={a.id}
-                            type="button"
-                            className={`preset-chip ${localAvatarFrame === a.id ? 'active' : ''}`}
-                            onClick={() => setLocalAvatarFrame(a.id)}
-                          >
-                            {a.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="selector-card">
-                      <label>Foto de Perfil (Avatar)</label>
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <input 
-                          value={localAvatarUrl} 
-                          onChange={(e) => setLocalAvatarUrl(e.target.value)} 
-                          placeholder="Link da imagem (.png, .jpg, .svg)"
-                          className="profile-input-text"
-                          style={{ flex: 1 }}
-                        />
-                        <input 
-                          type="file" 
-                          id="profile-avatar-upload-input" 
-                          accept="image/*" 
-                          style={{ display: 'none' }} 
-                          onChange={(e) => { 
-                            const f = e.target.files?.[0]; 
-                            if (f) handleAvatarUpload(f); 
-                            e.target.value = '' 
-                          }} 
-                        />
-                        <button 
-                          type="button" 
-                          className="ch-create-btn" 
-                          style={{ padding: '10px 16px', fontSize: '13px', whiteSpace: 'nowrap', width: 'auto', margin: 0 }}
-                          onClick={() => document.getElementById('profile-avatar-upload-input')?.click()}
-                          disabled={uploadingAvatar}
+                  <div className="echo-input-group">
+                    <label className="echo-input-label">STATUS DE PRESENÇA</label>
+                    <div className="echo-presence-picker">
+                      {[
+                        { id: 'online', label: 'Disponível', desc: 'Visível e pronto para conversar', color: '#10b981' },
+                        { id: 'idle', label: 'Ausente', desc: 'Inativo ou afastado do teclado', color: '#f59e0b' },
+                        { id: 'dnd', label: 'Não Perturbe', desc: 'Silencia notificações sonoras', color: '#ef4444' },
+                        { id: 'offline', label: 'Invisível', desc: 'Aparece desconectado para os outros', color: '#6b7280' }
+                      ].map(st => (
+                        <button
+                          key={st.id}
+                          type="button"
+                          className={`echo-presence-option ${localPresenceStatus === st.id ? 'active' : ''}`}
+                          onClick={() => setLocalPresenceStatus(st.id as any)}
                         >
-                          {uploadingAvatar ? 'Enviando...' : '📤 Upload'}
+                          <span className="echo-presence-dot" style={{ background: st.color, boxShadow: localPresenceStatus === st.id ? `0 0 10px ${st.color}` : 'none' }} />
+                          <div className="echo-presence-text">
+                            <strong>{st.label}</strong>
+                            <span>{st.desc}</span>
+                          </div>
                         </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="echo-input-group">
+                    <label className="echo-input-label">MENSAGEM DE ATIVIDADE (STATUS PERSONALIZADO)</label>
+                    <input 
+                      value={localCustomStatus} 
+                      onChange={(e) => setLocalCustomStatus(e.target.value)} 
+                      placeholder="Ex: Jogando ranked, ouvindo lofi, criando conteúdo..."
+                      maxLength={100}
+                      className="echo-text-input"
+                    />
+                    <span className="echo-input-desc">Uma frase curta exibida no balão [ 〰️ ] abaixo do seu nome no perfil. Deixe em branco se preferir não exibir nenhum status.</span>
+                  </div>
+
+                  <div className="echo-input-group">
+                    <div className="echo-label-with-counter">
+                      <label className="echo-input-label">SOBRE MIM (BIOGRAFIA)</label>
+                      <span className="echo-char-counter">{localBio.length}/200</span>
+                    </div>
+                    <textarea 
+                      value={localBio} 
+                      onChange={(e) => setLocalBio(e.target.value.slice(0, 200))} 
+                      placeholder="Conte um pouco sobre você, seus interesses, jogos ou estilo..."
+                      className="echo-textarea-input"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 2: Estilo Visual (Avatar & Capa) */}
+              {profileSubTab === 'appearance' && (
+                <div className="echo-editor-tab-body">
+                  {/* Foto de Perfil */}
+                  <div className="echo-appearance-block">
+                    <label className="echo-input-label">FOTO DE PERFIL (AVATAR)</label>
+                    <div className="echo-avatar-uploader-row">
+                      <div 
+                        className="echo-avatar-uploader-thumb" 
+                        onClick={() => avatarFileInputRef.current?.click()}
+                        title="Clique para trocar imagem"
+                      >
+                        {localAvatarUrl ? (
+                          <img src={localAvatarUrl} alt="Avatar" />
+                        ) : (
+                          localDisplayName.slice(0, 1).toUpperCase()
+                        )}
+                        <div className="echo-avatar-thumb-overlay">
+                          <CameraIcon style={{ width: '18px', height: '18px' }} />
+                        </div>
                       </div>
 
-                      <div style={{ marginTop: '12px' }}>
-                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-                          Ou selecione um avatar rápido:
-                        </span>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          {defaultAvatars.map((url, idx) => (
-                            <button 
-                              key={idx}
-                              type="button" 
-                              onClick={() => setLocalAvatarUrl(url)}
-                              className={`gallery-avatar-btn ${localAvatarUrl === url ? 'selected' : ''}`}
-                              style={{
-                                width: '46px',
-                                height: '46px',
-                                borderRadius: '12px',
-                                overflow: 'hidden',
-                                border: localAvatarUrl === url ? '3px solid var(--accent-color)' : '2px solid transparent',
-                                padding: 0,
-                                cursor: 'pointer',
-                                background: 'var(--bg-secondary)',
-                                transition: 'all 0.2s'
-                              }}
-                            >
-                              <img src={url} alt={`Avatar ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            </button>
-                          ))}
+                      <div className="echo-avatar-uploader-controls">
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <input 
+                            value={localAvatarUrl} 
+                            onChange={(e) => setLocalAvatarUrl(e.target.value)} 
+                            placeholder="Insira a URL de uma imagem (.png, .jpg, .gif)"
+                            className="echo-text-input"
+                            style={{ flex: 1 }}
+                          />
+                          <button 
+                            type="button" 
+                            className="echo-btn-secondary" 
+                            onClick={() => avatarFileInputRef.current?.click()}
+                            disabled={uploadingAvatar}
+                          >
+                            <CameraIcon style={{ width: '14px', height: '14px' }} />
+                            <span>{uploadingAvatar ? 'Enviando...' : 'Fazer Upload'}</span>
+                          </button>
+                        </div>
+
+                        <div>
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+                            Ou selecione um avatar rápido:
+                          </span>
+                          <div className="echo-quick-avatars-row">
+                            {defaultAvatars.map((url, idx) => (
+                              <button 
+                                key={idx}
+                                type="button" 
+                                onClick={() => setLocalAvatarUrl(url)}
+                                className={`echo-quick-avatar-btn ${localAvatarUrl === url ? 'selected' : ''}`}
+                                title={`Avatar ${idx + 1}`}
+                              >
+                                <img src={url} alt={`Avatar ${idx + 1}`} />
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                )}
 
-                {/* SubTab 3: Perfil Gamer & Setup */}
-                {profileSubTab === 'gamer' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {/* Master Switch Card */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: 'rgba(255,255,255,0.03)', border: '1.5px solid rgba(0,242,254,0.25)', borderRadius: '12px', gap: '12px' }}>
+                  {/* Aura Sonora */}
+                  <div className="echo-appearance-block">
+                    <div className="echo-label-with-counter">
+                      <label className="echo-input-label">MOLDURA & AURA NEON</label>
+                      <span className="echo-input-desc">Brilho dinâmico ao redor do seu avatar no perfil e canais</span>
+                    </div>
+                    <div className="echo-auras-grid">
+                      {[
+                        { id: 'aura-cyan', label: 'Ciano Elétrico', color: '#00f2fe' },
+                        { id: 'aura-purple', label: 'Ametista Neon', color: '#a855f7' },
+                        { id: 'aura-crimson', label: 'Carmesim Surge', color: '#ff4655' },
+                        { id: 'aura-gold', label: 'Solar Dourado', color: '#fbbf24' },
+                        { id: 'aura-stealth', label: 'Monocromático', color: '#ffffff' }
+                      ].map(a => (
+                        <button
+                          key={a.id}
+                          type="button"
+                          className={`echo-aura-option ${localAvatarFrame === a.id ? 'active' : ''}`}
+                          onClick={() => setLocalAvatarFrame(a.id)}
+                        >
+                          <span className="echo-aura-pip" style={{ background: a.color, boxShadow: `0 0 10px ${a.color}` }} />
+                          <span>{a.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Capa do Perfil (Banner) */}
+                  <div className="echo-appearance-block">
+                    <div className="echo-label-with-counter">
+                      <label className="echo-input-label">CAPA DO PERFIL (BANNER PANORÂMICO)</label>
+                      <span className="echo-input-desc">Selecione uma textura ou escolha uma imagem do seu computador</span>
+                    </div>
+                    <div className="echo-banner-grid">
+                      {[
+                        { id: 'synthwave', name: 'Synthwave 🌌' },
+                        { id: 'cybergrid', name: 'Cyber Grid ⚡' },
+                        { id: 'carbon', name: 'Fibra de Carbono 🏎️' },
+                        { id: 'aurora', name: 'Aurora Polar 🪐' },
+                        { id: 'solar', name: 'Solar Flare 🔥' },
+                        { id: 'obsidian', name: 'Stealth Obsidian 🖤' },
+                      ].map(tex => (
+                        <div 
+                          key={tex.id}
+                          className={`echo-banner-option texture-${tex.id} ${localBannerPreset === tex.id && !localBannerCustom ? 'active' : ''}`}
+                          onClick={() => { setLocalBannerPreset(tex.id); setLocalBannerCustom(''); }}
+                        >
+                          <span className="echo-banner-option-title">{tex.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
+                      <input 
+                        value={localBannerCustom} 
+                        onChange={(e) => setLocalBannerCustom(e.target.value)} 
+                        placeholder="Ou cole a URL de um banner customizado (.png, .jpg, .gif)"
+                        className="echo-text-input"
+                        style={{ flex: 1 }}
+                      />
+                      <button 
+                        type="button" 
+                        className="echo-btn-secondary" 
+                        onClick={() => bannerFileInputRef.current?.click()}
+                        disabled={uploadingBanner}
+                      >
+                        <FolderIcon style={{ width: '14px', height: '14px' }} />
+                        <span>{uploadingBanner ? 'Carregando...' : 'Escolher do Computador'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Acabamento do Cartão de Perfil */}
+                  <div className="echo-appearance-block">
+                    <div className="echo-label-with-counter">
+                      <label className="echo-input-label">ACABAMENTO DO CARTÃO (FOIL & SHIMMER)</label>
+                      <span className="echo-input-desc">Efeito visual de moldura e reflexo reativo no seu perfil</span>
+                    </div>
+                    <div className="echo-card-finish-grid">
+                      {[
+                        { id: 'none', label: 'Minimalista Fosco', desc: 'Acabamento dark slate clássico' },
+                        { id: 'holographic', label: 'Holográfico Prismático ✨', desc: 'Borda com gradiente iridescente reativo' },
+                        { id: 'glass', label: 'Vidro Fumê Glassmorphism 💎', desc: 'Translucidez moderna com desfoque profundo' },
+                        { id: 'carbon', label: 'Fibra de Carbono 🏎️', desc: 'Textura esportiva em trama fosca' }
+                      ].map(cf => (
+                        <div
+                          key={cf.id}
+                          className={`echo-finish-choice-card ${localCardFinish === cf.id ? 'active selected' : ''}`}
+                          onClick={() => setLocalCardFinish(cf.id as any)}
+                        >
+                          <div className={`echo-finish-preview-mini preview-${cf.id}`}>
+                            <div className="preview-mini-content">
+                              <div className="preview-mini-avatar" />
+                              <div className="preview-mini-lines">
+                                <span className="line-1" />
+                                <span className="line-2" />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="echo-finish-choice-meta">
+                            <strong>{cf.label}</strong>
+                            <span>{cf.desc}</span>
+                          </div>
+                          {localCardFinish === cf.id && <span className="echo-badge-check">✓</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Tag de Squad / Clan */}
+                  <div className="echo-appearance-block">
+                    <div className="echo-label-with-counter">
+                      <label className="echo-input-label">TAG DE SQUAD / CLAN</label>
+                      <span className="echo-input-desc">Sigla de 2 a 4 caracteres exibida ao lado do seu nome</span>
+                    </div>
+                    <div className="echo-clan-tag-editor-row" style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input 
+                        value={localClanTag} 
+                        onChange={(e) => setLocalClanTag(e.target.value.toUpperCase().slice(0, 4))} 
+                        placeholder="Ex: ECHO"
+                        maxLength={4}
+                        className="echo-text-input"
+                        style={{ maxWidth: '130px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}
+                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Cor da Tag:</span>
+                        {[
+                          { color: '#00f2fe', label: 'Ciano' },
+                          { color: '#ff4655', label: 'Carmesim' },
+                          { color: '#fbbf24', label: 'Ouro' },
+                          { color: '#a855f7', label: 'Ametista' },
+                          { color: '#10b981', label: 'Esmeralda' },
+                          { color: '#ffffff', label: 'Prata' }
+                        ].map(c => (
+                          <button
+                            key={c.color}
+                            type="button"
+                            className={`echo-clan-color-dot ${localClanTagColor === c.color ? 'active' : ''}`}
+                            style={{ background: c.color, width: '22px', height: '22px', borderRadius: '50%', border: localClanTagColor === c.color ? '2px solid #fff' : '2px solid transparent', cursor: 'pointer', boxShadow: localClanTagColor === c.color ? `0 0 8px ${c.color}` : 'none' }}
+                            onClick={() => setLocalClanTagColor(c.color)}
+                            title={c.label}
+                          />
+                        ))}
+                      </div>
+                      {localClanTag && (
+                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Prévia:</span>
+                          <span className="echo-clan-tag" style={{ borderColor: localClanTagColor, color: localClanTagColor, boxShadow: `0 0 8px ${localClanTagColor}40` }}>
+                            [{localClanTag.toUpperCase()}]
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Vitrine de Redes Sociais Conectadas */}
+                  <div className="echo-appearance-block">
+                    <div className="echo-label-with-counter">
+                      <label className="echo-input-label">REDES SOCIAIS & PLATAFORMAS CONECTADAS</label>
+                      <span className="echo-input-desc">Links rápidos de exibição no seu cartão do perfil</span>
+                    </div>
+                    <div className="echo-socials-inputs-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+                      <div className="echo-social-input-field" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                        <SteamIcon style={{ width: '16px', height: '16px', color: '#90a4ae', flexShrink: 0 }} />
+                        <input 
+                          value={localSocialSteam} 
+                          onChange={(e) => setLocalSocialSteam(e.target.value)} 
+                          placeholder="Steam (username ou url)"
+                          className="echo-text-input"
+                          style={{ border: 'none', background: 'transparent', padding: '0', fontSize: '12.5px' }}
+                        />
+                      </div>
+                      <div className="echo-social-input-field" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                        <TwitchIcon style={{ width: '16px', height: '16px', color: '#a855f7', flexShrink: 0 }} />
+                        <input 
+                          value={localSocialTwitch} 
+                          onChange={(e) => setLocalSocialTwitch(e.target.value)} 
+                          placeholder="Twitch (username)"
+                          className="echo-text-input"
+                          style={{ border: 'none', background: 'transparent', padding: '0', fontSize: '12.5px' }}
+                        />
+                      </div>
+                      <div className="echo-social-input-field" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                        <YoutubeIcon style={{ width: '16px', height: '16px', color: '#ef4444', flexShrink: 0 }} />
+                        <input 
+                          value={localSocialYoutube} 
+                          onChange={(e) => setLocalSocialYoutube(e.target.value)} 
+                          placeholder="YouTube (@canal ou url)"
+                          className="echo-text-input"
+                          style={{ border: 'none', background: 'transparent', padding: '0', fontSize: '12.5px' }}
+                        />
+                      </div>
+                      <div className="echo-social-input-field" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                        <KickIcon style={{ width: '16px', height: '16px', color: '#10b981', flexShrink: 0 }} />
+                        <input 
+                          value={localSocialKick} 
+                          onChange={(e) => setLocalSocialKick(e.target.value)} 
+                          placeholder="Kick (username)"
+                          className="echo-text-input"
+                          style={{ border: 'none', background: 'transparent', padding: '0', fontSize: '12.5px' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 3: Insígnias da Comunidade */}
+              {profileSubTab === 'badges' && (
+                <div className="echo-editor-tab-body">
+                  <div className="echo-toggle-card">
+                    <div className="echo-toggle-card-info">
+                      <strong>Exibir Insígnia em Destaque</strong>
+                      <span>Mostra sua insígnia de honra ao lado do seu nome no perfil e na lista de membros.</span>
+                    </div>
+                    <label className="echo-switch">
+                      <input 
+                        type="checkbox" 
+                        checked={localShowBadge} 
+                        onChange={(e) => setLocalShowBadge(e.target.checked)} 
+                      />
+                      <span className="echo-slider" />
+                    </label>
+                  </div>
+
+                  <div className="echo-input-group" style={{ opacity: localShowBadge ? 1 : 0.45, pointerEvents: localShowBadge ? 'auto' : 'none' }}>
+                    <label className="echo-input-label">ESCOLHA SUA INSÍGNIA DE DESTAQUE</label>
+                    <div className="echo-badges-selection-grid">
+                      {badgesList.map(b => (
+                        <div
+                          key={b.id}
+                          className={`echo-badge-choice-card ${localBadge === b.id ? 'active' : ''} ${!b.unlocked ? 'locked' : ''}`}
+                          onClick={() => {
+                            if (b.unlocked) {
+                              setLocalBadge(b.id)
+                            } else {
+                              alert(`Insígnia Bloqueada!\n\nCritério: ${b.requirement}\n\nVocê pode habilitar o "Modo Demonstração" abaixo para testar todas as insígnias localmente.`)
+                            }
+                          }}
+                        >
+                          <div className={`echo-badge-crest-box crest-${b.id}`}>
+                            {b.icon}
+                          </div>
+                          <div className="echo-badge-choice-meta">
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                              <strong>{b.label}</strong>
+                              {b.unlocked ? (
+                                <span className="echo-badge-status-pill unlocked">✓ Desbloqueado</span>
+                              ) : (
+                                <span className="echo-badge-status-pill locked">
+                                  <LockIcon style={{ width: '10px', height: '10px', display: 'inline', marginRight: '3px' }} />
+                                  Bloqueado
+                                </span>
+                              )}
+                            </div>
+                            <span>{b.desc}</span>
+                            {!b.unlocked && (
+                              <span style={{ fontSize: '11px', color: '#f87171', marginTop: '2px' }}>
+                                Requisito: {b.requirement}
+                              </span>
+                            )}
+                          </div>
+                          {localBadge === b.id && <span className="echo-badge-check">✓</span>}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Local testing toggle for unlocking all badges */}
+                    <div style={{ marginTop: '16px', padding: '12px 16px', background: 'rgba(99, 102, 241, 0.08)', border: '1px dashed rgba(99, 102, 241, 0.3)', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <strong style={{ fontSize: '13.5px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <GamepadIcon style={{ width: '17px', height: '17px', color: '#00f2fe' }} />
-                          Exibir Perfil Gamer no Player Card
-                        </strong>
-                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginTop: '3px' }}>
-                          Se desativado, nenhum elemento gamer (jogo, setup ou títulos) será exibido no seu cartão para outros membros.
-                        </span>
+                        <strong style={{ fontSize: '12.5px', color: '#a5b4fc', display: 'block' }}>🛠️ Modo Demonstração (Liberar Todas para Teste Local)</strong>
+                        <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Ative para desbloquear e testar qualquer insígnia sem restrição de requisitos.</span>
                       </div>
                       <label className="echo-switch">
                         <input 
                           type="checkbox" 
-                          checked={localShowGamerProfile} 
-                          onChange={(e) => setLocalShowGamerProfile(e.target.checked)} 
+                          checked={devUnlockBadges} 
+                          onChange={(e) => setDevUnlockBadges(e.target.checked)} 
                         />
                         <span className="echo-slider" />
                       </label>
                     </div>
-
-                    {localShowGamerProfile ? (
-                      <>
-                        {/* Section 1: Main Game */}
-                        <div className="selector-card">
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <label style={{ margin: 0 }}>Jogo Principal (Main Game)</label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                              <input 
-                                type="checkbox" 
-                                checked={localShowMainGame} 
-                                onChange={(e) => setLocalShowMainGame(e.target.checked)} 
-                                style={{ accentColor: '#00f2fe', cursor: 'pointer' }}
-                              />
-                              <span>Exibir no Card</span>
-                            </label>
-                          </div>
-                          <div className="preset-chips-grid" style={{ opacity: localShowMainGame ? 1 : 0.45, pointerEvents: localShowMainGame ? 'auto' : 'none' }}>
-                            {[
-                              'VALORANT',
-                              'Counter-Strike 2',
-                              'League of Legends',
-                              'Minecraft',
-                              'GTA RP',
-                              'Apex Legends',
-                              'Fortnite',
-                              'Overwatch 2',
-                              'Nenhum'
-                            ].map(game => (
-                              <button
-                                key={game}
-                                type="button"
-                                className={`preset-chip ${localMainGame === game ? 'active' : ''}`}
-                                onClick={() => setLocalMainGame(game)}
-                              >
-                                🎮 {game}
-                              </button>
-                            ))}
-                          </div>
-                          <div style={{ marginTop: '10px', opacity: localShowMainGame ? 1 : 0.45 }}>
-                            <input 
-                              value={localMainGame} 
-                              onChange={(e) => setLocalMainGame(e.target.value)} 
-                              placeholder="Ou digite o nome de outro jogo"
-                              maxLength={30}
-                              disabled={!localShowMainGame}
-                              className="profile-input-text"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Section 2: Hardware / Setup */}
-                        <div className="selector-card">
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <label style={{ margin: 0 }}>Periféricos & Setup em Destaque</label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                              <input 
-                                type="checkbox" 
-                                checked={localShowHardwareSetup} 
-                                onChange={(e) => setLocalShowHardwareSetup(e.target.checked)} 
-                                style={{ accentColor: '#00f2fe', cursor: 'pointer' }}
-                              />
-                              <span>Exibir no Card</span>
-                            </label>
-                          </div>
-                          <div className="preset-chips-grid" style={{ opacity: localShowHardwareSetup ? 1 : 0.45, pointerEvents: localShowHardwareSetup ? 'auto' : 'none' }}>
-                            {[
-                              '🎧 HyperX Cloud II',
-                              '🎧 Logitech G PRO X',
-                              '🖱️ 800 DPI // 0.3 Sens',
-                              '🎙️ Shure SM7B',
-                              '⚡ 240Hz OLED Gaming',
-                              '🎮 DualSense Edge'
-                            ].map(setup => (
-                              <button
-                                key={setup}
-                                type="button"
-                                className={`preset-chip ${localHardwareSetup === setup ? 'active' : ''}`}
-                                onClick={() => setLocalHardwareSetup(setup)}
-                              >
-                                {setup}
-                              </button>
-                            ))}
-                          </div>
-                          <div style={{ marginTop: '10px', opacity: localShowHardwareSetup ? 1 : 0.45 }}>
-                            <input 
-                              value={localHardwareSetup} 
-                              onChange={(e) => setLocalHardwareSetup(e.target.value)} 
-                              placeholder="Ex: Fone HyperX, Mouse Razer, Microfone..."
-                              maxLength={40}
-                              disabled={!localShowHardwareSetup}
-                              className="profile-input-text"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Section 3: Squad Title & Honor Badge */}
-                        <div className="selector-card">
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <label style={{ margin: 0 }}>Título de Squad / Badge de Honra</label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                              <input 
-                                type="checkbox" 
-                                checked={localShowBadge} 
-                                onChange={(e) => setLocalShowBadge(e.target.checked)} 
-                                style={{ accentColor: '#00f2fe', cursor: 'pointer' }}
-                              />
-                              <span>Exibir no Card</span>
-                            </label>
-                          </div>
-                          <div className="preset-chips-grid" style={{ opacity: localShowBadge ? 1 : 0.45, pointerEvents: localShowBadge ? 'auto' : 'none' }}>
-                            {[
-                              { id: 'owner', label: '👑 Líder de Servidor' },
-                              { id: 'vip', label: '💎 Echo VIP' },
-                              { id: 'early', label: '⚡ Fundador 2026' },
-                              { id: 'gamer', label: '🎯 Duelista / Pro' },
-                              { id: 'podcaster', label: '🎙️ Streamer' },
-                              { id: 'none', label: 'Nenhum' }
-                            ].map(b => (
-                              <button
-                                key={b.id}
-                                type="button"
-                                className={`preset-chip ${localBadge === b.id ? 'active' : ''}`}
-                                onClick={() => setLocalBadge(b.id)}
-                              >
-                                {b.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <div style={{ padding: '24px', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                        <span style={{ fontSize: '30px', display: 'block', marginBottom: '8px' }}>🛡️</span>
-                        <h4 style={{ margin: '0 0 6px 0', color: '#fff' }}>Perfil Gamer Desativado</h4>
-                        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
-                          Seu cartão de jogador exibirá apenas sua identidade básica (Foto, Nome, Pronomes, Status Sonoro e Bio). Ative a chave acima se desejar destacar seus jogos ou setup.
-                        </p>
-                      </div>
-                    )}
                   </div>
-                )}
-
-                <button 
-                  type="submit" 
-                  className="ch-create-btn" 
-                  style={{ marginTop: '20px', padding: '14px', width: '100%', fontWeight: 900, fontSize: '15px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                  disabled={savingProfile}
-                >
-                  <SaveIcon style={{ width: '18px', height: '18px' }} />
-                  <span>{savingProfile ? 'Salvando Echo Player Card…' : 'Salvar Echo Player Card'}</span>
-                </button>
-              </form>
+                </div>
+              )}
             </div>
+
+            {/* Floating Save Bar (Slide up when changes are detected) */}
+            {hasChanges && (
+              <div className="profile-floating-save-bar">
+                <div className="floating-bar-info">
+                  <span className="floating-bar-alert-dot" />
+                  <span>Você tem alterações não salvas no seu perfil!</span>
+                </div>
+                <div className="floating-bar-actions">
+                  <button 
+                    type="button" 
+                    className="floating-discard-btn" 
+                    onClick={handleDiscardChanges}
+                    disabled={savingProfile}
+                  >
+                    Redefinir
+                  </button>
+                  <button 
+                    type="button" 
+                    className="floating-save-btn" 
+                    onClick={() => handleSaveProfile()}
+                    disabled={savingProfile}
+                  >
+                    <SaveIcon style={{ width: '16px', height: '16px' }} />
+                    <span>{savingProfile ? 'Salvando...' : 'Salvar Alterações'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -9779,6 +11443,323 @@ function SettingsView({
                 )
               })}
             </div>
+
+            {/* ── 1. Cor de Destaque Personalizada ── */}
+            <div style={{ marginTop: '36px', paddingTop: '28px', borderTop: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '17px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    🎨 Cor de Destaque da Interface
+                  </h3>
+                  <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                    Personalize botões, destaques e bordas ativas com a cor que preferir.
+                  </p>
+                </div>
+                {customAccentColor && (
+                  <button
+                    type="button"
+                    onClick={() => onCustomAccentColorChange?.('')}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '8px',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      border: '1px solid var(--border-color)',
+                      color: 'var(--text-secondary)',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
+                  >
+                    ↺ Restaurar Padrão do Tema
+                  </button>
+                )}
+              </div>
+
+              {/* Accent Color Presets & Custom Picker */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                {[
+                  { name: 'Ciano Echo', hex: '#00f2fe' },
+                  { name: 'Roxo Neon', hex: '#a855f7' },
+                  { name: 'Rosa Choque', hex: '#ec4899' },
+                  { name: 'Esmeralda', hex: '#10b981' },
+                  { name: 'Âmbar Solar', hex: '#f59e0b' },
+                  { name: 'Rubi Gamer', hex: '#ef4444' },
+                  { name: 'Índigo Real', hex: '#6366f1' },
+                  { name: 'Menta Pastel', hex: '#2dd4bf' }
+                ].map(preset => {
+                  const isCur = (customAccentColor || '').toLowerCase() === preset.hex.toLowerCase()
+                  return (
+                    <button
+                      key={preset.hex}
+                      type="button"
+                      title={preset.name}
+                      onClick={() => onCustomAccentColorChange?.(preset.hex)}
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '10px',
+                        background: preset.hex,
+                        border: isCur ? '3px solid #fff' : '2px solid rgba(255,255,255,0.2)',
+                        boxShadow: isCur ? `0 0 14px ${preset.hex}` : 'none',
+                        cursor: 'pointer',
+                        transform: isCur ? 'scale(1.15)' : 'scale(1)',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#000',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      {isCur ? '✓' : ''}
+                    </button>
+                  )
+                })}
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '6px', background: 'var(--bg-secondary)', padding: '6px 12px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                  <label htmlFor="custom-accent-picker" style={{ fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                    Personalizado:
+                  </label>
+                  <input
+                    id="custom-accent-picker"
+                    type="color"
+                    value={customAccentColor || '#00f2fe'}
+                    onChange={(e) => onCustomAccentColorChange?.(e.target.value)}
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      background: 'transparent'
+                    }}
+                  />
+                  <span style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--text-primary)' }}>
+                    {customAccentColor ? customAccentColor.toUpperCase() : 'PADRÃO'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* ── 2. Densidade de Mensagens do Chat ── */}
+            <div style={{ marginTop: '36px', paddingTop: '28px', borderTop: '1px solid var(--border-color)' }}>
+              <div style={{ marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '17px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  💬 Densidade do Chat
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  Controle o espaçamento vertical entre mensagens nos canais de texto.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+                <div
+                  onClick={() => onChatDensityChange?.('cozy')}
+                  style={{
+                    padding: '16px',
+                    borderRadius: '12px',
+                    background: 'var(--bg-secondary)',
+                    border: chatDensity === 'cozy' ? '2px solid var(--accent-color)' : '2px solid var(--border-color)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    boxShadow: chatDensity === 'cozy' ? '0 4px 16px rgba(0, 242, 254, 0.15)' : 'none',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text-primary)' }}>🛋️ Confortável (Padrão)</span>
+                    {chatDensity === 'cozy' && (
+                      <span style={{ background: 'var(--accent-color)', color: '#000', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>✓</span>
+                    )}
+                  </div>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                    Espaçamento amplo, avatares destacados e leitura relaxada para conversas diárias.
+                  </span>
+                  {/* Visual preview miniature */}
+                  <div style={{ background: 'rgba(0,0,0,0.25)', padding: '8px', borderRadius: '8px', display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#00f2fe' }} />
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ width: '40%', height: '8px', background: 'rgba(255,255,255,0.4)', borderRadius: '4px' }} />
+                      <div style={{ width: '80%', height: '8px', background: 'rgba(255,255,255,0.2)', borderRadius: '4px' }} />
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => onChatDensityChange?.('compact')}
+                  style={{
+                    padding: '16px',
+                    borderRadius: '12px',
+                    background: 'var(--bg-secondary)',
+                    border: chatDensity === 'compact' ? '2px solid var(--accent-color)' : '2px solid var(--border-color)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    boxShadow: chatDensity === 'compact' ? '0 4px 16px rgba(0, 242, 254, 0.15)' : 'none',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text-primary)' }}>⚡ Compacto</span>
+                    {chatDensity === 'compact' && (
+                      <span style={{ background: 'var(--accent-color)', color: '#000', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>✓</span>
+                    )}
+                  </div>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                    Menos margem, avatares reduzidos e máximo de mensagens simultâneas na tela.
+                  </span>
+                  {/* Visual preview miniature */}
+                  <div style={{ background: 'rgba(0,0,0,0.25)', padding: '6px 8px', borderRadius: '8px', display: 'flex', gap: '6px', alignItems: 'center', marginTop: '4px' }}>
+                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#a855f7' }} />
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <div style={{ width: '35%', height: '6px', background: 'rgba(255,255,255,0.4)', borderRadius: '3px' }} />
+                      <div style={{ width: '90%', height: '6px', background: 'rgba(255,255,255,0.2)', borderRadius: '3px' }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Pré-visualização em Tempo Real do Chat ── */}
+              <div style={{ marginTop: '16px', background: 'var(--bg-primary)', borderRadius: '14px', padding: '16px', border: '1px solid var(--border-color)', transition: 'all 0.2s ease' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)' }}>
+                    👁️ Pré-visualização no Chat (Modo {chatDensity === 'cozy' ? 'Confortável' : 'Compacto'})
+                  </span>
+                  <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px', background: 'var(--accent-light)', color: 'var(--accent-color)', fontWeight: 700 }}>
+                    Exibição ao vivo
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: chatDensity === 'cozy' ? '8px' : '3px' }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: chatDensity === 'cozy' ? '12px' : '8px',
+                    padding: chatDensity === 'cozy' ? '10px 14px' : '4px 10px',
+                    background: 'var(--bg-secondary)',
+                    borderRadius: chatDensity === 'cozy' ? '10px' : '6px',
+                    border: '1px solid rgba(255, 255, 255, 0.04)',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}>
+                    <div style={{
+                      width: chatDensity === 'cozy' ? '36px' : '26px',
+                      height: chatDensity === 'cozy' ? '36px' : '26px',
+                      borderRadius: chatDensity === 'cozy' ? '12px' : '8px',
+                      background: 'linear-gradient(135deg, #a855f7, #6366f1)',
+                      display: 'grid',
+                      placeItems: 'center',
+                      color: '#fff',
+                      fontSize: chatDensity === 'cozy' ? '13px' : '11px',
+                      fontWeight: 800,
+                      flexShrink: 0,
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}>
+                      A
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                        <span style={{ fontWeight: 700, fontSize: chatDensity === 'cozy' ? '13px' : '12px', color: 'var(--text-primary)' }}>Alexandre</span>
+                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>18:32</span>
+                      </div>
+                      <p style={{ margin: chatDensity === 'cozy' ? '3px 0 0' : '1px 0 0', fontSize: chatDensity === 'cozy' ? '13.5px' : '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                        Bora fechar squad pra ranked hoje à noite? 🔥
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: chatDensity === 'cozy' ? '12px' : '8px',
+                    padding: chatDensity === 'cozy' ? '10px 14px' : '4px 10px',
+                    background: 'var(--bg-secondary)',
+                    borderRadius: chatDensity === 'cozy' ? '10px' : '6px',
+                    border: '1px solid rgba(255, 255, 255, 0.04)',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}>
+                    <div style={{
+                      width: chatDensity === 'cozy' ? '36px' : '26px',
+                      height: chatDensity === 'cozy' ? '36px' : '26px',
+                      borderRadius: chatDensity === 'cozy' ? '12px' : '8px',
+                      background: 'linear-gradient(135deg, var(--accent-color), #3b82f6)',
+                      display: 'grid',
+                      placeItems: 'center',
+                      color: '#fff',
+                      fontSize: chatDensity === 'cozy' ? '13px' : '11px',
+                      fontWeight: 800,
+                      flexShrink: 0,
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}>
+                      V
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                        <span style={{ fontWeight: 700, fontSize: chatDensity === 'cozy' ? '13px' : '12px', color: 'var(--accent-color)' }}>Você</span>
+                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>18:33</span>
+                      </div>
+                      <p style={{ margin: chatDensity === 'cozy' ? '3px 0 0' : '1px 0 0', fontSize: chatDensity === 'cozy' ? '13.5px' : '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                        Com certeza! Já tô logado aqui no Echo.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── 3. Modo de Desempenho Visual (FPS Booster) ── */}
+            <div style={{ marginTop: '36px', paddingTop: '28px', borderTop: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap', background: 'var(--bg-secondary)', padding: '18px 20px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
+                <div style={{ maxWidth: '520px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)' }}>
+                      🚀 Modo Alto Desempenho (Opaco)
+                    </h3>
+                    <span style={{ background: 'rgba(0, 242, 254, 0.15)', color: 'var(--accent-color, #00f2fe)', fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '12px', border: '1px solid rgba(0, 242, 254, 0.3)' }}>
+                      0% GPU BLUR
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                    Desativa transparências e desfoques pesados de GPU (<code style={{ fontSize: '11px' }}>backdrop-filter</code>). Recomendado para manter altas taxas de quadros em jogos competitivos com o Echo em segundo plano.
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <span style={{
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    background: performanceMode ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                    color: performanceMode ? '#10b981' : 'var(--text-muted)',
+                    border: performanceMode ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-color)',
+                    transition: 'all 0.2s'
+                  }}>
+                    {performanceMode ? '🟢 Ativado' : '⚪ Desativado'}
+                  </span>
+                  <label className="echo-switch">
+                    <input
+                      type="checkbox"
+                      checked={performanceMode}
+                      onChange={(e) => onPerformanceModeChange?.(e.target.checked)}
+                    />
+                    <span className="echo-slider"></span>
+                  </label>
+                </div>
+              </div>
+
+              {performanceMode && (
+                <div style={{ marginTop: '12px', padding: '10px 14px', background: 'rgba(16, 185, 129, 0.08)', borderRadius: '10px', border: '1px solid rgba(16, 185, 129, 0.25)', fontSize: '12px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '8px', animation: 'fadeInToast 0.25s ease' }}>
+                  <span>⚡</span>
+                  <span><strong>Modo de Alto Desempenho ativado:</strong> todos os efeitos de desfoque (blur) e transparências translúcidas foram desativados para liberar processamento da sua GPU enquanto joga.</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -9945,11 +11926,14 @@ function StreamTile({
 
       {/* Stream Info Tag Header */}
       <div className="screen-share-tag" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span className="stream-live-tag">🔴 AO VIVO</span>
-        <span style={{ fontWeight: 700 }}>🖥️ {participant.displayName}</span>
+        <span className="stream-live-tag">AO VIVO</span>
+        <span style={{ fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+          <FocusIcon style={{ width: '13px', height: '13px' }} />
+          <span>{participant.displayName}</span>
+        </span>
         {streamResolution && (
           <span className="stream-res-badge">
-            ⚡ 60 FPS • {streamResolution}
+            60 FPS • {streamResolution}
           </span>
         )}
         <AudioLevelMeter stream={participant.screenStream || null} />
@@ -9959,7 +11943,10 @@ function StreamTile({
       {showStatsHud && (
         <div className="stream-stats-hud-overlay">
           <div className="stream-stats-hud-header">
-            <strong>📊 Estatísticas da Transmissão</strong>
+            <strong style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <BarChartIcon />
+              <span>Estatísticas da Transmissão</span>
+            </strong>
             <button type="button" onClick={() => setShowStatsHud(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>✕</button>
           </div>
           <div className="stream-stats-hud-grid">
@@ -9981,7 +11968,8 @@ function StreamTile({
             onClick={onSelectFocus}
             title="Expandir e focar nesta transmissão"
           >
-            🔍 Focar
+            <FocusIcon />
+            <span>Focar</span>
           </button>
         )}
 
@@ -9991,7 +11979,8 @@ function StreamTile({
           onClick={() => setShowStatsHud(prev => !prev)}
           title="Ver Estatísticas da Transmissão (FPS, Bitrate, Codec)"
         >
-          📊 Stats
+          <BarChartIcon />
+          <span>Stats</span>
         </button>
 
         {/* Picture-in-Picture Button */}
@@ -10000,13 +11989,14 @@ function StreamTile({
           onClick={onToggleFloatingPiP}
           title={isPiPActive ? "Fechar Mini Player Flutuante" : "Ativar Mini Player Flutuante (Always-on-Top)"}
         >
-          📌 {isPiPActive ? 'Mini Player ON' : 'Mini Player'}
+          <PipIcon />
+          <span>{isPiPActive ? 'Mini Player ON' : 'Mini Player'}</span>
         </button>
 
         {/* Volume Booster Slider (0% - 200%) */}
         {participant.userId !== user.id && (
           <div className="screen-volume-control" title="Volume da Transmissão (Até 200%)">
-            <span style={{ fontSize: '13.5px' }}>🔊</span>
+            <VolumeIcon className="screen-volume-icon" />
             <input 
               type="range" 
               min="0" 
