@@ -137,7 +137,14 @@ async function createStudioMicrophoneDSP(stream: MediaStream, enableAi = false):
   compressor.attack.value = 0.003;
   compressor.release.value = 0.15;
 
+  // Configuração estritamente MONO para garantir que a voz toque perfeitamente nos dois lados do fone
   const dest = audioCtx.createMediaStreamDestination();
+  dest.channelCount = 1;
+  dest.channelCountMode = 'explicit';
+
+  compressor.channelCount = 1;
+  compressor.channelCountMode = 'explicit';
+
   source.connect(highpass);
   highpass.connect(lowpass);
 
@@ -418,8 +425,21 @@ export function useVoiceChannel() {
         }
       }
       routeAiDenoise(localDspNodesRef.current, nextVal)
+    } else if (localRawStreamRef.current && isConnected) {
+      try {
+        const { finalStream: dspStream, audioCtx, nodes } = await createStudioMicrophoneDSP(localRawStreamRef.current, nextVal)
+        localDspCtxRef.current = audioCtx
+        localDspNodesRef.current = nodes
+        localStreamRef.current = dspStream
+        const newTrack = dspStream.getAudioTracks()[0]
+        if (newTrack && localAudioTrackRef.current) {
+          await localAudioTrackRef.current.replaceTrack(newTrack, true)
+        }
+      } catch (err) {
+        console.error('[RNNoise] Erro ao instanciar DSP no toggle:', err)
+      }
     }
-  }, [])
+  }, [isConnected])
 
   // Stop screen share
   const stopScreenShare = useCallback(() => {
@@ -588,17 +608,18 @@ export function useVoiceChannel() {
       setIsConnected(true)
       syncParticipants()
 
-      // Áudio profissional: se IA ativada, roda pelo pipeline DSP; senão, passa o stream puro sem perdas
+      // Áudio profissional: sempre cria o pipeline DSP mono para permitir alternar IA instantaneamente
       let finalStream = rawStream
-      if (isAiDenoiseEnabledRef.current) {
-        try {
-          const { finalStream: dspStream, audioCtx, nodes } = await createStudioMicrophoneDSP(rawStream, true)
-          localDspCtxRef.current = audioCtx
-          localDspNodesRef.current = nodes
-          finalStream = dspStream
-        } catch (dspErr) {
-          console.error('[Voice] Falha no pipeline DSP:', dspErr)
-        }
+      try {
+        const { finalStream: dspStream, audioCtx, nodes } = await createStudioMicrophoneDSP(
+          rawStream, 
+          isAiDenoiseEnabledRef.current
+        )
+        localDspCtxRef.current = audioCtx
+        localDspNodesRef.current = nodes
+        finalStream = dspStream
+      } catch (dspErr) {
+        console.error('[Voice] Falha no pipeline DSP:', dspErr)
       }
       localStreamRef.current = finalStream
 
@@ -642,7 +663,7 @@ export function useVoiceChannel() {
         dynacast: true,
         publishDefaults: {
           simulcast: true,
-          dtx: false,
+          dtx: true,
         }
       })
       roomRef.current = room
@@ -787,7 +808,7 @@ export function useVoiceChannel() {
             await room.localParticipant.publishTrack(localAudio, {
               source: Track.Source.Microphone,
               name: 'microphone',
-              dtx: false
+              dtx: true
             })
           }
         } catch (pubErr) {
@@ -944,6 +965,8 @@ export function useVoiceChannel() {
             let writeIdx = 0
             let readIdx = 0
             let available = 0
+            let isPrimed = false
+            const PREBUFFER_SAMPLES = 4800 // ~100ms de pre-buffer para evitar underruns imediatos
 
             ;(window as any).electronAPI?.onScreenshareAudioChunk((chunk: Uint8Array | ArrayBuffer) => {
               const raw = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk)
@@ -955,16 +978,27 @@ export function useVoiceChannel() {
                 writeIdx = (writeIdx + 1) % RING_SIZE
               }
               available = Math.min(RING_SIZE, available + samples)
+              if (available >= PREBUFFER_SAMPLES) {
+                isPrimed = true
+              }
             })
 
-            const scriptNode = procCtx.createScriptProcessor(2048, 0, 2)
+            const scriptNode = procCtx.createScriptProcessor(4096, 0, 2)
+            let lastL = 0
+            let lastR = 0
             scriptNode.onaudioprocess = (e) => {
               const outL = e.outputBuffer.getChannelData(0)
               const outR = e.outputBuffer.getChannelData(1)
               const len = outL.length
-              if (available < len) {
-                outL.fill(0)
-                outR.fill(0)
+              if (!isPrimed || available < len) {
+                // Decaimento suave para zero ao invés de corte abrupto (elimina chiados e estalos)
+                for (let i = 0; i < len; i++) {
+                  lastL *= 0.96
+                  lastR *= 0.96
+                  outL[i] = lastL
+                  outR[i] = lastR
+                }
+                if (available < len) isPrimed = false
               } else {
                 for (let i = 0; i < len; i++) {
                   outL[i] = ringL[readIdx]
@@ -972,6 +1006,8 @@ export function useVoiceChannel() {
                   readIdx = (readIdx + 1) % RING_SIZE
                 }
                 available -= len
+                lastL = outL[len - 1]
+                lastR = outR[len - 1]
               }
             }
 
@@ -1064,12 +1100,19 @@ export function useVoiceChannel() {
         try {
           const localVideoTrack = new LocalVideoTrack(videoTrack)
           localScreenVideoTrackRef.current = localVideoTrack
+
+          // Bitrate inteligente balanceado estilo Discord:
+          // 1080p 60fps = 3.2 Mbps | 1080p 30fps = 2.4 Mbps | 720p = 1.6 Mbps
+          const calculatedBitrate = targetWidth > 1280
+            ? (targetFps >= 60 ? 3200000 : 2400000)
+            : (targetFps >= 60 ? 2200000 : 1600000)
+
           await room.localParticipant.publishTrack(localVideoTrack, {
             source: Track.Source.ScreenShare,
             name: 'screen_video',
-            simulcast: false,
+            simulcast: true,
             videoEncoding: {
-              maxBitrate: 8500000,
+              maxBitrate: calculatedBitrate,
               maxFramerate: targetFps
             }
           })
@@ -1081,7 +1124,7 @@ export function useVoiceChannel() {
               await room.localParticipant.publishTrack(localAudioTrack, {
                 source: Track.Source.ScreenShareAudio,
                 name: 'screen_audio',
-                dtx: false
+                dtx: true
               })
             } catch (aPubErr) {
               console.warn('[ScreenShare] Erro ao publicar áudio do compartilhamento:', aPubErr)
@@ -1118,29 +1161,44 @@ export function useVoiceChannel() {
 
     try {
       localRawStreamRef.current.getTracks().forEach(t => t.stop())
+      if (localDspCtxRef.current) {
+        try { localDspCtxRef.current.close() } catch (e) {}
+        localDspCtxRef.current = null
+      }
+      if (localDspNodesRef.current?.rnnoiseNode) {
+        try { localDspNodesRef.current.rnnoiseNode.destroy() } catch (e) {}
+      }
+      localDspNodesRef.current = null
+
       const newStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           deviceId: deviceId !== 'default' ? { exact: deviceId } : undefined,
           echoCancellation,
           noiseSuppression,
           autoGainControl: true,
+          channelCount: 1
         }
       })
       localRawStreamRef.current = newStream
       startLocalVad(newStream)
 
       let finalStream = newStream
-      if (isAiDenoiseEnabledRef.current) {
-        const { finalStream: dspStream, audioCtx, nodes } = await createStudioMicrophoneDSP(newStream, true)
+      try {
+        const { finalStream: dspStream, audioCtx, nodes } = await createStudioMicrophoneDSP(
+          newStream, 
+          isAiDenoiseEnabledRef.current
+        )
         localDspCtxRef.current = audioCtx
         localDspNodesRef.current = nodes
         finalStream = dspStream
+      } catch (dspErr) {
+        console.error('[Voice] Falha no DSP após troca de dispositivo:', dspErr)
       }
       localStreamRef.current = finalStream
 
       const newTrack = finalStream.getAudioTracks()[0]
       if (newTrack && localAudioTrackRef.current) {
-        await localAudioTrackRef.current.setDeviceId(deviceId)
+        await localAudioTrackRef.current.replaceTrack(newTrack, true)
       }
     } catch (err) {
       console.error('Failed to change input device:', err)

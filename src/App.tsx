@@ -436,6 +436,17 @@ function PaletteIcon({ className, style }: { className?: string; style?: React.C
   )
 }
 
+function WindowsIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="8" height="8" rx="1" />
+      <rect x="13" y="3" width="8" height="8" rx="1" />
+      <rect x="3" y="13" width="8" height="8" rx="1" />
+      <rect x="13" y="13" width="8" height="8" rx="1" />
+    </svg>
+  )
+}
+
 function FileTextIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <svg className={className} style={style} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -10011,7 +10022,7 @@ function SettingsView({
   performanceMode?: boolean
   onPerformanceModeChange?: (val: boolean) => void
 }) {
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'audio' | 'appearance' | 'changelog'>('profile')
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'audio' | 'appearance' | 'windows' | 'changelog'>('profile')
   
   // Profile settings state & Echo Player Identity
   const [profileSubTab, setProfileSubTab] = useState<'identity' | 'appearance' | 'badges'>('identity')
@@ -10342,6 +10353,52 @@ function SettingsView({
     }
   }, [])
 
+  // Windows Startup Settings
+  const [autoStartEnabled, setAutoStartEnabled] = useState(false)
+  const [startMinimized, setStartMinimized] = useState(() => localStorage.getItem('echo-start-minimized') === 'true')
+  const [loadingAutoStart, setLoadingAutoStart] = useState(false)
+  const [autoStartToast, setAutoStartToast] = useState<string | null>(null)
+
+  useEffect(() => {
+    const api = (window as any).electronAPI
+    if (api?.getAutoStartSettings) {
+      api.getAutoStartSettings().then((res: any) => {
+        if (res && typeof res.openAtLogin === 'boolean') {
+          setAutoStartEnabled(res.openAtLogin)
+        }
+      }).catch((err: any) => console.warn('Erro ao verificar inicialização:', err))
+    }
+  }, [])
+
+  const handleToggleAutoStart = async (enabled: boolean) => {
+    setAutoStartEnabled(enabled)
+    const api = (window as any).electronAPI
+    if (api?.setAutoStartSettings) {
+      setLoadingAutoStart(true)
+      try {
+        const res = await api.setAutoStartSettings({ openAtLogin: enabled, openAsHidden: startMinimized })
+        if (res?.openAtLogin !== undefined) {
+          setAutoStartEnabled(res.openAtLogin)
+        }
+        setAutoStartToast(enabled ? 'Echo configurado para iniciar junto com o Windows!' : 'Inicialização com o Windows desativada.')
+        setTimeout(() => setAutoStartToast(null), 3500)
+      } catch (err) {
+        console.error('Erro ao atualizar inicialização com o Windows:', err)
+      } finally {
+        setLoadingAutoStart(false)
+      }
+    }
+  }
+
+  const handleToggleStartMinimized = async (minimized: boolean) => {
+    setStartMinimized(minimized)
+    localStorage.setItem('echo-start-minimized', String(minimized))
+    const api = (window as any).electronAPI
+    if (api?.setAutoStartSettings && autoStartEnabled) {
+      await api.setAutoStartSettings({ openAtLogin: autoStartEnabled, openAsHidden: minimized })
+    }
+  }
+
   return (
     <section className="settings-workspace">
       <aside className="settings-sidebar">
@@ -10368,6 +10425,13 @@ function SettingsView({
             >
               <PaletteIcon className="menu-icon" style={{ width: '17px', height: '17px' }} />
               <span>Aparência</span>
+            </button>
+            <button 
+              className={`menu-item ${activeSettingsTab === 'windows' ? 'active' : ''}`}
+              onClick={() => setActiveSettingsTab('windows')}
+            >
+              <WindowsIcon className="menu-icon" style={{ width: '17px', height: '17px' }} />
+              <span>Inicialização & Windows</span>
             </button>
             <button 
               className={`menu-item ${activeSettingsTab === 'changelog' ? 'active' : ''}`}
@@ -11769,6 +11833,149 @@ function SettingsView({
           </div>
         )}
 
+        {activeSettingsTab === 'windows' && (
+          <div className="settings-container">
+            <h2>Inicialização & Windows</h2>
+            <p>Gerencie como o Echo é iniciado no Windows ao ligar o computador ou fazer login.</p>
+
+            {autoStartToast && (
+              <div style={{
+                marginTop: '16px',
+                padding: '12px 16px',
+                background: 'rgba(0, 242, 254, 0.12)',
+                border: '1px solid rgba(0, 242, 254, 0.3)',
+                borderRadius: '10px',
+                color: 'var(--accent-color, #00f2fe)',
+                fontSize: '13px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                animation: 'fadeInToast 0.2s ease'
+              }}>
+                <span>✓</span>
+                <span>{autoStartToast}</span>
+              </div>
+            )}
+
+            {/* Iniciar com o Windows */}
+            <div style={{
+              marginTop: '24px',
+              background: 'var(--bg-secondary)',
+              padding: '20px 22px',
+              borderRadius: '14px',
+              border: '1px solid var(--border-color)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '16px',
+              flexWrap: 'wrap'
+            }}>
+              <div style={{ maxWidth: '540px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)' }}>
+                    🪟 Iniciar o Echo com o Windows
+                  </h3>
+                  <span style={{
+                    background: 'rgba(0, 242, 254, 0.15)',
+                    color: 'var(--accent-color, #00f2fe)',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(0, 242, 254, 0.3)'
+                  }}>
+                    DISCORD STYLE
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                  Abre o Echo automaticamente toda vez que você liga o computador e inicia o Windows. Fique sempre conectado com seus amigos para chamadas e conversas sem precisar abrir o app manualmente.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <span style={{
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  padding: '4px 10px',
+                  borderRadius: '8px',
+                  background: autoStartEnabled ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                  color: autoStartEnabled ? '#10b981' : 'var(--text-muted)',
+                  border: autoStartEnabled ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-color)',
+                  transition: 'all 0.2s'
+                }}>
+                  {autoStartEnabled ? '🟢 Ativado' : '⚪ Desativado'}
+                </span>
+                <label className="echo-switch">
+                  <input
+                    type="checkbox"
+                    checked={autoStartEnabled}
+                    disabled={loadingAutoStart}
+                    onChange={(e) => handleToggleAutoStart(e.target.checked)}
+                  />
+                  <span className="echo-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            {/* Iniciar Minimizado */}
+            <div style={{
+              marginTop: '16px',
+              background: 'var(--bg-secondary)',
+              padding: '20px 22px',
+              borderRadius: '14px',
+              border: '1px solid var(--border-color)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '16px',
+              flexWrap: 'wrap',
+              opacity: autoStartEnabled ? 1 : 0.5,
+              transition: 'opacity 0.2s ease'
+            }}>
+              <div style={{ maxWidth: '540px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)' }}>
+                    🤫 Iniciar Minimizado (Segundo Plano)
+                  </h3>
+                </div>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                  Ao ligar o Windows, o Echo é iniciado de forma silenciosa minimizado na barra de tarefas, sem abrir a janela principal no meio da sua tela.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <label className="echo-switch">
+                  <input
+                    type="checkbox"
+                    disabled={!autoStartEnabled}
+                    checked={startMinimized}
+                    onChange={(e) => handleToggleStartMinimized(e.target.checked)}
+                  />
+                  <span className="echo-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            {/* Explicação técnica Windows */}
+            <div style={{
+              marginTop: '24px',
+              padding: '16px 20px',
+              borderRadius: '12px',
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid var(--border-color)',
+              display: 'flex',
+              gap: '12px',
+              alignItems: 'flex-start'
+            }}>
+              <span style={{ fontSize: '18px' }}>💡</span>
+              <div style={{ fontSize: '12.5px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                <strong style={{ color: 'var(--text-primary)' }}>Como o Windows gerencia:</strong> Ao ativar, o Echo se registra na inicialização do Windows (<code style={{ fontSize: '11px', color: 'var(--accent-color, #00f2fe)' }}>Registro do Windows \ CurrentVersion \ Run</code>) e você pode ver o status a qualquer momento também no Gerenciador de Tarefas do Windows (Ctrl + Shift + Esc &rarr; Inicializar).
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeSettingsTab === 'changelog' && (
           <div className="settings-content-card" style={{ padding: '0', background: 'transparent', border: 'none', boxShadow: 'none' }}>
             <WhatsNewModal isOpen={true} isEmbedded={true} />
@@ -11780,14 +11987,14 @@ function SettingsView({
 }
 
 function AudioLevelMeter({ stream }: { stream: MediaStream | null }) {
-  const [level, setLevel] = useState(0)
+  const barRef = useRef<HTMLDivElement | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const animationFrameRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (!stream || stream.getAudioTracks().length === 0) {
-      setLevel(0)
+      if (barRef.current) barRef.current.style.width = '0%'
       return
     }
 
@@ -11805,20 +12012,29 @@ function AudioLevelMeter({ stream }: { stream: MediaStream | null }) {
       const bufferLength = analyser.frequencyBinCount
       const dataArray = new Uint8Array(bufferLength)
 
-      const updateLevel = () => {
+      let lastUpdate = 0
+      const updateLevel = (now: number) => {
         if (!analyserRef.current) return
-        analyserRef.current.getByteFrequencyData(dataArray)
-        let sum = 0
-        for (let i = 0; i < bufferLength; i++) {
-          sum += dataArray[i]
+
+        // Throttle a 15fps (~66ms) e atualiza o DOM diretamente sem disparar re-render do React
+        if (now - lastUpdate > 66) {
+          lastUpdate = now
+          analyserRef.current.getByteFrequencyData(dataArray)
+          let sum = 0
+          for (let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i]
+          }
+          const average = sum / bufferLength
+          const level = Math.min(100, Math.round((average / 128) * 100))
+          if (barRef.current) {
+            barRef.current.style.width = `${level}%`
+            barRef.current.style.background = level > 50 ? '#ff4757' : '#2ed573'
+          }
         }
-        const average = sum / bufferLength
-        // Normalize level (average is 0-255)
-        setLevel(Math.min(100, Math.round((average / 128) * 100)))
         animationFrameRef.current = requestAnimationFrame(updateLevel)
       }
 
-      updateLevel()
+      animationFrameRef.current = requestAnimationFrame(updateLevel)
     } catch (e) {
       console.error('Failed to create audio level meter:', e)
     }
@@ -11838,7 +12054,7 @@ function AudioLevelMeter({ stream }: { stream: MediaStream | null }) {
       <span>🔊 Captando Som:</span>
       {hasAudio ? (
         <div style={{ width: '80px', height: '6px', background: '#222', borderRadius: '3px', overflow: 'hidden', position: 'relative' }}>
-          <div style={{ width: `${level}%`, height: '100%', background: level > 50 ? '#ff4757' : '#2ed573', transition: 'width 0.05s ease' }} />
+          <div ref={barRef} style={{ width: '0%', height: '100%', background: '#2ed573', transition: 'width 0.08s ease' }} />
         </div>
       ) : (
         <span style={{ color: '#ff4757', fontWeight: 'bold' }}>Não Detectado (Sem som)</span>
@@ -11958,7 +12174,7 @@ function StreamTile({
           <div className="stream-stats-hud-grid">
             <div className="stats-row"><span>Resolução Real:</span> <strong>{streamResolution || '1920x1080'}</strong></div>
             <div className="stats-row"><span>Taxa de Quadros:</span> <strong style={{ color: '#10b981' }}>60 FPS (Ultra Suave)</strong></div>
-            <div className="stats-row"><span>Bitrate de Vídeo:</span> <strong>~6.8 - 8.5 Mbps (Ultra HD)</strong></div>
+            <div className="stats-row"><span>Bitrate de Vídeo:</span> <strong>~2.4 - 3.2 Mbps (Otimizado SFU / Simulcast)</strong></div>
             <div className="stats-row"><span>Codec de Vídeo:</span> <strong>H.264 High Profile (GPU HW)</strong></div>
             <div className="stats-row"><span>Áudio do Jogo:</span> <strong>Opus 48kHz Estéreo (128 kbps)</strong></div>
             <div className="stats-row"><span>Degradação:</span> <strong>Maintain Framerate (Sem Lag)</strong></div>

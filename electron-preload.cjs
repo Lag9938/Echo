@@ -36,5 +36,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showNotification: (options) => ipcRenderer.invoke('show-notification', options),
 
   // LiveKit SFU API
-  getLiveKitConnection: (params) => ipcRenderer.invoke('get-livekit-connection', params)
+  getLiveKitConnection: (params) => ipcRenderer.invoke('get-livekit-connection', params),
+
+  // Auto-start with Windows (Startup) API
+  getAutoStartSettings: () => ipcRenderer.invoke('get-autostart-settings'),
+  setAutoStartSettings: (settings) => ipcRenderer.invoke('set-autostart-settings', settings)
 })

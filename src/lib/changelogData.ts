@@ -14,15 +14,48 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.23.7'
+export const APP_CURRENT_VERSION = '0.23.19'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.23.19',
+    title: 'Estabilidade de Transmissão, Áudio Estéreo com IA e Inicialização do Windows',
+    date: '05 de Setembro de 2026',
+    tagline: 'Transmissões múltiplas ultra estáveis com bitrate dinâmico inteligente, supressão de ruído por IA nos dois ouvidos e inicialização com o Windows.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎧',
+        badge: 'ÁUDIO & IA',
+        title: 'Supressão de Ruído por IA em Ambos os Fones',
+        description: 'Corrigido o roteamento de áudio que transmitia apenas no fone esquerdo com IA ativada. Agora o som sai perfeitamente centralizado em estéreo e a supressão pode ser alternada em tempo real sem interrupções.'
+      },
+      {
+        icon: '📡',
+        badge: 'ESTABILIDADE',
+        title: 'Transmissões Múltiplas e Chamadas Blindadas',
+        description: 'Bitrate de vídeo otimizado dinamicamente (2.4 ~ 3.2 Mbps), ativação de Simulcast e DTX inteligente para chamadas fluidas sem travamentos mesmo com múltiplos compartilhamentos simultâneos.'
+      },
+      {
+        icon: '🪟',
+        badge: 'SISTEMA',
+        title: 'Iniciar com o Windows (Estilo Discord)',
+        description: 'Nova aba nas configurações permitindo que o Echo inicie automaticamente com o Windows, com suporte a inicialização minimizada na bandeja.'
+      },
+      {
+        icon: '⚡',
+        badge: 'PERFORMANCE',
+        title: 'Otimização Extrema de Renderização',
+        description: 'VU meters de volume desacoplados do ciclo de renderização do React, poupando CPU e eliminando qualquer engasgo durante chamadas com vários participantes.'
+      }
+    ]
+  },
   {
     version: '0.23.7',
     title: 'Sincronização em Tempo Real e Estabilidade de Transmissão',
     date: '02 de Setembro de 2026',
     tagline: 'Sincronização instantânea de membros e canais de voz, fim do throttling em segundo plano e blindagem da transmissão contra quedas.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '👥',

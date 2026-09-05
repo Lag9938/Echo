@@ -15,6 +15,14 @@ const execFileAsync = promisify(execFile)
 const isDevelopment = !app.isPackaged
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+if (isDevelopment) {
+  try {
+    app.setPath('userData', path.join(app.getPath('appData'), 'Echo-Dev'))
+  } catch (e) {
+    console.warn('Unable to set dev userData path:', e)
+  }
+}
+
 // LiveKit Local Server Process Management
 let livekitProcess = null
 
@@ -175,11 +183,13 @@ function stopAudioCapture() {
 }
 
 function createWindow() {
+  const shouldStartHidden = process.argv.includes('--hidden') || process.argv.includes('--minimized')
   mainWindow = new BrowserWindow({ 
     width: 1280, 
     height: 760, 
     minWidth: 900, 
     minHeight: 600, 
+    show: !shouldStartHidden,
     backgroundColor: '#f5f7f6', 
     autoHideMenuBar: true, 
     webPreferences: { 
@@ -191,8 +201,12 @@ function createWindow() {
   })
 
   mainWindow.once('ready-to-show', () => {
-    mainWindow.show()
-    mainWindow.focus()
+    if (shouldStartHidden) {
+      mainWindow.minimize()
+    } else {
+      mainWindow.show()
+      mainWindow.focus()
+    }
   })
   // Permitir acesso ao microfone para canais de voz (WebRTC)
   mainWindow.webContents.session.setPermissionRequestHandler((_webContents, permission, callback) => {
@@ -483,6 +497,51 @@ function createWindow() {
     }
   })
 
+  // Windows / System Auto-Start at Login (Discord Style)
+  ipcMain.handle('get-autostart-settings', () => {
+    try {
+      const settings = app.getLoginItemSettings()
+      return {
+        openAtLogin: Boolean(settings.openAtLogin || settings.executableWillLaunchAtLogin)
+      }
+    } catch (err) {
+      console.warn('Error fetching login item settings:', err)
+      return { openAtLogin: false }
+    }
+  })
+
+  ipcMain.handle('set-autostart-settings', (_event, { openAtLogin, openAsHidden }) => {
+    try {
+      const willOpen = Boolean(openAtLogin)
+      const isHidden = Boolean(openAsHidden)
+
+      if (app.isPackaged) {
+        app.setLoginItemSettings({
+          openAtLogin: willOpen,
+          openAsHidden: isHidden,
+          path: process.execPath,
+          args: isHidden ? ['--hidden'] : []
+        })
+      } else {
+        app.setLoginItemSettings({
+          openAtLogin: willOpen,
+          openAsHidden: isHidden,
+          path: process.execPath,
+          args: [path.resolve(process.argv[1]), ...(isHidden ? ['--hidden'] : [])]
+        })
+      }
+
+      const updated = app.getLoginItemSettings()
+      return {
+        success: true,
+        openAtLogin: Boolean(updated.openAtLogin || updated.executableWillLaunchAtLogin)
+      }
+    } catch (err) {
+      console.error('Error setting login item settings:', err)
+      return { success: false, error: err.message }
+    }
+  })
+
   // Handler para instalar atualização quando o usuário decidir
   ipcMain.on('install-update', () => {
     autoUpdater.quitAndInstall(false, true)
@@ -536,7 +595,9 @@ function createWindow() {
       mainWindow.loadFile('dist/index.html')
     })
   }
-  mainWindow.show()
+  if (!shouldStartHidden) {
+    mainWindow.show()
+  }
 }
 app.whenReady().then(() => {
   ensureLocalLivekitServer()
