@@ -505,8 +505,10 @@ export function useVoiceChannel() {
     audioElementsRef.current.clear()
 
     if (channelRef.current) {
-      channelRef.current.untrack().catch(() => {})
-      supabase?.removeChannel(channelRef.current)
+      try {
+        channelRef.current.untrack().catch(() => {})
+      } catch (e) {}
+      // Preservamos o canal aberto no Supabase para que a escuta contínua de presença das salas não seja interrompida
       channelRef.current = null
     }
 
@@ -795,15 +797,16 @@ export function useVoiceChannel() {
 
       syncParticipants()
 
-      // Sincroniza presença no Supabase
+      // Sincroniza presença no Supabase para que membros fora da call vejam quem está dentro
       if (supabase) {
         const presenceChanName = spaceId ? `space-voice-${spaceId}` : `voice-${channelId}`
         const sbChannel = supabase.channel(presenceChanName, {
           config: { presence: { key: userId } }
         })
         channelRef.current = sbChannel
-        sbChannel.subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') {
+
+        const doTrack = async () => {
+          try {
             await sbChannel.track({
               user_id: userId,
               display_name: displayName,
@@ -813,9 +816,22 @@ export function useVoiceChannel() {
               is_deafened: isDeafenedRef.current,
               has_screen: false,
               space_id: spaceId || null
-            }).catch(() => {})
+            })
+            console.log('[Voice Presence] Usuário registrado na presença com sucesso:', channelId)
+          } catch (trErr) {
+            console.warn('[Voice Presence] Erro ao registrar presença:', trErr)
           }
-        })
+        }
+
+        if ((sbChannel as any).state === 'joined') {
+          doTrack()
+        } else {
+          sbChannel.subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+              doTrack()
+            }
+          })
+        }
       }
     } catch (err) {
       console.error('[LiveKit] Falha ao entrar no canal de voz:', err)

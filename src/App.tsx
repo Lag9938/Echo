@@ -2380,17 +2380,23 @@ function Echo({ user }: { user: User }) {
 
         setSpaceVoiceUsers(prev => {
           const next = { ...prev }
-          const spaceChs = spaceChannelsRef.current[sp.id] || []
+          const spaceChs = (spaceChannelsRef.current[sp.id] || []).filter(c => c.type === 'voice')
+          
           spaceChs.forEach(c => {
-            if (c.type === 'voice') {
-              if (byChannel[c.id]) {
-                next[c.id] = byChannel[c.id]
-              } else {
-                delete next[c.id]
-              }
+            if (byChannel[c.id] && byChannel[c.id].length > 0) {
+              next[c.id] = byChannel[c.id]
+            } else {
+              delete next[c.id]
             }
           })
-          return { ...next, ...byChannel }
+
+          Object.entries(byChannel).forEach(([chId, users]) => {
+            if (users && users.length > 0) {
+              next[chId] = users
+            }
+          })
+
+          return next
         })
       }
 
@@ -2410,9 +2416,9 @@ function Echo({ user }: { user: User }) {
     }
   }, [spaces, user.id])
 
-  async function handleJoinVoice(channelId: string) {
+  async function handleJoinVoice(channelId: string, explicitSpaceId?: string) {
     setActiveVoiceChannelId(channelId)
-    const spaceId = selectedChannel?.space_id || Object.keys(spaceChannels).find(sId => (spaceChannels[sId] || []).some(c => c.id === channelId))
+    const spaceId = explicitSpaceId || selectedChannel?.space_id || Object.keys(spaceChannels).find(sId => (spaceChannels[sId] || []).some(c => c.id === channelId))
     try {
       await joinVoice(channelId, user.id, profileDisplayName, profileAvatarUrl, selectedInputId, selectedOutputId, noiseSuppressionEnabled, echoCancellationEnabled, spaceId)
     } catch (err) {
@@ -4773,7 +4779,7 @@ function Echo({ user }: { user: User }) {
                   onClick={() => {
                     setSelectedChannel(ch)
                     if (activeVoiceChannelId !== ch.id || !isConnected) {
-                      handleJoinVoice(ch.id)
+                      handleJoinVoice(ch.id, ch.space_id)
                     }
                   }}
                 >
@@ -6668,7 +6674,7 @@ function Echo({ user }: { user: User }) {
                           <button 
                             className="voice-join-submit-btn" 
                             onClick={async () => {
-                              await handleJoinVoice(selectedChannel.id)
+                              await handleJoinVoice(selectedChannel.id, selectedChannel.space_id)
                             }}
                           >
                             Entrar na chamada
