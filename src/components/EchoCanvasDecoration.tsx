@@ -28,21 +28,55 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
     const ctx = canvas.getContext('2d', { alpha: true })
     if (!ctx) return
 
-    let animationFrameId: number
+    let animationFrameId: number = 0
     let isRunning = true
     let isVisible = true
     const startTime = performance.now()
+    let lastFrameTime = performance.now()
+    const TARGET_FPS = 30
+    const FRAME_INTERVAL = 1000 / TARGET_FPS
 
     // ─────────────────────────────────────────────────────────────
-    // High-Performance Visibility Culling (Zero CPU/GPU when hidden)
+    // High-Performance Visibility Culling & Background Throttling
     // ─────────────────────────────────────────────────────────────
+    const startLoop = () => {
+      if (!isRunning || !isVisible) return
+      cancelAnimationFrame(animationFrameId)
+      lastFrameTime = performance.now()
+      animationFrameId = requestAnimationFrame(render)
+    }
+
+    const stopLoop = () => {
+      cancelAnimationFrame(animationFrameId)
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
-        isVisible = entry.isIntersecting
+        const intersecting = entry.isIntersecting
+        if (intersecting) {
+          if (!isVisible) {
+            isVisible = true
+            startLoop()
+          }
+        } else {
+          isVisible = false
+          stopLoop()
+        }
       },
       { threshold: 0.01 }
     )
     observer.observe(canvas)
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        isVisible = false
+        stopLoop()
+      } else {
+        isVisible = true
+        startLoop()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
 
     // Pre-allocated Particle Pool
     interface Particle {
@@ -140,13 +174,18 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
 
     // Render loop
     const render = (now: number) => {
-      if (!isRunning) return
+      if (!isRunning || !isVisible) return
 
-      if (!isVisible) {
-        // Paused when hidden or offscreen (0% CPU)
+      // FPS Capping: Target 30 FPS (~33.3ms interval) for silky-smooth animations with 80% lower CPU
+      const isPerfMode = document.body.classList.contains('theme-performance-opaque')
+      const targetInterval = isPerfMode ? 1000 / 15 : FRAME_INTERVAL
+
+      const elapsed = now - lastFrameTime
+      if (elapsed < targetInterval) {
         animationFrameId = requestAnimationFrame(render)
         return
       }
+      lastFrameTime = now - (elapsed % targetInterval)
 
       const t = (now - startTime) * 0.001
       const w = canvas.width
@@ -195,15 +234,16 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
 
         // Circular Audio Equalizer Frequency Wave Around Circumference
         const numBars = 48
+        const waveScale = avatarR * 0.03
         ctx.beginPath()
         for (let i = 0; i < numBars; i++) {
           const angle = (i / numBars) * Math.PI * 2
           const wave1 = Math.sin(angle * 6 + t * 4) * 5
           const wave2 = Math.cos(angle * 3 - t * 2.5) * 4
-          const waveH = Math.max(2, 4 + wave1 + wave2)
+          const waveH = Math.max(1, (4 + wave1 + wave2) * waveScale)
 
-          const rInner = avatarR + 2
-          const rOuter = avatarR + 2 + waveH
+          const rInner = avatarR * 1.03
+          const rOuter = rInner + waveH
 
           const x1 = cx + Math.cos(angle) * rInner
           const y1 = cy + Math.sin(angle) * rInner
@@ -214,11 +254,12 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
           ctx.lineTo(x2, y2)
         }
         ctx.strokeStyle = 'rgba(0, 242, 254, 0.85)'
-        ctx.lineWidth = 2.2
+        ctx.lineWidth = Math.max(1.2, avatarR * 0.045)
         ctx.stroke()
 
         // 4 Harmonic Orbiting Satellites with Motion Blur Tails
         const satelliteCount = 4
+        const satR = Math.max(2, avatarR * 0.08)
         for (let s = 0; s < satelliteCount; s++) {
           const baseAngle = (s / satelliteCount) * Math.PI * 2 + t * 1.6
           const orbitR = avatarR * (1.18 + Math.sin(t * 3 + s) * 0.08)
@@ -229,10 +270,10 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
             const tx = cx + Math.cos(trailAngle) * orbitR
             const ty = cy + Math.sin(trailAngle) * orbitR
             const trailAlpha = (1 - trail / 5) * 0.6
-            const trailR = (4 - trail * 0.6)
+            const trailR = Math.max(1, (satR * 0.7 - trail * (satR * 0.1)))
 
             ctx.beginPath()
-            ctx.arc(tx, ty, Math.max(1, trailR), 0, Math.PI * 2)
+            ctx.arc(tx, ty, trailR, 0, Math.PI * 2)
             ctx.fillStyle = s % 2 === 0 ? `rgba(0, 242, 254, ${trailAlpha})` : `rgba(236, 72, 153, ${trailAlpha})`
             ctx.fill()
           }
@@ -240,13 +281,13 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
           // Main satellite orb
           const sx = cx + Math.cos(baseAngle) * orbitR
           const sy = cy + Math.sin(baseAngle) * orbitR
-          const satGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, 6)
+          const satGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, satR)
           satGrad.addColorStop(0, '#ffffff')
           satGrad.addColorStop(0.4, s % 2 === 0 ? '#00f2fe' : '#f472b6')
           satGrad.addColorStop(1, 'rgba(0,0,0,0)')
           ctx.fillStyle = satGrad
           ctx.beginPath()
-          ctx.arc(sx, sy, 6, 0, Math.PI * 2)
+          ctx.arc(sx, sy, satR, 0, Math.PI * 2)
           ctx.fill()
         }
 
@@ -344,30 +385,31 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
         ctx.save()
         ctx.globalCompositeOperation = 'lighter'
 
-        const crownY = cy - avatarR - 10 + Math.sin(t * 2) * 3
+        const crownY = cy - avatarR * 1.05 + Math.sin(t * 2) * (avatarR * 0.03)
 
         // Ambient Gold & Amethyst Radiance
-        const crownGlow = ctx.createRadialGradient(cx, crownY, 10, cx, crownY, 48)
+        const crownGlow = ctx.createRadialGradient(cx, crownY, avatarR * 0.15, cx, crownY, avatarR * 0.75)
         crownGlow.addColorStop(0, 'rgba(251, 191, 36, 0.4)')
         crownGlow.addColorStop(0.5, 'rgba(168, 85, 247, 0.2)')
         crownGlow.addColorStop(1, 'rgba(0, 0, 0, 0)')
         ctx.fillStyle = crownGlow
         ctx.beginPath()
-        ctx.arc(cx, crownY, 48, 0, Math.PI * 2)
+        ctx.arc(cx, crownY, avatarR * 0.75, 0, Math.PI * 2)
         ctx.fill()
 
         // Crown Base Band
         ctx.save()
         ctx.translate(cx, crownY)
         ctx.beginPath()
-        ctx.ellipse(0, 4, 28, 7, 0, 0, Math.PI * 2)
+        ctx.ellipse(0, avatarR * 0.06, avatarR * 0.48, avatarR * 0.12, 0, 0, Math.PI * 2)
         ctx.strokeStyle = '#fbbf24'
-        ctx.lineWidth = 2.5
+        ctx.lineWidth = Math.max(1.4, avatarR * 0.045)
         ctx.stroke()
 
         // 5 Faceted Crown Spires with Prismatic Gradients
-        const spires = [-22, -11, 0, 11, 22]
-        const heights = [16, 24, 32, 24, 16]
+        const spires = [-0.36, -0.18, 0, 0.18, 0.36].map(x => x * avatarR)
+        const heights = [0.26, 0.38, 0.52, 0.38, 0.26].map(h => h * avatarR)
+        const spireHalfW = Math.max(1.5, avatarR * 0.06)
 
         for (let i = 0; i < spires.length; i++) {
           const sx = spires[i]
@@ -376,12 +418,12 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
 
           // Prismatic crystal spire
           ctx.beginPath()
-          ctx.moveTo(sx - 4, 3)
+          ctx.moveTo(sx - spireHalfW, avatarR * 0.05)
           ctx.lineTo(sx, -sh)
-          ctx.lineTo(sx + 4, 3)
+          ctx.lineTo(sx + spireHalfW, avatarR * 0.05)
           ctx.closePath()
 
-          const spireGrad = ctx.createLinearGradient(sx - 4, 0, sx + 4, -sh)
+          const spireGrad = ctx.createLinearGradient(sx - spireHalfW, 0, sx + spireHalfW, -sh)
           if (isCenter) {
             spireGrad.addColorStop(0, '#f59e0b')
             spireGrad.addColorStop(0.5, '#ffffff')
@@ -395,12 +437,12 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
           ctx.fill()
 
           ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'
-          ctx.lineWidth = 1
+          ctx.lineWidth = Math.max(0.8, avatarR * 0.02)
           ctx.stroke()
 
           // Diamond glints at tips
           const glintPulse = Math.sin(t * 4 + i * 1.5) * 0.5 + 0.5
-          drawStar(ctx, sx, -sh, 5 * glintPulse, '#ffffff', 0.9)
+          drawStar(ctx, sx, -sh, Math.max(2, avatarR * 0.08 * glintPulse), '#ffffff', 0.9)
         }
 
         ctx.restore()
@@ -447,23 +489,28 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
         ctx.translate(cx, cy)
         ctx.rotate(t * 0.4)
 
+        const r1Base = avatarR * 1.05
+        const r1Tick = avatarR * 0.08
+        const r2Ring = avatarR * 1.18
+        const sweepR = avatarR * 1.25
+
         ctx.beginPath()
-        ctx.arc(0, 0, avatarR + 6, 0, Math.PI * 2)
+        ctx.arc(0, 0, r1Base, 0, Math.PI * 2)
         ctx.strokeStyle = 'rgba(6, 182, 212, 0.5)'
-        ctx.lineWidth = 1.5
+        ctx.lineWidth = Math.max(1, avatarR * 0.03)
         ctx.stroke()
 
         for (let i = 0; i < 36; i++) {
           const tickAngle = (i / 36) * Math.PI * 2
           const isMajor = i % 9 === 0
-          const r1 = avatarR + 6
-          const r2 = avatarR + 6 + (isMajor ? 6 : 3)
+          const r1 = r1Base
+          const r2 = r1Base + (isMajor ? r1Tick : r1Tick * 0.5)
 
           ctx.beginPath()
           ctx.moveTo(Math.cos(tickAngle) * r1, Math.sin(tickAngle) * r1)
           ctx.lineTo(Math.cos(tickAngle) * r2, Math.sin(tickAngle) * r2)
           ctx.strokeStyle = isMajor ? '#22d3ee' : 'rgba(6, 182, 212, 0.6)'
-          ctx.lineWidth = isMajor ? 2 : 1
+          ctx.lineWidth = isMajor ? Math.max(1.2, avatarR * 0.04) : Math.max(0.8, avatarR * 0.02)
           ctx.stroke()
         }
         ctx.restore()
@@ -479,17 +526,17 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
           const segEnd = ((s + 1) / segments) * Math.PI * 2 - 0.15
 
           ctx.beginPath()
-          ctx.arc(0, 0, avatarR + 16, segStart, segEnd)
+          ctx.arc(0, 0, r2Ring, segStart, segEnd)
           ctx.strokeStyle = 'rgba(34, 211, 238, 0.8)'
-          ctx.lineWidth = 2.5
+          ctx.lineWidth = Math.max(1.5, avatarR * 0.05)
           ctx.stroke()
 
           // Lock Nodes at Segment Corners
-          const nodeX = Math.cos(segStart) * (avatarR + 16)
-          const nodeY = Math.sin(segStart) * (avatarR + 16)
+          const nodeX = Math.cos(segStart) * r2Ring
+          const nodeY = Math.sin(segStart) * r2Ring
           ctx.fillStyle = '#ffffff'
           ctx.beginPath()
-          ctx.arc(nodeX, nodeY, 2.5, 0, Math.PI * 2)
+          ctx.arc(nodeX, nodeY, Math.max(1.5, avatarR * 0.05), 0, Math.PI * 2)
           ctx.fill()
         }
         ctx.restore()
@@ -498,34 +545,34 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
         ctx.save()
         ctx.translate(cx, cy)
         const sweepAngle = t * 2.5
-        const sweepGrad = ctx.createRadialGradient(0, 0, avatarR, 0, 0, avatarR + 20)
+        const sweepGrad = ctx.createRadialGradient(0, 0, avatarR, 0, 0, sweepR)
         sweepGrad.addColorStop(0, 'rgba(6, 182, 212, 0.6)')
         sweepGrad.addColorStop(1, 'rgba(6, 182, 212, 0)')
 
         ctx.beginPath()
         ctx.moveTo(0, 0)
-        ctx.arc(0, 0, avatarR + 20, sweepAngle - 0.4, sweepAngle)
+        ctx.arc(0, 0, sweepR, sweepAngle - 0.4, sweepAngle)
         ctx.closePath()
         ctx.fillStyle = sweepGrad
         ctx.fill()
 
         ctx.beginPath()
         ctx.moveTo(0, 0)
-        ctx.lineTo(Math.cos(sweepAngle) * (avatarR + 20), Math.sin(sweepAngle) * (avatarR + 20))
+        ctx.lineTo(Math.cos(sweepAngle) * sweepR, Math.sin(sweepAngle) * sweepR)
         ctx.strokeStyle = '#ffffff'
-        ctx.lineWidth = 1.5
+        ctx.lineWidth = Math.max(1, avatarR * 0.03)
         ctx.stroke()
         ctx.restore()
 
         // 4 Corner Telemetry Lock Brackets
-        const bracketDist = avatarR * 1.25
+        const bracketDist = avatarR * 1.22
         const bracketOffsets = [
           [-1, -1],
           [1, -1],
           [1, 1],
           [-1, 1]
         ]
-        const bracketSize = 10
+        const bracketSize = avatarR * 0.14
 
         bracketOffsets.forEach(([dx, dy]) => {
           const bx = cx + dx * bracketDist
@@ -535,7 +582,7 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
           ctx.lineTo(bx, by)
           ctx.lineTo(bx + dx * -bracketSize, by)
           ctx.strokeStyle = '#22d3ee'
-          ctx.lineWidth = 2
+          ctx.lineWidth = Math.max(1.2, avatarR * 0.04)
           ctx.stroke()
         })
 
@@ -618,43 +665,46 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
         ctx.save()
         ctx.globalCompositeOperation = 'lighter'
 
-        const wingFlap = Math.sin(t * 2.2) * 0.08
-        const haloY = cy - avatarR - 10 + Math.sin(t * 2) * 3
+        const haloY = cy - avatarR * 1.06 + Math.sin(t * 2) * (avatarR * 0.03)
+        const haloRadiusX = avatarR * 0.44
+        const haloRadiusY = avatarR * 0.13
 
         // Floating Divine Halo
         ctx.save()
         ctx.translate(cx, haloY)
         ctx.beginPath()
-        ctx.ellipse(0, 0, 24, 7, 0, 0, Math.PI * 2)
-        const haloGrad = ctx.createLinearGradient(-24, 0, 24, 0)
+        ctx.ellipse(0, 0, haloRadiusX, haloRadiusY, 0, 0, Math.PI * 2)
+        const haloGrad = ctx.createLinearGradient(-haloRadiusX, 0, haloRadiusX, 0)
         haloGrad.addColorStop(0, '#fde047')
         haloGrad.addColorStop(0.5, '#ffffff')
         haloGrad.addColorStop(1, '#f59e0b')
         ctx.strokeStyle = haloGrad
-        ctx.lineWidth = 3
+        ctx.lineWidth = Math.max(1.4, avatarR * 0.055)
         ctx.stroke()
 
         // Halo Radiance Bloom
         ctx.beginPath()
-        ctx.ellipse(0, 0, 28, 11, 0, 0, Math.PI * 2)
+        ctx.ellipse(0, 0, haloRadiusX * 1.15, haloRadiusY * 1.45, 0, 0, Math.PI * 2)
         ctx.strokeStyle = 'rgba(253, 224, 71, 0.4)'
-        ctx.lineWidth = 4
+        ctx.lineWidth = Math.max(2, avatarR * 0.07)
         ctx.stroke()
         ctx.restore()
 
-        // Left & Right Feather Plumage Wings
+        // Left & Right Celestial Wings (Gracefully arching outward around upper sides)
+        const wingFlap = Math.sin(t * 2.2) * 0.05
         const drawWing = (isRight: boolean) => {
           ctx.save()
-          ctx.translate(cx + (isRight ? avatarR * 0.85 : -avatarR * 0.85), cy + Math.sin(t * 2) * 2)
+          ctx.translate(cx + (isRight ? avatarR * 0.78 : -avatarR * 0.78), cy - avatarR * 0.15 + Math.sin(t * 2) * (avatarR * 0.02))
           ctx.scale(isRight ? -1 : 1, 1)
-          ctx.rotate(-0.35 + wingFlap)
+          ctx.rotate(0.32 + wingFlap)
 
+          const wingScale = avatarR * 0.012
           const feathers = [
-            { l: 38, w: 10, c: 5, rot: 0.1 },
-            { l: 48, w: 12, c: 8, rot: 0.3 },
-            { l: 56, w: 13, c: 10, rot: 0.5 },
-            { l: 52, w: 12, c: 8, rot: 0.7 },
-            { l: 42, w: 10, c: 6, rot: 0.9 }
+            { l: 24 * wingScale, w: 7 * wingScale, c: 3 * wingScale, rot: 0.1 },
+            { l: 30 * wingScale, w: 8 * wingScale, c: 5 * wingScale, rot: 0.28 },
+            { l: 35 * wingScale, w: 9 * wingScale, c: 6 * wingScale, rot: 0.46 },
+            { l: 28 * wingScale, w: 8 * wingScale, c: 5 * wingScale, rot: 0.64 },
+            { l: 20 * wingScale, w: 6 * wingScale, c: 4 * wingScale, rot: 0.82 }
           ]
 
           feathers.forEach(f => {
@@ -676,12 +726,11 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
 
         // Floating Sacred Golden Particles
         particles.slice(0, 16).forEach((p) => {
-
           p.life += 0.02
           if (p.life > p.maxLife) {
             p.life = 0
-            p.x = cx + (Math.random() - 0.5) * (avatarR * 2)
-            p.y = cy - avatarR + Math.random() * (avatarR * 1.5)
+            p.x = cx + (Math.random() - 0.5) * (avatarR * 1.6)
+            p.y = cy - avatarR + Math.random() * (avatarR * 1.2)
             p.vy = -Math.random() * 0.6 - 0.2
             p.vx = (Math.random() - 0.5) * 0.3
           }
@@ -691,7 +740,7 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
 
           const pAlpha = Math.sin((p.life / p.maxLife) * Math.PI) * 0.8
           ctx.beginPath()
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+          ctx.arc(p.x, p.y, Math.max(1, avatarR * 0.035), 0, Math.PI * 2)
           ctx.fillStyle = `rgba(254, 240, 138, ${pAlpha})`
           ctx.fill()
         })
@@ -715,10 +764,11 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
         ctx.arc(cx, cy, avatarR * 1.45, 0, Math.PI * 2)
         ctx.fill()
 
-        // Interlocking Hexagons Ring around circumference
-        const hexCount = 14
-        const hexR = 12
-        const ringDist = avatarR + 10
+        // Interlocking Hexagons Ring around circumference (Sacred Geometry: 12-fold symmetry)
+        const hexCount = 12
+        const ringDist = avatarR * 1.16
+        const hexR = ringDist * Math.sin(Math.PI / hexCount) * 0.94
+        const strokeW = Math.max(1, avatarR * 0.04)
 
         const drawSingleHex = (hx: number, hy: number, scale: number, alpha: number) => {
           ctx.beginPath()
@@ -731,7 +781,7 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
           }
           ctx.closePath()
           ctx.strokeStyle = `rgba(52, 211, 153, ${alpha})`
-          ctx.lineWidth = 1.8
+          ctx.lineWidth = strokeW
           ctx.stroke()
           ctx.fillStyle = `rgba(16, 185, 129, ${alpha * 0.25})`
           ctx.fill()
@@ -750,7 +800,7 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
 
           // Vertex nodes
           ctx.beginPath()
-          ctx.arc(hx, hy, 2, 0, Math.PI * 2)
+          ctx.arc(hx, hy, Math.max(1.2, avatarR * 0.04), 0, Math.PI * 2)
           ctx.fillStyle = '#ffffff'
           ctx.fill()
         }
@@ -765,15 +815,15 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
           const y1 = cy + Math.sin(a1) * ringDist
           const x2 = cx + Math.cos(a2) * ringDist
           const y2 = cy + Math.sin(a2) * ringDist
-          const midX = (x1 + x2) * 0.5 + (Math.random() - 0.5) * 6
-          const midY = (y1 + y2) * 0.5 + (Math.random() - 0.5) * 6
+          const midX = (x1 + x2) * 0.5 + (Math.random() - 0.5) * (avatarR * 0.12)
+          const midY = (y1 + y2) * 0.5 + (Math.random() - 0.5) * (avatarR * 0.12)
 
           ctx.beginPath()
           ctx.moveTo(x1, y1)
           ctx.lineTo(midX, midY)
           ctx.lineTo(x2, y2)
           ctx.strokeStyle = '#a7f3d0'
-          ctx.lineWidth = 1.5
+          ctx.lineWidth = Math.max(0.8, avatarR * 0.025)
           ctx.stroke()
         }
 
@@ -868,47 +918,54 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
 
         // Playful spring twitch every 4 seconds
         const twitchCycle = (t * 0.25) % 1
-        const isTwitching = twitchCycle > 0.85
-        const twitchAngle = isTwitching ? Math.sin(t * 30) * 0.08 : 0
+        const isTwitching = twitchCycle > 0.88
+        const twitchAngle = isTwitching ? Math.sin(t * 30) * 0.07 : 0
 
-        const earY = cy - avatarR + 2
+        // Exact anchor on the avatar skull perimeter
+        const earOffsetX = avatarR * 0.44
+        // At x = ±0.44 * avatarR, circle top rim is at: y = cy - avatarR * sqrt(1 - 0.44^2) ≈ cy - 0.898 * avatarR
+        const earBaseY = cy - avatarR * 0.88
+        const earW = avatarR * 0.32
+        const earH = avatarR * 0.42
 
         const drawEar = (isRight: boolean) => {
           ctx.save()
-          ctx.translate(cx + (isRight ? avatarR * 0.5 : -avatarR * 0.5), earY)
+          ctx.translate(cx + (isRight ? earOffsetX : -earOffsetX), earBaseY)
           ctx.scale(isRight ? -1 : 1, 1)
-          ctx.rotate(0.2 + (isRight ? -twitchAngle : twitchAngle))
+          ctx.rotate(0.20 + (isRight ? -twitchAngle : twitchAngle))
 
           // Outer Neon Wireframe Ear
           ctx.beginPath()
-          ctx.moveTo(-14, 8)
-          ctx.bezierCurveTo(-16, -14, -8, -32, 2, -38)
-          ctx.bezierCurveTo(12, -28, 18, -10, 16, 8)
+          ctx.moveTo(-earW * 0.48, earW * 0.06)
+          ctx.bezierCurveTo(-earW * 0.52, -earH * 0.45, -earW * 0.22, -earH * 0.88, 0, -earH)
+          ctx.bezierCurveTo(earW * 0.25, -earH * 0.80, earW * 0.48, -earH * 0.35, earW * 0.46, earW * 0.06)
           ctx.closePath()
 
-          const earGrad = ctx.createLinearGradient(0, 8, 0, -38)
-          earGrad.addColorStop(0, 'rgba(244, 114, 182, 0.4)')
+          const earGrad = ctx.createLinearGradient(0, earW * 0.06, 0, -earH)
+          earGrad.addColorStop(0, 'rgba(244, 114, 182, 0.35)')
           earGrad.addColorStop(0.7, '#f472b6')
           earGrad.addColorStop(1, '#ffffff')
           ctx.strokeStyle = earGrad
-          ctx.lineWidth = 2.5
+          ctx.lineWidth = Math.max(1.4, avatarR * 0.05)
           ctx.stroke()
-          ctx.fillStyle = 'rgba(244, 114, 182, 0.15)'
+          ctx.fillStyle = 'rgba(244, 114, 182, 0.16)'
           ctx.fill()
 
           // Inner Acoustic Wave Lines Traveling Upward
           for (let line = 0; line < 3; line++) {
-            const waveY = -8 - line * 8 + ((t * 15) % 8)
+            const prog = (line + 1) / 4
+            const waveY = -earH * prog + ((t * earH * 0.35) % (earH * 0.22))
+            const wRatio = Math.max(0.2, 1 - prog)
             ctx.beginPath()
-            ctx.moveTo(-6, waveY)
-            ctx.lineTo(8, waveY)
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'
-            ctx.lineWidth = 1.2
+            ctx.moveTo(-earW * 0.32 * wRatio, waveY)
+            ctx.lineTo(earW * 0.28 * wRatio, waveY)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)'
+            ctx.lineWidth = Math.max(1, avatarR * 0.025)
             ctx.stroke()
           }
 
-          // Tip Sparkle
-          drawStar(ctx, 2, -38, 4 + Math.sin(t * 6) * 1.5, '#ffffff', 0.9)
+          // Tip Sparkle Lens Flare
+          drawStar(ctx, 0, -earH, Math.max(2, avatarR * 0.08 + Math.sin(t * 6) * (avatarR * 0.02)), '#ffffff', 0.9)
 
           ctx.restore()
         }
@@ -921,8 +978,8 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
           p.life += 0.02
           if (p.life > p.maxLife) {
             p.life = 0
-            p.x = cx + (Math.random() - 0.5) * (avatarR * 1.5)
-            p.y = earY - 10 + Math.random() * 20
+            p.x = cx + (Math.random() - 0.5) * (avatarR * 1.4)
+            p.y = earBaseY - avatarR * 0.15 + Math.random() * (avatarR * 0.3)
             p.vy = -Math.random() * 0.6 - 0.2
             p.vx = (Math.random() - 0.5) * 0.4
           }
@@ -932,7 +989,7 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
 
           const pAlpha = Math.sin((p.life / p.maxLife) * Math.PI) * 0.8
           ctx.beginPath()
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+          ctx.arc(p.x, p.y, Math.max(1, avatarR * 0.035), 0, Math.PI * 2)
           ctx.fillStyle = idx % 2 === 0 ? `rgba(244, 114, 182, ${pAlpha})` : `rgba(34, 211, 238, ${pAlpha})`
           ctx.fill()
         })
@@ -1025,13 +1082,14 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
       animationFrameId = requestAnimationFrame(render)
     }
 
-    animationFrameId = requestAnimationFrame(render)
+    startLoop()
 
     return () => {
       isRunning = false
-      cancelAnimationFrame(animationFrameId)
+      stopLoop()
       observer.disconnect()
       resizeObserver.disconnect()
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [decorationId])
 

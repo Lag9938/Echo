@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session, ipcMain, desktopCapturer, Notification, globalShortcut } from 'electron'
+import { app, BrowserWindow, session, ipcMain, desktopCapturer, Notification, globalShortcut, Tray, Menu, nativeImage } from 'electron'
 import pkg from 'electron-updater'
 const { autoUpdater } = pkg
 import { fileURLToPath } from 'node:url'
@@ -79,37 +79,50 @@ let gameScanInterval = null
 
 async function scanRunningGames() {
   try {
-    const helperPath = isDevelopment
-      ? path.join(__dirname, 'src', 'native', 'AudioCaptureHelper', 'bin', 'AudioCaptureHelper.exe')
-      : path.join(process.resourcesPath, 'AudioCaptureHelper.exe')
+    let helperPath = null
+    const devPath1 = path.join(__dirname, 'src', 'native', 'AudioCaptureHelper', 'bin', 'AudioCaptureHelper.exe')
+    const devPath2 = path.join(__dirname, 'dist-desktop', 'win-unpacked', 'resources', 'AudioCaptureHelper.exe')
+    const prodPath = path.join(process.resourcesPath, 'AudioCaptureHelper.exe')
+
+    if (fs.existsSync(devPath1)) {
+      helperPath = devPath1
+    } else if (fs.existsSync(devPath2)) {
+      helperPath = devPath2
+    } else if (fs.existsSync(prodPath)) {
+      helperPath = prodPath
+    }
 
     let foundGame = null
-    try {
-      const { stdout } = await execFileAsync(helperPath, ['--list-windows'], { timeout: 2500 })
-      if (stdout && stdout.trim().startsWith('[')) {
-        const windows = JSON.parse(stdout.trim())
-        for (const win of windows) {
-          const pName = (win.processName || '').toLowerCase()
-          const matched = POPULAR_GAMES.find(g => g.match.some(m => pName.includes(m)))
-          if (matched) {
-            foundGame = { name: matched.name, icon: matched.icon, processName: win.processName }
-            break
+    if (helperPath) {
+      try {
+        const { stdout } = await execFileAsync(helperPath, ['--list-windows'], { timeout: 1500 })
+        if (stdout && stdout.trim().startsWith('[')) {
+          const windows = JSON.parse(stdout.trim())
+          for (const win of windows) {
+            const pName = (win.processName || '').toLowerCase()
+            const matched = POPULAR_GAMES.find(g => g.match.some(m => pName.includes(m)))
+            if (matched) {
+              foundGame = { name: matched.name, icon: matched.icon, processName: win.processName }
+              break
+            }
           }
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
+    }
 
+    // Ultra-lightweight fallback using native tasklist.exe (0% CPU impact, no PowerShell/CLR overhead)
     if (!foundGame) {
       try {
-        const psCmd = 'Get-Process | Select-Object -ExpandProperty ProcessName'
-        const { stdout: psOut } = await execFileAsync('powershell.exe', ['-NoProfile', '-Command', psCmd], { timeout: 2000 })
-        if (psOut) {
-          const procNames = psOut.toLowerCase().split(/\r?\n/)
-          for (const proc of procNames) {
-            const cleanProc = proc.trim()
-            const matched = POPULAR_GAMES.find(g => g.match.some(m => cleanProc === m || cleanProc.includes(m)))
+        const { stdout: tasklistOut } = await execFileAsync('tasklist.exe', ['/fo', 'csv', '/nh'], { timeout: 2000 })
+        if (tasklistOut) {
+          const lines = tasklistOut.toLowerCase().split(/\r?\n/)
+          for (const line of lines) {
+            if (!line.trim()) continue
+            const procName = line.split(',')[0]?.replace(/"/g, '')?.trim() || ''
+            if (!procName) continue
+            const matched = POPULAR_GAMES.find(g => g.match.some(m => procName.includes(m)))
             if (matched) {
-              foundGame = { name: matched.name, icon: matched.icon, processName: cleanProc }
+              foundGame = { name: matched.name, icon: matched.icon, processName: procName }
               break
             }
           }
@@ -166,8 +179,74 @@ if (!gotTheLock) {
 }
 
 let mainWindow = null
+let tray = null
+let isQuitting = false
+let hasShownTrayBalloon = false
 let audioHelperProcess = null
 let audioTcpClient = null
+
+function createTray() {
+  if (tray) return
+  try {
+    const iconPath = path.join(__dirname, 'assets', 'store', 'SampleAppx.44x44.png')
+    let trayIcon = nativeImage.createFromPath(iconPath)
+    if (!trayIcon.isEmpty()) {
+      trayIcon = trayIcon.resize({ width: 16, height: 16 })
+    }
+
+    tray = new Tray(trayIcon)
+    tray.setToolTip('Echo - Comunidades e conversas em tempo real')
+
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: 'Abrir Echo',
+        click: () => {
+          if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore()
+            mainWindow.show()
+            mainWindow.focus()
+          }
+        }
+      },
+      { type: 'separator' },
+      {
+        label: 'Sair do Echo',
+        click: () => {
+          isQuitting = true
+          app.quit()
+        }
+      }
+    ])
+
+    tray.setContextMenu(contextMenu)
+
+    tray.on('double-click', () => {
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore()
+        mainWindow.show()
+        mainWindow.focus()
+      }
+    })
+
+    tray.on('click', () => {
+      if (mainWindow) {
+        if (mainWindow.isVisible() && !mainWindow.isMinimized()) {
+          if (mainWindow.isFocused()) {
+            mainWindow.hide()
+          } else {
+            mainWindow.focus()
+          }
+        } else {
+          if (mainWindow.isMinimized()) mainWindow.restore()
+          mainWindow.show()
+          mainWindow.focus()
+        }
+      }
+    })
+  } catch (err) {
+    console.error('[Tray] Falha ao inicializar bandeja do sistema:', err)
+  }
+}
 
 function stopAudioCapture() {
   if (audioTcpClient) {
@@ -183,6 +262,8 @@ function stopAudioCapture() {
 }
 
 function createWindow() {
+  createTray()
+
   const shouldStartHidden = process.argv.includes('--hidden') || process.argv.includes('--minimized')
   mainWindow = new BrowserWindow({ 
     width: 1280, 
@@ -198,6 +279,23 @@ function createWindow() {
       nodeIntegration: false,
       backgroundThrottling: false
     } 
+  })
+
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault()
+      mainWindow.hide()
+      if (tray && !hasShownTrayBalloon) {
+        hasShownTrayBalloon = true
+        try {
+          tray.displayBalloon({
+            title: 'Echo continua em segundo plano',
+            content: 'O Echo agora está minimizado na bandeja do sistema. Suas chamadas e transmissões continuam ativas!'
+          })
+        } catch (e) {}
+      }
+      return false
+    }
   })
 
   mainWindow.once('ready-to-show', () => {
@@ -544,6 +642,7 @@ function createWindow() {
 
   // Handler para instalar atualização quando o usuário decidir
   ipcMain.on('install-update', () => {
+    isQuitting = true
     autoUpdater.quitAndInstall(false, true)
   })
 
@@ -585,7 +684,7 @@ function createWindow() {
 
   // Start background game scanner for Rich Presence
   if (gameScanInterval) clearInterval(gameScanInterval)
-  gameScanInterval = setInterval(scanRunningGames, 5000)
+  gameScanInterval = setInterval(scanRunningGames, 10000)
   setTimeout(scanRunningGames, 1500)
 
   if (isDevelopment) {
@@ -604,7 +703,15 @@ app.whenReady().then(() => {
   createWindow()
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
 })
+app.on('before-quit', () => {
+  isQuitting = true
+})
+
 app.on('will-quit', () => {
+  if (tray) {
+    try { tray.destroy() } catch (e) {}
+    tray = null
+  }
   if (gameScanInterval) clearInterval(gameScanInterval)
   globalShortcut.unregisterAll()
   stopAudioCapture()
@@ -613,4 +720,10 @@ app.on('will-quit', () => {
     livekitProcess = null
   }
 })
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
+
+app.on('window-all-closed', () => {
+  // Mantém rodando em segundo plano no Windows (na bandeja do sistema)
+  if (isQuitting && process.platform !== 'darwin') {
+    app.quit()
+  }
+})

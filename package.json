@@ -3,7 +3,7 @@
   "description": "Comunidades e conversas em tempo real.",
   "author": "Echo Lobby",
   "private": true,
-  "version": "0.23.20",
+  "version": "0.23.22",
   "main": "electron-main.js",
   "type": "module",
   "scripts": {
@@ -54,6 +54,7 @@
     ],
     "files": [
       "dist/**/*",
+      "assets/**/*",
       "electron-main.js",
       "electron-preload.cjs",
       "package.json"

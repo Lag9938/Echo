@@ -14,15 +14,67 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.23.20'
+export const APP_CURRENT_VERSION = '0.23.22'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.23.22',
+    title: 'Execução em Segundo Plano no Windows e Modo Cinema em Transmissões',
+    date: '06 de Setembro de 2026',
+    tagline: 'O Echo agora roda em segundo plano na bandeja do sistema (System Tray) ao fechar a janela, mantendo chamadas e streams 100% ativas, com ocultação automática de controles e cursor do mouse em transmissões.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🔔',
+        badge: 'SEGUNDO PLANO & BANDEJA',
+        title: 'Funcionamento Contínuo na Bandeja do Windows',
+        description: 'Clicar no "X" para fechar a janela agora minimiza o Echo para a bandeja do sistema (System Tray) ao lado do relógio. Suas chamadas de voz, microfone e transmissões continuam funcionando sem interrupção enquanto você joga.'
+      },
+      {
+        icon: '🎬',
+        badge: 'MODO CINEMA',
+        title: 'Ocultação Automática de Controles da Transmissão',
+        description: 'A barra de informações ("AO VIVO", resolução, medidor de áudio) e os botões de controle sofrem fade out suave após 2,5 segundos de inatividade do mouse ou quando o cursor sai do vídeo.'
+      },
+      {
+        icon: '🖱️',
+        badge: 'CURSOR INVISÍVEL',
+        title: 'Ocultação do Cursor do Mouse ao Assistir',
+        description: 'A setinha do mouse desaparece por completo após os 2,5 segundos para não obstruir a visão da gameplay, reaparecendo instantaneamente ao menor movimento do mouse.'
+      }
+    ]
+  },
+  {
+    version: '0.23.21',
+    title: 'Fidelidade de Áudio em Transmissões e Decorações Responsivas',
+    date: '06 de Setembro de 2026',
+    tagline: 'Áudio de jogos e telas com máxima fidelidade (buffer inteligente de 160ms e transmissão contínua sem cortes), fluidez de vídeo aprimorada e decorações de avatar perfeitamente alinhadas em todo o app.',
+    highlights: [
+      {
+        icon: '🎮',
+        badge: 'TRANSMISSÃO DE ÁUDIO',
+        title: 'Áudio de Jogos Contínuo e Cristalino',
+        description: 'Eliminada a robotização e estalos no som de jogos durante o compartilhamento de tela com pre-buffer otimizado de 160ms, chunks de 42ms e desativação do DTX no áudio do jogo para preservar trilhas e ambiências.'
+      },
+      {
+        icon: '🎬',
+        badge: 'FLUIDEZ DE VÍDEO',
+        title: 'Prioridade de Framerate na Transmissão',
+        description: 'Transmissão com priorização dinâmica de taxa de quadros (maintain-framerate) para garantir movimentos fluidos em jogos competitivos mesmo em variações de rede.'
+      },
+      {
+        icon: '🎨',
+        badge: 'DECORAÇÕES 2.0',
+        title: 'Decorações de Avatar Proporcionais',
+        description: 'Auréola Sagrada, Escudo Hexagonal, Orelhas Neko, Coroa Prismática, Visor Tático e Orbe de Ressonância agora possuem escala matemática perfeitamente proporcional em miniaturas, listas de membros e perfil expandido.'
+      }
+    ]
+  },
   {
     version: '0.23.20',
     title: 'Loja do Echo, Efeitos de Perfil Cinematográficos e Cosméticos 2.0',
     date: '06 de Setembro de 2026',
     tagline: 'Personalização completa da Loja do Echo: Efeitos de Perfil que cobrem toda a área do card, decorações de avatar animadas em alta resolução e Provador ao vivo.',
-    isLatest: true,
     highlights: [
       {
         icon: '🛍️',

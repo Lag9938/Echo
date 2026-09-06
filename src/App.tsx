@@ -672,9 +672,9 @@ function KickIcon({ className, style }: { className?: string; style?: React.CSSP
   )
 }
 
-function PlusIcon({ className }: { className?: string }) {
+function PlusIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} style={style} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
@@ -704,6 +704,25 @@ function ActivityIcon({ className, style }: { className?: string; style?: React.
   return (
     <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  )
+}
+
+function PanelLeftIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M9 3v18" />
+    </svg>
+  )
+}
+
+function PanelLeftCloseIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M9 3v18" />
+      <path d="m14 9-3 3 3 3" />
     </svg>
   )
 }
@@ -892,13 +911,6 @@ function UserPlusIcon({ className, style }: { className?: string; style?: React.
   )
 }
 
-function FlameIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return (
-    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
-    </svg>
-  )
-}
 
 function PhoneIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
@@ -925,6 +937,8 @@ function SendIcon({ className, style }: { className?: string; style?: React.CSSP
     </svg>
   )
 }
+
+
 
 interface UnifiedUserProfileFooterProps {
   displayName: string
@@ -1630,16 +1644,30 @@ function MemberProfileModal({
 }
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const isMock = typeof window !== 'undefined' && window.location.search.includes('mock=true')
+  const [user, setUser] = useState<User | null>(() => {
+    if (isMock) {
+      return {
+        id: 'mock-user-id-12345',
+        email: 'gamer@echo.gg',
+        user_metadata: { display_name: 'Lag9938' },
+        app_metadata: {},
+        aud: 'authenticated',
+        created_at: new Date().toISOString()
+      } as any
+    }
+    return null
+  })
+  const [loading, setLoading] = useState(!isMock)
   useEffect(() => {
+    if (isMock) return
     if (!supabase) { setLoading(false); return }
     supabase.auth.getSession().then(({ data }) => { setUser(data.session?.user ?? null); setLoading(false) })
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null))
     return () => listener.subscription.unsubscribe()
-  }, [])
+  }, [isMock])
   if (loading) return <div className="loading-screen"><div className="loader" /><span>Abrindo o Echo…</span></div>
-  if (!isSupabaseConfigured) return <div className="loading-screen">A conexão com o banco ainda não foi configurada.</div>
+  if (!isSupabaseConfigured && !isMock) return <div className="loading-screen">A conexão com o banco ainda não foi configurada.</div>
   return user ? <Echo user={user} /> : <Auth />
 }
 
@@ -1944,7 +1972,7 @@ function Echo({ user }: { user: User }) {
 
   // Theme state
   const [theme, setTheme] = useState<string>(() => {
-    return localStorage.getItem('echo-theme') || 'light'
+    return localStorage.getItem('echo-theme') || 'dark'
   })
 
   // Premium & Subscription state (Mocked / Local)
@@ -3757,6 +3785,40 @@ function Echo({ user }: { user: User }) {
 
   // Friends system APIs (Realtime Discord-style)
   async function loadFriendships() {
+    const isMock = typeof window !== 'undefined' && window.location.search.includes('mock=true')
+    if (isMock) {
+      const mockFriendsList: FriendshipRequest[] = [
+        {
+          id: 'mock-friend-1',
+          user: { id: 'friend-valkyrie', display_name: 'Valkyrie_Echo', avatar_url: '' },
+          status: 'accepted',
+          initiatorId: 'friend-valkyrie'
+        },
+        {
+          id: 'mock-friend-2',
+          user: { id: 'friend-gaming', display_name: 'CyberNinja', avatar_url: '' },
+          status: 'accepted',
+          initiatorId: user.id
+        }
+      ]
+      setFriendships(mockFriendsList)
+      setOnlineUsers(new Set(['friend-valkyrie', 'friend-gaming']))
+      setPresenceData(prev => ({
+        ...prev,
+        'friend-valkyrie': {
+          presence_status: 'online',
+          custom_status: 'Disponível',
+          avatar_decoration: 'cyber_hud'
+        },
+        'friend-gaming': {
+          presence_status: 'online',
+          custom_status: 'Jogando Cyberpunk 2077',
+          current_game: { name: 'Cyberpunk 2077' },
+          avatar_decoration: 'fire_storm'
+        }
+      }))
+      return
+    }
     if (!supabase || !user) return
     try {
       const { data, error: qError } = await supabase
@@ -4051,7 +4113,24 @@ function Echo({ user }: { user: User }) {
           }
         }
       })
-      
+
+      const isMock = typeof window !== 'undefined' && window.location.search.includes('mock=true')
+      if (isMock) {
+        online.add('friend-valkyrie')
+        online.add('friend-gaming')
+        pData['friend-valkyrie'] = {
+          presence_status: 'online',
+          custom_status: 'Disponível',
+          avatar_decoration: 'cyber_hud'
+        }
+        pData['friend-gaming'] = {
+          presence_status: 'online',
+          custom_status: 'Jogando Cyberpunk 2077',
+          current_game: { name: 'Cyberpunk 2077' },
+          avatar_decoration: 'fire_storm'
+        }
+      }
+
       setPresenceData(pData)
       setOnlineUsers(online)
     }
@@ -9468,29 +9547,55 @@ function FriendsView({
 }) {
   const dmFileRef = useRef<HTMLInputElement>(null)
   const dmMessagesEndRef = useRef<HTMLDivElement>(null)
+  const friendsSearchRef = useRef<HTMLInputElement>(null)
   const [localSearch, setLocalSearch] = useState('')
   const [filterMode, setFilterMode] = useState<'all' | 'gaming'>('all')
+  const [showSidebar, setShowSidebar] = useState<boolean>(() => {
+    return localStorage.getItem('echo-friends-sidebar-open') !== 'false'
+  })
+
+  useEffect(() => {
+    localStorage.setItem('echo-friends-sidebar-open', String(showSidebar))
+  }, [showSidebar])
+
+  // Global Ctrl+K / Cmd+K listener to focus friends search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        friendsSearchRef.current?.focus()
+        friendsSearchRef.current?.select()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   const acceptedFriends = friendships.filter(f => f.status === 'accepted')
   const onlineFriends = acceptedFriends.filter(f => onlineUsers.has(f.user.id))
   const pendingRequests = friendships.filter(f => f.status === 'pending')
 
+  // Helper to check if friend is gaming
+  const isFriendGaming = (friendUserId: string) => {
+    const pres = presenceData[friendUserId]
+    if (!pres) return false
+    if (pres.current_game && (pres.current_game as any).name) return true
+    const s = pres.custom_status?.toLowerCase() || ''
+    return s.includes('jogando') || s.includes('playing') || s.startsWith('game:')
+  }
+
   // Friends playing games or with custom activity
   const playingFriends = acceptedFriends.filter(f => {
     const isOnline = onlineUsers.has(f.user.id)
     if (!isOnline) return false
-    const pres = presenceData[f.user.id]
-    return pres?.custom_status?.toLowerCase().includes('jogando') || pres?.current_game
+    return isFriendGaming(f.user.id)
   })
 
   // Filter friends list by local search & filterMode
   const filterList = (list: FriendshipRequest[]) => {
     let result = list
     if (filterMode === 'gaming') {
-      result = result.filter(f => {
-        const pres = presenceData[f.user.id]
-        return pres?.custom_status?.toLowerCase().includes('jogando') || pres?.current_game
-      })
+      result = result.filter(f => isFriendGaming(f.user.id))
     }
     if (localSearch.trim()) {
       const q = localSearch.toLowerCase()
@@ -9499,10 +9604,16 @@ function FriendsView({
     return result
   }
 
-  // Activity Feed Friends (all online friends who have status/game)
+
+  // Activity Feed Friends (strictly friends with active game or custom status)
   const activeFeedFriends = acceptedFriends.filter(f => {
     const isOnline = onlineUsers.has(f.user.id)
-    return isOnline
+    if (!isOnline) return false
+    const pres = presenceData[f.user.id]
+    const hasGame = isFriendGaming(f.user.id)
+    const rawStatus = pres?.custom_status?.trim().toLowerCase() || ''
+    const hasRealStatus = rawStatus.length > 0 && !['disponível', 'disponivel', 'online', 'offline'].includes(rawStatus)
+    return hasGame || hasRealStatus
   })
 
   // Friend suggestions from shared spaces
@@ -9520,34 +9631,102 @@ function FriendsView({
   }
 
   return (
-    <section className="friends-workspace">
-      {/* 1. Left Sidebar */}
-      <aside className="friends-sidebar">
+    <section className={`friends-workspace ${selectedDMUserId ? 'has-dm-open' : ''} ${!showSidebar ? 'sidebar-collapsed' : ''}`}>
+      {/* 1. Left Sidebar: Atividades dos Amigos & Perfil */}
+      <aside className={`friends-sidebar ${!showSidebar ? 'collapsed' : ''}`}>
+        <div className="sidebar-activity-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ActivityIcon style={{ width: '16px', height: '16px', color: 'var(--accent-color)' }} />
+            <span style={{ fontSize: '14.5px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.2px' }}>
+              Atividades
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {activeFeedFriends.length > 0 ? (
+              <span className="activity-live-badge">
+                <span className="live-dot" />
+                {activeFeedFriends.length} ao vivo
+              </span>
+            ) : (
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700 }}>
+                0 ao vivo
+              </span>
+            )}
+            <button 
+              type="button" 
+              className="sidebar-collapse-btn" 
+              onClick={() => setShowSidebar(false)}
+              title="Ocultar barra lateral de atividades"
+            >
+              <PanelLeftCloseIcon style={{ width: '14px', height: '14px' }} />
+            </button>
+          </div>
+        </div>
+
         <div className="friends-sidebar-scrollable">
-          <div className="sidebar-header" style={{ fontSize: '15px', fontWeight: 800, padding: '6px 8px 10px' }}>
-            Amigos
-          </div>
-          <div className="friends-menu">
-            <button className={`menu-item ${friendTab === 'online' ? 'active' : ''}`} onClick={() => { setFriendTab('online'); setFilterMode('all'); }}>
-              <span className="menu-icon"><ActivityIcon /></span>
-              <span>Online</span>
-              {onlineFriends.length > 0 && <span className="menu-badge">{onlineFriends.length}</span>}
-            </button>
-            <button className={`menu-item ${friendTab === 'all' ? 'active' : ''}`} onClick={() => { setFriendTab('all'); setFilterMode('all'); }}>
-              <span className="menu-icon"><UsersIcon /></span>
-              <span>Todos</span>
-              {acceptedFriends.length > 0 && <span className="menu-badge">{acceptedFriends.length}</span>}
-            </button>
-            <button className={`menu-item ${friendTab === 'pending' ? 'active' : ''}`} onClick={() => setFriendTab('pending')}>
-              <span className="menu-icon"><ClockIcon /></span>
-              <span>Pendentes</span>
-              {pendingRequests.length > 0 && <span className="menu-badge pending-badge">{pendingRequests.length}</span>}
-            </button>
-            <button className={`menu-item add-friend-item ${friendTab === 'add' ? 'active' : ''}`} onClick={() => setFriendTab('add')}>
-              <span className="menu-icon"><PlusIcon /></span>
-              <span>Adicionar Amigo</span>
-            </button>
-          </div>
+          {activeFeedFriends.length === 0 ? (
+            <div className="sidebar-radar-quiet-card">
+              <div className="echo-radar-mini">
+                <div className="echo-radar-mini-wave" />
+                <GamepadIcon style={{ width: '18px', height: '18px', color: '#00f2fe' }} />
+              </div>
+              <span className="sidebar-radar-quiet-title">Por aqui tudo quieto</span>
+              <span className="sidebar-radar-quiet-desc">
+                Quando amigos iniciarem jogos ou transmissões, a atividade aparecerá aqui.
+              </span>
+            </div>
+          ) : (
+            <div className="sidebar-activity-list">
+              {activeFeedFriends.map(friend => {
+                const pres = presenceData[friend.user.id]
+                const isGaming = isFriendGaming(friend.user.id)
+                const gameName = pres?.current_game?.name || pres?.custom_status?.replace(/^jogando\s+/i, '') || 'Jogo'
+                const friendDeco = pres?.avatar_decoration || (friend.user as any).avatar_decoration || null
+                return (
+                  <div key={friend.id} className="sidebar-activity-card" onClick={() => onOpenDM(friend.user.id)}>
+                    <div className="sidebar-activity-top">
+                      <div className="sidebar-activity-avatar">
+                        {friend.user.avatar_url ? (
+                          <img src={friend.user.avatar_url} alt={friend.user.display_name} />
+                        ) : (
+                          friend.user.display_name.slice(0, 1).toUpperCase()
+                        )}
+                        {friendDeco && friendDeco !== 'none' && (
+                          <AvatarDecoration decorationId={friendDeco} />
+                        )}
+                        <span className="online-indicator online" />
+                      </div>
+                      <div className="sidebar-activity-user-info">
+                        <span className="sidebar-activity-name">{friend.user.display_name}</span>
+                        <span className="sidebar-activity-sub">
+                          {isGaming ? 'Jogando agora' : 'Status ativo'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="sidebar-activity-game-pill">
+                      <GamepadIcon style={{ width: '13px', height: '13px', color: isGaming ? '#22c55e' : '#00f2fe', flexShrink: 0 }} />
+                      <span className="sidebar-activity-game-name" title={gameName}>
+                        {isGaming ? gameName : (pres?.custom_status || 'Em atividade')}
+                      </span>
+                    </div>
+
+                    <div className="sidebar-activity-actions">
+                      <button
+                        type="button"
+                        className="sidebar-activity-btn"
+                        onClick={(e) => { e.stopPropagation(); onOpenDM(friend.user.id); }}
+                        title="Enviar Mensagem Direta"
+                      >
+                        <MessageSquareIcon style={{ width: '12px', height: '12px' }} />
+                        <span>Conversar</span>
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         <UnifiedUserProfileFooter
@@ -9569,18 +9748,88 @@ function FriendsView({
 
       {/* 2. Center Content Area */}
       <section className="friends-content">
-        {/* Top Header & Search Bar */}
+        {/* Discord-inspired Top Navigation Bar with Echo DNA */}
         <div className="friends-header-toolbar">
+          <div className="friends-header-nav-left">
+            <button 
+              type="button" 
+              className={`friends-sidebar-toggle-btn ${showSidebar ? 'active' : 'collapsed'}`} 
+              onClick={() => setShowSidebar(prev => !prev)}
+              title={showSidebar ? "Ocultar barra lateral de atividades" : "Mostrar barra lateral de atividades"}
+            >
+              <PanelLeftIcon style={{ width: '16px', height: '16px' }} />
+              {!showSidebar && activeFeedFriends.length > 0 && (
+                <span className="toggle-live-dot" title={`${activeFeedFriends.length} amigo(s) com atividade ao vivo`} />
+              )}
+            </button>
+
+            <div className="friends-header-brand-title">
+              <UsersIcon style={{ width: '18px', height: '18px', color: 'var(--accent-color)' }} />
+              <span>Amigos</span>
+            </div>
+
+            <div className="friends-header-divider" />
+
+            <div className="friends-header-tabs">
+              <button 
+                type="button" 
+                className={`friends-tab-pill ${friendTab === 'online' && filterMode === 'all' ? 'active' : ''}`}
+                onClick={() => { setFriendTab('online'); setFilterMode('all'); }}
+              >
+                <span>Online</span>
+                {onlineFriends.length > 0 && <span className="tab-pill-badge">{onlineFriends.length}</span>}
+              </button>
+
+              <button 
+                type="button" 
+                className={`friends-tab-pill ${friendTab === 'online' && filterMode === 'gaming' ? 'active' : ''}`}
+                onClick={() => { setFriendTab('online'); setFilterMode('gaming'); }}
+              >
+                <GamepadIcon style={{ width: '14px', height: '14px' }} />
+                <span>Em Jogo</span>
+                {playingFriends.length > 0 && <span className="tab-pill-badge gaming">{playingFriends.length}</span>}
+              </button>
+
+              <button 
+                type="button" 
+                className={`friends-tab-pill ${friendTab === 'all' ? 'active' : ''}`}
+                onClick={() => { setFriendTab('all'); setFilterMode('all'); }}
+              >
+                <span>Todos</span>
+                {acceptedFriends.length > 0 && <span className="tab-pill-badge">{acceptedFriends.length}</span>}
+              </button>
+
+              <button 
+                type="button" 
+                className={`friends-tab-pill ${friendTab === 'pending' ? 'active' : ''}`}
+                onClick={() => { setFriendTab('pending'); setFilterMode('all'); }}
+              >
+                <span>Pendentes</span>
+                {pendingRequests.length > 0 && <span className="tab-pill-badge pending">{pendingRequests.length}</span>}
+              </button>
+
+              <button 
+                type="button" 
+                className={`friends-tab-pill add-friend ${friendTab === 'add' ? 'active' : ''}`}
+                onClick={() => { setFriendTab('add'); setFilterMode('all'); }}
+              >
+                <PlusIcon style={{ width: '13px', height: '13px' }} />
+                <span>Adicionar Amigo</span>
+              </button>
+            </div>
+          </div>
+
           <div className="friends-search-row">
-            <SearchIcon style={{ width: '15px', height: '15px', color: 'var(--text-muted)', flexShrink: 0 }} />
+            <SearchIcon style={{ width: '14px', height: '14px', color: '#00f2fe', flexShrink: 0 }} />
             <input 
+              ref={friendsSearchRef}
               type="text" 
               className="friends-search-input" 
-              placeholder="Buscar amigos por nome de exibição..." 
+              placeholder="Buscar amigos... (Ctrl K)" 
               value={localSearch}
               onChange={e => setLocalSearch(e.target.value)}
             />
-            {localSearch && (
+            {localSearch ? (
               <button 
                 type="button" 
                 onClick={() => setLocalSearch('')} 
@@ -9588,58 +9837,82 @@ function FriendsView({
               >
                 ✕
               </button>
+            ) : (
+              <span 
+                className="friends-search-kbd"
+                onClick={() => { friendsSearchRef.current?.focus(); friendsSearchRef.current?.select(); }}
+                style={{ cursor: 'pointer' }}
+                title="Pressione Ctrl+K para pesquisar"
+              >
+                Ctrl K
+              </span>
             )}
-          </div>
-
-          <div className="friends-filter-tabs">
-            <button className={`friends-filter-chip ${friendTab === 'online' && filterMode === 'all' ? 'active' : ''}`} onClick={() => { setFriendTab('online'); setFilterMode('all'); }}>
-              <span className="status-dot-bullet online" style={{ width: '8px', height: '8px' }} />
-              <span>Online ({onlineFriends.length})</span>
-            </button>
-            <button className={`friends-filter-chip ${filterMode === 'gaming' ? 'active' : ''}`} onClick={() => { setFriendTab('online'); setFilterMode('gaming'); }}>
-              <GamepadIcon style={{ width: '13px', height: '13px' }} />
-              <span>Em Jogo ({playingFriends.length})</span>
-            </button>
-            <button className={`friends-filter-chip ${friendTab === 'all' && filterMode === 'all' ? 'active' : ''}`} onClick={() => { setFriendTab('all'); setFilterMode('all'); }}>
-              <UsersIcon style={{ width: '13px', height: '13px' }} />
-              <span>Todos ({acceptedFriends.length})</span>
-            </button>
-            <button className={`friends-filter-chip ${friendTab === 'pending' ? 'active' : ''}`} onClick={() => { setFriendTab('pending'); setFilterMode('all'); }}>
-              <ClockIcon style={{ width: '13px', height: '13px' }} />
-              <span>Pendentes ({pendingRequests.length})</span>
-            </button>
-            <button className={`friends-filter-chip ${friendTab === 'add' ? 'active' : ''}`} onClick={() => { setFriendTab('add'); setFilterMode('all'); }} style={{ marginLeft: 'auto', background: friendTab === 'add' ? 'var(--accent-color)' : 'rgba(16, 185, 129, 0.15)', color: friendTab === 'add' ? '#fff' : '#10b981', borderColor: 'transparent' }}>
-              <UserPlusIcon style={{ width: '13px', height: '13px' }} />
-              <span>Adicionar Amigo</span>
-            </button>
           </div>
         </div>
 
         {/* Tab: Online */}
         {friendTab === 'online' && (
           <div className="friends-list-container" style={{ maxWidth: '100%' }}>
-            <h3 style={{ fontSize: '14.5px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
-              Amigos Online — {filterList(onlineFriends).length}
-            </h3>
             {filterList(onlineFriends).length === 0 ? (
-              <div className="empty-activity-box" style={{ marginTop: '20px' }}>
-                <div className="empty-activity-icon">
-                  <GamepadIcon style={{ width: '48px', height: '48px', color: 'var(--text-muted)', opacity: 0.6 }} />
+              filterMode === 'gaming' ? (
+                <div className="friends-hero-empty-card">
+                  <div className="echo-orbital-beacon">
+                    <div className="echo-orbital-ring">
+                      <div className="echo-orbital-satellite" />
+                    </div>
+                    <div className="echo-orbital-core" style={{ background: 'radial-gradient(circle, #22c55e 0%, #06b6d4 100%)', boxShadow: '0 0 26px rgba(34, 197, 94, 0.5)' }}>
+                      <GamepadIcon style={{ width: '22px', height: '22px' }} />
+                    </div>
+                  </div>
+                  <h2 className="friends-hero-title">Nenhum amigo jogando no momento</h2>
+                  <p className="friends-hero-desc">
+                    Nenhum dos seus amigos online está jogando ou transmitindo partidas agora.
+                  </p>
+                  <div className="friends-hero-actions">
+                    <button 
+                      type="button" 
+                      className="friends-hero-btn-primary" 
+                      onClick={() => setFilterMode('all')}
+                    >
+                      <UsersIcon style={{ width: '15px', height: '15px' }} />
+                      <span>Ver Todos os Amigos Online ({onlineFriends.length})</span>
+                    </button>
+                  </div>
                 </div>
-                <div className="empty-activity-title">Nenhum amigo online no momento</div>
-                <div className="empty-activity-desc">
-                  Seus amigos estão descansando ou offline. Adicione mais jogadores de seus servidores ou convide pessoas novas!
+              ) : (
+                <div className="friends-hero-empty-card">
+                  <div className="echo-orbital-beacon">
+                    <div className="echo-orbital-ring">
+                      <div className="echo-orbital-satellite" />
+                    </div>
+                    <div className="echo-orbital-core">
+                      <ActivityIcon style={{ width: '22px', height: '22px' }} />
+                    </div>
+                  </div>
+                  <h2 className="friends-hero-title">Nenhum amigo online no momento</h2>
+                  <p className="friends-hero-desc">
+                    Seus amigos estão descansando ou offline. Adicione novas pessoas da sua comunidade ou compartilhe seu link direto do Echo.
+                  </p>
+                  <div className="friends-hero-actions">
+                    <button 
+                      type="button" 
+                      className="friends-hero-btn-primary" 
+                      onClick={() => setFriendTab('add')}
+                    >
+                      <UserPlusIcon style={{ width: '15px', height: '15px' }} />
+                      <span>Adicionar Amigos</span>
+                    </button>
+                    <button 
+                      type="button" 
+                      className="friends-hero-btn-secondary" 
+                      onClick={copyFriendLink}
+                    >
+                      <LinkIcon style={{ width: '14px', height: '14px', color: '#00f2fe' }} />
+                      <span>Copiar Meu Link (@{profileDisplayName || 'gamer'})</span>
+                    </button>
+                  </div>
                 </div>
-                <button 
-                  type="button" 
-                  className="activity-action-btn" 
-                  onClick={() => setFriendTab('add')}
-                  style={{ width: 'auto', padding: '8px 20px', marginTop: '10px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <UserPlusIcon style={{ width: '14px', height: '14px' }} />
-                  <span>Adicionar Novos Amigos</span>
-                </button>
-              </div>
+              )
             ) : (
               <div className="friends-list-modern">
                 {filterList(onlineFriends).map(friend => {
@@ -9725,27 +9998,38 @@ function FriendsView({
         {/* Tab: Todos */}
         {friendTab === 'all' && (
           <div className="friends-list-container" style={{ maxWidth: '100%' }}>
-            <h3 style={{ fontSize: '14.5px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
-              Todos os Amigos — {filterList(acceptedFriends).length}
-            </h3>
             {filterList(acceptedFriends).length === 0 ? (
-              <div className="empty-activity-box" style={{ marginTop: '20px' }}>
-                <div className="empty-activity-icon">
-                  <UsersIcon style={{ width: '48px', height: '48px', color: 'var(--text-muted)', opacity: 0.6 }} />
+              <div className="friends-hero-empty-card">
+                <div className="echo-orbital-beacon">
+                  <div className="echo-orbital-ring">
+                    <div className="echo-orbital-satellite" />
+                  </div>
+                  <div className="echo-orbital-core">
+                    <UsersIcon style={{ width: '22px', height: '22px' }} />
+                  </div>
                 </div>
-                <div className="empty-activity-title">Você ainda não tem amigos adicionados</div>
-                <div className="empty-activity-desc">
-                  O Echo fica muito mais divertido com seu squad! Envie convites de amizade para conversar por DM e jogar junto.
+                <h2 className="friends-hero-title">Você ainda não tem amigos adicionados</h2>
+                <p className="friends-hero-desc">
+                  O Echo fica muito mais divertido com seu squad! Envie convites de amizade para conversar por DM, compartilhar telas e jogar junto.
+                </p>
+                <div className="friends-hero-actions">
+                  <button 
+                    type="button" 
+                    className="friends-hero-btn-primary" 
+                    onClick={() => setFriendTab('add')}
+                  >
+                    <UserPlusIcon style={{ width: '15px', height: '15px' }} />
+                    <span>Adicionar Amigos</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    className="friends-hero-btn-secondary" 
+                    onClick={copyFriendLink}
+                  >
+                    <LinkIcon style={{ width: '14px', height: '14px', color: '#00f2fe' }} />
+                    <span>Copiar Meu Link (@{profileDisplayName || 'gamer'})</span>
+                  </button>
                 </div>
-                <button 
-                  type="button" 
-                  className="activity-action-btn" 
-                  onClick={() => setFriendTab('add')}
-                  style={{ width: 'auto', padding: '8px 20px', marginTop: '10px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <UserPlusIcon style={{ width: '14px', height: '14px' }} />
-                  <span>Adicionar Amigos</span>
-                </button>
               </div>
             ) : (
               <div className="friends-list-modern">
@@ -9833,17 +10117,29 @@ function FriendsView({
         {/* Tab: Pendentes */}
         {friendTab === 'pending' && (
           <div className="friends-list-container" style={{ maxWidth: '100%' }}>
-            <h3 style={{ fontSize: '14.5px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
-              Solicitações Pendentes — {filterList(pendingRequests).length}
-            </h3>
             {filterList(pendingRequests).length === 0 ? (
-              <div className="empty-activity-box" style={{ marginTop: '20px' }}>
-                <div className="empty-activity-icon">
-                  <ClockIcon style={{ width: '48px', height: '48px', color: 'var(--text-muted)', opacity: 0.6 }} />
+              <div className="friends-hero-empty-card">
+                <div className="echo-orbital-beacon">
+                  <div className="echo-orbital-ring">
+                    <div className="echo-orbital-satellite" />
+                  </div>
+                  <div className="echo-orbital-core">
+                    <ClockIcon style={{ width: '22px', height: '22px' }} />
+                  </div>
                 </div>
-                <div className="empty-activity-title">Nenhuma solicitação pendente</div>
-                <div className="empty-activity-desc">
-                  Você não possui convites pendentes de envio ou recebimento no momento.
+                <h2 className="friends-hero-title">Nenhuma solicitação pendente</h2>
+                <p className="friends-hero-desc">
+                  Você não possui convites pendentes de envio ou recebimento no momento. Quando alguém te convidar, você verá o alerta aqui.
+                </p>
+                <div className="friends-hero-actions">
+                  <button 
+                    type="button" 
+                    className="friends-hero-btn-primary" 
+                    onClick={() => setFriendTab('add')}
+                  >
+                    <UserPlusIcon style={{ width: '15px', height: '15px' }} />
+                    <span>Convidar Novos Amigos</span>
+                  </button>
                 </div>
               </div>
             ) : (
@@ -10054,78 +10350,7 @@ function FriendsView({
             </form>
           </aside>
         )
-      })() : (
-        <aside className="friends-activity-panel">
-          <div className="activity-panel-header">
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <FlameIcon style={{ width: '16px', height: '16px', color: '#f97316' }} />
-              <span>Atividade Ativa</span>
-            </h3>
-            <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: 700 }}>
-              {activeFeedFriends.length} online
-            </span>
-          </div>
-
-          {activeFeedFriends.length === 0 ? (
-            <div className="empty-activity-box">
-              <div className="empty-activity-icon">
-                <GamepadIcon style={{ width: '40px', height: '40px', color: 'var(--text-muted)', opacity: 0.6 }} />
-              </div>
-              <div className="empty-activity-title">Tudo calmo por aqui</div>
-              <div className="empty-activity-desc">
-                Quando seus amigos começarem a jogar ou entrarem em canais de voz, a atividade deles em tempo real aparecerá aqui!
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {activeFeedFriends.map(friend => {
-                const pres = presenceData[friend.user.id]
-                const isGaming = pres?.custom_status?.toLowerCase().includes('jogando')
-                return (
-                  <div key={friend.id} className="activity-card">
-                    <div className="activity-user-header">
-                      <div className="activity-user-avatar">
-                        {friend.user.avatar_url ? (
-                          <img src={friend.user.avatar_url} alt={friend.user.display_name} />
-                        ) : (
-                          friend.user.display_name.slice(0, 1).toUpperCase()
-                        )}
-                      </div>
-                      <span className="activity-user-name">{friend.user.display_name}</span>
-                    </div>
-
-                    <div className="activity-game-body">
-                      <span className="activity-game-icon">
-                        {isGaming ? (
-                          <GamepadIcon style={{ width: '14px', height: '14px', color: '#4ade80' }} />
-                        ) : (
-                          <span className="status-dot-bullet online" style={{ width: '8px', height: '8px' }} />
-                        )}
-                      </span>
-                      <div className="activity-game-info">
-                        <span className="activity-game-title">
-                          {pres?.custom_status || 'Online no Echo'}
-                        </span>
-                        <span className="activity-game-time">Ativo agora</span>
-                      </div>
-                    </div>
-
-                    <button 
-                      type="button" 
-                      className="activity-action-btn" 
-                      onClick={() => onOpenDM(friend.user.id)}
-                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                    >
-                      <MessageSquareIcon style={{ width: '13px', height: '13px' }} />
-                      <span>Enviar Mensagem</span>
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </aside>
-      )}
+      })() : null}
     </section>
   )
 }
@@ -12315,6 +12540,35 @@ function StreamTile({
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [streamResolution, setStreamResolution] = useState<string>('')
   const [showStatsHud, setShowStatsHud] = useState(false)
+  const [isControlsVisible, setIsControlsVisible] = useState(true)
+  const hideTimeoutRef = useRef<any>(null)
+
+  const handleMouseMove = () => {
+    setIsControlsVisible(true)
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current)
+    }
+    if (!showStatsHud) {
+      hideTimeoutRef.current = setTimeout(() => {
+        setIsControlsVisible(false)
+      }, 2500)
+    }
+  }
+
+  const handleMouseLeave = () => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current)
+    }
+    if (!showStatsHud) {
+      setIsControlsVisible(false)
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     const videoEl = videoRef.current
@@ -12361,7 +12615,11 @@ function StreamTile({
   const volumeVal = peerScreenVolumes[participant.userId] !== undefined ? peerScreenVolumes[participant.userId] : 100
 
   return (
-    <div className={`screen-share-view ${isFullScreen ? 'fullscreen-active' : ''} ${isGrid ? 'grid-stream-view' : ''}`}>
+    <div 
+      className={`screen-share-view ${isFullScreen ? 'fullscreen-active' : ''} ${isGrid ? 'grid-stream-view' : ''} ${!isControlsVisible ? 'stream-idle-hide' : ''}`}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
       <video 
         ref={videoRef}
         autoPlay 

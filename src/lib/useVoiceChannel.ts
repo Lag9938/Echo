@@ -966,7 +966,7 @@ export function useVoiceChannel() {
             let readIdx = 0
             let available = 0
             let isPrimed = false
-            const PREBUFFER_SAMPLES = 4800 // ~100ms de pre-buffer para evitar underruns imediatos
+            const PREBUFFER_SAMPLES = 7680 // ~160ms de pre-buffer para evitar underruns em picos de CPU dos jogos
 
             ;(window as any).electronAPI?.onScreenshareAudioChunk((chunk: Uint8Array | ArrayBuffer) => {
               const raw = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk)
@@ -983,31 +983,42 @@ export function useVoiceChannel() {
               }
             })
 
-            const scriptNode = procCtx.createScriptProcessor(4096, 0, 2)
+            const scriptNode = procCtx.createScriptProcessor(2048, 0, 2)
             let lastL = 0
             let lastR = 0
             scriptNode.onaudioprocess = (e) => {
               const outL = e.outputBuffer.getChannelData(0)
               const outR = e.outputBuffer.getChannelData(1)
               const len = outL.length
-              if (!isPrimed || available < len) {
-                // Decaimento suave para zero ao invés de corte abrupto (elimina chiados e estalos)
+              if (!isPrimed) {
                 for (let i = 0; i < len; i++) {
-                  lastL *= 0.96
-                  lastR *= 0.96
+                  lastL *= 0.95
+                  lastR *= 0.95
                   outL[i] = lastL
                   outR[i] = lastR
                 }
-                if (available < len) isPrimed = false
               } else {
-                for (let i = 0; i < len; i++) {
+                const samplesToRead = Math.min(len, available)
+                for (let i = 0; i < samplesToRead; i++) {
                   outL[i] = ringL[readIdx]
                   outR[i] = ringR[readIdx]
                   readIdx = (readIdx + 1) % RING_SIZE
                 }
-                available -= len
-                lastL = outL[len - 1]
-                lastR = outR[len - 1]
+                available -= samplesToRead
+                if (samplesToRead > 0) {
+                  lastL = outL[samplesToRead - 1]
+                  lastR = outR[samplesToRead - 1]
+                }
+                if (samplesToRead < len) {
+                  // Decaimento suave para preencher a lacuna sem estalo ou robotização
+                  for (let i = samplesToRead; i < len; i++) {
+                    lastL *= 0.95
+                    lastR *= 0.95
+                    outL[i] = lastL
+                    outR[i] = lastR
+                  }
+                  isPrimed = false
+                }
               }
             }
 
@@ -1114,7 +1125,8 @@ export function useVoiceChannel() {
             videoEncoding: {
               maxBitrate: calculatedBitrate,
               maxFramerate: targetFps
-            }
+            },
+            degradationPreference: 'maintain-framerate'
           })
 
           if (audioTrack) {
@@ -1124,7 +1136,10 @@ export function useVoiceChannel() {
               await room.localParticipant.publishTrack(localAudioTrack, {
                 source: Track.Source.ScreenShareAudio,
                 name: 'screen_audio',
-                dtx: true
+                dtx: false,
+                audioPreset: {
+                  maxBitrate: 128000
+                }
               })
             } catch (aPubErr) {
               console.warn('[ScreenShare] Erro ao publicar áudio do compartilhamento:', aPubErr)
