@@ -14,15 +14,41 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.23.19'
+export const APP_CURRENT_VERSION = '0.23.20'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.23.20',
+    title: 'Loja do Echo, Efeitos de Perfil Cinematográficos e Cosméticos 2.0',
+    date: '06 de Setembro de 2026',
+    tagline: 'Personalização completa da Loja do Echo: Efeitos de Perfil que cobrem toda a área do card, decorações de avatar animadas em alta resolução e Provador ao vivo.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🛍️',
+        badge: 'LOJA DO ECHO',
+        title: 'Nova Loja com Duas Seções e Provador ao Vivo',
+        description: 'Acesse a Loja pelo menu lateral ou topbar e experimente cosméticos em tempo real antes de equipar no seu perfil.'
+      },
+      {
+        icon: '✨',
+        badge: 'PROFILE EFFECTS',
+        title: 'Efeitos Cinematográficos de Perfil Completo',
+        description: 'Animações imersivas que cobrem todo o card de perfil: Inferno de Chamas, Tempestade de Raios, Chuva de Sakura, Glitch Cibernético, Nébula Cósmica e mais.'
+      },
+      {
+        icon: '🎭',
+        badge: 'AVATARES 2.0',
+        title: 'Decorações de Avatar Encorpadas e Novas Auras',
+        description: 'Labaredas de fogo volumosas em múltiplas camadas na Fúria Flamejante, além das novas Asas Celestiais com Auréola Sagrada e Visor Tático Sci-Fi.'
+      }
+    ]
+  },
   {
     version: '0.23.19',
     title: 'Estabilidade de Transmissão, Áudio Estéreo com IA e Inicialização do Windows',
     date: '05 de Setembro de 2026',
     tagline: 'Transmissões múltiplas ultra estáveis com bitrate dinâmico inteligente, supressão de ruído por IA nos dois ouvidos e inicialização com o Windows.',
-    isLatest: true,
     highlights: [
       {
         icon: '🎧',
@@ -39,7 +65,7 @@ export const CHANGELOG_DATA: ReleaseNote[] = [
       {
         icon: '🪟',
         badge: 'SISTEMA',
-        title: 'Iniciar com o Windows (Estilo Discord)',
+        title: 'Iniciar com o Windows (Auto Início Nativo)',
         description: 'Nova aba nas configurações permitindo que o Echo inicie automaticamente com o Windows, com suporte a inicialização minimizada na bandeja.'
       },
       {
@@ -79,14 +105,14 @@ export const CHANGELOG_DATA: ReleaseNote[] = [
   },
   {
     version: '0.23.6',
-    title: 'Transmissão Nativa com Isolamento de Áudio (Estilo Discord)',
+    title: 'Transmissão Nativa com Isolamento de Áudio de Alta Fidelidade',
     date: '02 de Setembro de 2026',
     tagline: 'Captura nativa de som exclusiva por processo via Windows WASAPI Loopback, eliminação total de eco e fim do mutamento de voz.',
     isLatest: false,
     highlights: [
       {
         icon: '🛡️',
-        badge: 'ESTILO DISCORD',
+        badge: 'ISOLAMENTO NATIVO',
         title: 'Captura de Áudio Nativa por Processo (WASAPI Loopback)',
         description: 'Ao transmitir um jogo ou janela, o Echo agora isola nativamente o som daquele aplicativo no Windows. As vozes da chamada nunca são capturadas, eliminando 100% o retorno de voz e eco.'
       },

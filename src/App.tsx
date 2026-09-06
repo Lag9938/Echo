@@ -9,10 +9,11 @@ import { THEMES } from './lib/themes'
 import { SOUNDBOARD_SOUNDS, playFriendRequestSound, playFriendAcceptSound, playDmNotificationSound, playSoundboardEffect } from './lib/soundEffects'
 import { WhatsNewModal } from './components/WhatsNewModal'
 import { APP_CURRENT_VERSION } from './lib/changelogData'
+import { EchoShop } from './components/EchoShop'
+import { AvatarDecoration } from './components/AvatarDecoration'
+import { ProfileEffect } from './components/ProfileEffect'
 
-
-
-type Page = 'Amigos' | 'Mensagens' | 'Servidores' | 'Descobrir' | 'Configurações'
+type Page = 'Amigos' | 'Mensagens' | 'Servidores' | 'Descobrir' | 'Configurações' | 'Loja'
 
 export interface RolePermissions {
   administrator?: boolean;
@@ -938,6 +939,7 @@ interface UnifiedUserProfileFooterProps {
   onOpenWhatsNew?: () => void
   onSignOut: () => void
   myGamePresence?: { name: string; icon?: string } | null
+  avatarDecoration?: string | null
 }
 
 function UnifiedUserProfileFooter({
@@ -952,7 +954,8 @@ function UnifiedUserProfileFooter({
   onOpenSettings,
   onOpenWhatsNew,
   onSignOut,
-  myGamePresence
+  myGamePresence,
+  avatarDecoration
 }: UnifiedUserProfileFooterProps) {
   return (
     <div className="sidebar-profile-footer">
@@ -963,11 +966,14 @@ function UnifiedUserProfileFooter({
             onClick={() => setShowStatusMenu?.(!showStatusMenu)} 
             title="Alterar seu status online"
           >
-            <div className="profile-footer-avatar">
+            <div className="profile-footer-avatar" style={{ position: 'relative' }}>
               {avatarUrl ? (
                 <img src={avatarUrl} alt={displayName} />
               ) : (
                 displayName.slice(0, 1).toUpperCase()
+              )}
+              {avatarDecoration && avatarDecoration !== 'none' && (
+                <AvatarDecoration decorationId={avatarDecoration} />
               )}
               <span className={`my-status-dot ${presenceStatus}`} />
             </div>
@@ -1294,6 +1300,8 @@ interface MemberProfileModalProps {
   isVoiceUser: boolean
   voiceChannelName?: string
   isServerOwner: boolean
+  avatarDecoration?: string | null
+  profileEffect?: string | null
   onOpenDM: (targetId: string) => void
   onAdjustVolume?: (peer: VoiceParticipant) => void
   voicePeer?: VoiceParticipant
@@ -1313,6 +1321,8 @@ function MemberProfileModal({
   isVoiceUser,
   voiceChannelName,
   isServerOwner,
+  avatarDecoration,
+  profileEffect,
   onOpenDM,
   onAdjustVolume,
   voicePeer,
@@ -1376,6 +1386,7 @@ function MemberProfileModal({
   return (
     <div className="screen-picker-overlay member-profile-overlay" onClick={onClose}>
       <div className="member-profile-card-modal" onClick={(e) => e.stopPropagation()}>
+        <ProfileEffect effectId={profileEffect} />
         {/* Banner with dynamic aurora mesh gradient & badges */}
         <div 
           className="member-profile-banner" 
@@ -1422,6 +1433,9 @@ function MemberProfileModal({
                 <img src={inspectedMember.user.avatar_url} alt={inspectedMember.user.display_name} />
               ) : (
                 inspectedMember.user.display_name.slice(0, 1).toUpperCase()
+              )}
+              {avatarDecoration && avatarDecoration !== 'none' && (
+                <AvatarDecoration decorationId={avatarDecoration} />
               )}
               <span className={`member-profile-status-ring ${userPresenceStatus}`} />
             </div>
@@ -1800,6 +1814,8 @@ function Echo({ user }: { user: User }) {
   const [showVoiceMembers, setShowVoiceMembers] = useState(false)
   const [customStatus, setCustomStatus] = useState(() => localStorage.getItem('echo-custom-status') || '')
   const [presenceData, setPresenceData] = useState<Record<string, any>>({})
+  const [avatarDecoration, setAvatarDecoration] = useState<string>(() => localStorage.getItem('echo-avatar-decoration') || '')
+  const [profileEffect, setProfileEffect] = useState<string>(() => localStorage.getItem('echo-profile-effect') || '')
   const [unreadChannels, setUnreadChannels] = useState<Set<string>>(new Set())
   const selectedChannelRef = useRef(selectedChannel)
   const mutedSpacesRef = useRef(mutedSpaces)
@@ -1822,6 +1838,68 @@ function Echo({ user }: { user: User }) {
   const [updateVersion, setUpdateVersion] = useState('')
   const [updateProgress, setUpdateProgress] = useState(0)
 
+  const handleEquipDecoration = async (decorationId: string) => {
+    const val = decorationId === 'none' ? '' : decorationId
+    setAvatarDecoration(val)
+    localStorage.setItem('echo-avatar-decoration', val)
+
+    try {
+      if (supabase && user) {
+        await supabase.from('profiles').update({ avatar_decoration: val }).eq('id', user.id)
+      }
+    } catch (e) {
+      console.warn('Unable to persist avatar_decoration in profiles:', e)
+    }
+
+    if (presenceChannelRef.current) {
+      try {
+        const savedStatus = presenceStatus === 'invisible' ? '' : (localStorage.getItem('echo-custom-status') || '')
+        const gameData = presenceStatus === 'invisible' ? null : myGamePresence
+        await presenceChannelRef.current.track({
+          user_id: user.id,
+          display_name: profileDisplayName,
+          online_at: new Date().toISOString(),
+          custom_status: savedStatus,
+          presence_status: presenceStatus,
+          current_game: gameData,
+          avatar_decoration: val,
+          profile_effect: profileEffect
+        })
+      } catch (e) {}
+    }
+  }
+
+  const handleEquipProfileEffect = async (effectId: string) => {
+    const val = effectId === 'none' ? '' : effectId
+    setProfileEffect(val)
+    localStorage.setItem('echo-profile-effect', val)
+
+    try {
+      if (supabase && user) {
+        await supabase.from('profiles').update({ profile_effect: val }).eq('id', user.id)
+      }
+    } catch (e) {
+      console.warn('Unable to persist profile_effect in profiles:', e)
+    }
+
+    if (presenceChannelRef.current) {
+      try {
+        const savedStatus = presenceStatus === 'invisible' ? '' : (localStorage.getItem('echo-custom-status') || '')
+        const gameData = presenceStatus === 'invisible' ? null : myGamePresence
+        await presenceChannelRef.current.track({
+          user_id: user.id,
+          display_name: profileDisplayName,
+          online_at: new Date().toISOString(),
+          custom_status: savedStatus,
+          presence_status: presenceStatus,
+          current_game: gameData,
+          avatar_decoration: avatarDecoration,
+          profile_effect: val
+        })
+      } catch (e) {}
+    }
+  }
+
   async function updatePresenceStatus(status: 'online' | 'idle' | 'dnd' | 'invisible') {
     setPresenceStatus(status)
     localStorage.setItem('echo-presence-status', status)
@@ -1834,7 +1912,9 @@ function Echo({ user }: { user: User }) {
         online_at: new Date().toISOString(),
         custom_status: savedStatus,
         presence_status: status,
-        current_game: gameData
+        current_game: gameData,
+        avatar_decoration: avatarDecoration,
+        profile_effect: profileEffect
       })
     }
   }
@@ -2138,6 +2218,23 @@ function Echo({ user }: { user: User }) {
   useEffect(() => {
     async function loadUserProfile() {
       if (!supabase) return
+      try {
+        const { data, error } = await supabase.from('profiles').select('display_name, avatar_url, avatar_decoration, profile_effect').eq('id', user.id).single()
+        if (!error && data) {
+          if (data.display_name) setProfileDisplayName(data.display_name)
+          if (data.avatar_url) setProfileAvatarUrl(data.avatar_url)
+          if (data.avatar_decoration) {
+            setAvatarDecoration(data.avatar_decoration)
+            localStorage.setItem('echo-avatar-decoration', data.avatar_decoration)
+          }
+          if (data.profile_effect) {
+            setProfileEffect(data.profile_effect)
+            localStorage.setItem('echo-profile-effect', data.profile_effect)
+          }
+          return
+        }
+      } catch (e) {}
+
       const { data } = await supabase.from('profiles').select('display_name, avatar_url').eq('id', user.id).single()
       if (data) {
         if (data.display_name) setProfileDisplayName(data.display_name)
@@ -3594,7 +3691,12 @@ function Echo({ user }: { user: User }) {
           if (p && p.user_id) {
             liveUsers.push({
               role: p.role || 'member',
-              user: { id: p.user_id, display_name: p.display_name || 'Membro', avatar_url: p.avatar_url }
+              user: {
+                id: p.user_id,
+                display_name: p.display_name || 'Membro',
+                avatar_url: p.avatar_url,
+                avatar_decoration: p.avatar_decoration
+              }
             })
           }
         }
@@ -3622,7 +3724,9 @@ function Echo({ user }: { user: User }) {
         display_name: profileDisplayName || displayName,
         avatar_url: profileAvatarUrl,
         role: isOwner ? 'owner' : 'member',
-        space_id: currentSpaceId
+        space_id: currentSpaceId,
+        avatar_decoration: avatarDecoration,
+        profile_effect: profileEffect
       }).catch(() => {})
     }
 
@@ -3955,12 +4059,16 @@ function Echo({ user }: { user: User }) {
     const trackMyPresence = async () => {
       const savedStatus = localStorage.getItem('echo-custom-status') || ''
       const savedPresStatus = localStorage.getItem('echo-presence-status') || 'online'
+      const savedDecoration = localStorage.getItem('echo-avatar-decoration') || ''
+      const savedEffect = localStorage.getItem('echo-profile-effect') || ''
       await presenceChannel.track({
         user_id: user.id,
         display_name: displayName,
         online_at: new Date().toISOString(),
         custom_status: savedStatus,
-        presence_status: savedPresStatus
+        presence_status: savedPresStatus,
+        avatar_decoration: savedDecoration,
+        profile_effect: savedEffect
       }).catch(() => {})
     }
 
@@ -4516,7 +4624,7 @@ function Echo({ user }: { user: User }) {
         <div className="topbar-left">
           <Brand />
           <nav className="topbar-nav">
-            {(['Servidores', 'Amigos', 'Configurações', 'Descobrir'] as Page[]).map((item) => {
+            {(['Servidores', 'Amigos', 'Descobrir', 'Loja', 'Configurações'] as Page[]).map((item) => {
               const totalUnread = item === 'Amigos' ? pendingFriendCount + Object.values(unreadDMs).reduce((a, b) => a + b, 0) : 0
               return (
                 <button 
@@ -4524,7 +4632,7 @@ function Echo({ user }: { user: User }) {
                   className={`topbar-nav-btn ${page === item ? 'nav-active' : ''}`} 
                   onClick={() => setPage(item)}
                 >
-                  <span>{item}</span>
+                  <span>{item === 'Loja' ? '🛍️ Loja' : item}</span>
                   {totalUnread > 0 && <span className="nav-badge">{totalUnread}</span>}
                 </button>
               )
@@ -4557,11 +4665,14 @@ function Echo({ user }: { user: User }) {
             onClick={() => setPage('Configurações')}
             title="Abrir Configurações de Perfil"
           >
-            <div className="topbar-user-avatar">
+            <div className="topbar-user-avatar" style={{ position: 'relative' }}>
               {profileAvatarUrl ? (
                 <img src={profileAvatarUrl} alt="" />
               ) : (
                 <span>{(profileDisplayName || displayName || 'U').slice(0, 1).toUpperCase()}</span>
+              )}
+              {avatarDecoration && avatarDecoration !== 'none' && (
+                <AvatarDecoration decorationId={avatarDecoration} />
               )}
               <span className={`topbar-status-dot ${presenceStatus}`} />
             </div>
@@ -4688,6 +4799,28 @@ function Echo({ user }: { user: User }) {
             </button>
             <div className="guild-rail-tooltip">Descobrir Servidores</div>
           </div>
+
+          {/* Echo Shop Button */}
+          <div className="guild-rail-item-wrap">
+            <div className={`guild-rail-pill ${page === 'Loja' ? 'active' : ''}`} />
+            <button
+              type="button"
+              className={`guild-rail-btn guild-shop-btn ${page === 'Loja' ? 'selected' : ''}`}
+              onClick={() => setPage('Loja')}
+              title="Loja do Echo (Decorações & Cosméticos)"
+              style={{
+                background: page === 'Loja' ? 'linear-gradient(135deg, #a855f7, #6366f1)' : undefined,
+                color: page === 'Loja' ? '#ffffff' : undefined
+              }}
+            >
+              <svg className="guild-action-icon-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <path d="M16 10a4 4 0 0 1-8 0"/>
+              </svg>
+            </button>
+            <div className="guild-rail-tooltip">Loja do Echo</div>
+          </div>
         </nav>
 
         {/* 2. CHANNELS SIDEBAR FOR ACTIVE SERVER (240px) */}
@@ -4724,6 +4857,7 @@ function Echo({ user }: { user: User }) {
                   onOpenWhatsNew={() => setShowWhatsNewModal(true)}
                   onSignOut={() => supabase?.auth.signOut()}
                   myGamePresence={myGamePresence}
+                  avatarDecoration={avatarDecoration}
                 />
               </aside>
             )
@@ -5218,6 +5352,7 @@ function Echo({ user }: { user: User }) {
                 onOpenWhatsNew={() => setShowWhatsNewModal(true)}
                 onSignOut={() => supabase?.auth.signOut()}
                 myGamePresence={myGamePresence}
+                avatarDecoration={avatarDecoration}
               />
             </aside>
           )
@@ -5433,7 +5568,7 @@ function Echo({ user }: { user: User }) {
                                       ) : (
                                         <div 
                                           className={`msg-avatar ${message.author_id === user.id ? 'avatar-self' : 'avatar-other'}`} 
-                                          style={{ overflow: 'hidden', cursor: 'pointer' }}
+                                          style={{ position: 'relative', overflow: 'visible', cursor: 'pointer' }}
                                           onClick={() => {
                                             if (currentSpace) {
                                               const memRoles = memberRoleMap[message.author_id] || []
@@ -5452,11 +5587,17 @@ function Echo({ user }: { user: User }) {
                                           }}
                                           title="Ver perfil do membro"
                                         >
-                                          {message.profile?.avatar_url ? (
-                                            <img src={message.profile.avatar_url} alt={message.profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
-                                          ) : (
-                                            (message.profile?.display_name ?? 'E').slice(0, 1).toUpperCase()
-                                          )}
+                                          <div style={{ width: '100%', height: '100%', borderRadius: 'inherit', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {message.profile?.avatar_url ? (
+                                              <img src={message.profile.avatar_url} alt={message.profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                              (message.profile?.display_name ?? 'E').slice(0, 1).toUpperCase()
+                                            )}
+                                          </div>
+                                          {(() => {
+                                            const deco = presenceData[message.author_id]?.avatar_decoration || (message.author_id === user.id ? avatarDecoration : null)
+                                            return deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null
+                                          })()}
                                         </div>
                                       )}
 
@@ -5910,18 +6051,23 @@ function Echo({ user }: { user: User }) {
                               if (m && m.user?.id) allMembersMap.set(m.user.id, m)
                             })
 
-                            // Sintetiza participantes da chamada de voz ativa
-                            participants.forEach(p => {
-                              if (p && p.userId && !allMembersMap.has(p.userId)) {
-                                allMembersMap.set(p.userId, {
-                                  role: 'member',
-                                  user: { id: p.userId, display_name: p.displayName || 'Membro', avatar_url: p.avatarUrl }
-                                })
-                              }
-                            })
+                            // Sintetiza participantes da chamada de voz ativa apenas se pertencer a este servidor!
+                            const spaceChList = spaceChannels[currentSpace.id] || []
+                            const isCurrentCallInThisSpace = Boolean(
+                              activeVoiceChannelId && spaceChList.some(c => c.id === activeVoiceChannelId)
+                            )
+                            if (isCurrentCallInThisSpace) {
+                              participants.forEach(p => {
+                                if (p && p.userId && !allMembersMap.has(p.userId)) {
+                                  allMembersMap.set(p.userId, {
+                                    role: 'member',
+                                    user: { id: p.userId, display_name: p.displayName || 'Membro', avatar_url: p.avatarUrl }
+                                  })
+                                }
+                              })
+                            }
 
                             // Sintetiza usuários em qualquer canal de voz deste servidor
-                            const spaceChList = spaceChannels[currentSpace.id] || []
                             const currentSpaceVoiceUsers = Object.entries(spaceVoiceUsers)
                               .filter(([chId]) => spaceChList.some(c => c.id === chId))
                               .flatMap(([, uList]) => uList)
@@ -5936,15 +6082,16 @@ function Echo({ user }: { user: User }) {
                             })
 
                             const combinedMembers = Array.from(allMembersMap.values())
-                            const onlineList = combinedMembers.filter(m => onlineUsers.has(m.user.id) || participants.some(p => p.userId === m.user.id) || currentSpaceVoiceUsers.some(p => p.userId === m.user.id))
-                            const offlineList = combinedMembers.filter(m => !onlineUsers.has(m.user.id) && !participants.some(p => p.userId === m.user.id) && !currentSpaceVoiceUsers.some(p => p.userId === m.user.id))
+                            const onlineList = combinedMembers.filter(m => onlineUsers.has(m.user.id) || (isCurrentCallInThisSpace && participants.some(p => p.userId === m.user.id)) || currentSpaceVoiceUsers.some(p => p.userId === m.user.id))
+                            const offlineList = combinedMembers.filter(m => !onlineUsers.has(m.user.id) && (!isCurrentCallInThisSpace || !participants.some(p => p.userId === m.user.id)) && !currentSpaceVoiceUsers.some(p => p.userId === m.user.id))
 
                             const renderCard = (member: any) => {
                               const isCreator = currentSpace.creator_id === member.user.id
-                              const isVoiceUser = participants.some(p => p.userId === member.user.id) || currentSpaceVoiceUsers.some(p => p.userId === member.user.id)
+                              const isVoiceUser = (isCurrentCallInThisSpace && participants.some(p => p.userId === member.user.id)) || currentSpaceVoiceUsers.some(p => p.userId === member.user.id)
                               const isOnline = onlineUsers.has(member.user.id) || isVoiceUser
                               const userPresenceStatus = isOnline ? (presenceData[member.user.id]?.presence_status || 'online') : 'offline'
                               const memberRole = getUserHighestRole(currentSpace.id, member.user.id)
+                              const memberDeco = presenceData[member.user.id]?.avatar_decoration || member.user?.avatar_decoration || (member.user.id === user.id ? avatarDecoration : null)
 
                               const memberClanTag = localStorage.getItem(`echo-clan-tag-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-${user.id}`) : null)
                               const memberClanTagColor = localStorage.getItem(`echo-clan-tag-color-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-color-${user.id}`) : '#00f2fe') || '#00f2fe'
@@ -6008,7 +6155,7 @@ function Echo({ user }: { user: User }) {
                                   }}
                                   title="Ver perfil"
                                 >
-                                  <div className="member-avatar-container">
+                                  <div className="member-avatar-container" style={{ position: 'relative' }}>
                                     <div className="member-avatar">
                                       {member.user.avatar_url ? (
                                         <img src={member.user.avatar_url} alt={member.user.display_name} />
@@ -6016,6 +6163,9 @@ function Echo({ user }: { user: User }) {
                                         member.user.display_name.slice(0, 1).toUpperCase()
                                       )}
                                     </div>
+                                    {memberDeco && memberDeco !== 'none' && (
+                                      <AvatarDecoration decorationId={memberDeco} />
+                                    )}
                                     <span className={`member-status-dot ${isVoiceUser ? 'voice-active' : userPresenceStatus}`} />
                                   </div>
                                   <div className="member-info">
@@ -6423,6 +6573,10 @@ function Echo({ user }: { user: User }) {
                                             {p.displayName.slice(0, 1).toUpperCase()}
                                           </span>
                                         )}
+                                        {(() => {
+                                          const deco = presenceData[p.userId]?.avatar_decoration || (p.userId === user.id ? avatarDecoration : null)
+                                          return deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null
+                                        })()}
                                         {(p.isDeafened || p.isMuted) && (
                                           <div className="participant-avatar-badge" style={{
                                             position: 'absolute',
@@ -6636,12 +6790,18 @@ function Echo({ user }: { user: User }) {
                                 const isMentioned = message.author_id !== user.id && message.body.toLowerCase().includes(`@${profileDisplayName.toLowerCase()}`)
                                 return (
                                   <article className={`msg-card ${message.author_id === user.id ? 'msg-own' : ''} ${isMentioned ? 'mention-highlight' : ''}`} key={message.id}>
-                                    <div className={`msg-avatar ${message.author_id === user.id ? 'avatar-self' : 'avatar-other'}`} style={{ overflow: 'hidden' }}>
-                                      {message.profile?.avatar_url ? (
-                                        <img src={message.profile.avatar_url} alt={message.profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
-                                      ) : (
-                                        (message.profile?.display_name ?? 'E').slice(0, 1).toUpperCase()
-                                      )}
+                                    <div className={`msg-avatar ${message.author_id === user.id ? 'avatar-self' : 'avatar-other'}`} style={{ position: 'relative', overflow: 'visible' }}>
+                                      <div style={{ width: '100%', height: '100%', borderRadius: 'inherit', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {message.profile?.avatar_url ? (
+                                          <img src={message.profile.avatar_url} alt={message.profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        ) : (
+                                          (message.profile?.display_name ?? 'E').slice(0, 1).toUpperCase()
+                                        )}
+                                      </div>
+                                      {(() => {
+                                        const deco = presenceData[message.author_id]?.avatar_decoration || (message.author_id === user.id ? avatarDecoration : null)
+                                        return deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null
+                                      })()}
                                     </div>
                                     <div className="msg-body">
                                       <div className="msg-meta">
@@ -7024,6 +7184,7 @@ function Echo({ user }: { user: User }) {
           showToast={showToast}
           onInspectMember={(member) => setInspectedMember(member)}
           onOpenWhatsNew={() => setShowWhatsNewModal(true)}
+          avatarDecoration={avatarDecoration}
         />
       </div>
 
@@ -7034,6 +7195,8 @@ function Echo({ user }: { user: User }) {
           isServerOwner={spaces.some(s => s.creator_id === user.id)}
           currentDisplayName={profileDisplayName}
           currentAvatarUrl={profileAvatarUrl}
+          avatarDecoration={avatarDecoration}
+          profileEffect={profileEffect}
           customStatus={customStatus}
           onProfileUpdate={(name, avatar) => {
             setProfileDisplayName(name)
@@ -7129,6 +7292,18 @@ function Echo({ user }: { user: User }) {
 
       <div style={{ display: page === 'Descobrir' ? undefined : 'none' }}>
         <Placeholder page={'Descobrir'} />
+      </div>
+
+      <div style={{ display: page === 'Loja' ? 'flex' : 'none', flex: 1, height: 'calc(100vh - 48px)', overflow: 'hidden' }}>
+        <EchoShop
+          displayName={profileDisplayName || displayName}
+          avatarUrl={profileAvatarUrl}
+          currentDecoration={avatarDecoration}
+          currentProfileEffect={profileEffect}
+          onEquipDecoration={handleEquipDecoration}
+          onEquipProfileEffect={handleEquipProfileEffect}
+          onClose={() => setPage('Servidores')}
+        />
       </div>
 
       {/* Modal de Qualidade de Transmissão de Tela */}
@@ -8922,6 +9097,12 @@ function Echo({ user }: { user: User }) {
         const currentActiveSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || null
         const isServerOwner = currentActiveSpace?.creator_id === inspectedMember.user.id
         const voicePeer = participants.find(p => p.userId === inspectedMember.user.id)
+        const inspectedDeco = inspectedMember.user.id === user.id
+          ? avatarDecoration
+          : (presenceData[inspectedMember.user.id]?.avatar_decoration || (inspectedMember.user as any).avatar_decoration || null)
+        const inspectedEffect = inspectedMember.user.id === user.id
+          ? profileEffect
+          : (presenceData[inspectedMember.user.id]?.profile_effect || (inspectedMember.user as any).profile_effect || null)
 
         return (
           <MemberProfileModal
@@ -8937,6 +9118,8 @@ function Echo({ user }: { user: User }) {
             isVoiceUser={isVoiceUser}
             voiceChannelName={activeVoiceChannel?.name}
             isServerOwner={isServerOwner}
+            avatarDecoration={inspectedDeco}
+            profileEffect={inspectedEffect}
             voicePeer={voicePeer}
             showToast={showToast}
             onOpenDM={(targetId) => {
@@ -8955,40 +9138,46 @@ function Echo({ user }: { user: User }) {
       })()}
 
       {/* Member Hover Popover Card */}
-      {hoveredMemberPopover && (
-        <div 
-          className="member-hover-popover"
-          style={{
-            position: 'fixed',
-            top: `${Math.min(Math.max(12, hoveredMemberPopover.rect.top - 16), window.innerHeight - 280)}px`,
-            left: `${Math.max(10, hoveredMemberPopover.rect.left - 275)}px`,
-            zIndex: 1100
-          }}
-          onMouseEnter={() => {
-            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
-          }}
-          onMouseLeave={() => {
-            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
-            hoverTimeoutRef.current = setTimeout(() => {
-              setHoveredMemberPopover(null)
-            }, 120)
-          }}
-          onClick={() => {
-            setInspectedMember({
-              user: hoveredMemberPopover.user,
-              roleName: hoveredMemberPopover.roleName,
-              roleColor: hoveredMemberPopover.roleColor,
-              roles: hoveredMemberPopover.roles
-            })
-            setHoveredMemberPopover(null)
-          }}
-        >
+      {hoveredMemberPopover && (() => {
+        const hoveredEffect = hoveredMemberPopover.user.id === user.id
+          ? profileEffect
+          : (presenceData[hoveredMemberPopover.user.id]?.profile_effect || (hoveredMemberPopover.user as any).profile_effect || null)
+
+        return (
           <div 
-            className="hover-popover-banner" 
-            style={{ 
-              background: `linear-gradient(135deg, ${hoveredMemberPopover.roleColor || 'var(--accent-color, #00f2fe)'}aa, #1e1b4b)` 
-            }} 
-          />
+            className="member-hover-popover"
+            style={{
+              position: 'fixed',
+              top: `${Math.min(Math.max(12, hoveredMemberPopover.rect.top - 16), window.innerHeight - 280)}px`,
+              left: `${Math.max(10, hoveredMemberPopover.rect.left - 275)}px`,
+              zIndex: 1100
+            }}
+            onMouseEnter={() => {
+              if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+            }}
+            onMouseLeave={() => {
+              if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+              hoverTimeoutRef.current = setTimeout(() => {
+                setHoveredMemberPopover(null)
+              }, 120)
+            }}
+            onClick={() => {
+              setInspectedMember({
+                user: hoveredMemberPopover.user,
+                roleName: hoveredMemberPopover.roleName,
+                roleColor: hoveredMemberPopover.roleColor,
+                roles: hoveredMemberPopover.roles
+              })
+              setHoveredMemberPopover(null)
+            }}
+          >
+            <ProfileEffect effectId={hoveredEffect} />
+            <div 
+              className="hover-popover-banner" 
+              style={{ 
+                background: `linear-gradient(135deg, ${hoveredMemberPopover.roleColor || 'var(--accent-color, #00f2fe)'}aa, #1e1b4b)` 
+              }} 
+            />
           <div className="hover-popover-body">
             <div className="hover-popover-avatar-wrap">
               <div className="hover-popover-avatar">
@@ -8997,6 +9186,12 @@ function Echo({ user }: { user: User }) {
                 ) : (
                   hoveredMemberPopover.user.display_name.slice(0, 1).toUpperCase()
                 )}
+                {(() => {
+                  const deco = hoveredMemberPopover.user.id === user.id
+                    ? avatarDecoration
+                    : (presenceData[hoveredMemberPopover.user.id]?.avatar_decoration || (hoveredMemberPopover.user as any).avatar_decoration || null)
+                  return deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null
+                })()}
               </div>
               <span className={`member-status-dot ${hoveredMemberPopover.isVoiceUser ? 'voice-active' : hoveredMemberPopover.userPresenceStatus}`} />
             </div>
@@ -9063,7 +9258,7 @@ function Echo({ user }: { user: User }) {
             </div>
           </div>
         </div>
-      )}
+      )})()}
 
       {/* Soundboard Modal */}
       {showSoundboardModal && (
@@ -9229,7 +9424,8 @@ function FriendsView({
   spaceMembers = [],
   showToast,
   onInspectMember,
-  onOpenWhatsNew
+  onOpenWhatsNew,
+  avatarDecoration
 }: {
   friendships: FriendshipRequest[]
   friendTab: 'online' | 'all' | 'pending' | 'add'
@@ -9268,6 +9464,7 @@ function FriendsView({
   showToast?: (title: string, message: string, type?: 'info' | 'message' | 'friend') => void
   onInspectMember?: (member: any) => void
   onOpenWhatsNew?: () => void
+  avatarDecoration?: string | null
 }) {
   const dmFileRef = useRef<HTMLInputElement>(null)
   const dmMessagesEndRef = useRef<HTMLDivElement>(null)
@@ -9366,6 +9563,7 @@ function FriendsView({
           onOpenWhatsNew={onOpenWhatsNew}
           onSignOut={onSignOut}
           myGamePresence={myGamePresence}
+          avatarDecoration={avatarDecoration}
         />
       </aside>
 
@@ -9448,6 +9646,7 @@ function FriendsView({
                   const pres = presenceData[friend.user.id]
                   const statusType = pres?.presence_status || 'online'
                   const customText = pres?.custom_status || 'Disponível'
+                  const friendDeco = pres?.avatar_decoration || (friend.user as any).avatar_decoration || null
                   return (
                     <div key={friend.id} className="friend-card-modern" onClick={() => onOpenDM(friend.user.id)}>
                       <div className="friend-card-left">
@@ -9456,6 +9655,9 @@ function FriendsView({
                             <img src={friend.user.avatar_url} alt={friend.user.display_name} />
                           ) : (
                             friend.user.display_name.slice(0, 1).toUpperCase()
+                          )}
+                          {friendDeco && friendDeco !== 'none' && (
+                            <AvatarDecoration decorationId={friendDeco} />
                           )}
                           <span className={`online-indicator ${statusType}`} />
                         </div>
@@ -9552,6 +9754,7 @@ function FriendsView({
                   const pres = presenceData[friend.user.id]
                   const statusType = isOnline ? (pres?.presence_status || 'online') : 'offline'
                   const customText = isOnline ? (pres?.custom_status || 'Online') : 'Offline'
+                  const friendDeco = pres?.avatar_decoration || (friend.user as any).avatar_decoration || null
                   return (
                     <div key={friend.id} className="friend-card-modern" onClick={() => onOpenDM(friend.user.id)}>
                       <div className="friend-card-left">
@@ -9560,6 +9763,9 @@ function FriendsView({
                             <img src={friend.user.avatar_url} alt={friend.user.display_name} />
                           ) : (
                             friend.user.display_name.slice(0, 1).toUpperCase()
+                          )}
+                          {friendDeco && friendDeco !== 'none' && (
+                            <AvatarDecoration decorationId={friendDeco} />
                           )}
                           <span className={`online-indicator ${statusType}`} />
                         </div>
@@ -9706,7 +9912,7 @@ function FriendsView({
                 <span>Compartilhe seu Link de Amigo</span>
               </div>
               <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
-                Envie seu link direto no WhatsApp, Discord ou chat do jogo para seus amigos adicionarem você com 1 clique.
+                Envie seu link direto no WhatsApp, redes sociais ou chat do jogo para seus amigos adicionarem você com 1 clique.
               </p>
               <div className="add-friend-link-row">
                 <span className="add-friend-link-text">echo.lobby/add/@{profileDisplayName || 'gamer'}</span>
@@ -9796,13 +10002,21 @@ function FriendsView({
           <aside className="dm-chat-panel">
             <div className="dm-chat-header">
               <div className="dm-chat-header-info">
-                <div className="friend-avatar" style={{ width: 32, height: 32, fontSize: 14, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {dmFriend?.user.avatar_url ? (
-                    <img src={dmFriend.user.avatar_url} alt={dmFriendName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    dmFriendName.slice(0, 1).toUpperCase()
-                  )}
-                </div>
+                {(() => {
+                  const dmDeco = dmFriend ? (presenceData[dmFriend.user.id]?.avatar_decoration || (dmFriend.user as any).avatar_decoration || null) : null
+                  return (
+                    <div className="friend-avatar" style={{ width: 32, height: 32, fontSize: 14, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {dmFriend?.user.avatar_url ? (
+                        <img src={dmFriend.user.avatar_url} alt={dmFriendName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                      ) : (
+                        dmFriendName.slice(0, 1).toUpperCase()
+                      )}
+                      {dmDeco && dmDeco !== 'none' && (
+                        <AvatarDecoration decorationId={dmDeco} />
+                      )}
+                    </div>
+                  )
+                })()}
                 <span className="dm-chat-name">{dmFriendName}</span>
               </div>
               <button className="dm-close-btn" onClick={onCloseDM} title="Fechar">✕</button>
@@ -9968,7 +10182,9 @@ function SettingsView({
   chatDensity = 'cozy',
   onChatDensityChange,
   performanceMode = false,
-  onPerformanceModeChange
+  onPerformanceModeChange,
+  avatarDecoration,
+  profileEffect
 }: {
   userId: string
   userCreatedAt?: string
@@ -9976,6 +10192,8 @@ function SettingsView({
   currentDisplayName: string
   currentAvatarUrl: string
   customStatus: string
+  avatarDecoration?: string | null
+  profileEffect?: string | null
   onProfileUpdate: (name: string, avatar: string) => void
   onCustomStatusUpdate: (status: string) => void
   audioInputs: MediaDeviceInfo[]
@@ -10456,6 +10674,7 @@ function SettingsView({
           onOpenWhatsNew={onOpenWhatsNew}
           onSignOut={onSignOut}
           myGamePresence={myGamePresence}
+          avatarDecoration={avatarDecoration}
         />
       </aside>
 
@@ -10505,7 +10724,8 @@ function SettingsView({
             </div>
 
             {/* Top: Echo Identity Hero (Inspirado no prestígio de perfil da Steam com acabamento moderno do Echo) */}
-            <div className={`echo-hero-showcase finish-${localCardFinish}`}>
+            <div className={`echo-hero-showcase finish-${localCardFinish}`} style={{ position: 'relative' }}>
+              <ProfileEffect effectId={profileEffect} />
               {/* Panoramic Profile Banner */}
               <div 
                 className={`echo-hero-banner ${!localBannerCustom ? `texture-${localBannerPreset}` : ''}`}
@@ -10534,6 +10754,7 @@ function SettingsView({
                     className={`echo-hero-avatar-squircle ${localAvatarFrame}`}
                     onClick={() => avatarFileInputRef.current?.click()}
                     title="Clique para trocar foto de perfil"
+                    style={{ position: 'relative' }}
                   >
                     <div className="echo-hero-avatar-inner">
                       {localAvatarUrl ? (
@@ -10542,6 +10763,9 @@ function SettingsView({
                         localDisplayName.slice(0, 1).toUpperCase()
                       )}
                     </div>
+                    {avatarDecoration && avatarDecoration !== 'none' && (
+                      <AvatarDecoration decorationId={avatarDecoration} />
+                    )}
                     <div className="echo-hero-avatar-overlay">
                       <CameraIcon style={{ width: '22px', height: '22px' }} />
                     </div>
@@ -11885,7 +12109,7 @@ function SettingsView({
                     borderRadius: '12px',
                     border: '1px solid rgba(0, 242, 254, 0.3)'
                   }}>
-                    DISCORD STYLE
+                    NATIVO
                   </span>
                 </div>
                 <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
