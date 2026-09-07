@@ -14,15 +14,47 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.23.22'
+export const APP_CURRENT_VERSION = '0.23.23'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.23.23',
+    title: 'Chat de Texto em Tempo Real (0ms) e Otimização de Performance',
+    date: '06 de Setembro de 2026',
+    tagline: 'Entrega instantânea de mensagens de texto via WebSocket Broadcast (0ms), interface otimista com indicador de retentativa, paginação inteligente com rolagem infinita e notas de voz ultraleves no Storage.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '⚡',
+        badge: 'CHAT EM TEMPO REAL',
+        title: 'Transmissão Instantânea via WebSocket (0ms)',
+        description: 'Mensagens em canais de servidores agora chegam em tempo real instantâneo diretamente aos outros participantes através de WebSocket Broadcast, eliminando atrasos de sincronização.'
+      },
+      {
+        icon: '🚀',
+        badge: 'INTERFACE OTIMISTA',
+        title: 'Envio Imediato e Retentativa Automática',
+        description: 'Suas mensagens aparecem no chat no exato milissegundo em que você aperta Enter. Se houver oscilação de rede, um indicador vermelho com botão "Tentar novamente" permite reenviar sem perder o texto.'
+      },
+      {
+        icon: '📜',
+        badge: 'PAGINAÇÃO & ROLAGEM INFINITA',
+        title: 'Histórico Sob Demanda e Menor Consumo',
+        description: 'Os canais agora carregam as 50 mensagens mais recentes e puxam mensagens antigas suavemente ao rolar para o topo, mantendo a leitura estável e reduzindo o consumo de dados em 95%.'
+      },
+      {
+        icon: '🎙️',
+        badge: 'MENSAGENS DE VOZ',
+        title: 'Áudios no Storage de Alta Velocidade',
+        description: 'Gravações de áudio agora são salvas diretamente no armazenamento de nuvem do Echo com carregamento rápido e sem sobrecarregar o banco de dados.'
+      }
+    ]
+  },
   {
     version: '0.23.22',
     title: 'Execução em Segundo Plano no Windows e Modo Cinema em Transmissões',
     date: '06 de Setembro de 2026',
     tagline: 'O Echo agora roda em segundo plano na bandeja do sistema (System Tray) ao fechar a janela, mantendo chamadas e streams 100% ativas, com ocultação automática de controles e cursor do mouse em transmissões.',
-    isLatest: true,
     highlights: [
       {
         icon: '🔔',

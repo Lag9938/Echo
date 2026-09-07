@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import type { FormEvent } from 'react'
-import type { User } from '@supabase/supabase-js'
+import type { User, RealtimeChannel } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { useVoiceChannel } from './lib/useVoiceChannel'
 import type { VoiceParticipant } from './lib/useVoiceChannel'
@@ -135,12 +135,14 @@ const ROLE_COLOR_PRESETS = [
 ]
 type Message = { 
   id: string; 
+  tempId?: string;
   body: string; 
   created_at: string; 
   author_id: string; 
   profile?: { display_name: string; avatar_url?: string };
   attachment_url?: string;
   attachment_type?: string;
+  status?: 'sending' | 'sent' | 'failed';
 }
 
 type DirectMessage = {
@@ -1836,6 +1838,12 @@ function Echo({ user }: { user: User }) {
     }
   })
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const channelBroadcastRef = useRef<RealtimeChannel | null>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const isPrependingRef = useRef<boolean>(false)
+  const messagesCacheRef = useRef<Record<string, Message[]>>({})
+  const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true)
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false)
   const [spaceMembers, setSpaceMembers] = useState<any[]>([])
   const [showMembersList, setShowMembersList] = useState(true)
   const [showVoiceChat, setShowVoiceChat] = useState(false)
@@ -3553,9 +3561,122 @@ function Echo({ user }: { user: User }) {
 
   async function loadMessages(channelId: string) {
     if (!supabase) return
-    const { data, error: queryError } = await supabase.from('messages').select('id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)').eq('channel_id', channelId).order('created_at')
+
+    // 1. Render instantâneo do cache local (0ms e 0 requisições desnecessárias)
+    if (messagesCacheRef.current[channelId] && messagesCacheRef.current[channelId].length > 0) {
+      setMessages(messagesCacheRef.current[channelId])
+    } else {
+      try {
+        const cached = localStorage.getItem(`echo-msgs-${channelId}`)
+        if (cached) {
+          const parsed = JSON.parse(cached)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            messagesCacheRef.current[channelId] = parsed
+            setMessages(parsed)
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 2. Busca paginada (as 50 mensagens mais recentes)
+    const { data, error: queryError } = await supabase
+      .from('messages')
+      .select('id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
+      .eq('channel_id', channelId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+
     if (queryError) { setError(queryError.message); return }
-    setMessages((data ?? []).map((row: any) => ({ ...row, profile: Array.isArray(row.profiles) ? row.profiles?.[0] : row.profiles })))
+
+    const rawData = data ?? []
+    setHasMoreMessages(rawData.length >= 50)
+
+    // Reverte para manter a ordem cronológica correta (mais antigas no topo)
+    const loaded: Message[] = [...rawData].reverse().map((row: any) => ({
+      ...row,
+      profile: Array.isArray(row.profiles) ? row.profiles?.[0] : row.profiles,
+      status: 'sent' as const
+    }))
+
+    setMessages(prev => {
+      const pendingLocal = prev.filter(m => 
+        (m.status === 'sending' || m.status === 'failed') &&
+        !loaded.some(dbM => dbM.id === m.id || (m.tempId && dbM.id === m.tempId))
+      )
+      const merged = [...loaded, ...pendingLocal]
+      messagesCacheRef.current[channelId] = merged
+      try {
+        localStorage.setItem(`echo-msgs-${channelId}`, JSON.stringify(merged.slice(-50)))
+      } catch (e) {}
+      return merged
+    })
+  }
+
+  async function loadMoreMessages(channelId: string) {
+    if (!supabase || isLoadingMore || !hasMoreMessages) return
+
+    // Encontra a mensagem mais antiga que já foi confirmada
+    const oldest = messages.find(m => m.status === 'sent') || messages[0]
+    if (!oldest || !oldest.created_at) return
+
+    setIsLoadingMore(true)
+    isPrependingRef.current = true
+
+    try {
+      const { data, error: queryError } = await supabase
+        .from('messages')
+        .select('id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
+        .eq('channel_id', channelId)
+        .lt('created_at', oldest.created_at)
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (queryError) {
+        console.error('Error loading older messages:', queryError)
+        return
+      }
+
+      const rawData = data ?? []
+      if (rawData.length < 50) {
+        setHasMoreMessages(false)
+      }
+
+      if (rawData.length === 0) return
+
+      const olderMessages: Message[] = [...rawData].reverse().map((row: any) => ({
+        ...row,
+        profile: Array.isArray(row.profiles) ? row.profiles?.[0] : row.profiles,
+        status: 'sent' as const
+      }))
+
+      // Salva scroll anterior para manter o ponto de leitura estável
+      const container = messagesContainerRef.current
+      const prevScrollHeight = container ? container.scrollHeight : 0
+      const prevScrollTop = container ? container.scrollTop : 0
+
+      setMessages(prev => {
+        const newItems = olderMessages.filter(om => !prev.some(pm => pm.id === om.id))
+        const updated = [...newItems, ...prev]
+        messagesCacheRef.current[channelId] = updated
+        return updated
+      })
+
+      requestAnimationFrame(() => {
+        if (container) {
+          const diff = container.scrollHeight - prevScrollHeight
+          container.scrollTop = prevScrollTop + diff
+        }
+        setTimeout(() => {
+          isPrependingRef.current = false
+        }, 120)
+      })
+
+    } catch (e) {
+      console.error('Failed to load more messages:', e)
+      isPrependingRef.current = false
+    } finally {
+      setIsLoadingMore(false)
+    }
   }
 
   async function loadSpaceMembers(spaceId: string) {
@@ -3769,11 +3890,11 @@ function Echo({ user }: { user: User }) {
         }
       })
 
-    // Sincronização periódica de redundância (a cada 6s)
+    // Sincronização periódica de redundância (a cada 60s)
     const syncInterval = setInterval(() => {
       loadSpaceMembers(currentSpaceId)
       trackSpacePresence()
-    }, 6000)
+    }, 60000)
 
     return () => {
       clearInterval(syncInterval)
@@ -4068,15 +4189,7 @@ function Echo({ user }: { user: User }) {
       }
       const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
       const fileType = file.type.startsWith('image/') ? 'image' : 'file'
-      
-      const { error: sendError } = await supabase.from('messages').insert({
-        channel_id: selectedChannel.id,
-        author_id: user.id,
-        body: file.name,
-        attachment_url: urlData.publicUrl,
-        attachment_type: fileType
-      })
-      if (sendError) setError(sendError.message)
+      await postChannelMessage(selectedChannel.id, file.name, urlData.publicUrl, fileType)
     } catch (err: any) {
       setError(err.message || 'Erro no upload.')
     } finally {
@@ -4215,13 +4328,76 @@ function Echo({ user }: { user: User }) {
 
   useEffect(() => {
     const client = supabase
-    if (!selectedChannel || !client || selectedChannel.type !== 'text') return
+    if (!selectedChannel || !client || selectedChannel.type !== 'text') {
+      channelBroadcastRef.current = null
+      return
+    }
+
+    setHasMoreMessages(true)
+    setIsLoadingMore(false)
+    isPrependingRef.current = false
+
     loadMessages(selectedChannel.id)
-    const live = client.channel(`messages-${selectedChannel.id}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `channel_id=eq.${selectedChannel.id}` }, () => loadMessages(selectedChannel.id)).subscribe()
-    return () => { client.removeChannel(live) }
-  }, [selectedChannel?.id])
+
+    const channelTopic = `room-messages-${selectedChannel.id}`
+    const live = client.channel(channelTopic, {
+      config: {
+        broadcast: { ack: false }
+      }
+    })
+
+    // 1. WebSocket Broadcast em tempo real (0ms entre todos conectados no canal)
+    live.on('broadcast', { event: 'new-message' }, ({ payload }) => {
+      if (!payload || !payload.id) return
+
+      setMessages(prev => {
+        const matchIdx = prev.findIndex(m => 
+          m.id === payload.id || 
+          (payload.tempId && (m.id === payload.tempId || m.tempId === payload.tempId))
+        )
+        let updated: Message[]
+        if (matchIdx !== -1) {
+          updated = [...prev]
+          updated[matchIdx] = { ...updated[matchIdx], ...payload, status: 'sent' }
+        } else {
+          updated = [...prev, { ...payload, status: 'sent' }]
+        }
+        messagesCacheRef.current[selectedChannel.id] = updated
+        try {
+          localStorage.setItem(`echo-msgs-${selectedChannel.id}`, JSON.stringify(updated.slice(-50)))
+        } catch (e) {}
+        return updated
+      })
+
+      // Alerta sonoro caso o usuário seja mencionado
+      if (user && payload.author_id !== user.id) {
+        if (payload.body && profileDisplayName && payload.body.toLowerCase().includes(`@${profileDisplayName.toLowerCase()}`)) {
+          playDmNotificationSound(sfxVolume)
+        }
+      }
+    })
+
+    // 2. PostgreSQL Changes (sincronização contínua com banco de dados)
+    live.on('postgres_changes', { 
+      event: '*', 
+      schema: 'public', 
+      table: 'messages', 
+      filter: `channel_id=eq.${selectedChannel.id}` 
+    }, () => {
+      loadMessages(selectedChannel.id)
+    })
+
+    live.subscribe()
+    channelBroadcastRef.current = live
+
+    return () => {
+      channelBroadcastRef.current = null
+      client.removeChannel(live)
+    }
+  }, [selectedChannel?.id, user?.id, profileDisplayName, sfxVolume])
 
   useEffect(() => {
+    if (isPrependingRef.current) return
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
@@ -4332,13 +4508,13 @@ function Echo({ user }: { user: User }) {
       })
       .subscribe()
 
-    // Resilient background sync interval (every 8 seconds)
+    // Resilient background sync interval (every 60 seconds)
     const syncInterval = setInterval(() => {
       loadFriendships()
       if (selectedDMUserIdRef.current) {
         loadDirectMessages(selectedDMUserIdRef.current)
       }
-    }, 8000)
+    }, 60000)
 
     return () => {
       clearInterval(syncInterval)
@@ -4505,21 +4681,23 @@ function Echo({ user }: { user: User }) {
       }
       rec.onstop = async () => {
         stream.getTracks().forEach(t => t.stop())
-        if (voiceNoteChunksRef.current.length > 0) {
+        if (voiceNoteChunksRef.current.length > 0 && selectedChannel && supabase && user) {
           const blob = new Blob(voiceNoteChunksRef.current, { type: 'audio/webm' })
-          const reader = new FileReader()
-          reader.readAsDataURL(blob)
-          reader.onloadend = async () => {
-            const base64Audio = reader.result as string
-            if (selectedChannel && supabase) {
-              await supabase.from('messages').insert({
-                channel_id: selectedChannel.id,
-                author_id: user.id,
-                body: '🎙️ Mensagem de Voz',
-                attachment_url: base64Audio,
-                attachment_type: 'audio'
-              })
+          const audioPath = `voice-notes/${selectedChannel.id}/${Date.now()}-${user.id}.webm`
+          try {
+            const { error: uploadErr } = await supabase.storage.from('attachments').upload(audioPath, blob, {
+              contentType: 'audio/webm'
+            })
+            if (uploadErr) {
+              console.error('Storage upload error for voice note:', uploadErr)
+              showToast('Erro no Áudio', 'Falha ao salvar áudio no servidor.', 'info')
+              return
             }
+            const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(audioPath)
+            await postChannelMessage(selectedChannel.id, '🎙️ Mensagem de Voz', urlData.publicUrl, 'audio')
+          } catch (err: any) {
+            console.error('Failed to send voice note:', err)
+            showToast('Erro no Áudio', 'Erro ao processar gravação de voz.', 'info')
           }
         }
       }
@@ -4604,6 +4782,96 @@ function Echo({ user }: { user: User }) {
     return null
   }
 
+  async function postChannelMessage(
+    channelId: string, 
+    body: string, 
+    attachmentUrl?: string, 
+    attachmentType?: string,
+    existingTempId?: string
+  ) {
+    if (!supabase || !user) return
+
+    const tempId = existingTempId || `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const nowIso = new Date().toISOString()
+
+    const optimisticMsg: Message = {
+      id: tempId,
+      tempId,
+      body,
+      created_at: nowIso,
+      author_id: user.id,
+      profile: {
+        display_name: profileDisplayName || displayName || 'Você',
+        avatar_url: profileAvatarUrl
+      },
+      attachment_url: attachmentUrl,
+      attachment_type: attachmentType,
+      status: 'sending'
+    }
+
+    if (existingTempId) {
+      setMessages(prev => prev.map(m => (m.id === existingTempId || m.tempId === existingTempId) ? { ...m, status: 'sending' } : m))
+    } else {
+      setMessages(prev => [...prev, optimisticMsg])
+    }
+
+    // Broadcast instantâneo via WebSocket (0ms) para todos os conectados no canal
+    channelBroadcastRef.current?.send({
+      type: 'broadcast',
+      event: 'new-message',
+      payload: optimisticMsg
+    }).catch(e => console.warn('Broadcast error:', e))
+
+    try {
+      const { data: inserted, error: insertError } = await supabase
+        .from('messages')
+        .insert({
+          channel_id: channelId,
+          author_id: user.id,
+          body,
+          attachment_url: attachmentUrl,
+          attachment_type: attachmentType
+        })
+        .select('id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
+        .single()
+
+      if (insertError) {
+        console.error('Falha ao salvar mensagem:', insertError)
+        setMessages(prev => prev.map(m => (m.id === tempId || m.tempId === tempId) ? { ...m, status: 'failed' } : m))
+        setError(insertError.message)
+        showToast('Falha no envio', 'Não foi possível salvar sua mensagem. Clique para tentar novamente.', 'info')
+        return
+      }
+
+      const confirmedMsg: Message = {
+        ...inserted,
+        profile: Array.isArray(inserted.profiles) ? inserted.profiles?.[0] : (inserted.profiles || { display_name: profileDisplayName, avatar_url: profileAvatarUrl }),
+        status: 'sent',
+        tempId
+      }
+
+      // Atualiza a mensagem temporária com o ID oficial do banco
+      setMessages(prev => prev.map(m => (m.id === tempId || m.tempId === tempId) ? confirmedMsg : m))
+
+      // Notifica os pares do canal com a mensagem confirmada
+      channelBroadcastRef.current?.send({
+        type: 'broadcast',
+        event: 'new-message',
+        payload: confirmedMsg
+      }).catch(() => {})
+
+    } catch (err: any) {
+      console.error('Erro na requisição de envio:', err)
+      setMessages(prev => prev.map(m => (m.id === tempId || m.tempId === tempId) ? { ...m, status: 'failed' } : m))
+      showToast('Falha no envio', 'Erro de conexão ao enviar mensagem.', 'info')
+    }
+  }
+
+  function retrySendMessage(msg: Message) {
+    if (!selectedChannel) return
+    postChannelMessage(selectedChannel.id, msg.body, msg.attachment_url, msg.attachment_type, msg.tempId || msg.id)
+  }
+
   async function send(event: FormEvent) {
     event.preventDefault(); if (!supabase || !selectedChannel || !draft.trim()) return
     const currentSp = getSpaceForChannel(selectedChannel)
@@ -4627,15 +4895,12 @@ function Echo({ user }: { user: User }) {
       setReplyingToMessage(null)
     }
 
-    const { error: sendError } = await supabase.from('messages').insert({ channel_id: selectedChannel.id, author_id: user.id, body: finalBody })
-    if (sendError) {
-      setError(sendError.message)
-    } else {
-      setDraft('')
-      if (selectedChannel.slowmode_seconds && selectedChannel.slowmode_seconds > 0 && !isImmuneToSlowmode) {
-        setSlowmodeCooldown(selectedChannel.slowmode_seconds)
-      }
+    setDraft('')
+    if (selectedChannel.slowmode_seconds && selectedChannel.slowmode_seconds > 0 && !isImmuneToSlowmode) {
+      setSlowmodeCooldown(selectedChannel.slowmode_seconds)
     }
+
+    await postChannelMessage(selectedChannel.id, finalBody)
   }
 
   function getSpaceForChannel(channel: Channel | null) {
@@ -5529,7 +5794,16 @@ function Echo({ user }: { user: User }) {
                   </header>
                   <div className="chat-workspace-wrapper" style={{ display: 'flex', flex: 1, minHeight: 0, width: '100%', position: 'relative' }}>
                     <div className="chat-area-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                      <div className="messages-area">
+                      <div 
+                        className="messages-area"
+                        ref={messagesContainerRef}
+                        onScroll={(e) => {
+                          const target = e.currentTarget
+                          if (target.scrollTop <= 40 && hasMoreMessages && !isLoadingMore && selectedChannel) {
+                            loadMoreMessages(selectedChannel.id)
+                          }
+                        }}
+                      >
                         {(() => {
                           const filtered = messages.filter(m => {
                             if (!searchQuery.trim()) return true
@@ -5543,8 +5817,16 @@ function Echo({ user }: { user: User }) {
 
                           return (
                             <>
-                              {/* Channel Welcome Hero */}
-                              {!searchQuery.trim() && (
+                              {/* Indicador de carregamento de mensagens anteriores */}
+                              {isLoadingMore && (
+                                <div className="loading-more-messages">
+                                  <span className="loading-spinner-circle" />
+                                  <span>Carregando mensagens anteriores...</span>
+                                </div>
+                              )}
+
+                              {/* Channel Welcome Hero (visível apenas ao alcançar o início histórico do canal) */}
+                              {!searchQuery.trim() && !hasMoreMessages && (
                                 <div className="channel-welcome-hero">
                                   <div className="channel-welcome-icon-box">
                                     {selectedChannel.is_announcement ? <MegaphoneIcon /> : <HashtagIcon />}
@@ -5556,7 +5838,7 @@ function Echo({ user }: { user: User }) {
                                   <div className="channel-welcome-meta">
                                     <span>🔒 Canal seguro</span>
                                     <span>•</span>
-                                    <span>💬 {filtered.length} {filtered.length === 1 ? 'mensagem' : 'mensagens'} no histórico</span>
+                                    <span>💬 Início do canal</span>
                                   </div>
                                 </div>
                               )}
@@ -5612,7 +5894,7 @@ function Echo({ user }: { user: User }) {
                                     )}
 
                                     <article 
-                                      className={`msg-card ${isConsecutive ? 'msg-consecutive' : ''} ${message.author_id === user.id ? 'msg-own' : ''} ${isMentioned ? 'mention-highlight' : ''}`} 
+                                      className={`msg-card ${isConsecutive ? 'msg-consecutive' : ''} ${message.author_id === user.id ? 'msg-own' : ''} ${isMentioned ? 'mention-highlight' : ''} ${message.status === 'sending' ? 'msg-sending' : ''} ${message.status === 'failed' ? 'msg-failed' : ''}`} 
                                       style={{ position: 'relative' }}
                                     >
                                       {/* Message Hover Action Bar */}
@@ -5844,6 +6126,27 @@ function Echo({ user }: { user: User }) {
                                             })}
                                           </div>
                                         )}
+
+                                        {/* Status do envio em tempo real */}
+                                        {message.status === 'sending' && (
+                                          <div className="msg-status-indicator sending">
+                                            <span className="msg-sending-dot" />
+                                            <span>Enviando...</span>
+                                          </div>
+                                        )}
+                                        {message.status === 'failed' && (
+                                          <div className="msg-status-indicator failed">
+                                            <span className="msg-failed-badge">⚠️ Falha ao enviar</span>
+                                            <button 
+                                              type="button" 
+                                              className="msg-retry-btn" 
+                                              onClick={() => retrySendMessage(message)}
+                                              title="Tentar enviar esta mensagem novamente"
+                                            >
+                                              Tentar novamente
+                                            </button>
+                                          </div>
+                                        )}
                                       </div>
                                     </article>
                                   </React.Fragment>
@@ -5981,13 +6284,7 @@ function Echo({ user }: { user: User }) {
                                         className="gif-item-thumb"
                                         onClick={async () => {
                                           if (selectedChannel && supabase) {
-                                            await supabase.from('messages').insert({
-                                              channel_id: selectedChannel.id,
-                                              author_id: user.id,
-                                              body: gif.url,
-                                              attachment_url: gif.url,
-                                              attachment_type: 'image'
-                                            })
+                                            await postChannelMessage(selectedChannel.id, gif.url, gif.url, 'image')
                                             setShowGifPicker(false)
                                           }
                                         }}
