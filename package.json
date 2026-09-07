@@ -3,12 +3,12 @@
   "description": "Comunidades e conversas em tempo real.",
   "author": "Echo Lobby",
   "private": true,
-  "version": "0.23.23",
+  "version": "0.23.24",
   "main": "electron-main.js",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "desktop": "concurrently -k \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
+    "desktop": "concurrently -k \"npm run dev\" \"wait-on http://127.0.0.1:5173 && electron .\"",
     "livekit:dev": "tools\\livekit\\livekit-server.exe --dev",
     "build": "tsc -b && vite build",
     "dist": "npm run build && electron-builder --win",
@@ -61,6 +61,7 @@
     ],
     "win": {
       "target": "nsis",
+      "icon": "assets/echo-icon.png",
       "signtoolOptions": {
         "sign": "./noop-sign.cjs"
       }

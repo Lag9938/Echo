@@ -174,6 +174,9 @@ if (!gotTheLock) {
       if (mainWindow.isMinimized()) mainWindow.restore()
       mainWindow.show()
       mainWindow.focus()
+      if (isDevelopment) {
+        mainWindow.loadURL('http://127.0.0.1:5173').catch(() => {})
+      }
     }
   })
 }
@@ -188,8 +191,11 @@ let audioTcpClient = null
 function createTray() {
   if (tray) return
   try {
-    const iconPath = path.join(__dirname, 'assets', 'store', 'SampleAppx.44x44.png')
-    let trayIcon = nativeImage.createFromPath(iconPath)
+    const trayIconPath = path.join(__dirname, 'assets', 'echo-tray.png')
+    let trayIcon = nativeImage.createFromPath(trayIconPath)
+    if (trayIcon.isEmpty()) {
+      trayIcon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'echo-icon.png'))
+    }
     if (!trayIcon.isEmpty()) {
       trayIcon = trayIcon.resize({ width: 16, height: 16 })
     }
@@ -230,12 +236,8 @@ function createTray() {
 
     tray.on('click', () => {
       if (mainWindow) {
-        if (mainWindow.isVisible() && !mainWindow.isMinimized()) {
-          if (mainWindow.isFocused()) {
-            mainWindow.hide()
-          } else {
-            mainWindow.focus()
-          }
+        if (mainWindow.isVisible()) {
+          mainWindow.hide()
         } else {
           if (mainWindow.isMinimized()) mainWindow.restore()
           mainWindow.show()
@@ -265,7 +267,9 @@ function createWindow() {
   createTray()
 
   const shouldStartHidden = process.argv.includes('--hidden') || process.argv.includes('--minimized')
+  const appIconPath = path.join(__dirname, 'assets', 'echo-icon.png')
   mainWindow = new BrowserWindow({ 
+    icon: appIconPath,
     width: 1280, 
     height: 760, 
     minWidth: 900, 
@@ -280,8 +284,15 @@ function createWindow() {
       backgroundThrottling: false
     } 
   })
+  mainWindow.removeMenu()
+  mainWindow.setMenu(null)
 
   mainWindow.on('close', (event) => {
+    if (isDevelopment) {
+      isQuitting = true
+      app.quit()
+      return
+    }
     if (!isQuitting) {
       event.preventDefault()
       mainWindow.hide()
@@ -297,6 +308,19 @@ function createWindow() {
       return false
     }
   })
+
+  if (isDevelopment) {
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
+        mainWindow.webContents.toggleDevTools()
+        event.preventDefault()
+      }
+      if (input.key === 'F5' || (input.control && input.key.toLowerCase() === 'r')) {
+        mainWindow.reload()
+        event.preventDefault()
+      }
+    })
+  }
 
   mainWindow.once('ready-to-show', () => {
     if (shouldStartHidden) {
@@ -559,8 +583,10 @@ function createWindow() {
   // LiveKit SFU Connection & Token Generation Handler (com tolerância a relógio descalibrado)
   ipcMain.handle('get-livekit-connection', async (_event, params = {}) => {
     try {
-      const { room, identity, name, cloudUrl, cloudApiKey, cloudApiSecret, avatarUrl } = params
-      const livekitUrl = cloudUrl || process.env.LIVEKIT_URL || 'wss://136-248-75-151.sslip.io'
+      let livekitUrl = cloudUrl || process.env.LIVEKIT_URL || 'wss://137-131-144-255.sslip.io'
+      if (livekitUrl.includes('136-248-75-151')) {
+        livekitUrl = 'wss://137-131-144-255.sslip.io'
+      }
       const apiKey = cloudApiKey || process.env.LIVEKIT_API_KEY || 'APIi5XDp34K5gP3'
       const apiSecret = cloudApiSecret || process.env.LIVEKIT_API_SECRET || 'LTl6XQ3ozsSupX8Ydva6erDmcmIVnbi7BFS6H7GPQDQ'
 
@@ -688,7 +714,16 @@ function createWindow() {
   setTimeout(scanRunningGames, 1500)
 
   if (isDevelopment) {
-    mainWindow.loadURL('http://localhost:5173')
+    const devUrl = 'http://127.0.0.1:5173'
+    let retries = 0
+    const loadDev = () => {
+      mainWindow.loadURL(devUrl).catch(() => {
+        if (retries++ < 15 && mainWindow && !mainWindow.isDestroyed()) {
+          setTimeout(loadDev, 800)
+        }
+      })
+    }
+    loadDev()
   } else {
     mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html')).catch(() => {
       mainWindow.loadFile('dist/index.html')
@@ -699,6 +734,7 @@ function createWindow() {
   }
 }
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null)
   ensureLocalLivekitServer()
   createWindow()
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })

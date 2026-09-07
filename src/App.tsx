@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import type { FormEvent } from 'react'
 import type { User, RealtimeChannel } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
@@ -6,12 +6,27 @@ import { useVoiceChannel } from './lib/useVoiceChannel'
 import type { VoiceParticipant } from './lib/useVoiceChannel'
 import './App.css'
 import { THEMES } from './lib/themes'
-import { SOUNDBOARD_SOUNDS, playFriendRequestSound, playFriendAcceptSound, playDmNotificationSound, playSoundboardEffect } from './lib/soundEffects'
+import { 
+  SOUNDBOARD_SOUNDS, 
+  playFriendRequestSound, 
+  playFriendAcceptSound, 
+  playDmNotificationSound, 
+  playSoundboardEffect,
+  playJoinSound,
+  playLeaveSound,
+  playScreenStartSound,
+  playScreenStopSound,
+  playMuteSound,
+  playUnmuteSound,
+  playDeafenSound,
+  playUndeafenSound
+} from './lib/soundEffects'
 import { WhatsNewModal } from './components/WhatsNewModal'
 import { APP_CURRENT_VERSION } from './lib/changelogData'
 import { EchoShop } from './components/EchoShop'
 import { AvatarDecoration } from './components/AvatarDecoration'
 import { ProfileEffect } from './components/ProfileEffect'
+import { CosmeticsInventory } from './components/CosmeticsInventory'
 
 type Page = 'Amigos' | 'Mensagens' | 'Servidores' | 'Descobrir' | 'Configurações' | 'Loja'
 
@@ -282,9 +297,9 @@ function BellIcon({ className, style }: { className?: string; style?: React.CSSP
   )
 }
 
-function ScreenIcon({ className }: { className?: string }) {
+function ScreenIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} style={style} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
       <line x1="8" y1="21" x2="16" y2="21"/>
       <line x1="12" y1="17" x2="12" y2="21"/>
@@ -296,6 +311,23 @@ function PhoneOffIcon({ className, style }: { className?: string; style?: React.
   return (
     <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(135deg)', ...style }}>
       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 2.59 3.4z" fill="currentColor"/>
+    </svg>
+  )
+}
+
+function PlayIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <polygon points="5 3 19 12 5 21 5 3" />
+    </svg>
+  )
+}
+
+function BrainIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-5.04z"/>
+      <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-5.04z"/>
     </svg>
   )
 }
@@ -813,6 +845,37 @@ function EchoAtomLogo({ className, style, size = 22 }: { className?: string; sty
   )
 }
 
+import {
+  ColoredRocketIcon,
+  ColoredWindowsIcon,
+  ColoredMonitorIcon,
+  ColoredGamepadIcon,
+  ColoredRefreshIcon,
+  ColoredPauseIcon,
+  ColoredShopBagIcon,
+  ColoredBackpackIcon,
+  ColoredMaskIcon,
+  ColoredSparklesIcon,
+  ColoredLightningIcon,
+  ColoredGemIcon
+} from './components/ColoredIcons'
+
+export {
+  ColoredRocketIcon,
+  ColoredWindowsIcon,
+  ColoredMonitorIcon,
+  ColoredGamepadIcon,
+  ColoredRefreshIcon,
+  ColoredPauseIcon,
+  ColoredShopBagIcon,
+  ColoredBackpackIcon,
+  ColoredMaskIcon,
+  ColoredSparklesIcon,
+  ColoredLightningIcon,
+  ColoredGemIcon
+}
+
+
 function PipIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <svg className={className} style={style} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -995,14 +1058,21 @@ function UnifiedUserProfileFooter({
             </div>
             <div className="profile-footer-meta">
               <span className="profile-footer-name" title={displayName}>{displayName}</span>
-              <span className="profile-footer-status">
-                <span className={`status-dot-bullet ${presenceStatus}`} style={{ width: '7px', height: '7px' }} />
-                <span>
-                  {presenceStatus === 'online' ? 'Online' :
-                   presenceStatus === 'idle' ? 'Ausente' :
-                   presenceStatus === 'dnd' ? 'Não Perturbe' : 'Invisível'}
+              {myGamePresence && presenceStatus !== 'invisible' ? (
+                <span className="profile-footer-status game" title={`Jogando ${myGamePresence.name}`}>
+                  <span className="game-status-icon">{myGamePresence.icon || '🎮'}</span>
+                  <span className="game-status-text">Jogando {myGamePresence.name}</span>
                 </span>
-              </span>
+              ) : (
+                <span className="profile-footer-status">
+                  <span>
+                    {presenceStatus === 'idle' ? 'Ausente' :
+                     presenceStatus === 'dnd' ? 'Não Perturbe' :
+                     presenceStatus === 'invisible' ? 'Invisível' :
+                     'Disponível'}
+                  </span>
+                </span>
+              )}
             </div>
 
             {showStatusMenu && (
@@ -1058,15 +1128,6 @@ function UnifiedUserProfileFooter({
             </button>
           </div>
         </div>
-
-        {myGamePresence && presenceStatus !== 'invisible' && (
-          <div className="profile-footer-activity-row" title={`Jogando ${myGamePresence.name}`}>
-            <span className="game-presence-badge">
-              <GamepadIcon className="game-presence-icon" style={{ width: '12px', height: '12px' }} />
-              <span className="game-presence-text">Jogando {myGamePresence.name}</span>
-            </span>
-          </div>
-        )}
       </div>
     </div>
   )
@@ -1850,8 +1911,12 @@ function Echo({ user }: { user: User }) {
   const [showVoiceMembers, setShowVoiceMembers] = useState(false)
   const [customStatus, setCustomStatus] = useState(() => localStorage.getItem('echo-custom-status') || '')
   const [presenceData, setPresenceData] = useState<Record<string, any>>({})
-  const [avatarDecoration, setAvatarDecoration] = useState<string>(() => localStorage.getItem('echo-avatar-decoration') || '')
-  const [profileEffect, setProfileEffect] = useState<string>(() => localStorage.getItem('echo-profile-effect') || '')
+  const [avatarDecoration, setAvatarDecoration] = useState<string>(() => {
+    return localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || ''
+  })
+  const [profileEffect, setProfileEffect] = useState<string>(() => {
+    return localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || ''
+  })
   const [unreadChannels, setUnreadChannels] = useState<Set<string>>(new Set())
   const selectedChannelRef = useRef(selectedChannel)
   const mutedSpacesRef = useRef(mutedSpaces)
@@ -1863,7 +1928,6 @@ function Echo({ user }: { user: User }) {
   const [echoCancellationEnabled, setEchoCancellationEnabled] = useState(() => localStorage.getItem('echo-echo-cancellation') !== 'false')
   const [noiseGateEnabled, setNoiseGateEnabled] = useState(() => localStorage.getItem('echo-noise-gate-enabled') !== 'false')
   const [noiseGateThreshold, setNoiseGateThreshold] = useState(() => parseFloat(localStorage.getItem('echo-noise-gate-threshold') || '-45'))
-  const [showScreenshareModal, setShowScreenshareModal] = useState(false)
   const [sfxVolume, setSfxVolume] = useState(() => {
     const val = localStorage.getItem('echo-sfx-volume')
     return val !== null ? parseFloat(val) : 0.5
@@ -1877,6 +1941,7 @@ function Echo({ user }: { user: User }) {
   const handleEquipDecoration = async (decorationId: string) => {
     const val = decorationId === 'none' ? '' : decorationId
     setAvatarDecoration(val)
+    localStorage.setItem(`echo-avatar-decoration-${user.id}`, val)
     localStorage.setItem('echo-avatar-decoration', val)
 
     try {
@@ -1891,6 +1956,7 @@ function Echo({ user }: { user: User }) {
       try {
         const savedStatus = presenceStatus === 'invisible' ? '' : (localStorage.getItem('echo-custom-status') || '')
         const gameData = presenceStatus === 'invisible' ? null : myGamePresence
+        const curEffect = localStorage.getItem(`echo-profile-effect-${user.id}`) || profileEffect || ''
         await presenceChannelRef.current.track({
           user_id: user.id,
           display_name: profileDisplayName,
@@ -1899,7 +1965,7 @@ function Echo({ user }: { user: User }) {
           presence_status: presenceStatus,
           current_game: gameData,
           avatar_decoration: val,
-          profile_effect: profileEffect
+          profile_effect: curEffect
         })
       } catch (e) {}
     }
@@ -1908,6 +1974,7 @@ function Echo({ user }: { user: User }) {
   const handleEquipProfileEffect = async (effectId: string) => {
     const val = effectId === 'none' ? '' : effectId
     setProfileEffect(val)
+    localStorage.setItem(`echo-profile-effect-${user.id}`, val)
     localStorage.setItem('echo-profile-effect', val)
 
     try {
@@ -1922,6 +1989,7 @@ function Echo({ user }: { user: User }) {
       try {
         const savedStatus = presenceStatus === 'invisible' ? '' : (localStorage.getItem('echo-custom-status') || '')
         const gameData = presenceStatus === 'invisible' ? null : myGamePresence
+        const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || avatarDecoration || ''
         await presenceChannelRef.current.track({
           user_id: user.id,
           display_name: profileDisplayName,
@@ -1929,11 +1997,26 @@ function Echo({ user }: { user: User }) {
           custom_status: savedStatus,
           presence_status: presenceStatus,
           current_game: gameData,
-          avatar_decoration: avatarDecoration,
+          avatar_decoration: curDeco,
           profile_effect: val
         })
       } catch (e) {}
     }
+  }
+
+  const [avatarFrame, setAvatarFrame] = useState(() => localStorage.getItem(`echo-avatar-frame-${user.id}`) || 'aura-cyan')
+  const [cardFinish, setCardFinish] = useState<'none' | 'holographic' | 'glass' | 'carbon'>(() => (localStorage.getItem(`echo-card-finish-${user.id}`) as any) || 'none')
+  const [shopInitialTab, setShopInitialTab] = useState<'decorations' | 'profile_effects' | 'auras' | 'finishes'>('decorations')
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'profile' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog'>('profile')
+
+  const handleEquipAvatarFrame = (frameId: string) => {
+    setAvatarFrame(frameId)
+    localStorage.setItem(`echo-avatar-frame-${user.id}`, frameId)
+  }
+
+  const handleEquipCardFinish = (finishId: string) => {
+    setCardFinish(finishId as any)
+    localStorage.setItem(`echo-card-finish-${user.id}`, finishId)
   }
 
   async function updatePresenceStatus(status: 'online' | 'idle' | 'dnd' | 'invisible') {
@@ -1942,6 +2025,8 @@ function Echo({ user }: { user: User }) {
     if (presenceChannelRef.current) {
       const savedStatus = status === 'invisible' ? '' : (localStorage.getItem('echo-custom-status') || '')
       const gameData = status === 'invisible' ? null : myGamePresence
+      const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || avatarDecoration || ''
+      const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || profileEffect || ''
       await presenceChannelRef.current.track({
         user_id: user.id,
         display_name: profileDisplayName,
@@ -1949,8 +2034,8 @@ function Echo({ user }: { user: User }) {
         custom_status: savedStatus,
         presence_status: status,
         current_game: gameData,
-        avatar_decoration: avatarDecoration,
-        profile_effect: profileEffect
+        avatar_decoration: curDeco,
+        profile_effect: curEff
       })
     }
   }
@@ -2111,6 +2196,22 @@ function Echo({ user }: { user: User }) {
     })
   }, [])
 
+  // Voice disconnect handler (chamado apenas quando a conexão for realmente perdida pelo SFU/rede)
+  const handleVoiceDisconnected = useCallback(() => {
+    setActiveVoiceChannelId(prevChId => {
+      if (prevChId && user?.id) {
+        setSpaceVoiceUsers(prev => {
+          if (!prev[prevChId]) return prev
+          return {
+            ...prev,
+            [prevChId]: prev[prevChId].filter(u => u.userId !== user.id)
+          }
+        })
+      }
+      return null
+    })
+  }, [user?.id])
+
   // Voice hook and state
   const { 
     participants, 
@@ -2143,8 +2244,10 @@ function Echo({ user }: { user: User }) {
     startCallRecording,
     stopCallRecording,
     isAiDenoiseEnabled,
-    toggleAiDenoise
-  } = useVoiceChannel()
+    toggleAiDenoise,
+    updateScreenSubscriptions,
+    updateLocalProfile
+  } = useVoiceChannel({ onDisconnected: handleVoiceDisconnected })
 
   // Soundboard & WhatsNew Modals
   const [showSoundboardModal, setShowSoundboardModal] = useState(false)
@@ -2154,6 +2257,25 @@ function Echo({ user }: { user: User }) {
   })
   const socialChannelRef = useRef<any>(null)
   const selectedDMUserIdRef = useRef<string | null>(null)
+
+  // 1v1 Direct Voice Calling State
+  const [activeDirectCall, setActiveDirectCall] = useState<{
+    targetUserId: string
+    targetName: string
+    targetAvatar?: string
+    roomId: string
+    status: 'calling' | 'connected'
+    startTime?: number
+  } | null>(null)
+
+  const [incomingCall, setIncomingCall] = useState<{
+    callerId: string
+    callerName: string
+    callerAvatar?: string
+    roomId: string
+  } | null>(null)
+
+  const stopRingtoneRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     selectedDMUserIdRef.current = selectedDMUserId
@@ -2261,10 +2383,12 @@ function Echo({ user }: { user: User }) {
           if (data.avatar_url) setProfileAvatarUrl(data.avatar_url)
           if (data.avatar_decoration) {
             setAvatarDecoration(data.avatar_decoration)
+            localStorage.setItem(`echo-avatar-decoration-${user.id}`, data.avatar_decoration)
             localStorage.setItem('echo-avatar-decoration', data.avatar_decoration)
           }
           if (data.profile_effect) {
             setProfileEffect(data.profile_effect)
+            localStorage.setItem(`echo-profile-effect-${user.id}`, data.profile_effect)
             localStorage.setItem('echo-profile-effect', data.profile_effect)
           }
           return
@@ -2399,8 +2523,45 @@ function Echo({ user }: { user: User }) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [showSpaceSettingsModal])
 
-  // Screen settings state (Discord Go Live 2.0 defaults)
-  const [screenQuality, setScreenQuality] = useState<'720p' | '1080p' | '1440p' | 'native'>('1080p')
+  // ── Otimização Discord: Assinatura Dinâmica de Vídeo (Economia de Banda Oracle Cloud) ──
+  useEffect(() => {
+    const isVoiceChannelSelected = selectedChannel?.id === activeVoiceChannelId
+    const isPageActive = page === 'Servidores'
+    const isDocVisible = typeof document !== 'undefined' ? document.visibilityState === 'visible' : true
+
+    const shouldWatch = isWatchingStreams && isVoiceChannelSelected && isPageActive && isDocVisible
+
+    updateScreenSubscriptions({
+      activeSharerId: selectedScreenSharerUserId,
+      viewMode: screenShareViewMode,
+      isWatching: shouldWatch
+    })
+
+    const handleVisibilityChange = () => {
+      const nowVisible = document.visibilityState === 'visible'
+      updateScreenSubscriptions({
+        activeSharerId: selectedScreenSharerUserId,
+        viewMode: screenShareViewMode,
+        isWatching: isWatchingStreams && isVoiceChannelSelected && isPageActive && nowVisible
+      })
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [
+    isWatchingStreams,
+    selectedScreenSharerUserId,
+    screenShareViewMode,
+    selectedChannel?.id,
+    activeVoiceChannelId,
+    page,
+    updateScreenSubscriptions
+  ])
+
+  // Screen settings state (Discord Go Live 2.0 defaults - 2K removido para economia de banda)
+  const [screenQuality, setScreenQuality] = useState<'720p' | '1080p' | 'native'>('1080p')
   const [screenFps, setScreenFps] = useState<15 | 30 | 60>(60)
   const [showScreenMenu, setShowScreenMenu] = useState(false)
   const [selectedPickerSourceId, setSelectedPickerSourceId] = useState<string | null>(null)
@@ -2564,6 +2725,7 @@ function Echo({ user }: { user: User }) {
     setActiveVoiceChannelId(channelId)
     const spaceId = explicitSpaceId || selectedChannel?.space_id || Object.keys(spaceChannels).find(sId => (spaceChannels[sId] || []).some(c => c.id === channelId))
     try {
+      playJoinSound(sfxVolume)
       await joinVoice(channelId, user.id, profileDisplayName, profileAvatarUrl, selectedInputId, selectedOutputId, noiseSuppressionEnabled, echoCancellationEnabled, spaceId)
     } catch (err) {
       console.error('handleJoinVoice error:', err)
@@ -2572,16 +2734,172 @@ function Echo({ user }: { user: User }) {
   }
 
   function handleLeaveVoice() {
+    playLeaveSound(sfxVolume)
+    const prevChId = activeVoiceChannelId
     leaveVoice()
     setActiveVoiceChannelId(null)
+    if (prevChId && user?.id) {
+      setSpaceVoiceUsers(prev => {
+        if (!prev[prevChId]) return prev
+        return {
+          ...prev,
+          [prevChId]: prev[prevChId].filter(u => u.userId !== user.id)
+        }
+      })
+    }
   }
 
   function handleToggleMute() {
+    if (isMuted) {
+      playUnmuteSound(sfxVolume)
+    } else {
+      playMuteSound(sfxVolume)
+    }
     toggleMute()
   }
 
   function handleToggleDeafen() {
+    if (isDeafened) {
+      playUndeafenSound(sfxVolume)
+    } else {
+      playDeafenSound(sfxVolume)
+    }
     toggleDeafen()
+  }
+
+  // 1v1 Direct Voice Calling Handlers
+  function startRingtone(isIncoming: boolean) {
+    if (stopRingtoneRef.current) {
+      stopRingtoneRef.current()
+      stopRingtoneRef.current = null
+    }
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
+      let isPlaying = true
+      function beep() {
+        if (!isPlaying || audioCtx.state === 'closed') return
+        const osc = audioCtx.createOscillator()
+        const gain = audioCtx.createGain()
+        osc.type = 'sine'
+        const baseFreq = isIncoming ? 520 : 440
+        osc.frequency.setValueAtTime(baseFreq, audioCtx.currentTime)
+        if (isIncoming) {
+          osc.frequency.exponentialRampToValueAtTime(660, audioCtx.currentTime + 0.25)
+        }
+        gain.gain.setValueAtTime(0.001, audioCtx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.09, audioCtx.currentTime + 0.04)
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (isIncoming ? 0.5 : 0.35))
+        osc.connect(gain)
+        gain.connect(audioCtx.destination)
+        osc.start()
+        osc.stop(audioCtx.currentTime + (isIncoming ? 0.5 : 0.35))
+      }
+      beep()
+      const timer = setInterval(beep, isIncoming ? 1600 : 2400)
+      stopRingtoneRef.current = () => {
+        isPlaying = false
+        clearInterval(timer)
+        try { audioCtx.close() } catch(e) {}
+      }
+    } catch(e) {
+      stopRingtoneRef.current = null
+    }
+  }
+
+  function stopRingtone() {
+    if (stopRingtoneRef.current) {
+      stopRingtoneRef.current()
+      stopRingtoneRef.current = null
+    }
+  }
+
+  async function startDirectCall(targetUserId: string, targetName: string, targetAvatar?: string) {
+    if (!user) return
+    const roomId = `dm-call-${[user.id, targetUserId].sort().join('-')}`
+    setActiveDirectCall({
+      targetUserId,
+      targetName,
+      targetAvatar,
+      roomId,
+      status: 'calling',
+      startTime: Date.now()
+    })
+    startRingtone(false)
+    await handleJoinVoice(roomId, 'direct-call')
+    socialChannelRef.current?.send({
+      type: 'broadcast',
+      event: 'call-event',
+      payload: {
+        type: 'call-invite',
+        callerId: user.id,
+        callerName: profileDisplayName || displayName || 'Amigo',
+        callerAvatar: profileAvatarUrl,
+        targetUserId,
+        roomId
+      }
+    })
+    showToast('Chamando...', `Ligando para @${targetName}...`, 'friend')
+  }
+
+  async function acceptIncomingCall() {
+    if (!incomingCall || !user) return
+    stopRingtone()
+    const { callerId, callerName, callerAvatar, roomId } = incomingCall
+    setIncomingCall(null)
+    await handleJoinVoice(roomId, 'direct-call')
+    setActiveDirectCall({
+      targetUserId: callerId,
+      targetName: callerName,
+      targetAvatar: callerAvatar,
+      roomId,
+      status: 'connected',
+      startTime: Date.now()
+    })
+    socialChannelRef.current?.send({
+      type: 'broadcast',
+      event: 'call-event',
+      payload: {
+        type: 'call-accepted',
+        callerId,
+        targetUserId: user.id
+      }
+    })
+    showToast('Chamada conectada', `Em chamada com @${callerName}`, 'friend')
+  }
+
+  function rejectIncomingCall() {
+    if (!incomingCall || !user) return
+    stopRingtone()
+    const { callerId } = incomingCall
+    setIncomingCall(null)
+    socialChannelRef.current?.send({
+      type: 'broadcast',
+      event: 'call-event',
+      payload: {
+        type: 'call-rejected',
+        callerId,
+        targetUserId: user.id
+      }
+    })
+  }
+
+  function endDirectCall() {
+    stopRingtone()
+    if (activeDirectCall && user) {
+      socialChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'call-event',
+        payload: {
+          type: 'call-ended',
+          targetUserId: activeDirectCall.targetUserId,
+          senderId: user.id
+        }
+      })
+    }
+    playLeaveSound(sfxVolume)
+    leaveVoice()
+    setActiveDirectCall(null)
+    setActiveVoiceChannelId(null)
   }
 
   async function loadEditingSpaceMembers(spaceId: string) {
@@ -3377,39 +3695,13 @@ function Echo({ user }: { user: User }) {
     })
   }
 
-  function getQualityDimensions(quality: '720p' | '1080p' | '1440p' | 'native') {
+  function getQualityDimensions(quality: '720p' | '1080p' | 'native') {
     if (quality === '720p') return { w: 1280, h: 720 }
     if (quality === '1080p') return { w: 1920, h: 1080 }
-    if (quality === '1440p') return { w: 2560, h: 1440 }
     return { w: undefined, h: undefined }
   }
 
-  async function handleQualityChange(newQuality: '720p' | '1080p' | '1440p' | 'native') {
-    setScreenQuality(newQuality)
-    const { w, h } = getQualityDimensions(newQuality)
-    if (localScreenStream) {
-      await changeScreenShareSettings(w, h, screenFps)
-    }
-  }
-
-  async function handleFpsChange(newFps: 15 | 30 | 60) {
-    setScreenFps(newFps)
-    if (localScreenStream) {
-      const { w, h } = getQualityDimensions(screenQuality)
-      await changeScreenShareSettings(w, h, newFps)
-    }
-  }
-
-  async function startScreenShareWithConfig(quality: '720p' | '1080p' | '1440p' | 'native', fps: 15 | 30 | 60) {
-    setScreenQuality(quality)
-    setScreenFps(fps)
-    setShowScreenshareModal(false)
-    setTimeout(async () => {
-      await openScreenPickerHelper(quality, fps)
-    }, 150)
-  }
-
-  async function openScreenPickerHelper(quality: '720p' | '1080p' | '1440p' | 'native', fps: 15 | 30 | 60) {
+  async function openScreenPickerHelper(quality: '720p' | '1080p' | 'native', fps: 15 | 30 | 60) {
     if ((window as any).electronAPI) {
       try {
         const rawSources = await (window as any).electronAPI.getSources()
@@ -3437,7 +3729,34 @@ function Echo({ user }: { user: User }) {
     } else {
       const { w, h } = getQualityDimensions(quality)
       await startScreenShare(undefined, w, h, fps)
+      playScreenStartSound(sfxVolume)
     }
+  }
+
+    async function handleQualityChange(newQuality: '720p' | '1080p' | 'native') {
+    setScreenQuality(newQuality)
+    const { w, h } = getQualityDimensions(newQuality)
+    if (localScreenStream) {
+      await changeScreenShareSettings(w, h, screenFps)
+    }
+  }
+
+  async function handleFpsChange(newFps: 15 | 30 | 60) {
+    setScreenFps(newFps)
+    if (localScreenStream) {
+      const { w, h } = getQualityDimensions(screenQuality)
+      await changeScreenShareSettings(w, h, newFps)
+    }
+  }
+
+  async function forceOpenScreenPicker() {
+    setShowScreenMenu(false)
+    await openScreenPickerHelper(screenQuality, screenFps)
+  }
+
+  async function handleStopScreenShare() {
+    playScreenStopSound(sfxVolume)
+    await stopScreenShare()
   }
 
   async function openScreenPicker() {
@@ -3448,11 +3767,6 @@ function Echo({ user }: { user: User }) {
     await openScreenPickerHelper(screenQuality, screenFps)
   }
 
-  async function forceOpenScreenPicker() {
-    setShowScreenMenu(false)
-    await openScreenPickerHelper(screenQuality, screenFps)
-  }
-
   async function selectScreenSource(sourceId: string) {
     setShowScreenPicker(false)
     setIsWatchingStreams(true)
@@ -3460,6 +3774,7 @@ function Echo({ user }: { user: User }) {
     setScreenShareViewMode('focus')
     const { w, h } = getQualityDimensions(screenQuality)
     await startScreenShare(sourceId, w, h, screenFps)
+    playScreenStartSound(sfxVolume)
   }
 
   async function ensureProfile() {
@@ -3468,6 +3783,14 @@ function Echo({ user }: { user: User }) {
   }
 
   async function loadSpaces() {
+    const isMock = typeof window !== 'undefined' && window.location.search.includes('mock=true')
+    if (isMock) {
+      const mockSp: Space = { id: 'space-mock-1', name: 'Echo Lounge', description: '', creator_id: user.id, created_at: new Date().toISOString() }
+      setSpaces([mockSp])
+      setExpandedSpace(mockSp.id)
+      loadChannelsForSpace(mockSp.id)
+      return
+    }
     if (!supabase) return
     await ensureProfile()
     const { data, error: queryError } = await supabase.from('space_members').select('spaces(*)').eq('user_id', user.id)
@@ -3526,6 +3849,18 @@ function Echo({ user }: { user: User }) {
   }
 
   async function loadChannelsForSpace(spaceId: string) {
+    const isMock = typeof window !== 'undefined' && window.location.search.includes('mock=true')
+    if (isMock) {
+      const mockChs: Channel[] = [
+        { id: 'mock-ch-general', name: 'geral', type: 'text', space_id: spaceId, position: 0, topic: 'Bate-papo da comunidade' },
+        { id: 'mock-ch-voice', name: 'Voz & Resenha', type: 'voice', space_id: spaceId, position: 1, topic: 'Canal de voz aberto' }
+      ]
+      setSpaceChannels(prev => ({ ...prev, [spaceId]: mockChs }))
+      if (!selectedChannel) {
+        setSelectedChannel(mockChs[1])
+      }
+      return
+    }
     if (!supabase) return
     const { data, error: queryError } = await supabase.from('channels').select('*').eq('space_id', spaceId).order('position')
     if (queryError) { setError(queryError.message); return }
@@ -3560,6 +3895,14 @@ function Echo({ user }: { user: User }) {
   }
 
   async function loadMessages(channelId: string) {
+    const isMock = typeof window !== 'undefined' && window.location.search.includes('mock=true')
+    if (isMock) {
+      setMessages([
+        { id: 'msg-1', body: 'Olá! Este canal de voz agora possui o chat de texto completo integrado.', created_at: new Date().toISOString(), author_id: 'friend-valkyrie', profile: { display_name: 'Valkyrie_Echo' }, status: 'sent' },
+        { id: 'msg-2', body: 'Perfeito! O chat de texto é exibido diretamente, sem tela vazia.', created_at: new Date().toISOString(), author_id: user.id, profile: { display_name: 'Lag9938' }, status: 'sent' }
+      ])
+      return
+    }
     if (!supabase) return
 
     // 1. Render instantâneo do cache local (0ms e 0 requisições desnecessárias)
@@ -3868,14 +4211,16 @@ function Echo({ user }: { user: User }) {
     const trackSpacePresence = async () => {
       const spObj = spaces.find(s => s.id === currentSpaceId)
       const isOwner = spObj?.creator_id === user.id
+      const savedDecoration = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
+      const savedEffect = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
       await spacePresenceChannel.track({
         user_id: user.id,
         display_name: profileDisplayName || displayName,
         avatar_url: profileAvatarUrl,
         role: isOwner ? 'owner' : 'member',
         space_id: currentSpaceId,
-        avatar_decoration: avatarDecoration,
-        profile_effect: profileEffect
+        avatar_decoration: savedDecoration,
+        profile_effect: savedEffect
       }).catch(() => {})
     }
 
@@ -4251,11 +4596,11 @@ function Echo({ user }: { user: User }) {
     const trackMyPresence = async () => {
       const savedStatus = localStorage.getItem('echo-custom-status') || ''
       const savedPresStatus = localStorage.getItem('echo-presence-status') || 'online'
-      const savedDecoration = localStorage.getItem('echo-avatar-decoration') || ''
-      const savedEffect = localStorage.getItem('echo-profile-effect') || ''
+      const savedDecoration = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
+      const savedEffect = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
       await presenceChannel.track({
         user_id: user.id,
-        display_name: displayName,
+        display_name: profileDisplayName || displayName,
         online_at: new Date().toISOString(),
         custom_status: savedStatus,
         presence_status: savedPresStatus,
@@ -4504,6 +4849,36 @@ function Echo({ user }: { user: User }) {
               triggerDesktopNotification(`Mensagem de ${data.senderName}`, data.body)
             }
           }
+        }
+      })
+      .on('broadcast', { event: 'call-event' }, (payload: any) => {
+        const data = payload?.payload
+        if (!data || !user) return
+        if (data.type === 'call-invite' && data.targetUserId === user.id) {
+          setIncomingCall({
+            callerId: data.callerId,
+            callerName: data.callerName,
+            callerAvatar: data.callerAvatar,
+            roomId: data.roomId
+          })
+          startRingtone(true)
+          triggerDesktopNotification('Chamada de Voz Recebida', `@${data.callerName} está te ligando no Echo!`)
+        } else if (data.type === 'call-accepted' && data.callerId === user.id) {
+          stopRingtone()
+          setActiveDirectCall(prev => prev ? { ...prev, status: 'connected', startTime: Date.now() } : null)
+          showToast('Chamada atendida!', `A chamada foi conectada!`, 'friend')
+        } else if (data.type === 'call-rejected' && data.callerId === user.id) {
+          stopRingtone()
+          leaveVoice()
+          setActiveDirectCall(null)
+          setActiveVoiceChannelId(null)
+          showToast('Chamada recusada', 'O usuário não pôde atender no momento.', 'info')
+        } else if (data.type === 'call-ended' && data.targetUserId === user.id) {
+          stopRingtone()
+          leaveVoice()
+          setActiveDirectCall(null)
+          setActiveVoiceChannelId(null)
+          showToast('Chamada encerrada', 'A chamada foi finalizada.', 'friend')
         }
       })
       .subscribe()
@@ -4770,7 +5145,7 @@ function Echo({ user }: { user: User }) {
         <div className="link-embed-card" style={{ padding: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ fontSize: '24px' }}>🟣</span>
           <div>
-            <div style={{ fontWeight: 800, fontSize: '13.5px', color: '#a970ff' }}>Twitch Stream: {channel}</div>
+            <div style={{ fontWeight: 600, fontSize: '13.5px', color: '#a970ff' }}>Twitch Stream: {channel}</div>
             <a href={`https://twitch.tv/${channel}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
               Assistir ao vivo na Twitch ↗
             </a>
@@ -4976,7 +5351,13 @@ function Echo({ user }: { user: User }) {
                   className={`topbar-nav-btn ${page === item ? 'nav-active' : ''}`} 
                   onClick={() => setPage(item)}
                 >
-                  <span>{item === 'Loja' ? '🛍️ Loja' : item}</span>
+                  <span>
+                    {item === 'Loja' ? (
+                      <>
+                        <ColoredShopBagIcon size={14} style={{ verticalAlign: 'middle', marginRight: 5 }} /> Loja
+                      </>
+                    ) : item}
+                  </span>
                   {totalUnread > 0 && <span className="nav-badge">{totalUnread}</span>}
                 </button>
               )
@@ -5257,7 +5638,7 @@ function Echo({ user }: { user: User }) {
               })
               channelVoiceUsers = Array.from(map.values())
             } else {
-              channelVoiceUsers = spaceVoiceUsers[ch.id] || []
+              channelVoiceUsers = (spaceVoiceUsers[ch.id] || []).filter(u => !user?.id || u.userId !== user.id)
             }
 
             return (
@@ -5274,6 +5655,11 @@ function Echo({ user }: { user: User }) {
                 >
                   <span className="ch-icon"><VolumeIcon /></span>
                   <span className="channel-item-name">{ch.name}</span>
+                  {channelVoiceUsers.some(p => p.screenStream && p.screenStream.getVideoTracks().length > 0) && (
+                    <span className="channel-live-badge" title="Transmissão ao vivo em andamento">
+                      ● AO VIVO
+                    </span>
+                  )}
                   {ch.user_limit && ch.user_limit > 0 ? (
                     <span className="voice-channel-limit-badge">
                       {channelVoiceUsers.length}/{ch.user_limit}
@@ -5307,6 +5693,11 @@ function Echo({ user }: { user: User }) {
                         </div>
                         <span className="sidebar-voice-name">{p.displayName}</span>
                         <div className="sidebar-voice-user-icons">
+                          {p.screenStream && p.screenStream.getVideoTracks().length > 0 && (
+                            <span title="Transmitindo tela" style={{ color: '#ef4444', display: 'inline-flex' }}>
+                              <ScreenIcon style={{ width: '13px', height: '13px' }} />
+                            </span>
+                          )}
                           {p.isDeafened ? (
                             <span title="Ensurdecido" style={{ color: '#e0554c', display: 'inline-flex' }}><HeadphonesOffIcon style={{ width: '13px', height: '13px' }} /></span>
                           ) : p.isMuted ? (
@@ -5336,7 +5727,7 @@ function Echo({ user }: { user: User }) {
                     {activeSpace.name.slice(0, 1).toUpperCase()}
                   </div>
                   <div className="server-header-info" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <h3 className="server-title" title={activeSpace.name} style={{ margin: 0, fontSize: '15px', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <h3 className="server-title" title={activeSpace.name} style={{ margin: 0, fontSize: '15px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {activeSpace.name}
                     </h3>
                     {activeSpace.creator_id === user.id && (
@@ -5353,7 +5744,7 @@ function Echo({ user }: { user: User }) {
                       <div className="server-hub-title-row">
                         <span className="server-hub-title">{activeSpace.name}</span>
                         {activeSpace.creator_id === user.id && (
-                          <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-color)' }}>👑 Dono</span>
+                          <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--accent-color)' }}>👑 Dono</span>
                         )}
                       </div>
                       <div className="server-hub-meta-stats">
@@ -5443,7 +5834,7 @@ function Echo({ user }: { user: User }) {
                   {uncategorizedText.length > 0 && (
                     <div className="channel-group">
                       <div className="channel-category-header-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px 4px 10px' }}>
-                        <span className="channel-group-label" style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.6px' }}>CANAIS DE TEXTO</span>
+                        <span className="channel-group-label" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.6px' }}>CANAIS DE TEXTO</span>
                         {currentSpace && (canUserDo(currentSpace.id, user.id, 'manageChannels') || currentSpace.creator_id === user.id) && (
                           <button 
                             type="button" 
@@ -5462,7 +5853,7 @@ function Echo({ user }: { user: User }) {
                   {uncategorizedVoice.length > 0 && (
                     <div className="channel-group">
                       <div className="channel-category-header-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px 4px 10px' }}>
-                        <span className="channel-group-label" style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.6px' }}>CANAIS DE VOZ</span>
+                        <span className="channel-group-label" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.6px' }}>CANAIS DE VOZ</span>
                         {currentSpace && (canUserDo(currentSpace.id, user.id, 'manageChannels') || currentSpace.creator_id === user.id) && (
                           <button 
                             type="button" 
@@ -5664,6 +6055,12 @@ function Echo({ user }: { user: User }) {
                       </button>
                     </div>
 
+                    {isPttMode && (
+                      <div style={{ textAlign: 'center', padding: '4px 8px', background: isPttActive ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.05)', borderRadius: '6px', margin: '4px 0 6px', border: isPttActive ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.1)', fontSize: '11px', fontWeight: 600, color: isPttActive ? '#10b981' : 'var(--text-secondary)' }}>
+                        {isPttActive ? '🟢 Transmitindo Voz' : `PTT: [${pttKey.replace('Key', '')}]`}
+                      </div>
+                    )}
+
                     <div className="voice-status-actions-grid">
                       <button className={`voice-action-btn ${isMuted ? 'muted' : ''}`} onClick={handleToggleMute} title={isMuted ? "Desmutar microfone" : "Mutar microfone"}>
                         {isMuted ? <MicOffIcon /> : <MicIcon />}
@@ -5708,92 +6105,106 @@ function Echo({ user }: { user: User }) {
             {selectedChannel ? (
               selectedChannel.type === 'text' ? (
                 <>
-                  <header className="content-header">
-                    <div className="header-info">
-                      {currentSpace && <span className="header-space">{currentSpace.name}</span>}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <h1><span className="header-icon"><HashtagIcon /></span> {selectedChannel.name}</h1>
-                        {selectedChannel.topic && (
-                          <>
-                            <span style={{ color: 'var(--border-color)', margin: '0 4px' }}>|</span>
-                            <span className="channel-topic-header-text" title={selectedChannel.topic}>
-                              {selectedChannel.topic}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                <header className="content-header">
+                  <div className="header-info">
+                    {currentSpace && <span className="header-space">{currentSpace.name}</span>}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {selectedChannel.slowmode_seconds && selectedChannel.slowmode_seconds > 0 ? (
-                        <span className="channel-slowmode-badge" title={`Modo lento: ${selectedChannel.slowmode_seconds}s por mensagem`}>
-                          <ClockIcon style={{ width: '12px', height: '12px' }} />
-                          <span>{selectedChannel.slowmode_seconds}s</span>
-                        </span>
-                      ) : null}
-
-                      {/* Search messages in channel */}
-                      <div className="channel-search-box-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                        {showSearchInput ? (
-                          <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', borderRadius: '6px', border: '1px solid var(--border-color)', padding: '2px 8px' }}>
-                            <SearchIcon style={{ width: '13px', height: '13px', color: 'var(--text-muted)' }} />
-                            <input 
-                              type="text" 
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              placeholder="Buscar mensagens ou de:@autor..."
-                              autoFocus
-                              style={{ border: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: '12px', padding: '4px 6px', outline: 'none', width: '160px' }}
-                            />
-                            {searchQuery && (
-                              <button type="button" onClick={() => setSearchQuery('')} style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '11px', padding: '0 2px' }}>✕</button>
-                            )}
-                            <button type="button" onClick={() => { setShowSearchInput(false); setSearchQuery('') }} style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '12px', marginLeft: '4px' }}>✕</button>
-                          </div>
-                        ) : (
-                          <button 
-                            type="button" 
-                            className="profile-footer-btn" 
-                            onClick={() => setShowSearchInput(true)} 
-                            title="Buscar no canal"
-                            style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          >
-                            <SearchIcon />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Pinned Messages Button */}
-                      <button 
-                        type="button" 
-                        className={`profile-footer-btn ${(pinnedMessages[selectedChannel.id]?.length || 0) > 0 ? 'active' : ''}`}
-                        onClick={() => setShowPinnedMessagesPanel(!showPinnedMessagesPanel)}
-                        title="Mensagens Fixadas"
-                        style={{ position: 'relative', border: 'none', background: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        <PinIcon />
-                        {(pinnedMessages[selectedChannel.id]?.length || 0) > 0 && (
-                          <span style={{ position: 'absolute', top: '-2px', right: '-2px', background: 'var(--accent-color)', color: '#fff', fontSize: '9px', fontWeight: 800, padding: '1px 4px', borderRadius: '8px', minWidth: '14px', textAlign: 'center' }}>
-                            {pinnedMessages[selectedChannel.id]?.length}
+                      <h1>
+                        <span className="header-icon">
+                          {selectedChannel.is_announcement ? <MegaphoneIcon style={{ color: 'var(--accent-color)' }} /> : <HashtagIcon />}
+                        </span> 
+                        {selectedChannel.name}
+                      </h1>
+                      {selectedChannel.topic && (
+                        <>
+                          <span style={{ color: 'var(--border-color)', margin: '0 4px' }}>|</span>
+                          <span className="channel-topic-header-text" title={selectedChannel.topic}>
+                            {selectedChannel.topic}
                           </span>
-                        )}
-                      </button>
-
-                      {activeScreenSharers.length > 0 && (
-                        <span className="live-badge" title="Transmissão de tela em andamento">● ao vivo</span>
+                        </>
                       )}
-
-                      <button 
-                        className={`profile-footer-btn ${showMembersList ? 'active' : ''}`} 
-                        onClick={() => setShowMembersList(!showMembersList)}
-                        title={showMembersList ? "Ocultar Lista de Membros" : "Mostrar Lista de Membros"}
-                        style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        <UsersIcon />
-                      </button>
                     </div>
-                  </header>
-                  <div className="chat-workspace-wrapper" style={{ display: 'flex', flex: 1, minHeight: 0, width: '100%', position: 'relative' }}>
-                    <div className="chat-area-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+
+                    {selectedChannel.slowmode_seconds && selectedChannel.slowmode_seconds > 0 ? (
+                      <span className="channel-slowmode-badge" title={`Modo lento: ${selectedChannel.slowmode_seconds}s por mensagem`}>
+                        <ClockIcon style={{ width: '12px', height: '12px' }} />
+                        <span>{selectedChannel.slowmode_seconds}s</span>
+                      </span>
+                    ) : null}
+
+                    {/* Search messages in channel */}
+                    <div className="channel-search-box-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      {showSearchInput ? (
+                        <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', borderRadius: '6px', border: '1px solid var(--border-color)', padding: '2px 8px' }}>
+                          <SearchIcon style={{ width: '13px', height: '13px', color: 'var(--text-muted)' }} />
+                          <input 
+                            type="text" 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Buscar mensagens ou de:@autor..."
+                            autoFocus
+                            style={{ border: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: '12px', padding: '4px 6px', outline: 'none', width: '160px' }}
+                          />
+                          {searchQuery && (
+                            <button type="button" onClick={() => setSearchQuery('')} style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '11px', padding: '0 2px' }}>✕</button>
+                          )}
+                          <button type="button" onClick={() => { setShowSearchInput(false); setSearchQuery('') }} style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '12px', marginLeft: '4px' }}>✕</button>
+                        </div>
+                      ) : (
+                        <button 
+                          type="button" 
+                          className="profile-footer-btn" 
+                          onClick={() => setShowSearchInput(true)} 
+                          title="Buscar no canal"
+                          style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <SearchIcon />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Pinned Messages Button */}
+                    <button 
+                      type="button" 
+                      className={`profile-footer-btn ${(pinnedMessages[selectedChannel.id]?.length || 0) > 0 ? 'active' : ''}`}
+                      onClick={() => setShowPinnedMessagesPanel(!showPinnedMessagesPanel)}
+                      title="Mensagens Fixadas"
+                      style={{ position: 'relative', border: 'none', background: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <PinIcon />
+                      {(pinnedMessages[selectedChannel.id]?.length || 0) > 0 && (
+                        <span style={{ position: 'absolute', top: '-2px', right: '-2px', background: 'var(--accent-color)', color: '#fff', fontSize: '9px', fontWeight: 600, padding: '1px 4px', borderRadius: '8px', minWidth: '14px', textAlign: 'center' }}>
+                          {pinnedMessages[selectedChannel.id]?.length}
+                        </span>
+                      )}
+                    </button>
+
+                    {activeScreenSharers.length > 0 && (
+                      <button 
+                        type="button"
+                        onClick={() => setIsWatchingStreams(!isWatchingStreams)}
+                        className="live-badge" 
+                        style={{ cursor: 'pointer', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        title="Transmissão de tela em andamento (clique para alternar visualização)"
+                      >
+                        ● {isWatchingStreams ? 'Ocultar Transmissão' : 'Assistir Transmissão'}
+                      </button>
+                    )}
+
+                    <button 
+                      className={`profile-footer-btn ${showMembersList ? 'active' : ''}`} 
+                      onClick={() => setShowMembersList(!showMembersList)}
+                      title={showMembersList ? "Ocultar Lista de Membros" : "Mostrar Lista de Membros"}
+                      style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <UsersIcon />
+                    </button>
+                  </div>
+                </header>
+                <div className="chat-workspace-wrapper" style={{ display: 'flex', flex: 1, minHeight: 0, width: '100%', position: 'relative' }}>
+                  <div className="chat-area-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
                       <div 
                         className="messages-area"
                         ref={messagesContainerRef}
@@ -5956,7 +6367,7 @@ function Echo({ user }: { user: User }) {
                                             )}
                                           </div>
                                           {(() => {
-                                            const deco = presenceData[message.author_id]?.avatar_decoration || (message.author_id === user.id ? avatarDecoration : null)
+                                            const deco = message.author_id === user.id ? (avatarDecoration || null) : (presenceData[message.author_id]?.avatar_decoration || null)
                                             return deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null
                                           })()}
                                         </div>
@@ -6078,7 +6489,7 @@ function Echo({ user }: { user: User }) {
                                               {activePlayingVoiceNote === message.id ? '⏸️' : '▶️'}
                                             </button>
                                             <div style={{ flex: 1 }}>
-                                              <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                                              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
                                                 Mensagem de Áudio
                                               </div>
                                               <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
@@ -6202,7 +6613,7 @@ function Echo({ user }: { user: User }) {
                                 onClick={stopVoiceNoteRecording} 
                                 style={{ background: 'var(--accent-color)', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 700 }}
                               >
-                                🚀 Enviar Áudio
+                                <ColoredRocketIcon size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Enviar Áudio
                               </button>
                             </div>
                           ) : (
@@ -6229,7 +6640,7 @@ function Echo({ user }: { user: User }) {
                                 className="dm-attach-btn" 
                                 onClick={() => setShowGifPicker(!showGifPicker)} 
                                 title="Escolher GIF Gamer"
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: showGifPicker ? 'var(--accent-color)' : 'var(--text-muted)', padding: '0 6px 0 0', display: 'flex', alignItems: 'center', fontWeight: 900, fontSize: '11px', letterSpacing: '0.5px' }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: showGifPicker ? 'var(--accent-color)' : 'var(--text-muted)', padding: '0 6px 0 0', display: 'flex', alignItems: 'center', fontWeight: 700, fontSize: '11px', letterSpacing: '0.5px' }}
                               >
                                 GIF
                               </button>
@@ -6467,7 +6878,7 @@ function Echo({ user }: { user: User }) {
                               const isOnline = onlineUsers.has(member.user.id) || isVoiceUser
                               const userPresenceStatus = isOnline ? (presenceData[member.user.id]?.presence_status || 'online') : 'offline'
                               const memberRole = getUserHighestRole(currentSpace.id, member.user.id)
-                              const memberDeco = presenceData[member.user.id]?.avatar_decoration || member.user?.avatar_decoration || (member.user.id === user.id ? avatarDecoration : null)
+                              const memberDeco = member.user.id === user.id ? (avatarDecoration || null) : (presenceData[member.user.id]?.avatar_decoration || member.user?.avatar_decoration || null)
 
                               const memberClanTag = localStorage.getItem(`echo-clan-tag-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-${user.id}`) : null)
                               const memberClanTagColor = localStorage.getItem(`echo-clan-tag-color-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-color-${user.id}`) : '#00f2fe') || '#00f2fe'
@@ -6695,8 +7106,8 @@ function Echo({ user }: { user: User }) {
                       {currentSpace && <span className="header-space">{currentSpace.name}</span>}
                       <h1><span className="header-icon"><VolumeIcon /></span> {selectedChannel.name}</h1>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      {activeVoiceChannelId === selectedChannel.id && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {activeVoiceChannelId === selectedChannel.id && isConnected && (
                         <span className="live-badge voice-live">● Conectado</span>
                       )}
                       <button 
@@ -6719,9 +7130,8 @@ function Echo({ user }: { user: User }) {
                   </header>
 
                   <div className="voice-workspace-wrapper" style={{ display: 'flex', flex: 1, minHeight: 0, width: '100%' }}>
-                    <div className="voice-content" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: activeVoiceChannelId === selectedChannel.id ? '0' : '24px', minWidth: 0 }}>
-                      {activeVoiceChannelId === selectedChannel.id ? (
-                        <div className="voice-split-layout" style={!showVoiceChat ? { gridTemplateColumns: '1fr' } : undefined}>
+                    <div className="voice-content" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0', minWidth: 0 }}>
+                      <div className="voice-split-layout" style={!showVoiceChat ? { gridTemplateColumns: '1fr' } : undefined}>
                           {/* Media pane (Left) */}
                           <div className="voice-media-pane">
                             {activeScreenSharers.length > 0 && isWatchingStreams ? (
@@ -6809,7 +7219,7 @@ function Echo({ user }: { user: User }) {
                                       <button
                                         type="button"
                                         className="stream-control-btn stop-btn"
-                                        onClick={stopScreenShare}
+                                        onClick={handleStopScreenShare}
                                         title="Parar de transmitir minha tela"
                                       >
                                         <StopSquareIcon />
@@ -6878,7 +7288,7 @@ function Echo({ user }: { user: User }) {
                                     }}
                                   >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                      <span style={{ fontSize: '18px' }}>📺</span>
+                                      <ScreenIcon style={{ width: "18px", height: "18px", color: "var(--accent-color)" }} />
                                       <span>Há <strong>{activeScreenSharers.length} {activeScreenSharers.length === 1 ? 'transmissão ao vivo' : 'transmissões ao vivo'}</strong> acontecendo neste canal.</span>
                                     </div>
                                     <button 
@@ -6899,12 +7309,74 @@ function Echo({ user }: { user: User }) {
                                         cursor: 'pointer'
                                       }}
                                     >
-                                      ▶ Assistir Transmissão
+                                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><PlayIcon style={{ width: "12px", height: "12px" }} /> Assistir Transmissão</span>
                                     </button>
                                   </div>
                                 )}
 
-                                {participants.map(p => {
+                                {(() => {
+                                  const displayList = (activeVoiceChannelId === selectedChannel.id && isConnected)
+                                    ? participants
+                                    : (spaceVoiceUsers[selectedChannel.id] || [])
+
+                                  if (displayList.length === 0) {
+                                    return (
+                                      <div className="voice-empty-state" style={{
+                                        gridColumn: '1 / -1',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '60px 20px',
+                                        color: 'var(--text-muted)',
+                                        gap: '12px'
+                                      }}>
+                                        <div style={{
+                                          width: '68px',
+                                          height: '68px',
+                                          borderRadius: '50%',
+                                          background: 'rgba(255, 255, 255, 0.05)',
+                                          border: '1.5px solid rgba(255, 255, 255, 0.1)',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          color: 'var(--text-secondary, #b5bac1)',
+                                          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
+                                          marginBottom: '4px'
+                                        }}>
+                                          <MicIcon style={{ width: '34px', height: '34px' }} />
+                                        </div>
+                                        <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>Ninguém está nesta chamada agora</div>
+                                        <p style={{ fontSize: '13px', margin: 0, textAlign: 'center', maxWidth: '360px' }}>Conecte-se para conversar ou transmitir a tela para seus amigos.</p>
+                                        {activeVoiceChannelId !== selectedChannel.id && (
+                                          <button 
+                                            type="button" 
+                                            className="voice-join-submit-btn" 
+                                            style={{
+                                              marginTop: '8px',
+                                              padding: '10px 24px',
+                                              borderRadius: '20px',
+                                              background: '#23a55a',
+                                              color: '#fff',
+                                              border: 'none',
+                                              fontWeight: 600,
+                                              cursor: 'pointer',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '8px',
+                                              fontSize: '13px'
+                                            }}
+                                            onClick={() => handleJoinVoice(selectedChannel.id, selectedChannel.space_id)}
+                                          >
+                                            <VolumeIcon style={{ width: '16px', height: '16px' }} />
+                                            <span>Entrar na chamada</span>
+                                          </button>
+                                        )}
+                                      </div>
+                                    )
+                                  }
+
+                                  return displayList.map(p => {
                                   const isSharer = !!(p.screenStream && p.screenStream.getVideoTracks().length > 0)
                                   return (
                                     <div 
@@ -6938,7 +7410,7 @@ function Echo({ user }: { user: User }) {
                                           gap: '4px',
                                           boxShadow: '0 2px 8px rgba(235, 59, 90, 0.4)'
                                         }}>
-                                          <span>🔴</span> AO VIVO
+                                          <span className="stream-tab-live-dot" /> AO VIVO
                                         </div>
                                       )}
                                       <div className="participant-avatar-large" style={{ position: 'relative' }}>
@@ -7003,13 +7475,14 @@ function Echo({ user }: { user: User }) {
                                               marginTop: '4px'
                                             }}
                                           >
-                                            ▶ Assistir Tela
+                                            <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}><PlayIcon style={{ width: "11px", height: "11px" }} /> Assistir Tela</span>
                                           </button>
                                         )}
                                       </div>
                                     </div>
                                   )
-                                })}
+                                })
+                              })()}
                               </div>
                             )}
 
@@ -7021,7 +7494,8 @@ function Echo({ user }: { user: User }) {
                             )}
 
                             {/* Controls bottom bar */}
-                            <div className="voice-controls-bar">
+                            {activeVoiceChannelId === selectedChannel.id && isConnected ? (
+                              <div className="voice-controls-bar">
                               <button 
                                 className={`control-btn mic-btn ${isMuted ? 'muted' : ''}`} 
                                 onClick={handleToggleMute}
@@ -7051,7 +7525,7 @@ function Echo({ user }: { user: User }) {
                                   position: 'relative'
                                 }}
                               >
-                                <span style={{ fontSize: '15px' }}>🧠</span>
+                                <BrainIcon style={{ width: "16px", height: "16px" }} />
                                 {isAiDenoiseEnabled && (
                                   <span style={{
                                     position: 'absolute',
@@ -7071,9 +7545,9 @@ function Echo({ user }: { user: User }) {
                                   className={`control-btn screen-btn ${localScreenStream ? 'sharing' : ''}`} 
                                   onClick={() => {
                                     if (localScreenStream) {
-                                      openScreenPicker()
+                                      setShowScreenMenu(!showScreenMenu)
                                     } else {
-                                      setShowScreenshareModal(true)
+                                      openScreenPicker()
                                     }
                                   }}
                                   title={localScreenStream ? "Opções de Transmissão" : "Transmitir Tela"}
@@ -7083,7 +7557,7 @@ function Echo({ user }: { user: User }) {
                                 {showScreenMenu && localScreenStream && (
                                   <div className="screen-share-dropdown">
                                     <div className="dropdown-section">
-                                      <button className="dropdown-action-btn danger" onClick={async () => { setShowScreenMenu(false); await stopScreenShare() }}>
+                                      <button className="dropdown-action-btn danger" onClick={async () => { setShowScreenMenu(false); await handleStopScreenShare() }}>
                                         Parar Transmissão
                                       </button>
                                       <button className="dropdown-action-btn" onClick={forceOpenScreenPicker}>
@@ -7150,7 +7624,8 @@ function Echo({ user }: { user: User }) {
                                 >
                                   <PhoneOffIcon />
                                 </button>
-                            </div>
+                              </div>
+                            ) : null}
                           </div>
 
                           {/* Chat pane (Right) */}
@@ -7158,7 +7633,7 @@ function Echo({ user }: { user: User }) {
                             <div className="voice-chat-messages">
                               {messages.length === 0 && (
                                 <div className="no-messages">
-                                  <span className="no-msg-icon">💬</span>
+                                  <div style={{ opacity: 0.6, marginBottom: "6px" }}><MessageSquareIcon style={{ width: "28px", height: "28px" }} /></div>
                                   <p>Início do chat por texto da chamada.</p>
                                 </div>
                               )}
@@ -7187,7 +7662,7 @@ function Echo({ user }: { user: User }) {
                                       {message.attachment_url && message.attachment_type === 'image' ? (
                                         <img src={message.attachment_url} alt="anexo" className="msg-attachment-img" onClick={() => window.open(message.attachment_url, '_blank')} />
                                       ) : message.attachment_url && message.attachment_type !== 'image' ? (
-                                        <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-file">📎 {message.body}</a>
+                                        <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-file">{message.body}</a>
                                       ) : (
                                         <p>{formatMessageText(message.body, profileDisplayName)}</p>
                                       )}
@@ -7200,34 +7675,15 @@ function Echo({ user }: { user: User }) {
                             <form className="voice-chat-composer" onSubmit={send}>
                               <input type="file" id="voice-chat-file-input" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleChatFileUpload(f); e.target.value = '' }} />
                               <button type="button" className="dm-attach-btn" onClick={() => document.getElementById('voice-chat-file-input')?.click()} disabled={isUploading} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 8px 0 0' }}>
-                                {isUploading ? '⏳' : '📎'}
+                                {isUploading ? <span style={{ fontSize: '12px' }}>...</span> : <PaperclipIcon style={{ width: '15px', height: '15px' }} />}
                               </button>
                               <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Conversar por texto com a call…" />
                               <button type="submit" className="send-btn" disabled={!draft.trim() && !isUploading}>
-                                <span>↑</span>
+                                <SendIcon style={{ width: "14px", height: "14px" }} />
                               </button>
                             </form>
                           </div>
                         </div>
-                      ) : (
-                        <div className="voice-join-panel">
-                          <div className="voice-join-icon">🔊</div>
-                          <h2>Pronto para entrar?</h2>
-                          {activeVoiceChannelId ? (
-                            <p>Você já está na chamada de <strong>{activeVoiceChannel?.name}</strong>. Entrar aqui desconectará você da outra chamada.</p>
-                          ) : (
-                            <p>Entre no canal de voz para conversar em tempo real com outras pessoas neste espaço.</p>
-                          )}
-                          <button 
-                            className="voice-join-submit-btn" 
-                            onClick={async () => {
-                              await handleJoinVoice(selectedChannel.id, selectedChannel.space_id)
-                            }}
-                          >
-                            Entrar na chamada
-                          </button>
-                        </div>
-                      )}
                     </div>
                     {currentSpace && (
                       <aside className="members-sidebar" style={!showVoiceMembers ? { display: 'none' } : undefined}>
@@ -7384,11 +7840,11 @@ function Echo({ user }: { user: User }) {
 
                                     {activeGame ? (
                                       <span className="member-status-text activity-game" title={`Jogando ${activeGame}`}>
-                                        🎮 Jogando {activeGame}
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}><GamepadIcon style={{ width: "12px", height: "12px" }} /> Jogando {activeGame}</span>
                                       </span>
                                     ) : isVoiceUser ? (
                                       <span className="member-status-text activity-voice">
-                                        🔊 Em chamada
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}><VolumeIcon style={{ width: "11px", height: "11px" }} /> Em chamada</span>
                                       </span>
                                     ) : validCustomStatus ? (
                                       <span className="member-status-text custom" title={validCustomStatus}>
@@ -7431,7 +7887,7 @@ function Echo({ user }: { user: User }) {
                                   <div className="members-group-section">
                                     <div className="members-group-label" style={{ color: '#f59e0b' }}>
                                       <span className="members-group-dot" style={{ background: '#f59e0b' }} />
-                                      <span>👑 DONO — {creatorOnlineMembers.length}</span>
+                                      <span><CrownIcon style={{ width: "13px", height: "13px", color: "#f59e0b", display: "inline", verticalAlign: "-2px", marginRight: "4px" }} /> DONO — {creatorOnlineMembers.length}</span>
                                     </div>
                                     <div className="members-list">
                                       {creatorOnlineMembers.map(renderCard)}
@@ -7561,6 +8017,13 @@ function Echo({ user }: { user: User }) {
           onInspectMember={(member) => setInspectedMember(member)}
           onOpenWhatsNew={() => setShowWhatsNewModal(true)}
           avatarDecoration={avatarDecoration}
+          onStartCall={startDirectCall}
+          activeDirectCall={activeDirectCall}
+          endDirectCall={endDirectCall}
+          isMuted={isMuted}
+          isDeafened={isDeafened}
+          toggleMute={handleToggleMute}
+          toggleDeafen={handleToggleDeafen}
         />
       </div>
 
@@ -7573,20 +8036,57 @@ function Echo({ user }: { user: User }) {
           currentAvatarUrl={profileAvatarUrl}
           avatarDecoration={avatarDecoration}
           profileEffect={profileEffect}
+          avatarFrame={avatarFrame}
+          cardFinish={cardFinish}
+          onEquipDecoration={handleEquipDecoration}
+          onEquipProfileEffect={handleEquipProfileEffect}
+          onEquipAvatarFrame={handleEquipAvatarFrame}
+          onEquipCardFinish={handleEquipCardFinish}
+          initialTab={settingsInitialTab}
+          onOpenShop={(targetTab) => {
+            if (targetTab) setShopInitialTab(targetTab)
+            setPage('Loja')
+          }}
           customStatus={customStatus}
           onProfileUpdate={(name, avatar) => {
             setProfileDisplayName(name)
             setProfileAvatarUrl(avatar)
+            updateLocalProfile(name, avatar)
+            if (user) {
+              setSpaceMembers(prev => prev.map(m => m.id === user.id ? { ...m, name, avatar_url: avatar } : m))
+              if (presenceChannelRef.current) {
+                const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
+                const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
+                const gameData = presenceStatus === 'invisible' ? null : myGamePresence
+                presenceChannelRef.current.track({
+                  user_id: user.id,
+                  display_name: name,
+                  online_at: new Date().toISOString(),
+                  custom_status: customStatus,
+                  presence_status: presenceStatus,
+                  current_game: gameData,
+                  avatar_decoration: curDeco,
+                  profile_effect: curEff
+                }).catch(() => {})
+              }
+            }
           }}
           onCustomStatusUpdate={async (status) => {
             setCustomStatus(status)
             localStorage.setItem('echo-custom-status', status)
             if (presenceChannelRef.current) {
+              const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
+              const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
+              const gameData = presenceStatus === 'invisible' ? null : myGamePresence
               await presenceChannelRef.current.track({
                 user_id: user.id,
                 display_name: profileDisplayName,
                 online_at: new Date().toISOString(),
-                custom_status: status
+                custom_status: status,
+                presence_status: presenceStatus,
+                current_game: gameData,
+                avatar_decoration: curDeco,
+                profile_effect: curEff
               })
             }
           }}
@@ -7672,86 +8172,27 @@ function Echo({ user }: { user: User }) {
 
       <div style={{ display: page === 'Loja' ? 'flex' : 'none', flex: 1, height: 'calc(100vh - 48px)', overflow: 'hidden' }}>
         <EchoShop
+          userId={user.id}
           displayName={profileDisplayName || displayName}
           avatarUrl={profileAvatarUrl}
           currentDecoration={avatarDecoration}
           currentProfileEffect={profileEffect}
+          currentAvatarFrame={avatarFrame}
+          currentCardFinish={cardFinish}
           onEquipDecoration={handleEquipDecoration}
           onEquipProfileEffect={handleEquipProfileEffect}
+          onEquipAvatarFrame={handleEquipAvatarFrame}
+          onEquipCardFinish={handleEquipCardFinish}
+          initialTab={shopInitialTab}
+          onOpenInventory={() => {
+            setSettingsInitialTab('inventory')
+            setPage('Configurações')
+          }}
           onClose={() => setPage('Servidores')}
         />
       </div>
 
-      {/* Modal de Qualidade de Transmissão de Tela */}
-      {showScreenshareModal && (
-        <div className="screen-picker-overlay" onClick={() => setShowScreenshareModal(false)}>
-          <div className="screen-picker-modal" style={{ maxWidth: '460px' }} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ textAlign: 'center', marginBottom: '8px' }}>Qualidade da Transmissão</h2>
-            <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>
-              Selecione as configurações ideais para o compartilhamento da sua tela.
-            </p>
 
-            <div className="screenshare-options-grid" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <button 
-                type="button" 
-                className="screenshare-quality-option" 
-                onClick={() => startScreenShareWithConfig('720p', 30)}
-              >
-                <div className="quality-icon">⚡</div>
-                <div className="quality-meta">
-                  <strong>Otimizado (720p @ 30 FPS)</strong>
-                  <span>Recomendado para conexões normais</span>
-                </div>
-              </button>
-
-              <button 
-                type="button" 
-                className="screenshare-quality-option" 
-                onClick={() => startScreenShareWithConfig('720p', 60)}
-              >
-                <div className="quality-icon">🎮</div>
-                <div className="quality-meta">
-                  <strong>Fluido (720p @ 60 FPS)</strong>
-                  <span>Ideal para transmissão de jogos rápidos</span>
-                </div>
-              </button>
-
-              <button 
-                type="button" 
-                className="screenshare-quality-option" 
-                onClick={() => startScreenShareWithConfig('1080p', 30)}
-              >
-                <div className="quality-icon">🖥️</div>
-                <div className="quality-meta">
-                  <strong>Alta Definição (1080p @ 30 FPS)</strong>
-                  <span>Melhor legibilidade para leitura e código</span>
-                </div>
-              </button>
-
-              <button 
-                type="button" 
-                className="screenshare-quality-option" 
-                onClick={() => startScreenShareWithConfig('1080p', 60)}
-              >
-                <div className="quality-icon">🔥</div>
-                <div className="quality-meta">
-                  <strong>Fidelidade Máxima (1080p @ 60 FPS)</strong>
-                  <span>Qualidade e fluidez profissionais (Exige banda)</span>
-                </div>
-              </button>
-            </div>
-
-            <button 
-              type="button" 
-              className="picker-close-btn" 
-              style={{ width: '100%', marginTop: '20px', fontWeight: 'bold' }} 
-              onClick={() => setShowScreenshareModal(false)}
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Create/Join Space Modal (Discord-Style) */}
       {showAddSpaceModal && (
@@ -7842,10 +8283,15 @@ function Echo({ user }: { user: User }) {
           <div className="screen-picker-modal" onClick={e => e.stopPropagation()}>
             <div className="screen-picker-header">
               <div className="screen-picker-header-info">
-                <h2>🚀 Transmitir Jogo ou Tela (Go Live)</h2>
-                <p>Selecione a janela ou tela e personalize a resolução e taxa de quadros a 60 FPS.</p>
+                <div className="screen-picker-title-row">
+                  <span className="screen-picker-badge">
+                    <ColoredRocketIcon size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} /> GO LIVE
+                  </span>
+                  <h2>Transmitir Jogo ou Tela</h2>
+                </div>
+                <p>Selecione a janela de um jogo ou aplicativo para transmitir com fluidez e som estéreo.</p>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="screen-picker-header-actions">
                 <button 
                   type="button"
                   className="screen-picker-refresh-btn"
@@ -7868,23 +8314,10 @@ function Echo({ user }: { user: User }) {
                     }
                   }}
                   title="Atualizar lista de janelas e jogos"
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-color)',
-                    color: 'var(--text-secondary)',
-                    padding: '6px 12px',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
                 >
-                  🔄 Atualizar
+                  <ColoredRefreshIcon size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} /> Atualizar
                 </button>
-                <button type="button" className="screen-picker-close-x" onClick={() => setShowScreenPicker(false)}>×</button>
+                <button type="button" className="screen-picker-close-x" onClick={() => setShowScreenPicker(false)} title="Fechar">×</button>
               </div>
             </div>
 
@@ -7894,7 +8327,9 @@ function Echo({ user }: { user: User }) {
                 className={`screen-picker-tab-btn ${screenPickerTab === 'windows' ? 'active' : ''}`}
                 onClick={() => setScreenPickerTab('windows')}
               >
-                <span>🪟 Janelas de Jogos e Apps</span>
+                <span>
+                  <ColoredWindowsIcon size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Janelas de Jogos e Apps
+                </span>
                 <span className="picker-tab-count">
                   {screenSources.filter(s => s.type === 'window' || s.id.startsWith('window:')).length}
                 </span>
@@ -7904,7 +8339,9 @@ function Echo({ user }: { user: User }) {
                 className={`screen-picker-tab-btn ${screenPickerTab === 'screens' ? 'active' : ''}`}
                 onClick={() => setScreenPickerTab('screens')}
               >
-                <span>🖥️ Telas Inteiras (Monitores)</span>
+                <span>
+                  <ColoredMonitorIcon size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Telas Inteiras (Monitores)
+                </span>
                 <span className="picker-tab-count">
                   {screenSources.filter(s => s.type === 'screen' || s.id.startsWith('screen:')).length}
                 </span>
@@ -7933,21 +8370,29 @@ function Echo({ user }: { user: User }) {
                           </div>
                         ) : (
                           <div className="source-thumb-icon-placeholder" style={{ background: source.isGame ? 'linear-gradient(135deg, #ff4655, #0f1923)' : undefined }}>
-                            <span className="source-placeholder-emoji">{screenPickerTab === 'screens' ? '🖥️' : source.isGame ? '🎮' : '🪟'}</span>
+                            <span className="source-placeholder-emoji">
+                              {screenPickerTab === 'screens' ? (
+                                <ColoredMonitorIcon size={32} />
+                              ) : source.isGame ? (
+                                <ColoredGamepadIcon size={32} />
+                              ) : (
+                                <ColoredWindowsIcon size={32} />
+                              )}
+                            </span>
                           </div>
                         )}
                         {source.isGame ? (
-                          <span style={{ position: 'absolute', top: '6px', left: '6px', background: '#ff4655', color: '#fff', fontSize: '9px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>
-                            🎮 JOGO
+                          <span className="source-game-badge">
+                            <ColoredGamepadIcon size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} /> JOGO DETECTADO
                           </span>
                         ) : (source as any).isMinimized ? (
-                          <span style={{ position: 'absolute', top: '6px', left: '6px', background: '#5865f2', color: '#fff', fontSize: '9px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>
-                            ⏸️ MINIMIZADA
+                          <span className="source-minimized-badge">
+                            <ColoredPauseIcon size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} /> MINIMIZADA
                           </span>
                         ) : null}
                         {isSelected && (
-                          <span style={{ position: 'absolute', top: '6px', right: '6px', background: 'var(--accent-color)', color: '#fff', fontSize: '11px', fontWeight: 800, padding: '2px 6px', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
-                            ✓
+                          <span className="source-selected-badge">
+                            ✓ Selecionado
                           </span>
                         )}
                         {source.appIcon && source.thumbnail && (
@@ -7971,16 +8416,16 @@ function Echo({ user }: { user: User }) {
             {/* Quality & FPS Stream Settings Integrated Panel */}
             <div className="screen-picker-quality-box">
               <div className="picker-quality-col">
-                <span className="picker-section-label">RESOLUÇÃO DE STREAM</span>
+                <span className="picker-section-label">RESOLUÇÃO DE TRANSMISSÃO</span>
                 <div className="picker-chips-row">
-                  {(['720p', '1080p', '1440p', 'native'] as const).map(q => (
+                  {(['720p', '1080p', 'native'] as const).map(q => (
                     <button
                       key={q}
                       type="button"
                       className={`picker-config-chip ${screenQuality === q ? 'active' : ''}`}
                       onClick={() => setScreenQuality(q)}
                     >
-                      {q === '720p' ? '720p HD' : q === '1080p' ? '1080p Full HD' : q === '1440p' ? '1440p 2K' : 'Fonte (Nativa)'}
+                      {q === '720p' ? '720p HD' : q === '1080p' ? '1080p Full HD' : 'Fonte (Nativa)'}
                     </button>
                   ))}
                 </div>
@@ -7993,10 +8438,16 @@ function Echo({ user }: { user: User }) {
                     <button
                       key={f}
                       type="button"
-                      className={`picker-config-chip ${screenFps === f ? 'active' : ''}`}
+                      className={`picker-config-chip ${screenFps === f ? 'active' : ''} ${f === 60 ? 'fps-60' : ''}`}
                       onClick={() => setScreenFps(f)}
                     >
-                      {f === 60 ? '⚡ 60 FPS (Ultra Suave)' : `${f} FPS`}
+                      {f === 60 ? (
+                        <>
+                          <ColoredLightningIcon size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} /> 60 FPS (Ultra Suave)
+                        </>
+                      ) : (
+                        `${f} FPS`
+                      )}
                     </button>
                   ))}
                 </div>
@@ -8018,7 +8469,7 @@ function Echo({ user }: { user: User }) {
                   }
                 }}
               >
-                🚀 Iniciar Transmissão (Go Live)
+                <ColoredRocketIcon size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Iniciar Transmissão (Go Live)
               </button>
             </div>
           </div>
@@ -8141,7 +8592,7 @@ function Echo({ user }: { user: User }) {
                     <form onSubmit={handleSaveSpaceSettings} className="space-profile-form">
                       {/* Server Avatar / Icon Section */}
                       <div className="server-icon-edit-section" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                        <div className="server-avatar-large" style={{ width: '68px', height: '68px', borderRadius: '20px', background: 'linear-gradient(135deg, var(--accent-color), #c75a4a)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: '22px', fontWeight: 800, overflow: 'hidden', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+                        <div className="server-avatar-large" style={{ width: '68px', height: '68px', borderRadius: '20px', background: 'linear-gradient(135deg, var(--accent-color), #c75a4a)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: '22px', fontWeight: 600, overflow: 'hidden', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
                           {editingSpaceIconUrl ? (
                             <img src={editingSpaceIconUrl} alt="Ícone do servidor" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           ) : (
@@ -8189,7 +8640,7 @@ function Echo({ user }: { user: User }) {
 
                       {/* Server Banner / GIF Section */}
                       <div className="selector-card" style={{ marginBottom: '18px' }}>
-                        <label style={{ fontSize: '11.5px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                           Faixa do Servidor (Banner / GIF Animado)
                         </label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px', marginBottom: '12px' }}>
@@ -8392,7 +8843,7 @@ function Echo({ user }: { user: User }) {
                   <div className="roles-management-layout" style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '24px', marginTop: '16px' }}>
                     {/* Lista de Cargos na esquerda */}
                     <div className="roles-sidebar-list" style={{ background: 'var(--bg-secondary)', borderRadius: '12px', padding: '12px', border: '1px solid var(--border-color)' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', padding: '4px 8px', display: 'block', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', padding: '4px 8px', display: 'block', marginBottom: '8px' }}>
                         CARGOS ({serverRoles.length})
                       </span>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -8529,7 +8980,7 @@ function Echo({ user }: { user: User }) {
 
                           {/* Permissões Switches */}
                           <div className="role-permissions-section">
-                            <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '12px' }}>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '12px' }}>
                               PERMISSÕES DO CARGO
                             </span>
 
@@ -9324,7 +9775,7 @@ function Echo({ user }: { user: User }) {
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span>🎧 Posicionamento Estéreo (3D)</span>
                 </span>
-                <span style={{ fontSize: '12px', color: (userStereoPans[volumeControlUser.userId] || 0) === 0 ? '#10b981' : '#00f2fe', fontWeight: 800 }}>
+                <span style={{ fontSize: '12px', color: (userStereoPans[volumeControlUser.userId] || 0) === 0 ? '#10b981' : '#00f2fe', fontWeight: 600 }}>
                   {(userStereoPans[volumeControlUser.userId] || 0) === 0 && '● Centro (Neutro)'}
                   {(userStereoPans[volumeControlUser.userId] || 0) < 0 && `⬅️ ${Math.round(Math.abs(userStereoPans[volumeControlUser.userId]) * 100)}% Esquerda`}
                   {(userStereoPans[volumeControlUser.userId] || 0) > 0 && `➡️ ${Math.round((userStereoPans[volumeControlUser.userId]) * 100)}% Direita`}
@@ -9409,7 +9860,7 @@ function Echo({ user }: { user: User }) {
                       padding: '6px',
                       borderRadius: '6px',
                       fontSize: '12px',
-                      fontWeight: 800,
+                      fontWeight: 600,
                       cursor: 'pointer'
                     }}
                     title="Distribui todos os membros do squad em semicírculo no seu fone"
@@ -9663,7 +10114,7 @@ function Echo({ user }: { user: User }) {
                 >
                   <span className="soundboard-emoji">{s.emoji}</span>
                   <span className="soundboard-name">{s.name}</span>
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800 }}>
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
                     {s.category}
                   </span>
                 </button>
@@ -9737,6 +10188,48 @@ function Echo({ user }: { user: User }) {
           }}
         />
       )}
+
+      {/* 1v1 Incoming Direct Call Modal */}
+      {incomingCall && (
+        <div className="incoming-call-overlay">
+          <div className="incoming-call-card">
+            <div className="incoming-call-avatar-wrap">
+              <div className="incoming-call-avatar-pulse" />
+              <div className="incoming-call-avatar">
+                {incomingCall.callerAvatar ? (
+                  <img src={incomingCall.callerAvatar} alt={incomingCall.callerName} />
+                ) : (
+                  <span>{incomingCall.callerName.slice(0, 1).toUpperCase()}</span>
+                )}
+              </div>
+            </div>
+            <div className="incoming-call-info">
+              <h3>{incomingCall.callerName}</h3>
+              <p>Chamada de voz direta 1x1 no Echo...</p>
+            </div>
+            <div className="incoming-call-actions">
+              <button 
+                type="button" 
+                className="incoming-call-btn decline" 
+                onClick={rejectIncomingCall} 
+                title="Recusar Chamada"
+              >
+                <PhoneOffIcon style={{ width: '18px', height: '18px' }} />
+                <span>Recusar</span>
+              </button>
+              <button 
+                type="button" 
+                className="incoming-call-btn accept" 
+                onClick={acceptIncomingCall} 
+                title="Atender Chamada"
+              >
+                <PhoneIcon style={{ width: '18px', height: '18px' }} />
+                <span>Atender</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
@@ -9801,7 +10294,14 @@ function FriendsView({
   showToast,
   onInspectMember,
   onOpenWhatsNew,
-  avatarDecoration
+  avatarDecoration,
+  onStartCall,
+  activeDirectCall,
+  endDirectCall,
+  isMuted = false,
+  isDeafened = false,
+  toggleMute,
+  toggleDeafen
 }: {
   friendships: FriendshipRequest[]
   friendTab: 'online' | 'all' | 'pending' | 'add'
@@ -9841,6 +10341,13 @@ function FriendsView({
   onInspectMember?: (member: any) => void
   onOpenWhatsNew?: () => void
   avatarDecoration?: string | null
+  onStartCall?: (userId: string, name: string, avatar?: string) => void
+  activeDirectCall?: any
+  endDirectCall?: () => void
+  isMuted?: boolean
+  isDeafened?: boolean
+  toggleMute?: () => void
+  toggleDeafen?: () => void
 }) {
   const dmFileRef = useRef<HTMLInputElement>(null)
   const dmMessagesEndRef = useRef<HTMLDivElement>(null)
@@ -9934,7 +10441,7 @@ function FriendsView({
         <div className="sidebar-activity-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <ActivityIcon style={{ width: '16px', height: '16px', color: 'var(--accent-color)' }} />
-            <span style={{ fontSize: '14.5px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.2px' }}>
+            <span style={{ fontSize: '14.5px', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.2px' }}>
               Atividades
             </span>
           </div>
@@ -10260,7 +10767,7 @@ function FriendsView({
                         <button 
                           type="button" 
                           className="friend-quick-btn" 
-                          onClick={() => onOpenDM(friend.user.id)} 
+                          onClick={() => onStartCall ? onStartCall(friend.user.id, friend.user.display_name, friend.user.avatar_url) : onOpenDM(friend.user.id)} 
                           title="Iniciar Chamada Direta 1v1"
                         >
                           <PhoneIcon style={{ width: '14px', height: '14px' }} />
@@ -10379,7 +10886,7 @@ function FriendsView({
                         <button 
                           type="button" 
                           className="friend-quick-btn" 
-                          onClick={() => onOpenDM(friend.user.id)} 
+                          onClick={() => onStartCall ? onStartCall(friend.user.id, friend.user.display_name, friend.user.avatar_url) : onOpenDM(friend.user.id)} 
                           title="Iniciar Chamada Direta 1v1"
                         >
                           <PhoneIcon style={{ width: '14px', height: '14px' }} />
@@ -10518,7 +11025,7 @@ function FriendsView({
 
             {/* Direct Username Form */}
             <div style={{ background: 'var(--bg-secondary)', padding: '20px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
-              <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 800 }}>Adicionar por Nome de Exibição</h3>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 600 }}>Adicionar por Nome de Exibição</h3>
               <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
                 Digite o nome exato do jogador para enviar um pedido de amizade.
               </p>
@@ -10533,7 +11040,7 @@ function FriendsView({
                 />
                 <button 
                   type="submit" 
-                  style={{ padding: '12px 24px', borderRadius: '10px', background: 'var(--accent-color)', color: '#fff', border: 'none', fontWeight: 800, cursor: 'pointer' }}
+                  style={{ padding: '12px 24px', borderRadius: '10px', background: 'var(--accent-color)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Enviar Pedido
                 </button>
@@ -10548,7 +11055,7 @@ function FriendsView({
             {/* Friend Suggestions */}
             {suggestedMembers.length > 0 && (
               <div style={{ marginTop: '10px' }}>
-                <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <UsersIcon style={{ width: '15px', height: '15px', color: 'var(--accent-color)' }} />
                   <span>Sugestões de Jogadores dos seus Servidores</span>
                 </h4>
@@ -10612,8 +11119,57 @@ function FriendsView({
                 })()}
                 <span className="dm-chat-name">{dmFriendName}</span>
               </div>
-              <button className="dm-close-btn" onClick={onCloseDM} title="Fechar">✕</button>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <button 
+                  type="button" 
+                  className="dm-call-btn" 
+                  onClick={() => dmFriend && onStartCall && onStartCall(dmFriend.user.id, dmFriendName, dmFriend.user.avatar_url)} 
+                  title="Iniciar Chamada de Voz 1x1"
+                >
+                  <PhoneIcon style={{ width: '15px', height: '15px' }} />
+                </button>
+                <button className="dm-close-btn" onClick={onCloseDM} title="Fechar">✕</button>
+              </div>
             </div>
+            {activeDirectCall && (activeDirectCall.targetUserId === dmFriend?.user.id || activeDirectCall.targetUserId === user.id) && (
+              <div className="direct-call-active-bar">
+                <div className="direct-call-user-meta">
+                  <span className="direct-call-wave-dot" />
+                  <div>
+                    <div className="direct-call-user-title">
+                      {activeDirectCall.status === 'calling' ? 'Chamando...' : 'Em chamada de voz'}
+                    </div>
+                  </div>
+                </div>
+                <div className="direct-call-controls">
+                  <button 
+                    type="button" 
+                    className={`direct-call-ctrl-btn ${isMuted ? 'active' : ''}`} 
+                    onClick={toggleMute} 
+                    title={isMuted ? 'Desmutar Microfone' : 'Mutar Microfone'}
+                  >
+                    {isMuted ? <MicOffIcon style={{ width: '14px', height: '14px' }} /> : <MicIcon style={{ width: '14px', height: '14px' }} />}
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`direct-call-ctrl-btn ${isDeafened ? 'active' : ''}`} 
+                    onClick={toggleDeafen} 
+                    title={isDeafened ? 'Desativar Ensurdecer' : 'Ensurdecer'}
+                  >
+                    {isDeafened ? <HeadphonesOffIcon style={{ width: '14px', height: '14px' }} /> : <HeadphonesIcon style={{ width: '14px', height: '14px' }} />}
+                  </button>
+                  <button 
+                    type="button" 
+                    className="direct-call-hangup-btn" 
+                    onClick={endDirectCall} 
+                    title="Desligar Chamada"
+                  >
+                    <PhoneOffIcon style={{ width: '14px', height: '14px' }} />
+                    <span>Desligar</span>
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="dm-messages-list">
               {directMessages.length === 0 ? (
                 <div className="dm-empty">Nenhuma mensagem ainda. Diga oi!</div>
@@ -10706,7 +11262,15 @@ function SettingsView({
   performanceMode = false,
   onPerformanceModeChange,
   avatarDecoration,
-  profileEffect
+  profileEffect,
+  avatarFrame = 'aura-cyan',
+  cardFinish = 'none',
+  onEquipDecoration,
+  onEquipProfileEffect,
+  onEquipAvatarFrame,
+  onEquipCardFinish,
+  initialTab,
+  onOpenShop
 }: {
   userId: string
   userCreatedAt?: string
@@ -10716,6 +11280,14 @@ function SettingsView({
   customStatus: string
   avatarDecoration?: string | null
   profileEffect?: string | null
+  avatarFrame?: string
+  cardFinish?: 'none' | 'holographic' | 'glass' | 'carbon'
+  onEquipDecoration?: (id: string) => Promise<void> | void
+  onEquipProfileEffect?: (id: string) => Promise<void> | void
+  onEquipAvatarFrame?: (id: string) => void
+  onEquipCardFinish?: (id: string) => void
+  initialTab?: 'profile' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog'
+  onOpenShop?: (targetTab?: 'decorations' | 'profile_effects' | 'auras' | 'finishes') => void
   onProfileUpdate: (name: string, avatar: string) => void
   onCustomStatusUpdate: (status: string) => void
   audioInputs: MediaDeviceInfo[]
@@ -10762,7 +11334,13 @@ function SettingsView({
   performanceMode?: boolean
   onPerformanceModeChange?: (val: boolean) => void
 }) {
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'audio' | 'appearance' | 'windows' | 'changelog'>('profile')
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog'>(initialTab || 'profile')
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveSettingsTab(initialTab)
+    }
+  }, [initialTab])
   
   // Profile settings state & Echo Player Identity
   const [profileSubTab, setProfileSubTab] = useState<'identity' | 'appearance' | 'badges'>('identity')
@@ -11143,8 +11721,19 @@ function SettingsView({
     <section className="settings-workspace">
       <aside className="settings-sidebar">
         <div className="settings-sidebar-scrollable">
-          <div className="sidebar-header">Configurações</div>
+          <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 14px 8px 14px' }}>
+            <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>Configurações</span>
+            <button 
+              type="button" 
+              onClick={() => setPage('Servidores')} 
+              style={{ background: 'transparent', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '4px 8px', fontSize: '11.5px', color: 'var(--text-muted)', cursor: 'pointer' }}
+              title="Voltar para os servidores"
+            >
+              ESC ✕
+            </button>
+          </div>
           <div className="settings-menu">
+            <span className="settings-menu-category">Sua Conta</span>
             <button 
               className={`menu-item ${activeSettingsTab === 'profile' ? 'active' : ''}`}
               onClick={() => setActiveSettingsTab('profile')}
@@ -11153,11 +11742,15 @@ function SettingsView({
               <span>Meu Perfil</span>
             </button>
             <button 
-              className={`menu-item ${activeSettingsTab === 'audio' ? 'active' : ''}`}
-              onClick={() => setActiveSettingsTab('audio')}
+              className={`menu-item ${activeSettingsTab === 'inventory' ? 'active' : ''}`}
+              onClick={() => setActiveSettingsTab('inventory')}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
             >
-              <MicIcon className="menu-icon" style={{ width: '17px', height: '17px' }} />
-              <span>Voz e Áudio</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <SparklesIcon className="menu-icon" style={{ width: '17px', height: '17px', color: '#00f2fe' }} />
+                <span>Inventário</span>
+              </div>
+              <span className="echo-inv-menu-badge">NOVO</span>
             </button>
             <button 
               className={`menu-item ${activeSettingsTab === 'appearance' ? 'active' : ''}`}
@@ -11165,6 +11758,15 @@ function SettingsView({
             >
               <PaletteIcon className="menu-icon" style={{ width: '17px', height: '17px' }} />
               <span>Aparência</span>
+            </button>
+
+            <span className="settings-menu-category" style={{ marginTop: '8px' }}>Aplicativo & Sistema</span>
+            <button 
+              className={`menu-item ${activeSettingsTab === 'audio' ? 'active' : ''}`}
+              onClick={() => setActiveSettingsTab('audio')}
+            >
+              <MicIcon className="menu-icon" style={{ width: '17px', height: '17px' }} />
+              <span>Voz e Áudio</span>
             </button>
             <button 
               className={`menu-item ${activeSettingsTab === 'windows' ? 'active' : ''}`}
@@ -11180,6 +11782,17 @@ function SettingsView({
               <SparklesIcon className="menu-icon" style={{ width: '17px', height: '17px' }} />
               <span>Novidades & Versões</span>
             </button>
+
+            {onSignOut && (
+              <button 
+                type="button" 
+                className="settings-signout-btn" 
+                onClick={onSignOut}
+                title="Desconectar do Echo"
+              >
+                <span>Sair da Conta</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -11582,32 +12195,7 @@ function SettingsView({
                     </div>
                   </div>
 
-                  {/* Aura Sonora */}
-                  <div className="echo-appearance-block">
-                    <div className="echo-label-with-counter">
-                      <label className="echo-input-label">MOLDURA & AURA NEON</label>
-                      <span className="echo-input-desc">Brilho dinâmico ao redor do seu avatar no perfil e canais</span>
-                    </div>
-                    <div className="echo-auras-grid">
-                      {[
-                        { id: 'aura-cyan', label: 'Ciano Elétrico', color: '#00f2fe' },
-                        { id: 'aura-purple', label: 'Ametista Neon', color: '#a855f7' },
-                        { id: 'aura-crimson', label: 'Carmesim Surge', color: '#ff4655' },
-                        { id: 'aura-gold', label: 'Solar Dourado', color: '#fbbf24' },
-                        { id: 'aura-stealth', label: 'Monocromático', color: '#ffffff' }
-                      ].map(a => (
-                        <button
-                          key={a.id}
-                          type="button"
-                          className={`echo-aura-option ${localAvatarFrame === a.id ? 'active' : ''}`}
-                          onClick={() => setLocalAvatarFrame(a.id)}
-                        >
-                          <span className="echo-aura-pip" style={{ background: a.color, boxShadow: `0 0 10px ${a.color}` }} />
-                          <span>{a.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+
 
                   {/* Capa do Perfil (Banner) */}
                   <div className="echo-appearance-block">
@@ -11653,43 +12241,6 @@ function SettingsView({
                     </div>
                   </div>
 
-                  {/* Acabamento do Cartão de Perfil */}
-                  <div className="echo-appearance-block">
-                    <div className="echo-label-with-counter">
-                      <label className="echo-input-label">ACABAMENTO DO CARTÃO (FOIL & SHIMMER)</label>
-                      <span className="echo-input-desc">Efeito visual de moldura e reflexo reativo no seu perfil</span>
-                    </div>
-                    <div className="echo-card-finish-grid">
-                      {[
-                        { id: 'none', label: 'Minimalista Fosco', desc: 'Acabamento dark slate clássico' },
-                        { id: 'holographic', label: 'Holográfico Prismático ✨', desc: 'Borda com gradiente iridescente reativo' },
-                        { id: 'glass', label: 'Vidro Fumê Glassmorphism 💎', desc: 'Translucidez moderna com desfoque profundo' },
-                        { id: 'carbon', label: 'Fibra de Carbono 🏎️', desc: 'Textura esportiva em trama fosca' }
-                      ].map(cf => (
-                        <div
-                          key={cf.id}
-                          className={`echo-finish-choice-card ${localCardFinish === cf.id ? 'active selected' : ''}`}
-                          onClick={() => setLocalCardFinish(cf.id as any)}
-                        >
-                          <div className={`echo-finish-preview-mini preview-${cf.id}`}>
-                            <div className="preview-mini-content">
-                              <div className="preview-mini-avatar" />
-                              <div className="preview-mini-lines">
-                                <span className="line-1" />
-                                <span className="line-2" />
-                              </div>
-                            </div>
-                          </div>
-                          <div className="echo-finish-choice-meta">
-                            <strong>{cf.label}</strong>
-                            <span>{cf.desc}</span>
-                          </div>
-                          {localCardFinish === cf.id && <span className="echo-badge-check">✓</span>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
                   {/* Tag de Squad / Clan */}
                   <div className="echo-appearance-block">
                     <div className="echo-label-with-counter">
@@ -11703,7 +12254,7 @@ function SettingsView({
                         placeholder="Ex: ECHO"
                         maxLength={4}
                         className="echo-text-input"
-                        style={{ maxWidth: '130px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}
+                        style={{ maxWidth: '130px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase' }}
                       />
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Cor da Tag:</span>
@@ -11899,6 +12450,44 @@ function SettingsView({
           </div>
         )}
 
+        {activeSettingsTab === 'inventory' && (
+          <div className="settings-container echo-inventory-settings-pane" style={{ maxWidth: '100%', padding: '24px 32px' }}>
+            <CosmeticsInventory
+              userId={userId}
+              displayName={localDisplayName || currentDisplayName}
+              avatarUrl={localAvatarUrl || currentAvatarUrl}
+              currentDecoration={avatarDecoration || ''}
+              currentProfileEffect={profileEffect || ''}
+              currentAvatarFrame={localAvatarFrame || avatarFrame || 'aura-cyan'}
+              currentCardFinish={localCardFinish || cardFinish || 'none'}
+              clanTag={localClanTag}
+              clanTagColor={localClanTagColor}
+              bio={localBio}
+              bannerPreset={localBannerPreset}
+              bannerCustom={localBannerCustom}
+              onEquipDecoration={async (id) => {
+                if (onEquipDecoration) await onEquipDecoration(id)
+              }}
+              onEquipProfileEffect={async (id) => {
+                if (onEquipProfileEffect) await onEquipProfileEffect(id)
+              }}
+              onEquipAvatarFrame={(id) => {
+                setLocalAvatarFrame(id)
+                if (onEquipAvatarFrame) onEquipAvatarFrame(id)
+                localStorage.setItem(`echo-avatar-frame-${userId}`, id)
+              }}
+              onEquipCardFinish={(id) => {
+                setLocalCardFinish(id as any)
+                if (onEquipCardFinish) onEquipCardFinish(id)
+                localStorage.setItem(`echo-card-finish-${userId}`, id)
+              }}
+              onOpenShop={(targetTab) => {
+                if (onOpenShop) onOpenShop(targetTab)
+              }}
+            />
+          </div>
+        )}
+
         {activeSettingsTab === 'audio' && (
           <div className="settings-container">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -12057,7 +12646,7 @@ function SettingsView({
                 <div>
                   <h3 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span>🧠 Supressão de Ruído por IA (Rede Neural RNNoise)</span>
-                    <span style={{ fontSize: '10.5px', background: 'rgba(168, 85, 247, 0.25)', color: '#c084fc', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
+                    <span style={{ fontSize: '10.5px', background: 'rgba(168, 85, 247, 0.25)', color: '#c084fc', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
                       IA LOCAL • 0% CPU
                     </span>
                   </h3>
@@ -12090,7 +12679,7 @@ function SettingsView({
                 <div>
                   <h3 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span>🎧 Áudio Espacial 3D (Posicionamento Estéreo)</span>
-                    <span style={{ fontSize: '10.5px', background: 'rgba(0, 242, 254, 0.2)', color: '#00f2fe', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
+                    <span style={{ fontSize: '10.5px', background: 'rgba(0, 242, 254, 0.2)', color: '#00f2fe', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
                       NOVO v0.23.7
                     </span>
                   </h3>
@@ -12157,7 +12746,7 @@ function SettingsView({
 
               {localStorage.getItem('echo-ptt-mode') === 'true' && (
                 <div style={{ marginTop: '16px', background: 'var(--bg-secondary)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
                     Tecla de Atalho Global do Push-to-Talk:
                   </label>
                   <select
@@ -12444,7 +13033,7 @@ function SettingsView({
               {/* ── Pré-visualização em Tempo Real do Chat ── */}
               <div style={{ marginTop: '16px', background: 'var(--bg-primary)', borderRadius: '14px', padding: '16px', border: '1px solid var(--border-color)', transition: 'all 0.2s ease' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)' }}>
                     👁️ Pré-visualização no Chat (Modo {chatDensity === 'cozy' ? 'Confortável' : 'Compacto'})
                   </span>
                   <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px', background: 'var(--accent-light)', color: 'var(--accent-color)', fontWeight: 700 }}>
@@ -12472,7 +13061,7 @@ function SettingsView({
                       placeItems: 'center',
                       color: '#fff',
                       fontSize: chatDensity === 'cozy' ? '13px' : '11px',
-                      fontWeight: 800,
+                      fontWeight: 600,
                       flexShrink: 0,
                       transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
                     }}>
@@ -12508,7 +13097,7 @@ function SettingsView({
                       placeItems: 'center',
                       color: '#fff',
                       fontSize: chatDensity === 'cozy' ? '13px' : '11px',
-                      fontWeight: 800,
+                      fontWeight: 600,
                       flexShrink: 0,
                       transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
                     }}>
@@ -12533,10 +13122,10 @@ function SettingsView({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap', background: 'var(--bg-secondary)', padding: '18px 20px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
                 <div style={{ maxWidth: '520px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)' }}>
-                      🚀 Modo Alto Desempenho (Opaco)
+                    <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center' }}>
+                      <ColoredRocketIcon size={18} style={{ marginRight: 8 }} /> Modo Alto Desempenho (Opaco)
                     </h3>
-                    <span style={{ background: 'rgba(0, 242, 254, 0.15)', color: 'var(--accent-color, #00f2fe)', fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '12px', border: '1px solid rgba(0, 242, 254, 0.3)' }}>
+                    <span style={{ background: 'rgba(0, 242, 254, 0.15)', color: 'var(--accent-color, #00f2fe)', fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', border: '1px solid rgba(0, 242, 254, 0.3)' }}>
                       0% GPU BLUR
                     </span>
                   </div>
@@ -12626,7 +13215,7 @@ function SettingsView({
                     background: 'rgba(0, 242, 254, 0.15)',
                     color: 'var(--accent-color, #00f2fe)',
                     fontSize: '11px',
-                    fontWeight: 800,
+                    fontWeight: 600,
                     padding: '2px 8px',
                     borderRadius: '12px',
                     border: '1px solid rgba(0, 242, 254, 0.3)'

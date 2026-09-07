@@ -11,7 +11,8 @@ import {
   RemoteTrackPublication,
   RemoteParticipant,
   Participant,
-  ConnectionQuality
+  ConnectionQuality,
+  VideoQuality
 } from 'livekit-client'
 import { RnnoiseWorkletNode, loadRnnoise } from '@sapphi-red/web-noise-suppressor'
 import rnnoiseWorkletPath from '@sapphi-red/web-noise-suppressor/rnnoiseWorklet.js?url'
@@ -198,7 +199,12 @@ function routeAiDenoise(nodes: StudioMicrophoneDSPNodes, enabled: boolean) {
   }
 }
 
-export function useVoiceChannel() {
+export function useVoiceChannel(options?: { onDisconnected?: () => void }) {
+  const onDisconnectedRef = useRef(options?.onDisconnected)
+  useEffect(() => {
+    onDisconnectedRef.current = options?.onDisconnected
+  }, [options?.onDisconnected])
+
   const [participants, setParticipants] = useState<VoiceParticipant[]>([])
   const [isMuted, setIsMuted] = useState(false)
   const [isDeafened, setIsDeafened] = useState(false)
@@ -268,6 +274,7 @@ export function useVoiceChannel() {
   const isConnectingRef = useRef<boolean>(false)
   const nativeAudioCleanupRef = useRef<(() => void) | null>(null)
   const remoteScreenStreamsRef = useRef<Map<string, MediaStream>>(new Map())
+  const overrideProfilesRef = useRef<Map<string, { displayName?: string; avatarUrl?: string }>>(new Map())
 
   // Sync all participants into React state
   const syncParticipants = useCallback(() => {
@@ -277,10 +284,11 @@ export function useVoiceChannel() {
     // 1. Local Participant (instant 0ms local speaking indicator)
     if (myInfoRef.current) {
       const isSpeaking = (isLocalSpeakingRef.current || activeSpeakersRef.current.has(myInfoRef.current.userId)) && !isMutedRef.current && !isDeafenedRef.current
+      const localOverride = overrideProfilesRef.current.get(myInfoRef.current.userId)
       list.push({
         userId: myInfoRef.current.userId,
-        displayName: myInfoRef.current.displayName,
-        avatarUrl: myInfoRef.current.avatarUrl,
+        displayName: localOverride?.displayName || myInfoRef.current.displayName,
+        avatarUrl: localOverride?.avatarUrl !== undefined ? localOverride.avatarUrl : myInfoRef.current.avatarUrl,
         isSpeaking,
         isMuted: isMutedRef.current,
         isDeafened: isDeafenedRef.current,
@@ -317,10 +325,14 @@ export function useVoiceChannel() {
           }
         } catch (e) {}
 
+        const profileOverride = overrideProfilesRef.current.get(rp.identity)
+        const finalDisplayName = profileOverride?.displayName || rp.name || 'Membro'
+        const finalAvatarUrl = profileOverride?.avatarUrl !== undefined ? profileOverride.avatarUrl : avatarUrl
+
         list.push({
           userId: rp.identity,
-          displayName: rp.name || 'Membro',
-          avatarUrl: avatarUrl,
+          displayName: finalDisplayName,
+          avatarUrl: finalAvatarUrl,
           isSpeaking,
           isMuted,
           isDeafened: false,
@@ -330,6 +342,49 @@ export function useVoiceChannel() {
     }
 
     setParticipants(list)
+  }, [])
+
+  // ── Otimização Discord: Assinatura Dinâmica de Vídeo (Economia de Banda Oracle Cloud) ──
+  const subscriptionOptionsRef = useRef<{
+    activeSharerId?: string | null
+    viewMode?: 'focus' | 'grid'
+    isWatching?: boolean
+  }>({ isWatching: true, viewMode: 'focus' })
+
+  const updateScreenSubscriptions = useCallback((opts?: {
+    activeSharerId?: string | null
+    viewMode?: 'focus' | 'grid'
+    isWatching?: boolean
+  }) => {
+    if (opts) {
+      subscriptionOptionsRef.current = {
+        ...subscriptionOptionsRef.current,
+        ...opts
+      }
+    }
+    const currentOpts = subscriptionOptionsRef.current
+    const room = roomRef.current
+    if (!room || room.state !== 'connected') return
+
+    const isWatching = currentOpts.isWatching ?? true
+    const viewMode = currentOpts.viewMode ?? 'focus'
+    const activeSharerId = currentOpts.activeSharerId
+
+    room.remoteParticipants.forEach((rp) => {
+      const screenPub = rp.getTrackPublication(Track.Source.ScreenShare)
+      if (screenPub) {
+        // Se o espectador não estiver visualizando a tela, corta a transmissão de vídeo (0 Kbps)
+        // No modo foco, assina apenas a tela selecionada. No modo grade, assina todas em baixa resolução.
+        const shouldSubscribe = isWatching && (viewMode === 'grid' || !activeSharerId || activeSharerId === rp.identity)
+        if (screenPub.isSubscribed !== shouldSubscribe) {
+          screenPub.setSubscribed(shouldSubscribe)
+        }
+        if (shouldSubscribe) {
+          screenPub.setVideoQuality(viewMode === 'grid' ? VideoQuality.LOW : VideoQuality.HIGH)
+        }
+      }
+      // Nota: ScreenShareAudio continua intocado para tocar em segundo plano mesmo sem vídeo!
+    })
   }, [])
 
   // Start local VAD for 0ms speaking detection
@@ -533,6 +588,7 @@ export function useVoiceChannel() {
     }
 
     activeSpeakersRef.current.clear()
+    overrideProfilesRef.current.clear()
     myInfoRef.current = null
     setIsConnected(false)
     setParticipants([])
@@ -623,8 +679,8 @@ export function useVoiceChannel() {
       }
       localStreamRef.current = finalStream
 
-      // Conexao LiveKit SFU (Oracle Cloud Always Free Server)
-      let connectionUrl = 'wss://136-248-75-151.sslip.io'
+      // Conexao LiveKit SFU (Oracle Cloud Always Free Server Ampere)
+      let connectionUrl = 'wss://137-131-144-255.sslip.io'
       let token = ''
 
       if (typeof (window as any).electronAPI?.getLiveKitConnection === 'function') {
@@ -636,7 +692,10 @@ export function useVoiceChannel() {
             avatarUrl
           })
           if (res && res.success) {
-            connectionUrl = res.url
+            // Se o processo Electron ainda tiver em cache o IP antigo desativado, força o novo SFU Ampere
+            connectionUrl = (!res.url || res.url.includes('136-248-75-151'))
+              ? 'wss://137-131-144-255.sslip.io'
+              : res.url
             token = res.token
           }
         } catch (ipcErr) {
@@ -672,24 +731,42 @@ export function useVoiceChannel() {
       room.on(RoomEvent.Connected, () => {
         setIsConnected(true)
         syncParticipants()
+        updateScreenSubscriptions()
         console.log('[LiveKit] Conectado ao SFU na sala:', channelId)
+      })
+
+      room.on(RoomEvent.Reconnecting, () => {
+        console.log('[LiveKit] Reconectando ao SFU...')
+      })
+
+      room.on(RoomEvent.Reconnected, () => {
+        console.log('[LiveKit] Reconectado com sucesso ao SFU!')
+        setIsConnected(true)
+        syncParticipants()
+        updateScreenSubscriptions()
       })
 
       room.on(RoomEvent.LocalTrackPublished, () => {
         syncParticipants()
       })
 
-      room.on(RoomEvent.Disconnected, () => {
+      room.on(RoomEvent.Disconnected, (reason) => {
+        console.warn('[LiveKit] Desconectado do SFU. Motivo:', reason)
         setIsConnected(false)
-        console.log('[LiveKit] Desconectado do SFU')
+        if (onDisconnectedRef.current) {
+          onDisconnectedRef.current()
+        }
       })
 
       room.on(RoomEvent.ParticipantConnected, () => {
         syncParticipants()
       })
 
-      room.on(RoomEvent.TrackPublished, () => {
+      room.on(RoomEvent.TrackPublished, (pub: RemoteTrackPublication) => {
         syncParticipants()
+        if (pub && pub.source === Track.Source.ScreenShare) {
+          updateScreenSubscriptions()
+        }
       })
 
       room.on(RoomEvent.TrackUnpublished, () => {
@@ -774,6 +851,15 @@ export function useVoiceChannel() {
               displayName: participant?.name || 'Membro',
               timestamp: Date.now()
             })
+          } else if (data.type === 'profile_update') {
+            const targetUserId = data.userId || participant?.identity
+            if (targetUserId) {
+              overrideProfilesRef.current.set(targetUserId, {
+                displayName: data.displayName,
+                avatarUrl: data.avatarUrl
+              })
+              syncParticipants()
+            }
           }
         } catch (e) {}
       })
@@ -942,9 +1028,9 @@ export function useVoiceChannel() {
         nativeAudioCleanupRef.current = null
       }
 
-      const targetWidth = width || 1920
-      const targetHeight = height || 1080
-      const targetFps = fps || 60
+      const targetWidth = Math.min(width || 1920, 1920)
+      const targetHeight = Math.min(height || 1080, 1080)
+      const targetFps = Math.min(fps || 60, 60)
 
       let nativeAudioTrack: MediaStreamTrack | null = null
       const isWindowSource = sourceId && sourceId.startsWith('window:')
@@ -1112,11 +1198,15 @@ export function useVoiceChannel() {
           const localVideoTrack = new LocalVideoTrack(videoTrack)
           localScreenVideoTrackRef.current = localVideoTrack
 
-          // Bitrate inteligente balanceado estilo Discord:
-          // 1080p 60fps = 3.2 Mbps | 1080p 30fps = 2.4 Mbps | 720p = 1.6 Mbps
+          try {
+            localVideoTrack.mediaStreamTrack.contentHint = 'motion'
+          } catch (e) {}
+
+          // Bitrate inteligente otimizado estilo Discord (Economia Oracle Cloud):
+          // 1080p 60fps = 2.4 Mbps | 1080p 30fps = 1.8 Mbps | 720p 60fps = 1.5 Mbps | 720p 30fps = 1.0 Mbps
           const calculatedBitrate = targetWidth > 1280
-            ? (targetFps >= 60 ? 3200000 : 2400000)
-            : (targetFps >= 60 ? 2200000 : 1600000)
+            ? (targetFps >= 60 ? 2400000 : 1800000)
+            : (targetFps >= 60 ? 1500000 : 1000000)
 
           await room.localParticipant.publishTrack(localVideoTrack, {
             source: Track.Source.ScreenShare,
@@ -1136,9 +1226,9 @@ export function useVoiceChannel() {
               await room.localParticipant.publishTrack(localAudioTrack, {
                 source: Track.Source.ScreenShareAudio,
                 name: 'screen_audio',
-                dtx: false,
+                dtx: true,
                 audioPreset: {
-                  maxBitrate: 128000
+                  maxBitrate: 64000
                 }
               })
             } catch (aPubErr) {
@@ -1347,12 +1437,47 @@ export function useVoiceChannel() {
     }, 500)
   }, [])
 
-  // Auto leave on unmount
+  // Atualiza perfil local (nome e avatar) em tempo real sem precisar sair e entrar da sala
+  const updateLocalProfile = useCallback((displayName: string, avatarUrl?: string) => {
+    if (myInfoRef.current) {
+      myInfoRef.current.displayName = displayName
+      if (avatarUrl !== undefined) {
+        myInfoRef.current.avatarUrl = avatarUrl
+      }
+      overrideProfilesRef.current.set(myInfoRef.current.userId, {
+        displayName,
+        avatarUrl: myInfoRef.current.avatarUrl
+      })
+    }
+    const room = roomRef.current
+    if (room && room.localParticipant) {
+      try {
+        const payload = JSON.stringify({
+          type: 'profile_update',
+          userId: myInfoRef.current?.userId || room.localParticipant.identity,
+          displayName,
+          avatarUrl: myInfoRef.current?.avatarUrl
+        })
+        const encoder = new TextEncoder()
+        room.localParticipant.publishData(encoder.encode(payload), { reliable: true }).catch((err) => {
+          console.warn('[LiveKit] Falha ao enviar profile_update via DataChannel:', err)
+        })
+      } catch (e) {}
+    }
+    syncParticipants()
+  }, [syncParticipants])
+
+  // Auto leave on unmount (usando ref estável para NUNCA disparar em re-renderizações normais)
+  const leaveVoiceRef = useRef(leaveVoice)
+  useEffect(() => {
+    leaveVoiceRef.current = leaveVoice
+  }, [leaveVoice])
+
   useEffect(() => {
     return () => {
-      leaveVoice()
+      leaveVoiceRef.current()
     }
-  }, [leaveVoice])
+  }, [])
 
   return { 
     participants, 
@@ -1385,6 +1510,8 @@ export function useVoiceChannel() {
     startCallRecording,
     stopCallRecording,
     isAiDenoiseEnabled,
-    toggleAiDenoise
+    toggleAiDenoise,
+    updateScreenSubscriptions,
+    updateLocalProfile
   }
 }

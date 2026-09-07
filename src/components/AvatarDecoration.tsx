@@ -1,5 +1,16 @@
 import type { CSSProperties } from 'react'
-import { EchoCanvasDecoration, type CanvasDecorationId } from './EchoCanvasDecoration'
+import {
+  SoundwaveOrbDecoration,
+  FireStormDecoration,
+  CyberHudDecoration,
+  QuantumVortexDecoration,
+  PrismaticCrownDecoration,
+  CelestialHaloDecoration,
+  GhostfireDecoration,
+  NekoCyberDecoration,
+  HexShieldDecoration,
+  HeartHarmonyDecoration
+} from './HighTierDecorations'
 
 export interface DecorationMetadata {
   id: string
@@ -15,7 +26,7 @@ export const AVATAR_DECORATIONS: DecorationMetadata[] = [
     id: 'soundwave_orb',
     name: 'Orbe de Ressonância',
     category: 'Aura',
-    description: 'Anel circular de frequências acústicas oscilando ao redor do avatar com satélites harmônicos.',
+    description: 'Anel circular de frequências acústicas oscilando ao redor do avatar com satélites harmônicos a 60 FPS.',
     badge: 'ECHO ORIGIN',
     themeColor: '#00f2fe'
   },
@@ -23,7 +34,7 @@ export const AVATAR_DECORATIONS: DecorationMetadata[] = [
     id: 'fire_storm',
     name: 'Labaredas de Plasma',
     category: 'Aura',
-    description: 'Chamas vivas de plasma termonuclear com corona solar giratória e brasas ascendentes.',
+    description: 'Chamas vivas de plasma termonuclear com corona solar giratória e brasas ascendentes em física fluida.',
     badge: 'LENDÁRIO',
     themeColor: '#f97316'
   },
@@ -31,7 +42,7 @@ export const AVATAR_DECORATIONS: DecorationMetadata[] = [
     id: 'prismatic_crown',
     name: 'Coroa Prismática',
     category: 'Fantasia',
-    description: 'Cristais poliédricos flutuantes que refratam luz e brilhos diamantados em arco-íris.',
+    description: 'Cristais poliédricos flutuantes que refratam luz e brilhos diamantados em arco-íris com refração especular.',
     badge: 'VIP',
     themeColor: '#fbbf24'
   },
@@ -39,7 +50,7 @@ export const AVATAR_DECORATIONS: DecorationMetadata[] = [
     id: 'cyber_hud',
     name: 'Visor Tático Neon',
     category: 'Cyber',
-    description: 'Anéis de mira holográfica com retículo rotativo duplo e dados de telemetria sci-fi.',
+    description: 'Anéis de mira holográfica com retículo rotativo duplo e dados de telemetria sci-fi em tempo real.',
     badge: 'SCI-FI',
     themeColor: '#06b6d4'
   },
@@ -47,7 +58,7 @@ export const AVATAR_DECORATIONS: DecorationMetadata[] = [
     id: 'quantum_vortex',
     name: 'Vórtice Quântico',
     category: 'Aura',
-    description: 'Anéis orbitais cósmicos em 3D com partículas de antimatéria e arcos de plasma.',
+    description: 'Disco de acreção cósmico em 3D com partículas de antimatéria e jatos de plasma ultravioleta.',
     badge: 'CÓSMICO',
     themeColor: '#a855f7'
   },
@@ -55,7 +66,7 @@ export const AVATAR_DECORATIONS: DecorationMetadata[] = [
     id: 'celestial_halo',
     name: 'Auréola Sagrada',
     category: 'Fantasia',
-    description: 'Auréola celestial dourada com poeira estelar divina flutuando sobre o avatar.',
+    description: 'Auréola celestial dourada com feixes de glória divina e poeira estelar flutuando suavemente.',
     badge: 'DIVINO',
     themeColor: '#fde047'
   },
@@ -71,7 +82,7 @@ export const AVATAR_DECORATIONS: DecorationMetadata[] = [
     id: 'ghostfire',
     name: 'Chamas Espectrais',
     category: 'Aura',
-    description: 'Espirais entrelaçadas de fogo fátuo esmeralda e ametista envolvendo o avatar.',
+    description: 'Espirais entrelaçadas de fogo fátuo esmeralda e ametista envolvendo o avatar com névoa mística.',
     badge: 'MÍTICO',
     themeColor: '#c084fc'
   },
@@ -79,7 +90,7 @@ export const AVATAR_DECORATIONS: DecorationMetadata[] = [
     id: 'neko_cyber',
     name: 'Orelhas Holográficas',
     category: 'Animais',
-    description: 'Orelhinhas felinas estilizadas com contorno laser neon e partículas cintilantes.',
+    description: 'Orelhinhas felinas estilizadas com contorno laser neon, equalizador sonoro e partículas cintilantes.',
     badge: 'FOFO',
     themeColor: '#f472b6'
   },
@@ -87,13 +98,13 @@ export const AVATAR_DECORATIONS: DecorationMetadata[] = [
     id: 'heart_harmony',
     name: 'Sinfonia do Coração',
     category: 'Fantasia',
-    description: 'Corações translúcidos e notas harmônicas flutuando suavemente em órbita.',
+    description: 'Corações translúcidos tridimensionais e notas harmônicas flutuando suavemente em órbita.',
     badge: 'ROMÂNTICO',
     themeColor: '#ec4899'
   }
 ]
 
-const DECORATION_ALIASES: Record<string, CanvasDecorationId> = {
+const DECORATION_ALIASES: Record<string, string> = {
   solar_orbit: 'soundwave_orb',
   fire_elemental: 'fire_storm',
   rage_flame: 'fire_storm',
@@ -124,7 +135,78 @@ interface AvatarDecorationProps {
 
 export function AvatarDecoration({ decorationId, className = '', style }: AvatarDecorationProps) {
   if (!decorationId || decorationId === 'none') return null
-  const normalizedId = (DECORATION_ALIASES[decorationId] || decorationId) as CanvasDecorationId
+
+  // Support direct animated WebP/APNG/GIF/URL assets (Discord & custom asset spec)
+  const isDirectAsset =
+    decorationId.startsWith('http://') ||
+    decorationId.startsWith('https://') ||
+    decorationId.startsWith('data:') ||
+    decorationId.startsWith('/') ||
+    /\.(webp|apng|gif|png|svg)$/i.test(decorationId)
+
+  if (isDirectAsset) {
+    return (
+      <div
+        className={`echo-avatar-decoration-wrap echo-deco-direct-asset ${className}`}
+        style={{
+          position: 'absolute',
+          inset: '-20%',
+          width: '140%',
+          height: '140%',
+          pointerEvents: 'none',
+          zIndex: 2,
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          ...style
+        }}
+        aria-hidden="true"
+      >
+        <img
+          src={decorationId}
+          alt=""
+          loading="eager"
+          decoding="async"
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            pointerEvents: 'none'
+          }}
+        />
+      </div>
+    )
+  }
+
+  const normalizedId = DECORATION_ALIASES[decorationId] || decorationId
+
+  const renderVectorGraphic = () => {
+    switch (normalizedId) {
+      case 'soundwave_orb':
+        return <SoundwaveOrbDecoration />
+      case 'fire_storm':
+        return <FireStormDecoration />
+      case 'cyber_hud':
+        return <CyberHudDecoration />
+      case 'quantum_vortex':
+        return <QuantumVortexDecoration />
+      case 'prismatic_crown':
+        return <PrismaticCrownDecoration />
+      case 'celestial_halo':
+        return <CelestialHaloDecoration />
+      case 'ghostfire':
+        return <GhostfireDecoration />
+      case 'neko_cyber':
+        return <NekoCyberDecoration />
+      case 'hex_shield':
+        return <HexShieldDecoration />
+      case 'heart_harmony':
+        return <HeartHarmonyDecoration />
+      default:
+        return <SoundwaveOrbDecoration />
+    }
+  }
 
   return (
     <div
@@ -141,9 +223,7 @@ export function AvatarDecoration({ decorationId, className = '', style }: Avatar
       }}
       aria-hidden="true"
     >
-      <EchoCanvasDecoration decorationId={normalizedId} />
+      {renderVectorGraphic()}
     </div>
   )
 }
-
-

@@ -14,15 +14,48 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.23.23'
+export const APP_CURRENT_VERSION = '0.23.24'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.23.24',
+    title: 'Ícones SVG Modernos, Atualização de Nome em Tempo Real e Novo Ícone do Windows',
+    date: '07 de Setembro de 2026',
+    tagline: 'Visual modernizado com emojis substituídos por SVGs coloridos de alta fidelidade na tela de transmissão e na loja, atualização de perfil instantânea (0ms) na chamada e ícone oficial do Echo na bandeja do sistema.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎨',
+        badge: 'DESIGN & MODERNIZAÇÃO',
+        title: 'Ícones SVG Vetoriais Coloridos',
+        description: 'Substituição completa de emojis de texto comuns por ícones SVG coloridos com gradientes modernos no seletor de transmissão, na Loja de Cosméticos e na navegação.'
+      },
+      {
+        icon: '⚡',
+        badge: 'CHAMADAS EM TEMPO REAL',
+        title: 'Atualização de Nome Instantânea (0ms)',
+        description: 'Ao alterar seu nome de exibição ou avatar nas configurações, a modificação é transmitida imediatamente para todos os membros da sala via SFU DataChannel, sem precisar sair e entrar de novo na chamada.'
+      },
+      {
+        icon: '💎',
+        badge: 'WINDOWS & SEGUNDO PLANO',
+        title: 'Ícone Oficial na Bandeja e Segundo Plano',
+        description: 'Fim do quadrado salmão genérico na bandeja do sistema. O Echo agora exibe seu átomo neon oficial em alta resolução tanto na janela principal quanto na bandeja do Windows (System Tray).'
+      },
+      {
+        icon: '🚀',
+        badge: 'ECONOMIA & PERFORMANCE',
+        title: 'Otimização de Transmissão e Limpeza de Interface',
+        description: 'Remoção de disclaimers desnecessários e refinamento no consumo de banda das transmissões com cancelamento inteligente de pacotes ociosos.'
+      }
+    ]
+  },
   {
     version: '0.23.23',
     title: 'Chat de Texto em Tempo Real (0ms) e Otimização de Performance',
     date: '06 de Setembro de 2026',
     tagline: 'Entrega instantânea de mensagens de texto via WebSocket Broadcast (0ms), interface otimista com indicador de retentativa, paginação inteligente com rolagem infinita e notas de voz ultraleves no Storage.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '⚡',
