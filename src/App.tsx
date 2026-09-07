@@ -27,6 +27,7 @@ import { EchoShop } from './components/EchoShop'
 import { AvatarDecoration } from './components/AvatarDecoration'
 import { ProfileEffect } from './components/ProfileEffect'
 import { CosmeticsInventory } from './components/CosmeticsInventory'
+import { NAME_EFFECTS } from './lib/cosmeticsData'
 
 type Page = 'Amigos' | 'Mensagens' | 'Servidores' | 'Descobrir' | 'Configurações' | 'Loja'
 
@@ -857,7 +858,16 @@ import {
   ColoredMaskIcon,
   ColoredSparklesIcon,
   ColoredLightningIcon,
-  ColoredGemIcon
+  ColoredGemIcon,
+  ColoredClockIcon,
+  ColoredMoonSleepIcon,
+  ColoredTrayIcon,
+  ColoredSoundwaveIcon,
+  ColoredBrainAiIcon,
+  ColoredHeadphonesIcon,
+  ColoredMicActiveIcon,
+  ColoredPushToTalkIcon,
+  ColoredVolumeSpeakerIcon
 } from './components/ColoredIcons'
 
 export {
@@ -872,7 +882,16 @@ export {
   ColoredMaskIcon,
   ColoredSparklesIcon,
   ColoredLightningIcon,
-  ColoredGemIcon
+  ColoredGemIcon,
+  ColoredClockIcon,
+  ColoredMoonSleepIcon,
+  ColoredTrayIcon,
+  ColoredSoundwaveIcon,
+  ColoredBrainAiIcon,
+  ColoredHeadphonesIcon,
+  ColoredMicActiveIcon,
+  ColoredPushToTalkIcon,
+  ColoredVolumeSpeakerIcon
 }
 
 
@@ -2006,7 +2025,8 @@ function Echo({ user }: { user: User }) {
 
   const [avatarFrame, setAvatarFrame] = useState(() => localStorage.getItem(`echo-avatar-frame-${user.id}`) || 'aura-cyan')
   const [cardFinish, setCardFinish] = useState<'none' | 'holographic' | 'glass' | 'carbon'>(() => (localStorage.getItem(`echo-card-finish-${user.id}`) as any) || 'none')
-  const [shopInitialTab, setShopInitialTab] = useState<'decorations' | 'profile_effects' | 'auras' | 'finishes'>('decorations')
+  const [nameEffect, setNameEffect] = useState<string>(() => localStorage.getItem(`echo-name-effect-${user.id}`) || 'resonance_cyan')
+  const [shopInitialTab, setShopInitialTab] = useState<'decorations' | 'profile_effects' | 'auras' | 'finishes' | 'name_effects'>('decorations')
   const [settingsInitialTab, setSettingsInitialTab] = useState<'profile' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog'>('profile')
 
   const handleEquipAvatarFrame = (frameId: string) => {
@@ -2019,6 +2039,33 @@ function Echo({ user }: { user: User }) {
     localStorage.setItem(`echo-card-finish-${user.id}`, finishId)
   }
 
+  const handleEquipNameEffect = (effId: string) => {
+    setNameEffect(effId)
+    try {
+      localStorage.setItem(`echo-name-effect-${user.id}`, effId)
+      localStorage.setItem('echo-name-effect', effId)
+      if (presenceChannelRef.current) {
+        const savedStatus = presenceStatus === 'invisible' ? '' : (localStorage.getItem('echo-custom-status') || '')
+        const gameData = presenceStatus === 'invisible' ? null : myGamePresence
+        const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || avatarDecoration || ''
+        const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || profileEffect || ''
+        presenceChannelRef.current.track({
+          user_id: user.id,
+          display_name: profileDisplayName,
+          online_at: new Date().toISOString(),
+          custom_status: savedStatus,
+          presence_status: presenceStatus,
+          current_game: gameData,
+          avatar_decoration: curDeco,
+          profile_effect: curEff,
+          name_effect: effId
+        })
+      }
+    } catch (e) {
+      console.warn('Unable to persist name_effect:', e)
+    }
+  }
+
   async function updatePresenceStatus(status: 'online' | 'idle' | 'dnd' | 'invisible') {
     setPresenceStatus(status)
     localStorage.setItem('echo-presence-status', status)
@@ -2027,6 +2074,7 @@ function Echo({ user }: { user: User }) {
       const gameData = status === 'invisible' ? null : myGamePresence
       const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || avatarDecoration || ''
       const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || profileEffect || ''
+      const curNameEff = localStorage.getItem(`echo-name-effect-${user.id}`) || nameEffect || 'resonance_cyan'
       await presenceChannelRef.current.track({
         user_id: user.id,
         display_name: profileDisplayName,
@@ -2035,7 +2083,8 @@ function Echo({ user }: { user: User }) {
         presence_status: status,
         current_game: gameData,
         avatar_decoration: curDeco,
-        profile_effect: curEff
+        profile_effect: curEff,
+        name_effect: curNameEff
       })
     }
   }
@@ -2282,8 +2331,8 @@ function Echo({ user }: { user: User }) {
   }, [selectedDMUserId])
 
   // Push-to-Talk settings
-  const pttKey = localStorage.getItem('echo-ptt-key') || 'KeyV'
-  const pttModeSetting = localStorage.getItem('echo-ptt-mode') === 'true'
+  const [pttKey, setPttKey] = useState<string>(() => localStorage.getItem('echo-ptt-key') || 'KeyV')
+  const [pttModeSetting, setPttModeSetting] = useState<boolean>(() => localStorage.getItem('echo-ptt-mode') === 'true')
 
   // Sync PTT mode with useVoiceChannel
   useEffect(() => {
@@ -2565,6 +2614,140 @@ function Echo({ user }: { user: User }) {
   const [screenFps, setScreenFps] = useState<15 | 30 | 60>(60)
   const [showScreenMenu, setShowScreenMenu] = useState(false)
   const [selectedPickerSourceId, setSelectedPickerSourceId] = useState<string | null>(null)
+  const [activeSharingSource, setActiveSharingSource] = useState<any | null>(null)
+
+  // ── Intelligent FPS Lock for Screen Picker ──
+  const currentSelectedPickerSource = screenSources.find(s => s.id === selectedPickerSourceId)
+  const isPickerGameOrScreen = screenPickerTab === 'screens' || 
+    currentSelectedPickerSource?.type === 'screen' || 
+    currentSelectedPickerSource?.id?.startsWith('screen:') || 
+    currentSelectedPickerSource?.isGame === true || 
+    (currentSelectedPickerSource?.name || '').toLowerCase().includes('(jogo)')
+
+  // Auto-adjust FPS if a non-game window is selected and FPS was set to 60
+  useEffect(() => {
+    if (showScreenPicker && !isPickerGameOrScreen && screenFps === 60) {
+      setScreenFps(30)
+    }
+  }, [showScreenPicker, isPickerGameOrScreen, screenFps])
+
+  // ── Inactivity / AFK Tracker (2 hours threshold, 3 min response countdown) ──
+  const [showAfkPrompt, setShowAfkPrompt] = useState(false)
+  const [afkCountdown, setAfkCountdown] = useState(180)
+  const [showAfkDisconnectedModal, setShowAfkDisconnectedModal] = useState(false)
+  const lastActivityRef = useRef<number>(Date.now())
+  const lastAfkChannelRef = useRef<{ channelId: string; spaceId?: string } | null>(null)
+
+  // Passive activity listeners (mouse, clicks, keyboard, wheel, touch)
+  useEffect(() => {
+    const handleActivity = () => {
+      if (!showAfkPrompt) {
+        lastActivityRef.current = Date.now()
+      }
+    }
+
+    window.addEventListener('mousemove', handleActivity, { passive: true })
+    window.addEventListener('mousedown', handleActivity, { passive: true })
+    window.addEventListener('keydown', handleActivity, { passive: true })
+    window.addEventListener('wheel', handleActivity, { passive: true })
+    window.addEventListener('touchstart', handleActivity, { passive: true })
+
+    return () => {
+      window.removeEventListener('mousemove', handleActivity)
+      window.removeEventListener('mousedown', handleActivity)
+      window.removeEventListener('keydown', handleActivity)
+      window.removeEventListener('wheel', handleActivity)
+      window.removeEventListener('touchstart', handleActivity)
+    }
+  }, [showAfkPrompt])
+
+  // Refresh activity when the local user speaks in voice
+  useEffect(() => {
+    if (!isConnected) return
+    const isMeSpeaking = participants.some(p => p.userId === user?.id && p.isSpeaking)
+    if (isMeSpeaking && !showAfkPrompt) {
+      lastActivityRef.current = Date.now()
+    }
+  }, [isConnected, participants, user?.id, showAfkPrompt])
+
+  // Check for 2 hours of continuous inactivity while connected to voice/stream
+  useEffect(() => {
+    if (!isConnected && !(window as any).__isAfkSimulating) {
+      if (showAfkPrompt) setShowAfkPrompt(false)
+      return
+    }
+
+    const interval = setInterval(() => {
+      if (showAfkPrompt) return
+      const elapsed = Date.now() - lastActivityRef.current
+      if (elapsed >= 2 * 60 * 60 * 1000) {
+        setShowAfkPrompt(true)
+        setAfkCountdown(180)
+      }
+    }, 10000)
+
+    return () => clearInterval(interval)
+  }, [isConnected, showAfkPrompt])
+
+  // 1-second countdown when AFK prompt is active (180s -> 0)
+  useEffect(() => {
+    if (!showAfkPrompt || (!isConnected && !(window as any).__isAfkSimulating)) return
+
+    const timer = setInterval(() => {
+      setAfkCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          if (activeVoiceChannelId) {
+            const currentSpaceId = selectedChannel?.space_id || Object.keys(spaceChannels).find(sId => (spaceChannels[sId] || []).some(c => c.id === activeVoiceChannelId))
+            lastAfkChannelRef.current = {
+              channelId: activeVoiceChannelId,
+              spaceId: currentSpaceId
+            }
+          }
+          handleLeaveVoice()
+          setShowAfkPrompt(false)
+          setShowAfkDisconnectedModal(true)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [showAfkPrompt, isConnected, activeVoiceChannelId, selectedChannel?.space_id, spaceChannels])
+
+  // Reset AFK when staying
+  const handleAfkStay = useCallback(() => {
+    lastActivityRef.current = Date.now()
+    setShowAfkPrompt(false)
+    setAfkCountdown(180)
+  }, [])
+
+  // Expose AFK simulation on window for testing
+  useEffect(() => {
+    ;(window as any).__triggerAfkPrompt = () => {
+      ;(window as any).__isAfkSimulating = true
+      setShowAfkPrompt(true)
+      setAfkCountdown(180)
+    }
+    ;(window as any).__triggerAfkDisconnect = () => {
+      if (activeVoiceChannelId) {
+        const currentSpaceId = selectedChannel?.space_id || Object.keys(spaceChannels).find(sId => (spaceChannels[sId] || []).some(c => c.id === activeVoiceChannelId))
+        lastAfkChannelRef.current = {
+          channelId: activeVoiceChannelId,
+          spaceId: currentSpaceId
+        }
+      } else {
+        lastAfkChannelRef.current = {
+          channelId: 'mock-channel-id',
+          spaceId: 'mock-space-id'
+        }
+      }
+      handleLeaveVoice()
+      setShowAfkPrompt(false)
+      setShowAfkDisconnectedModal(true)
+    }
+  }, [activeVoiceChannelId, selectedChannel?.space_id, spaceChannels])
 
   // Audio settings configuration
   const [audioInputs, setAudioInputs] = useState<MediaDeviceInfo[]>([])
@@ -2722,6 +2905,9 @@ function Echo({ user }: { user: User }) {
   }, [spaces, user.id])
 
   async function handleJoinVoice(channelId: string, explicitSpaceId?: string) {
+    lastActivityRef.current = Date.now()
+    setShowAfkPrompt(false)
+    setShowAfkDisconnectedModal(false)
     setActiveVoiceChannelId(channelId)
     const spaceId = explicitSpaceId || selectedChannel?.space_id || Object.keys(spaceChannels).find(sId => (spaceChannels[sId] || []).some(c => c.id === channelId))
     try {
@@ -2738,6 +2924,7 @@ function Echo({ user }: { user: User }) {
     const prevChId = activeVoiceChannelId
     leaveVoice()
     setActiveVoiceChannelId(null)
+    setActiveSharingSource(null)
     if (prevChId && user?.id) {
       setSpaceVoiceUsers(prev => {
         if (!prev[prevChId]) return prev
@@ -3742,10 +3929,16 @@ function Echo({ user }: { user: User }) {
   }
 
   async function handleFpsChange(newFps: 15 | 30 | 60) {
-    setScreenFps(newFps)
+    const isCurrentStreamGameOrScreen = !activeSharingSource || 
+      activeSharingSource.type === 'screen' || 
+      activeSharingSource.id?.startsWith('screen:') || 
+      activeSharingSource.isGame === true || 
+      (activeSharingSource.name || '').toLowerCase().includes('(jogo)')
+    const targetFps = (!isCurrentStreamGameOrScreen && newFps === 60) ? 30 : newFps
+    setScreenFps(targetFps)
     if (localScreenStream) {
       const { w, h } = getQualityDimensions(screenQuality)
-      await changeScreenShareSettings(w, h, newFps)
+      await changeScreenShareSettings(w, h, targetFps)
     }
   }
 
@@ -3756,6 +3949,7 @@ function Echo({ user }: { user: User }) {
 
   async function handleStopScreenShare() {
     playScreenStopSound(sfxVolume)
+    setActiveSharingSource(null)
     await stopScreenShare()
   }
 
@@ -3767,13 +3961,29 @@ function Echo({ user }: { user: User }) {
     await openScreenPickerHelper(screenQuality, screenFps)
   }
 
+  useEffect(() => {
+    ;(window as any).__openScreenPicker = () => openScreenPickerHelper(screenQuality, screenFps)
+  }, [screenQuality, screenFps])
+
   async function selectScreenSource(sourceId: string) {
     setShowScreenPicker(false)
     setIsWatchingStreams(true)
     setSelectedScreenSharerUserId(user.id)
     setScreenShareViewMode('focus')
     const { w, h } = getQualityDimensions(screenQuality)
-    await startScreenShare(sourceId, w, h, screenFps)
+    const targetSource = screenSources.find(s => s.id === sourceId)
+    const isGameOrScreen = screenPickerTab === 'screens' || 
+      targetSource?.type === 'screen' || 
+      targetSource?.id?.startsWith('screen:') || 
+      targetSource?.isGame === true || 
+      (targetSource?.name || '').toLowerCase().includes('(jogo)')
+
+    const effectiveFps = (!isGameOrScreen && screenFps === 60) ? 30 : screenFps
+    if (effectiveFps !== screenFps) {
+      setScreenFps(effectiveFps)
+    }
+    setActiveSharingSource(targetSource || null)
+    await startScreenShare(sourceId, w, h, effectiveFps)
     playScreenStartSound(sfxVolume)
   }
 
@@ -3857,7 +4067,7 @@ function Echo({ user }: { user: User }) {
       ]
       setSpaceChannels(prev => ({ ...prev, [spaceId]: mockChs }))
       if (!selectedChannel) {
-        setSelectedChannel(mockChs[1])
+        setSelectedChannel(window.location.search.includes('channel=text') ? mockChs[0] : mockChs[1])
       }
       return
     }
@@ -5365,47 +5575,7 @@ function Echo({ user }: { user: User }) {
           </nav>
         </div>
 
-        <div className="topbar-right">
-          <button 
-            type="button" 
-            className="topbar-search-trigger"
-            onClick={() => {
-              if (page !== 'Servidores') setPage('Servidores')
-              setTimeout(() => {
-                if (channelSearchInputRef.current) {
-                  channelSearchInputRef.current.focus()
-                  channelSearchInputRef.current.select()
-                }
-              }, 50)
-            }}
-            title="Buscar canais e membros (Ctrl+K)"
-          >
-            <SearchIcon style={{ width: '14px', height: '14px' }} />
-            <span className="topbar-search-text">Buscar...</span>
-            <kbd className="topbar-search-kbd">Ctrl K</kbd>
-          </button>
-
-          <div 
-            className="topbar-user-pill" 
-            onClick={() => setPage('Configurações')}
-            title="Abrir Configurações de Perfil"
-          >
-            <div className="topbar-user-avatar" style={{ position: 'relative' }}>
-              {profileAvatarUrl ? (
-                <img src={profileAvatarUrl} alt="" />
-              ) : (
-                <span>{(profileDisplayName || displayName || 'U').slice(0, 1).toUpperCase()}</span>
-              )}
-              {avatarDecoration && avatarDecoration !== 'none' && (
-                <AvatarDecoration decorationId={avatarDecoration} />
-              )}
-              <span className={`topbar-status-dot ${presenceStatus}`} />
-            </div>
-            <span className="topbar-user-name">
-              {profileDisplayName || displayName}
-            </span>
-          </div>
-        </div>
+        <div className="topbar-right" />
       </header>
 
       <section className="workspace" style={{ display: page === 'Servidores' ? undefined : 'none' }}>
@@ -6384,27 +6554,43 @@ function Echo({ user }: { user: User }) {
                                             )}
 
                                             <div className="msg-meta">
-                                              <strong 
-                                                style={{ color: msgRole?.color || 'var(--text-primary)', cursor: 'pointer' }}
-                                                onClick={() => {
-                                                  if (currentSpace) {
-                                                    const memRoles = memberRoleMap[message.author_id] || []
-                                                    const matchingRoles = serverRoles.filter(r => memRoles.includes(r.id))
-                                                    setInspectedMember({
-                                                      user: {
-                                                        id: message.author_id,
-                                                        display_name: message.profile?.display_name || 'Membro',
-                                                        avatar_url: message.profile?.avatar_url
-                                                      },
-                                                      roleName: msgRole?.name,
-                                                      roleColor: msgRole?.color,
-                                                      roles: matchingRoles
-                                                    })
-                                                  }
-                                                }}
-                                              >
-                                                {message.profile?.display_name ?? 'Membro'}
-                                              </strong>
+                                              {(() => {
+                                                const authorNameEffect = message.author_id === user.id ? (nameEffect || 'resonance_cyan') : (presenceData[message.author_id]?.name_effect || localStorage.getItem(`echo-name-effect-${message.author_id}`) || 'none')
+                                                const authorNameMeta = NAME_EFFECTS.find(n => n.id === authorNameEffect)
+                                                return (
+                                                  <>
+                                                    <strong 
+                                                      className={authorNameEffect && authorNameEffect !== 'none' ? `name-effect-${authorNameEffect}` : ''}
+                                                      style={{ color: (authorNameEffect && authorNameEffect !== 'none') ? undefined : (msgRole?.color || 'var(--text-primary)'), cursor: 'pointer' }}
+                                                      onClick={() => {
+                                                        if (currentSpace) {
+                                                          const memRoles = memberRoleMap[message.author_id] || []
+                                                          const matchingRoles = serverRoles.filter(r => memRoles.includes(r.id))
+                                                          setInspectedMember({
+                                                            user: {
+                                                              id: message.author_id,
+                                                              display_name: message.profile?.display_name || 'Membro',
+                                                              avatar_url: message.profile?.avatar_url
+                                                            },
+                                                            roleName: msgRole?.name,
+                                                            roleColor: msgRole?.color,
+                                                            roles: matchingRoles
+                                                          })
+                                                        }
+                                                      }}
+                                                    >
+                                                      {message.profile?.display_name ?? 'Membro'}
+                                                    </strong>
+                                                    {authorNameEffect && authorNameEffect !== 'none' && (
+                                                      <span className="name-soundwave-indicator" title={authorNameMeta?.name || 'Aura Sonora'}>
+                                                        <span className="name-soundwave-bar" style={{ background: authorNameMeta?.themeColor || '#00f2fe' }} />
+                                                        <span className="name-soundwave-bar" style={{ background: authorNameMeta?.themeColor || '#00f2fe' }} />
+                                                        <span className="name-soundwave-bar" style={{ background: authorNameMeta?.themeColor || '#00f2fe' }} />
+                                                      </span>
+                                                    )}
+                                                  </>
+                                                )
+                                              })()}
 
                                               {authorClanTag && (
                                                 <span 
@@ -6879,6 +7065,8 @@ function Echo({ user }: { user: User }) {
                               const userPresenceStatus = isOnline ? (presenceData[member.user.id]?.presence_status || 'online') : 'offline'
                               const memberRole = getUserHighestRole(currentSpace.id, member.user.id)
                               const memberDeco = member.user.id === user.id ? (avatarDecoration || null) : (presenceData[member.user.id]?.avatar_decoration || member.user?.avatar_decoration || null)
+                              const memberNameEffect = member.user.id === user.id ? (nameEffect || 'resonance_cyan') : (presenceData[member.user.id]?.name_effect || localStorage.getItem(`echo-name-effect-${member.user.id}`) || 'none')
+                              const memberNameMeta = NAME_EFFECTS.find(n => n.id === memberNameEffect)
 
                               const memberClanTag = localStorage.getItem(`echo-clan-tag-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-${user.id}`) : null)
                               const memberClanTagColor = localStorage.getItem(`echo-clan-tag-color-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-color-${user.id}`) : '#00f2fe') || '#00f2fe'
@@ -6893,7 +7081,12 @@ function Echo({ user }: { user: User }) {
 
                               return (
                                 <div 
-                                  className="member-card" 
+                                  className={`member-card ${memberNameEffect && memberNameEffect !== 'none' ? 'has-name-effect' : ''}`}
+                                  style={memberNameMeta ? {
+                                    '--member-aura-border': `${memberNameMeta.themeColor}55`,
+                                    '--member-aura-bg': `${memberNameMeta.themeColor}12`,
+                                    '--member-aura-shadow': `${memberNameMeta.themeColor}22`
+                                  } as React.CSSProperties : undefined}
                                   key={member.user.id}
                                   onClick={() => {
                                     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
@@ -6957,9 +7150,20 @@ function Echo({ user }: { user: User }) {
                                   </div>
                                   <div className="member-info">
                                     <div className="member-name-row">
-                                      <span className="member-name" style={{ color: memberRole?.color || 'var(--text-primary)' }}>
+                                      <span 
+                                        className={`member-name ${memberNameEffect && memberNameEffect !== 'none' ? `name-effect-${memberNameEffect}` : ''}`} 
+                                        style={{ color: (memberNameEffect && memberNameEffect !== 'none') ? undefined : (memberRole?.color || 'var(--text-primary)') }}
+                                      >
                                         {member.user.display_name}
                                       </span>
+
+                                      {memberNameEffect && memberNameEffect !== 'none' && (
+                                        <span className="name-soundwave-indicator" title={memberNameMeta?.name || 'Aura Sonora'}>
+                                          <span className="name-soundwave-bar" style={{ background: memberNameMeta?.themeColor || '#00f2fe' }} />
+                                          <span className="name-soundwave-bar" style={{ background: memberNameMeta?.themeColor || '#00f2fe' }} />
+                                          <span className="name-soundwave-bar" style={{ background: memberNameMeta?.themeColor || '#00f2fe' }} />
+                                        </span>
+                                      )}
 
                                       {memberClanTag && (
                                         <span 
@@ -7246,6 +7450,7 @@ function Echo({ user }: { user: User }) {
                                           setScreenShareViewMode('focus')
                                         }}
                                         onCloseStream={() => setIsWatchingStreams(false)}
+                                        localScreenFps={screenFps}
                                       />
                                     ))}
                                   </div>
@@ -7261,6 +7466,7 @@ function Echo({ user }: { user: User }) {
                                       isPiPActive={isPiPActive}
                                       onToggleFloatingPiP={() => setIsPiPActive(!isPiPActive)}
                                       onCloseStream={() => setIsWatchingStreams(false)}
+                                        localScreenFps={screenFps}
                                     />
                                   </div>
                                 ) : null}
@@ -7584,15 +7790,30 @@ function Echo({ user }: { user: User }) {
                                     <div className="dropdown-divider" />
                                     <div className="dropdown-section">
                                       <span className="section-title">FPS</span>
-                                      {([15, 30, 60] as const).map(fps => (
-                                        <button 
-                                          key={fps} 
-                                          className={`dropdown-option ${screenFps === fps ? 'selected' : ''}`}
-                                          onClick={() => handleFpsChange(fps)}
-                                        >
-                                          {fps} FPS
-                                        </button>
-                                      ))}
+                                      {([15, 30, 60] as const).map(fps => {
+                                        const isCurrentStreamGameOrScreen = !activeSharingSource || 
+                                          activeSharingSource.type === 'screen' || 
+                                          activeSharingSource.id?.startsWith('screen:') || 
+                                          activeSharingSource.isGame === true || 
+                                          (activeSharingSource.name || '').toLowerCase().includes('(jogo)')
+                                        const is60DisabledInCall = fps === 60 && !isCurrentStreamGameOrScreen
+                                        return (
+                                          <button 
+                                            key={fps} 
+                                            disabled={is60DisabledInCall}
+                                            title={is60DisabledInCall ? '60 FPS disponível apenas em Jogos e Telas Inteiras' : undefined}
+                                            className={`dropdown-option ${screenFps === fps ? 'selected' : ''} ${is60DisabledInCall ? 'disabled' : ''}`}
+                                            style={is60DisabledInCall ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+                                            onClick={() => {
+                                              if (!is60DisabledInCall) {
+                                                handleFpsChange(fps)
+                                              }
+                                            }}
+                                          >
+                                            {fps} FPS {is60DisabledInCall ? '(Jogos/Telas)' : ''}
+                                          </button>
+                                        )
+                                      })}
                                     </div>
                                   </div>
                                 )}
@@ -7730,6 +7951,8 @@ function Echo({ user }: { user: User }) {
                               const isOnline = onlineUsers.has(member.user.id) || isVoiceUser
                               const userPresenceStatus = isOnline ? (presenceData[member.user.id]?.presence_status || 'online') : 'offline'
                               const memberRole = getUserHighestRole(currentSpace.id, member.user.id)
+                              const memberNameEffect = member.user.id === user.id ? (nameEffect || 'resonance_cyan') : (presenceData[member.user.id]?.name_effect || localStorage.getItem(`echo-name-effect-${member.user.id}`) || 'none')
+                              const memberNameMeta = NAME_EFFECTS.find(n => n.id === memberNameEffect)
 
                               const memberClanTag = localStorage.getItem(`echo-clan-tag-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-${user.id}`) : null)
                               const memberClanTagColor = localStorage.getItem(`echo-clan-tag-color-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-color-${user.id}`) : '#00f2fe') || '#00f2fe'
@@ -7744,7 +7967,12 @@ function Echo({ user }: { user: User }) {
 
                               return (
                                 <div 
-                                  className="member-card" 
+                                  className={`member-card ${memberNameEffect && memberNameEffect !== 'none' ? 'has-name-effect' : ''}`}
+                                  style={memberNameMeta ? {
+                                    '--member-aura-border': `${memberNameMeta.themeColor}55`,
+                                    '--member-aura-bg': `${memberNameMeta.themeColor}12`,
+                                    '--member-aura-shadow': `${memberNameMeta.themeColor}22`
+                                  } as React.CSSProperties : undefined}
                                   key={member.user.id}
                                   onClick={() => {
                                     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
@@ -7805,9 +8033,20 @@ function Echo({ user }: { user: User }) {
                                   </div>
                                   <div className="member-info">
                                     <div className="member-name-row">
-                                      <span className="member-name" style={{ color: memberRole?.color || 'var(--text-primary)' }}>
+                                      <span 
+                                        className={`member-name ${memberNameEffect && memberNameEffect !== 'none' ? `name-effect-${memberNameEffect}` : ''}`} 
+                                        style={{ color: (memberNameEffect && memberNameEffect !== 'none') ? undefined : (memberRole?.color || 'var(--text-primary)') }}
+                                      >
                                         {member.user.display_name}
                                       </span>
+
+                                      {memberNameEffect && memberNameEffect !== 'none' && (
+                                        <span className="name-soundwave-indicator" title={memberNameMeta?.name || 'Aura Sonora'}>
+                                          <span className="name-soundwave-bar" style={{ background: memberNameMeta?.themeColor || '#00f2fe' }} />
+                                          <span className="name-soundwave-bar" style={{ background: memberNameMeta?.themeColor || '#00f2fe' }} />
+                                          <span className="name-soundwave-bar" style={{ background: memberNameMeta?.themeColor || '#00f2fe' }} />
+                                        </span>
+                                      )}
 
                                       {memberClanTag && (
                                         <span 
@@ -8038,10 +8277,12 @@ function Echo({ user }: { user: User }) {
           profileEffect={profileEffect}
           avatarFrame={avatarFrame}
           cardFinish={cardFinish}
+          nameEffect={nameEffect}
           onEquipDecoration={handleEquipDecoration}
           onEquipProfileEffect={handleEquipProfileEffect}
           onEquipAvatarFrame={handleEquipAvatarFrame}
           onEquipCardFinish={handleEquipCardFinish}
+          onEquipNameEffect={handleEquipNameEffect}
           initialTab={settingsInitialTab}
           onOpenShop={(targetTab) => {
             if (targetTab) setShopInitialTab(targetTab)
@@ -8163,6 +8404,10 @@ function Echo({ user }: { user: User }) {
           onChatDensityChange={setChatDensity}
           performanceMode={performanceMode}
           onPerformanceModeChange={setPerformanceMode}
+          pttModeSetting={pttModeSetting}
+          onPttModeChange={setPttModeSetting}
+          pttKey={pttKey}
+          onPttKeyChange={setPttKey}
         />
       </div>
 
@@ -8179,10 +8424,12 @@ function Echo({ user }: { user: User }) {
           currentProfileEffect={profileEffect}
           currentAvatarFrame={avatarFrame}
           currentCardFinish={cardFinish}
+          currentNameEffect={nameEffect}
           onEquipDecoration={handleEquipDecoration}
           onEquipProfileEffect={handleEquipProfileEffect}
           onEquipAvatarFrame={handleEquipAvatarFrame}
           onEquipCardFinish={handleEquipCardFinish}
+          onEquipNameEffect={handleEquipNameEffect}
           initialTab={shopInitialTab}
           onOpenInventory={() => {
             setSettingsInitialTab('inventory')
@@ -8323,9 +8570,19 @@ function Echo({ user }: { user: User }) {
 
             <div className="screen-picker-tabs">
               <button 
-                type="button"
-                className={`screen-picker-tab-btn ${screenPickerTab === 'windows' ? 'active' : ''}`}
-                onClick={() => setScreenPickerTab('windows')}
+                type="button" 
+                className={`screen-picker-tab-btn ${screenPickerTab === 'windows' ? 'active' : ''}`} 
+                onClick={() => {
+                  setScreenPickerTab('windows')
+                  const firstWin = screenSources.find(s => s.type === 'window' || s.id.startsWith('window:'))
+                  if (firstWin) {
+                    setSelectedPickerSourceId(firstWin.id)
+                    const isGame = firstWin.isGame === true || (firstWin.name || '').toLowerCase().includes('(jogo)')
+                    if (!isGame && screenFps === 60) {
+                      setScreenFps(30)
+                    }
+                  }
+                }}
               >
                 <span>
                   <ColoredWindowsIcon size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Janelas de Jogos e Apps
@@ -8335,9 +8592,15 @@ function Echo({ user }: { user: User }) {
                 </span>
               </button>
               <button 
-                type="button"
-                className={`screen-picker-tab-btn ${screenPickerTab === 'screens' ? 'active' : ''}`}
-                onClick={() => setScreenPickerTab('screens')}
+                type="button" 
+                className={`screen-picker-tab-btn ${screenPickerTab === 'screens' ? 'active' : ''}`} 
+                onClick={() => {
+                  setScreenPickerTab('screens')
+                  const firstScreen = screenSources.find(s => s.type === 'screen' || s.id.startsWith('screen:'))
+                  if (firstScreen) {
+                    setSelectedPickerSourceId(firstScreen.id)
+                  }
+                }}
               >
                 <span>
                   <ColoredMonitorIcon size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Telas Inteiras (Monitores)
@@ -8356,9 +8619,15 @@ function Echo({ user }: { user: User }) {
                   return (
                     <button 
                       key={source.id} 
-                      type="button"
+                      type="button" 
                       className={`source-card ${isSelected ? 'selected' : ''}`} 
-                      onClick={() => setSelectedPickerSourceId(source.id)}
+                      onClick={() => {
+                        setSelectedPickerSourceId(source.id)
+                        const isGame = source.isGame === true || (source.name || '').toLowerCase().includes('(jogo)')
+                        if (!isGame && screenPickerTab !== 'screens' && screenFps === 60) {
+                          setScreenFps(30)
+                        }
+                      }}
                       onDoubleClick={() => selectScreenSource(source.id)}
                     >
                       <div className="source-card-thumb-wrap" style={{ position: 'relative' }}>
@@ -8434,22 +8703,36 @@ function Echo({ user }: { user: User }) {
               <div className="picker-quality-col">
                 <span className="picker-section-label">TAXA DE QUADROS</span>
                 <div className="picker-chips-row">
-                  {([15, 30, 60] as const).map(f => (
-                    <button
-                      key={f}
-                      type="button"
-                      className={`picker-config-chip ${screenFps === f ? 'active' : ''} ${f === 60 ? 'fps-60' : ''}`}
-                      onClick={() => setScreenFps(f)}
-                    >
-                      {f === 60 ? (
-                        <>
-                          <ColoredLightningIcon size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} /> 60 FPS (Ultra Suave)
-                        </>
-                      ) : (
-                        `${f} FPS`
-                      )}
-                    </button>
-                  ))}
+                  {([15, 30, 60] as const).map(f => {
+                    const is60Locked = f === 60 && !isPickerGameOrScreen
+                    return (
+                      <button
+                        key={f}
+                        type="button"
+                        disabled={is60Locked}
+                        title={is60Locked ? '60 FPS disponível apenas em Jogos e Telas Inteiras' : undefined}
+                        className={`picker-config-chip ${screenFps === f ? 'active' : ''} ${f === 60 ? 'fps-60' : ''} ${is60Locked ? 'disabled' : ''}`}
+                        onClick={() => {
+                          if (!is60Locked) {
+                            setScreenFps(f)
+                          }
+                        }}
+                      >
+                        {f === 60 ? (
+                          <>
+                            <ColoredLightningIcon size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} /> 60 FPS (Ultra Suave)
+                            {is60Locked && (
+                              <span style={{ fontSize: '9px', marginLeft: 6, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                (Jogos/Telas)
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          `${f} FPS`
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -10148,6 +10431,213 @@ function Echo({ user }: { user: User }) {
         onClose={() => setShowWhatsNewModal(false)} 
       />
 
+      {/* ── AFK Inactivity Check Modal ("Você ainda está aí?") ── */}
+      {showAfkPrompt && (
+        <div 
+          className="modal-backdrop" 
+          style={{ 
+            zIndex: 99999, 
+            backdropFilter: 'blur(10px)', 
+            backgroundColor: 'rgba(0, 0, 0, 0.78)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div 
+            className="modal-content afk-prompt-modal" 
+            style={{ 
+              maxWidth: '460px', 
+              width: '90%', 
+              textAlign: 'center', 
+              padding: '36px 28px', 
+              background: 'linear-gradient(145deg, #131722, #0d1017)',
+              borderRadius: '20px',
+              border: '1px solid rgba(56, 189, 248, 0.25)',
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.85), 0 0 40px rgba(56, 189, 248, 0.2)',
+              position: 'relative'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+              <div style={{
+                width: '68px',
+                height: '68px',
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, rgba(14, 165, 233, 0.05) 75%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid rgba(56, 189, 248, 0.35)',
+                boxShadow: '0 0 24px rgba(56, 189, 248, 0.3)'
+              }}>
+                <ColoredClockIcon size={36} />
+              </div>
+            </div>
+
+            <h2 style={{ margin: '0 0 10px 0', fontSize: '23px', fontWeight: 700, color: '#f8fafc', letterSpacing: '-0.02em' }}>
+              Você ainda está aí?
+            </h2>
+
+            <div style={{
+              margin: '14px auto 18px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '7px 20px',
+              background: 'rgba(245, 158, 11, 0.12)',
+              borderRadius: '24px',
+              border: '1px solid rgba(245, 158, 11, 0.35)',
+              color: '#fbbf24',
+              fontFamily: 'monospace',
+              fontSize: '22px',
+              fontWeight: 800,
+              letterSpacing: '2px',
+              boxShadow: '0 0 16px rgba(245, 158, 11, 0.15)'
+            }}>
+              <span>⏱</span>
+              <span>
+                {String(Math.floor(afkCountdown / 60)).padStart(2, '0')}:{String(afkCountdown % 60).padStart(2, '0')}
+              </span>
+            </div>
+
+            <p style={{ margin: '0 0 26px 0', fontSize: '14px', color: '#94a3b8', lineHeight: 1.55 }}>
+              A chamada e transmissão serão pausadas em{' '}
+              <strong style={{ color: '#f1f5f9' }}>
+                {String(Math.floor(afkCountdown / 60)).padStart(2, '0')}:{String(afkCountdown % 60).padStart(2, '0')}
+              </strong>{' '}
+              se você não responder.
+            </p>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                className="btn-modal-primary"
+                style={{
+                  minWidth: '180px',
+                  padding: '13px 28px',
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                  color: '#ffffff',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 18px rgba(2, 132, 199, 0.45)',
+                  transition: 'all 0.15s ease'
+                }}
+                onClick={handleAfkStay}
+              >
+                Estou aqui!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── AFK Disconnected Notice Modal ── */}
+      {showAfkDisconnectedModal && (
+        <div 
+          className="modal-backdrop" 
+          style={{ 
+            zIndex: 99999, 
+            backdropFilter: 'blur(10px)', 
+            backgroundColor: 'rgba(0, 0, 0, 0.78)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }} 
+          onClick={() => setShowAfkDisconnectedModal(false)}
+        >
+          <div 
+            className="modal-content afk-disconnected-modal" 
+            style={{ 
+              maxWidth: '460px', 
+              width: '90%', 
+              textAlign: 'center', 
+              padding: '36px 28px', 
+              background: 'linear-gradient(145deg, #131722, #0d1017)',
+              borderRadius: '20px',
+              border: '1px solid rgba(99, 102, 241, 0.3)',
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.85), 0 0 40px rgba(99, 102, 241, 0.2)',
+              position: 'relative'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+              <div style={{
+                width: '68px',
+                height: '68px',
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, rgba(99, 102, 241, 0.05) 75%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid rgba(99, 102, 241, 0.35)',
+                boxShadow: '0 0 24px rgba(99, 102, 241, 0.3)'
+              }}>
+                <ColoredMoonSleepIcon size={36} />
+              </div>
+            </div>
+
+            <h2 style={{ margin: '0 0 10px 0', fontSize: '22px', fontWeight: 700, color: '#f8fafc', letterSpacing: '-0.02em' }}>
+              Desconectado por inatividade
+            </h2>
+
+            <p style={{ margin: '0 0 26px 0', fontSize: '14.5px', color: '#94a3b8', lineHeight: 1.55 }}>
+              Não detectamos nenhuma atividade sua por um tempo e desconectamos você da chamada de voz e transmissão.
+            </p>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              {lastAfkChannelRef.current?.channelId && (
+                <button
+                  type="button"
+                  className="btn-modal-primary"
+                  style={{
+                    padding: '12px 22px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    borderRadius: '10px',
+                    background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                    color: '#ffffff',
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 16px rgba(99, 102, 241, 0.45)',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onClick={() => {
+                    if (lastAfkChannelRef.current?.channelId) {
+                      handleJoinVoice(lastAfkChannelRef.current.channelId, lastAfkChannelRef.current.spaceId)
+                    }
+                    setShowAfkDisconnectedModal(false)
+                    lastActivityRef.current = Date.now()
+                  }}
+                >
+                  Reconectar à chamada
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn-modal-cancel"
+                style={{
+                  padding: '12px 22px',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  borderRadius: '10px',
+                  background: 'rgba(255, 255, 255, 0.07)',
+                  color: '#cbd5e1',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setShowAfkDisconnectedModal(false)}
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast Notifications */}
       {toasts.length > 0 && (
         <div className="toast-container">
@@ -11265,12 +11755,18 @@ function SettingsView({
   profileEffect,
   avatarFrame = 'aura-cyan',
   cardFinish = 'none',
+  nameEffect = 'resonance_cyan',
   onEquipDecoration,
   onEquipProfileEffect,
   onEquipAvatarFrame,
   onEquipCardFinish,
+  onEquipNameEffect,
   initialTab,
-  onOpenShop
+  onOpenShop,
+  pttModeSetting,
+  onPttModeChange,
+  pttKey,
+  onPttKeyChange
 }: {
   userId: string
   userCreatedAt?: string
@@ -11282,12 +11778,14 @@ function SettingsView({
   profileEffect?: string | null
   avatarFrame?: string
   cardFinish?: 'none' | 'holographic' | 'glass' | 'carbon'
+  nameEffect?: string
   onEquipDecoration?: (id: string) => Promise<void> | void
   onEquipProfileEffect?: (id: string) => Promise<void> | void
   onEquipAvatarFrame?: (id: string) => void
   onEquipCardFinish?: (id: string) => void
+  onEquipNameEffect?: (id: string) => void
   initialTab?: 'profile' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog'
-  onOpenShop?: (targetTab?: 'decorations' | 'profile_effects' | 'auras' | 'finishes') => void
+  onOpenShop?: (targetTab?: 'decorations' | 'profile_effects' | 'auras' | 'finishes' | 'name_effects') => void
   onProfileUpdate: (name: string, avatar: string) => void
   onCustomStatusUpdate: (status: string) => void
   audioInputs: MediaDeviceInfo[]
@@ -11333,6 +11831,10 @@ function SettingsView({
   onChatDensityChange?: (density: 'cozy' | 'compact') => void
   performanceMode?: boolean
   onPerformanceModeChange?: (val: boolean) => void
+  pttModeSetting?: boolean
+  onPttModeChange?: (val: boolean) => void
+  pttKey?: string
+  onPttKeyChange?: (val: string) => void
 }) {
   const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog'>(initialTab || 'profile')
 
@@ -11341,6 +11843,17 @@ function SettingsView({
       setActiveSettingsTab(initialTab)
     }
   }, [initialTab])
+
+  const [localPttMode, setLocalPttMode] = useState<boolean>(() => pttModeSetting !== undefined ? pttModeSetting : localStorage.getItem('echo-ptt-mode') === 'true')
+  const [localPttKey, setLocalPttKey] = useState<string>(() => pttKey || localStorage.getItem('echo-ptt-key') || 'KeyV')
+
+  useEffect(() => {
+    if (pttModeSetting !== undefined) setLocalPttMode(pttModeSetting)
+  }, [pttModeSetting])
+
+  useEffect(() => {
+    if (pttKey) setLocalPttKey(pttKey)
+  }, [pttKey])
   
   // Profile settings state & Echo Player Identity
   const [profileSubTab, setProfileSubTab] = useState<'identity' | 'appearance' | 'badges'>('identity')
@@ -11671,8 +12184,8 @@ function SettingsView({
     }
   }, [])
 
-  // Windows Startup Settings
-  const [autoStartEnabled, setAutoStartEnabled] = useState(false)
+  // Windows Startup Settings (Default: true)
+  const [autoStartEnabled, setAutoStartEnabled] = useState(true)
   const [startMinimized, setStartMinimized] = useState(() => localStorage.getItem('echo-start-minimized') === 'true')
   const [loadingAutoStart, setLoadingAutoStart] = useState(false)
   const [autoStartToast, setAutoStartToast] = useState<string | null>(null)
@@ -11726,10 +12239,10 @@ function SettingsView({
             <button 
               type="button" 
               onClick={() => setPage('Servidores')} 
-              style={{ background: 'transparent', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '4px 8px', fontSize: '11.5px', color: 'var(--text-muted)', cursor: 'pointer' }}
+              style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-color)', borderRadius: '8px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.15s ease' }}
               title="Voltar para os servidores"
             >
-              ESC ✕
+              ✕
             </button>
           </div>
           <div className="settings-menu">
@@ -11747,7 +12260,7 @@ function SettingsView({
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <SparklesIcon className="menu-icon" style={{ width: '17px', height: '17px', color: '#00f2fe' }} />
+                <ColoredBackpackIcon size={17} style={{ verticalAlign: 'middle' }} />
                 <span>Inventário</span>
               </div>
               <span className="echo-inv-menu-badge">NOVO</span>
@@ -11889,11 +12402,11 @@ function SettingsView({
                     className={`echo-hero-avatar-squircle ${localAvatarFrame}`}
                     onClick={() => avatarFileInputRef.current?.click()}
                     title="Clique para trocar foto de perfil"
-                    style={{ position: 'relative' }}
+                    style={{ position: 'relative', borderRadius: '50%' }}
                   >
-                    <div className="echo-hero-avatar-inner">
+                    <div className="echo-hero-avatar-inner" style={{ borderRadius: '50%' }}>
                       {localAvatarUrl ? (
-                        <img src={localAvatarUrl} alt="Avatar" />
+                        <img src={localAvatarUrl} alt="Avatar" style={{ borderRadius: '50%' }} />
                       ) : (
                         localDisplayName.slice(0, 1).toUpperCase()
                       )}
@@ -11901,7 +12414,7 @@ function SettingsView({
                     {avatarDecoration && avatarDecoration !== 'none' && (
                       <AvatarDecoration decorationId={avatarDecoration} />
                     )}
-                    <div className="echo-hero-avatar-overlay">
+                    <div className="echo-hero-avatar-overlay" style={{ borderRadius: '50%' }}>
                       <CameraIcon style={{ width: '22px', height: '22px' }} />
                     </div>
                     <span className={`echo-hero-status-dot status-${localPresenceStatus}`} />
@@ -12481,6 +12994,10 @@ function SettingsView({
                 if (onEquipCardFinish) onEquipCardFinish(id)
                 localStorage.setItem(`echo-card-finish-${userId}`, id)
               }}
+              currentNameEffect={nameEffect || 'resonance_cyan'}
+              onEquipNameEffect={(id) => {
+                if (onEquipNameEffect) onEquipNameEffect(id)
+              }}
               onOpenShop={(targetTab) => {
                 if (onOpenShop) onOpenShop(targetTab)
               }}
@@ -12492,8 +13009,8 @@ function SettingsView({
           <div className="settings-container">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2>Configurações de Áudio</h2>
-              <button className="picker-close-btn" style={{ margin: 0, padding: '6px 12px' }} onClick={onRefreshDevices}>
-                🔄 Detectar Dispositivos
+              <button className="picker-close-btn" style={{ margin: 0, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={onRefreshDevices}>
+                <ColoredRefreshIcon size={14} /> Detectar Dispositivos
               </button>
             </div>
             <p>Configure os dispositivos de entrada e saída de som do seu sistema.</p>
@@ -12624,12 +13141,14 @@ function SettingsView({
               <p>Ajuste o volume dos avisos sonoros de conexão, mudo e transmissão.</p>
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '16px' }}>
-                <span style={{ fontSize: '18px' }}>{sfxVolume === 0 ? '🔈' : sfxVolume < 0.4 ? '🔉' : '🔊'}</span>
+                <span style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }}>
+                  <ColoredVolumeSpeakerIcon size={20} level={sfxVolume} />
+                </span>
                 <input 
                   type="range" 
                   min="0" 
                   max="1" 
-                  step="0.05"
+                  step="0.05" 
                   value={sfxVolume}
                   onChange={(e) => onSfxVolumeChange(parseFloat(e.target.value))}
                   style={{ flex: 1, accentColor: 'var(--accent-color)', cursor: 'pointer', height: '6px', borderRadius: '3px' }}
@@ -12645,7 +13164,10 @@ function SettingsView({
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
                 <div>
                   <h3 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>🧠 Supressão de Ruído por IA (Rede Neural RNNoise)</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
+                      <ColoredBrainAiIcon size={20} />
+                      Supressão de Ruído por IA (Rede Neural RNNoise)
+                    </span>
                     <span style={{ fontSize: '10.5px', background: 'rgba(168, 85, 247, 0.25)', color: '#c084fc', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
                       IA LOCAL • 0% CPU
                     </span>
@@ -12678,9 +13200,12 @@ function SettingsView({
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
                 <div>
                   <h3 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>🎧 Áudio Espacial 3D (Posicionamento Estéreo)</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
+                      <ColoredHeadphonesIcon size={20} />
+                      Áudio Espacial 3D (Posicionamento Estéreo)
+                    </span>
                     <span style={{ fontSize: '10.5px', background: 'rgba(0, 242, 254, 0.2)', color: '#00f2fe', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                      NOVO v0.23.7
+                      ÁUDIO 3D
                     </span>
                   </h3>
                   <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)' }}>
@@ -12705,10 +13230,10 @@ function SettingsView({
                   <button 
                     type="button" 
                     className="picker-close-btn" 
-                    style={{ margin: 0, padding: '5px 12px', fontSize: '11.5px' }}
+                    style={{ margin: 0, padding: '5px 12px', fontSize: '11.5px', display: 'flex', alignItems: 'center', gap: '5px' }}
                     onClick={onResetAllPans}
                   >
-                    🔄 Centralizar Todos os Amigos
+                    <ColoredRefreshIcon size={13} /> Centralizar Todos os Amigos
                   </button>
                 </div>
               )}
@@ -12722,38 +13247,44 @@ function SettingsView({
               <div style={{ display: 'flex', gap: '12px', marginTop: '14px' }}>
                 <button
                   type="button"
-                  className={`mic-test-btn ${localStorage.getItem('echo-ptt-mode') !== 'true' ? 'testing' : ''}`}
+                  className={`mic-test-btn ${!localPttMode ? 'testing' : ''}`}
                   onClick={() => {
                     localStorage.setItem('echo-ptt-mode', 'false')
-                    window.location.reload()
+                    setLocalPttMode(false)
+                    onPttModeChange?.(false)
                   }}
-                  style={{ flex: 1, textAlign: 'center' }}
+                  style={{ flex: 1, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >
-                  🎙️ Detecção por Voz (Automático)
+                  <ColoredMicActiveIcon size={17} />
+                  <span>Detecção por Voz (Automático)</span>
                 </button>
                 <button
                   type="button"
-                  className={`mic-test-btn ${localStorage.getItem('echo-ptt-mode') === 'true' ? 'testing' : ''}`}
+                  className={`mic-test-btn ${localPttMode ? 'testing' : ''}`}
                   onClick={() => {
                     localStorage.setItem('echo-ptt-mode', 'true')
-                    window.location.reload()
+                    setLocalPttMode(true)
+                    onPttModeChange?.(true)
                   }}
-                  style={{ flex: 1, textAlign: 'center' }}
+                  style={{ flex: 1, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >
-                  🔊 Push-to-Talk (PTT)
+                  <ColoredPushToTalkIcon size={17} />
+                  <span>Push-to-Talk (PTT)</span>
                 </button>
               </div>
 
-              {localStorage.getItem('echo-ptt-mode') === 'true' && (
+              {localPttMode && (
                 <div style={{ marginTop: '16px', background: 'var(--bg-secondary)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
                   <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
                     Tecla de Atalho Global do Push-to-Talk:
                   </label>
                   <select
-                    defaultValue={localStorage.getItem('echo-ptt-key') || 'KeyV'}
+                    value={localPttKey}
                     onChange={(e) => {
-                      localStorage.setItem('echo-ptt-key', e.target.value)
-                      window.location.reload()
+                      const newKey = e.target.value
+                      localStorage.setItem('echo-ptt-key', newKey)
+                      setLocalPttKey(newKey)
+                      onPttKeyChange?.(newKey)
                     }}
                     style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontWeight: 700, outline: 'none', width: '100%', maxWidth: '240px' }}
                   >
@@ -13196,10 +13727,11 @@ function SettingsView({
             {/* Iniciar com o Windows */}
             <div style={{
               marginTop: '24px',
-              background: 'var(--bg-secondary)',
+              background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01))',
               padding: '20px 22px',
               borderRadius: '14px',
-              border: '1px solid var(--border-color)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -13207,18 +13739,19 @@ function SettingsView({
               flexWrap: 'wrap'
             }}>
               <div style={{ maxWidth: '540px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                  <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)' }}>
-                    🪟 Iniciar o Echo com o Windows
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center' }}>
+                    <ColoredWindowsIcon size={20} style={{ marginRight: 8 }} /> Iniciar o Echo com o Windows
                   </h3>
                   <span style={{
-                    background: 'rgba(0, 242, 254, 0.15)',
-                    color: 'var(--accent-color, #00f2fe)',
+                    background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(14, 165, 233, 0.1))',
+                    color: '#38bdf8',
                     fontSize: '11px',
-                    fontWeight: 600,
-                    padding: '2px 8px',
+                    fontWeight: 700,
+                    padding: '2px 9px',
                     borderRadius: '12px',
-                    border: '1px solid rgba(0, 242, 254, 0.3)'
+                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                    letterSpacing: '0.5px'
                   }}>
                     NATIVO
                   </span>
@@ -13232,14 +13765,24 @@ function SettingsView({
                 <span style={{
                   fontSize: '12px',
                   fontWeight: 700,
-                  padding: '4px 10px',
-                  borderRadius: '8px',
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '7px',
                   background: autoStartEnabled ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                  color: autoStartEnabled ? '#10b981' : 'var(--text-muted)',
-                  border: autoStartEnabled ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-color)',
-                  transition: 'all 0.2s'
+                  color: autoStartEnabled ? '#34d399' : 'var(--text-muted)',
+                  border: autoStartEnabled ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid var(--border-color)',
+                  transition: 'all 0.2s ease'
                 }}>
-                  {autoStartEnabled ? '🟢 Ativado' : '⚪ Desativado'}
+                  <span style={{
+                    width: '7px',
+                    height: '7px',
+                    borderRadius: '50%',
+                    backgroundColor: autoStartEnabled ? '#10b981' : '#64748b',
+                    boxShadow: autoStartEnabled ? '0 0 8px #10b981' : 'none'
+                  }} />
+                  {autoStartEnabled ? 'Ativado' : 'Desativado'}
                 </span>
                 <label className="echo-switch">
                   <input
@@ -13256,10 +13799,11 @@ function SettingsView({
             {/* Iniciar Minimizado */}
             <div style={{
               marginTop: '16px',
-              background: 'var(--bg-secondary)',
+              background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01))',
               padding: '20px 22px',
               borderRadius: '14px',
-              border: '1px solid var(--border-color)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -13270,12 +13814,12 @@ function SettingsView({
             }}>
               <div style={{ maxWidth: '540px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                  <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)' }}>
-                    🤫 Iniciar Minimizado (Segundo Plano)
+                  <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center' }}>
+                    <ColoredTrayIcon size={20} style={{ marginRight: 8 }} /> Iniciar Minimizado na Barra de Tarefas
                   </h3>
                 </div>
                 <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                  Ao ligar o Windows, o Echo é iniciado de forma silenciosa minimizado na barra de tarefas, sem abrir a janela principal no meio da sua tela.
+                  Ao ligar o computador, o Echo inicia de forma silenciosa na bandeja do sistema, sem abrir a janela no meio da sua tela.
                 </p>
               </div>
 
@@ -13289,23 +13833,6 @@ function SettingsView({
                   />
                   <span className="echo-slider"></span>
                 </label>
-              </div>
-            </div>
-
-            {/* Explicação técnica Windows */}
-            <div style={{
-              marginTop: '24px',
-              padding: '16px 20px',
-              borderRadius: '12px',
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid var(--border-color)',
-              display: 'flex',
-              gap: '12px',
-              alignItems: 'flex-start'
-            }}>
-              <span style={{ fontSize: '18px' }}>💡</span>
-              <div style={{ fontSize: '12.5px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
-                <strong style={{ color: 'var(--text-primary)' }}>Como o Windows gerencia:</strong> Ao ativar, o Echo se registra na inicialização do Windows (<code style={{ fontSize: '11px', color: 'var(--accent-color, #00f2fe)' }}>Registro do Windows \ CurrentVersion \ Run</code>) e você pode ver o status a qualquer momento também no Gerenciador de Tarefas do Windows (Ctrl + Shift + Esc &rarr; Inicializar).
               </div>
             </div>
           </div>
@@ -13409,7 +13936,8 @@ function StreamTile({
   isGrid,
   isPiPActive,
   onToggleFloatingPiP,
-  onCloseStream
+  onCloseStream,
+  localScreenFps = 30
 }: {
   participant: VoiceParticipant;
   user: User;
@@ -13422,12 +13950,17 @@ function StreamTile({
   isPiPActive?: boolean;
   onToggleFloatingPiP?: () => void;
   onCloseStream?: () => void;
+  localScreenFps?: number;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [streamResolution, setStreamResolution] = useState<string>('')
   const [showStatsHud, setShowStatsHud] = useState(false)
   const [isControlsVisible, setIsControlsVisible] = useState(true)
   const hideTimeoutRef = useRef<any>(null)
+
+  const isLocalSharer = participant.userId === user.id
+  const [detectedFps, setDetectedFps] = useState<number>(30)
+  const streamFps = isLocalSharer ? (localScreenFps || 30) : detectedFps
 
   const handleMouseMove = () => {
     setIsControlsVisible(true)
@@ -13455,6 +13988,53 @@ function StreamTile({
       if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current)
     }
   }, [])
+
+  // Detect real FPS for remote participants
+  useEffect(() => {
+    if (isLocalSharer) return
+    const stream = participant.screenStream
+    if (!stream) return
+
+    const track = stream.getVideoTracks?.()[0]
+    if (track) {
+      const settings = track.getSettings?.()
+      if (settings?.frameRate && settings.frameRate > 0) {
+        setDetectedFps(Math.round(settings.frameRate))
+      }
+    }
+
+    const videoEl = videoRef.current
+    if (!videoEl || !('requestVideoFrameCallback' in videoEl)) return
+
+    let rVfcId: number | null = null
+    let frameCount = 0
+    let lastTime = performance.now()
+
+    const onFrame = (now: DOMHighResTimeStamp) => {
+      frameCount++
+      const elapsed = now - lastTime
+      if (elapsed >= 1500) {
+        const rawFps = Math.round((frameCount * 1000) / elapsed)
+        const normalizedFps = rawFps >= 45 ? 60 : rawFps >= 22 ? 30 : rawFps >= 10 ? 15 : rawFps
+        if (normalizedFps > 0) {
+          setDetectedFps(normalizedFps)
+        }
+        frameCount = 0
+        lastTime = now
+      }
+      if (videoEl && 'requestVideoFrameCallback' in videoEl) {
+        rVfcId = (videoEl as any).requestVideoFrameCallback(onFrame)
+      }
+    }
+
+    rVfcId = (videoEl as any).requestVideoFrameCallback(onFrame)
+
+    return () => {
+      if (rVfcId !== null && 'cancelVideoFrameCallback' in videoEl) {
+        (videoEl as any).cancelVideoFrameCallback(rVfcId)
+      }
+    }
+  }, [participant.screenStream, isLocalSharer])
 
   useEffect(() => {
     const videoEl = videoRef.current
@@ -13523,7 +14103,7 @@ function StreamTile({
         </span>
         {streamResolution && (
           <span className="stream-res-badge">
-            60 FPS • {streamResolution}
+            {streamFps} FPS • {streamResolution}
           </span>
         )}
         <AudioLevelMeter stream={participant.screenStream || null} />
@@ -13541,7 +14121,7 @@ function StreamTile({
           </div>
           <div className="stream-stats-hud-grid">
             <div className="stats-row"><span>Resolução Real:</span> <strong>{streamResolution || '1920x1080'}</strong></div>
-            <div className="stats-row"><span>Taxa de Quadros:</span> <strong style={{ color: '#10b981' }}>60 FPS (Ultra Suave)</strong></div>
+            <div className="stats-row"><span>Taxa de Quadros:</span> <strong style={{ color: '#10b981' }}>{streamFps} FPS {streamFps >= 60 ? '(Ultra Suave)' : '(Padrão / Fluido)'}</strong></div>
             <div className="stats-row"><span>Bitrate de Vídeo:</span> <strong>~2.4 - 3.2 Mbps (Otimizado SFU / Simulcast)</strong></div>
             <div className="stats-row"><span>Codec de Vídeo:</span> <strong>H.264 High Profile (GPU HW)</strong></div>
             <div className="stats-row"><span>Áudio do Jogo:</span> <strong>Opus 48kHz Estéreo (128 kbps)</strong></div>

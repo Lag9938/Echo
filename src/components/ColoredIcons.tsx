@@ -165,3 +165,171 @@ export function ColoredGemIcon({ size = 18, style }: { size?: number; style?: Re
     </svg>
   )
 }
+
+export function ColoredClockIcon({ size = 24, style }: { size?: number; style?: React.CSSProperties }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+      <defs>
+        <linearGradient id="clockGrad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#38bdf8" />
+          <stop offset="100%" stopColor="#0284c7" />
+        </linearGradient>
+      </defs>
+      <circle cx="12" cy="12" r="9.5" fill="url(#clockGrad)" fillOpacity="0.2" stroke="#38bdf8" strokeWidth="1.8" />
+      <circle cx="12" cy="12" r="2" fill="#38bdf8" />
+      <path d="M12 6.5v5.5l3.5 2" stroke="#f8fafc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+export function ColoredMoonSleepIcon({ size = 24, style }: { size?: number; style?: React.CSSProperties }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+      <defs>
+        <linearGradient id="moonGrad" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#a855f7" />
+          <stop offset="100%" stopColor="#6366f1" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
+        fill="url(#moonGrad)"
+        stroke="#c084fc"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="18" cy="6" r="1" fill="#fef08a" />
+      <circle cx="21" cy="9" r="0.75" fill="#fde047" />
+    </svg>
+  )
+}
+
+export function ColoredTrayIcon({ size = 18, style }: { size?: number; style?: React.CSSProperties }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+      <defs>
+        <linearGradient id="trayGrad" x1="2" y1="4" x2="22" y2="20" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#38bdf8" />
+          <stop offset="100%" stopColor="#6366f1" />
+        </linearGradient>
+      </defs>
+      <rect x="3" y="4" width="18" height="11" rx="2.5" stroke="url(#trayGrad)" strokeWidth="1.6" fill="#0f172a" fillOpacity="0.5" />
+      <path d="M7 8h10M7 11h5" stroke="#94a3b8" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M12 15v5m0 0l-2-2m2 2l2-2" stroke="#38bdf8" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+export function ColoredSoundwaveIcon({ size = 18, style }: { size?: number; style?: React.CSSProperties }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+      <defs>
+        <linearGradient id="swaveGrad" x1="2" y1="4" x2="22" y2="20" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#00f2fe" />
+          <stop offset="100%" stopColor="#a855f7" />
+        </linearGradient>
+      </defs>
+      <rect x="3" y="10" width="2.5" height="4" rx="1.25" fill="url(#swaveGrad)" />
+      <rect x="7.5" y="6" width="2.5" height="12" rx="1.25" fill="url(#swaveGrad)" />
+      <rect x="12" y="3" width="2.5" height="18" rx="1.25" fill="url(#swaveGrad)" />
+      <rect x="16.5" y="7" width="2.5" height="10" rx="1.25" fill="url(#swaveGrad)" />
+      <rect x="21" y="10" width="2.5" height="4" rx="1.25" fill="url(#swaveGrad)" />
+    </svg>
+  )
+}
+
+export function ColoredBrainAiIcon({ size = 18, style }: { size?: number; style?: React.CSSProperties }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+      <defs>
+        <linearGradient id="brainAiGrad" x1="2" y1="3" x2="22" y2="21" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#c084fc" />
+          <stop offset="50%" stopColor="#ec4899" />
+          <stop offset="100%" stopColor="#8b5cf6" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M9.5 2a3.5 3.5 0 0 0-3.5 3.5c0 .4.07.78.2 1.13A4 4 0 0 0 4 10.5c0 1.25.57 2.37 1.46 3.1A4.5 4.5 0 0 0 9.5 22h.5V2h-.5zm5 0a3.5 3.5 0 0 1 3.5 3.5c0 .4-.07.78-.2 1.13A4 4 0 0 1 20 10.5c0 1.25-.57 2.37-1.46 3.1A4.5 4.5 0 0 1 14.5 22H14V2h.5z"
+        stroke="url(#brainAiGrad)"
+        strokeWidth="1.6"
+        fill="url(#brainAiGrad)"
+        fillOpacity="0.16"
+      />
+      <circle cx="9" cy="8" r="1.2" fill="#ec4899" />
+      <circle cx="15" cy="8" r="1.2" fill="#ec4899" />
+      <circle cx="8" cy="14" r="1.2" fill="#c084fc" />
+      <circle cx="16" cy="14" r="1.2" fill="#c084fc" />
+      <path d="M9 8h6M8 14h8M9 8l-1 6M15 8l1 6" stroke="#fff" strokeWidth="0.8" strokeDasharray="1.5 1.5" />
+    </svg>
+  )
+}
+
+export function ColoredHeadphonesIcon({ size = 18, style }: { size?: number; style?: React.CSSProperties }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+      <defs>
+        <linearGradient id="headphoneGrad" x1="2" y1="3" x2="22" y2="21" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#00f2fe" />
+          <stop offset="100%" stopColor="#3b82f6" />
+        </linearGradient>
+      </defs>
+      <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5zm15 0h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-5z" fill="url(#headphoneGrad)" />
+      <path d="M4 14V11a8 8 0 0 1 16 0v3" stroke="url(#headphoneGrad)" strokeWidth="2.2" strokeLinecap="round" />
+      <circle cx="2" cy="11" r="0.8" fill="#38bdf8" />
+      <circle cx="22" cy="11" r="0.8" fill="#38bdf8" />
+    </svg>
+  )
+}
+
+export function ColoredMicActiveIcon({ size = 16, style }: { size?: number; style?: React.CSSProperties }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+      <defs>
+        <linearGradient id="micActiveGrad" x1="6" y1="2" x2="18" y2="18" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#10b981" />
+          <stop offset="100%" stopColor="#06b6d4" />
+        </linearGradient>
+      </defs>
+      <rect x="9" y="2" width="6" height="12" rx="3" fill="url(#micActiveGrad)" stroke="#34d399" strokeWidth="0.8" />
+      <path d="M5 10v1a7 7 0 0 0 14 0v-1" stroke="#34d399" strokeWidth="2" strokeLinecap="round" />
+      <line x1="12" y1="18" x2="12" y2="22" stroke="#34d399" strokeWidth="2" strokeLinecap="round" />
+      <line x1="8" y1="22" x2="16" y2="22" stroke="#34d399" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function ColoredPushToTalkIcon({ size = 16, style }: { size?: number; style?: React.CSSProperties }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+      <defs>
+        <linearGradient id="pttGrad" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#f59e0b" />
+          <stop offset="100%" stopColor="#ef4444" />
+        </linearGradient>
+      </defs>
+      <rect x="7" y="6" width="10" height="15" rx="3" fill="url(#pttGrad)" stroke="#fca5a5" strokeWidth="0.8" />
+      <line x1="10" y1="2" x2="10" y2="6" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" />
+      <rect x="9" y="10" width="6" height="4" rx="1" fill="#ffffff" fillOpacity="0.85" />
+      <circle cx="12" cy="17" r="1" fill="#fff" />
+    </svg>
+  )
+}
+
+export function ColoredVolumeSpeakerIcon({ size = 18, level = 1, style }: { size?: number; level?: number; style?: React.CSSProperties }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+      <defs>
+        <linearGradient id="volSpeakerGrad" x1="2" y1="4" x2="16" y2="20" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#38bdf8" />
+          <stop offset="100%" stopColor="#818cf8" />
+        </linearGradient>
+      </defs>
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="url(#volSpeakerGrad)" stroke="#60a5fa" strokeWidth="1" />
+      {level > 0 && <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="#38bdf8" strokeWidth="1.8" strokeLinecap="round" />}
+      {level > 0.4 && <path d="M19.07 4.93a10 10 0 0 1 0 14.14" stroke="#818cf8" strokeWidth="1.8" strokeLinecap="round" />}
+      {level === 0 && <line x1="16" y1="9" x2="22" y2="15" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />}
+      {level === 0 && <line x1="22" y1="9" x2="16" y2="15" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />}
+    </svg>
+  )
+}

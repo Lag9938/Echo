@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { ReleaseNote } from '../lib/changelogData'
 import { CHANGELOG_DATA, APP_CURRENT_VERSION } from '../lib/changelogData'
 
@@ -11,11 +10,9 @@ export function WhatsNewModal({
   onClose?: () => void
   isEmbedded?: boolean
 }) {
-  const [selectedVersion, setSelectedVersion] = useState<string>(APP_CURRENT_VERSION)
-
   if (!isOpen && !isEmbedded) return null
 
-  const activeRelease: ReleaseNote = CHANGELOG_DATA.find(r => r.version === selectedVersion) || CHANGELOG_DATA[0]
+  const activeRelease: ReleaseNote = CHANGELOG_DATA[0]
 
   const handleDismiss = () => {
     localStorage.setItem('echo_last_seen_version', APP_CURRENT_VERSION)
@@ -40,23 +37,6 @@ export function WhatsNewModal({
         )}
       </div>
 
-      {/* Version Selector Tabs */}
-      <div className="whats-new-version-tabs">
-        {CHANGELOG_DATA.map(rel => {
-          const isSelected = rel.version === selectedVersion
-          return (
-            <button
-              key={rel.version}
-              type="button"
-              className={`whats-new-version-tab ${isSelected ? 'active' : ''}`}
-              onClick={() => setSelectedVersion(rel.version)}
-            >
-              <span className="version-name">v{rel.version}</span>
-              {rel.version === APP_CURRENT_VERSION && <span className="version-badge-latest">ATUAL</span>}
-            </button>
-          )
-        })}
-      </div>
 
       {/* Active Version Banner */}
       <div className="whats-new-banner">

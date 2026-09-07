@@ -26,7 +26,7 @@ export const AVATAR_DECORATIONS: DecorationMetadata[] = [
     id: 'soundwave_orb',
     name: 'Orbe de Ressonância',
     category: 'Aura',
-    description: 'Anel circular de frequências acústicas oscilando ao redor do avatar com satélites harmônicos a 60 FPS.',
+    description: 'Anel circular de frequências acústicas oscilando ao redor do avatar com satélites harmônicos.',
     badge: 'ECHO ORIGIN',
     themeColor: '#00f2fe'
   },

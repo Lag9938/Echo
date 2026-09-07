@@ -4,6 +4,7 @@ import {
   PROFILE_EFFECTS,
   NEON_AURAS,
   CARD_FINISHES,
+  NAME_EFFECTS,
   getUserInventory,
   hasUserAcquired,
   type UserInventory
@@ -11,6 +12,15 @@ import {
 import { DecoratedAvatar } from './DecoratedAvatar'
 import { ProfileEffect } from './ProfileEffect'
 import { AvatarDecoration } from './AvatarDecoration'
+import {
+  ColoredBackpackIcon,
+  ColoredShopBagIcon,
+  ColoredMaskIcon,
+  ColoredSparklesIcon,
+  ColoredLightningIcon,
+  ColoredGemIcon,
+  ColoredSoundwaveIcon
+} from './ColoredIcons'
 
 export interface CosmeticsInventoryProps {
   userId: string
@@ -20,6 +30,7 @@ export interface CosmeticsInventoryProps {
   currentProfileEffect: string
   currentAvatarFrame: string
   currentCardFinish: string
+  currentNameEffect?: string
   clanTag?: string
   clanTagColor?: string
   bio?: string
@@ -29,10 +40,11 @@ export interface CosmeticsInventoryProps {
   onEquipProfileEffect: (id: string) => Promise<void> | void
   onEquipAvatarFrame: (id: string) => void
   onEquipCardFinish: (id: string) => void
-  onOpenShop: (initialTab?: 'decorations' | 'profile_effects' | 'auras' | 'finishes') => void
+  onEquipNameEffect?: (id: string) => void
+  onOpenShop: (initialTab?: 'decorations' | 'profile_effects' | 'auras' | 'finishes' | 'name_effects') => void
 }
 
-type InventoryTab = 'decorations' | 'effects' | 'auras' | 'finishes'
+type InventoryTab = 'decorations' | 'effects' | 'auras' | 'finishes' | 'name_effects'
 
 export function CosmeticsInventory({
   userId,
@@ -42,6 +54,7 @@ export function CosmeticsInventory({
   currentProfileEffect,
   currentAvatarFrame,
   currentCardFinish,
+  currentNameEffect = 'none',
   clanTag,
   clanTagColor = '#00f2fe',
   bio = '🎮 Jogador ativo no Echo • Pronto para squad e clutch.',
@@ -51,6 +64,7 @@ export function CosmeticsInventory({
   onEquipProfileEffect,
   onEquipAvatarFrame,
   onEquipCardFinish,
+  onEquipNameEffect,
   onOpenShop
 }: CosmeticsInventoryProps) {
   const [activeTab, setActiveTab] = useState<InventoryTab>('decorations')
@@ -63,6 +77,7 @@ export function CosmeticsInventory({
   const [previewEffect, setPreviewEffect] = useState<string>(currentProfileEffect || 'none')
   const [previewAura, setPreviewAura] = useState<string>(currentAvatarFrame || 'aura-cyan')
   const [previewFinish, setPreviewFinish] = useState<string>(currentCardFinish || 'none')
+  const [previewNameEffect, setPreviewNameEffect] = useState<string>(currentNameEffect || 'none')
 
   // Keep preview in sync with incoming props when equipped externally
   useEffect(() => {
@@ -80,6 +95,10 @@ export function CosmeticsInventory({
   useEffect(() => {
     setPreviewFinish(currentCardFinish || 'none')
   }, [currentCardFinish])
+
+  useEffect(() => {
+    setPreviewNameEffect(currentNameEffect || 'none')
+  }, [currentNameEffect])
 
   // Sync inventory
   useEffect(() => {
@@ -99,7 +118,8 @@ export function CosmeticsInventory({
       decorations: AVATAR_DECORATIONS.filter(d => inventory.decorations.includes(d.id)).length,
       effects: PROFILE_EFFECTS.filter(e => inventory.effects.includes(e.id)).length,
       auras: NEON_AURAS.filter(a => inventory.auras.includes(a.id)).length,
-      finishes: CARD_FINISHES.filter(f => inventory.finishes.includes(f.id)).length
+      finishes: CARD_FINISHES.filter(f => inventory.finishes.includes(f.id)).length,
+      name_effects: NAME_EFFECTS.filter(n => (inventory.name_effects || []).includes(n.id)).length
     }
   }, [inventory])
 
@@ -122,6 +142,10 @@ export function CosmeticsInventory({
         setPreviewFinish(itemId)
         onEquipCardFinish(itemId)
         showToast('Acabamento do Cartão atualizado!')
+      } else if (category === 'name_effects') {
+        setPreviewNameEffect(itemId)
+        onEquipNameEffect?.(itemId)
+        showToast(itemId === 'none' ? 'Efeito de nome desequipado.' : 'Efeito de Nome equipado!')
       }
     } catch (e) {
       console.error('Error equipping cosmetic:', e)
@@ -138,6 +162,8 @@ export function CosmeticsInventory({
       await handleEquipItem('auras', 'aura-cyan')
     } else if (category === 'finishes') {
       await handleEquipItem('finishes', 'none')
+    } else if (category === 'name_effects') {
+      await handleEquipItem('name_effects', 'none')
     }
   }
 
@@ -150,7 +176,7 @@ export function CosmeticsInventory({
       {/* Toast Feedback */}
       {toastMessage && (
         <div className="echo-inventory-toast">
-          <span>✨</span>
+          <ColoredSparklesIcon size={16} />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -158,7 +184,9 @@ export function CosmeticsInventory({
       {/* Modern Header Bar */}
       <div className="echo-inventory-header-card">
         <div className="echo-inventory-header-left">
-          <div className="echo-inventory-icon-bubble">🎒</div>
+          <div className="echo-inventory-icon-bubble">
+            <ColoredBackpackIcon size={28} />
+          </div>
           <div>
             <div className="echo-inventory-badge-row">
               <span className="echo-inventory-badge-tag">INVENTÁRIO DO JOGADOR</span>
@@ -177,7 +205,8 @@ export function CosmeticsInventory({
           onClick={handleOpenStore}
           title="Abrir Loja de Cosméticos"
         >
-          <span>🛒 Explorar Loja Echo</span>
+          <ColoredShopBagIcon size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+          <span>Explorar Loja Echo</span>
         </button>
       </div>
 
@@ -189,7 +218,7 @@ export function CosmeticsInventory({
             className={`echo-inv-tab ${activeTab === 'decorations' ? 'active' : ''}`}
             onClick={() => setActiveTab('decorations')}
           >
-            <span className="echo-inv-tab-icon">🎭</span>
+            <span className="echo-inv-tab-icon"><ColoredMaskIcon size={16} /></span>
             <span>Decorações de Avatar</span>
             <span className="echo-inv-tab-count">
               {ownedCounts.decorations}/{AVATAR_DECORATIONS.length}
@@ -201,7 +230,7 @@ export function CosmeticsInventory({
             className={`echo-inv-tab ${activeTab === 'effects' ? 'active' : ''}`}
             onClick={() => setActiveTab('effects')}
           >
-            <span className="echo-inv-tab-icon">✨</span>
+            <span className="echo-inv-tab-icon"><ColoredSparklesIcon size={16} /></span>
             <span>Efeitos de Perfil</span>
             <span className="echo-inv-tab-count">
               {ownedCounts.effects}/{PROFILE_EFFECTS.length}
@@ -210,10 +239,22 @@ export function CosmeticsInventory({
 
           <button
             type="button"
+            className={`echo-inv-tab ${activeTab === 'name_effects' ? 'active' : ''}`}
+            onClick={() => setActiveTab('name_effects')}
+          >
+            <span className="echo-inv-tab-icon"><ColoredSoundwaveIcon size={16} /></span>
+            <span>Efeitos de Nome & Auras</span>
+            <span className="echo-inv-tab-count">
+              {ownedCounts.name_effects}/{NAME_EFFECTS.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
             className={`echo-inv-tab ${activeTab === 'auras' ? 'active' : ''}`}
             onClick={() => setActiveTab('auras')}
           >
-            <span className="echo-inv-tab-icon">⚡</span>
+            <span className="echo-inv-tab-icon"><ColoredLightningIcon size={16} /></span>
             <span>Molduras & Auras Neon</span>
             <span className="echo-inv-tab-count">
               {ownedCounts.auras}/{NEON_AURAS.length}
@@ -225,7 +266,7 @@ export function CosmeticsInventory({
             className={`echo-inv-tab ${activeTab === 'finishes' ? 'active' : ''}`}
             onClick={() => setActiveTab('finishes')}
           >
-            <span className="echo-inv-tab-icon">💎</span>
+            <span className="echo-inv-tab-icon"><ColoredGemIcon size={16} /></span>
             <span>Acabamentos de Cartão</span>
             <span className="echo-inv-tab-count">
               {ownedCounts.finishes}/{CARD_FINISHES.length}
@@ -313,7 +354,7 @@ export function CosmeticsInventory({
                         [{clanTag.toUpperCase()}]
                       </span>
                     )}
-                    <span className="echo-stage-name">{displayName || 'Jogador'}</span>
+                    <span className={`echo-stage-name name-effect-${previewNameEffect}`}>{displayName || 'Jogador'}</span>
                   </div>
                   <div className="echo-stage-handle">
                     @{displayName.toLowerCase().replace(/\s+/g, '_') || 'echo_user'}
@@ -332,6 +373,7 @@ export function CosmeticsInventory({
                 <span className="echo-stage-item-name">
                   {activeTab === 'decorations' && (AVATAR_DECORATIONS.find(d => d.id === previewDeco)?.name || 'Sem Decoração')}
                   {activeTab === 'effects' && (PROFILE_EFFECTS.find(e => e.id === previewEffect)?.name || 'Sem Efeito')}
+                  {activeTab === 'name_effects' && (NAME_EFFECTS.find(n => n.id === previewNameEffect)?.name || 'Sem Efeito de Nome')}
                   {activeTab === 'auras' && (NEON_AURAS.find(a => a.id === previewAura)?.name || 'Ciano Elétrico')}
                   {activeTab === 'finishes' && (CARD_FINISHES.find(f => f.id === previewFinish)?.name || 'Minimalista Fosco')}
                 </span>
@@ -344,6 +386,7 @@ export function CosmeticsInventory({
                   onClick={() => {
                     if (activeTab === 'decorations') handleEquipItem('decorations', previewDeco)
                     if (activeTab === 'effects') handleEquipItem('effects', previewEffect)
+                    if (activeTab === 'name_effects') handleEquipItem('name_effects', previewNameEffect)
                     if (activeTab === 'auras') handleEquipItem('auras', previewAura)
                     if (activeTab === 'finishes') handleEquipItem('finishes', previewFinish)
                   }}
@@ -357,6 +400,7 @@ export function CosmeticsInventory({
                   onClick={() => {
                     setPreviewDeco(currentDecoration || 'none')
                     setPreviewEffect(currentProfileEffect || 'none')
+                    setPreviewNameEffect(currentNameEffect || 'none')
                     setPreviewAura(currentAvatarFrame || 'aura-cyan')
                     setPreviewFinish(currentCardFinish || 'none')
                   }}
@@ -442,7 +486,7 @@ export function CosmeticsInventory({
                       {isAcquired ? (
                         <span className="echo-inv-owned-tag">✓ No Inventário</span>
                       ) : (
-                        <span className="echo-inv-store-tag">🔒 Na Loja</span>
+                        <span className="echo-inv-store-tag">Na Loja</span>
                       )}
                     </div>
 
@@ -481,7 +525,7 @@ export function CosmeticsInventory({
                           className="echo-inv-shop-link-btn"
                           onClick={handleOpenStore}
                         >
-                          <span>Obter na Loja 🛒</span>
+                          <span>Obter na Loja</span>
                         </button>
                       )}
                     </div>
@@ -542,7 +586,7 @@ export function CosmeticsInventory({
                       {isAcquired ? (
                         <span className="echo-inv-owned-tag">✓ No Inventário</span>
                       ) : (
-                        <span className="echo-inv-store-tag">🔒 Na Loja</span>
+                        <span className="echo-inv-store-tag">Na Loja</span>
                       )}
                     </div>
 
@@ -583,7 +627,7 @@ export function CosmeticsInventory({
                           className="echo-inv-shop-link-btn"
                           onClick={handleOpenStore}
                         >
-                          <span>Obter na Loja 🛒</span>
+                          <span>Obter na Loja</span>
                         </button>
                       )}
                     </div>
@@ -626,7 +670,7 @@ export function CosmeticsInventory({
                       {isAcquired ? (
                         <span className="echo-inv-owned-tag">✓ No Inventário</span>
                       ) : (
-                        <span className="echo-inv-store-tag">🔒 Na Loja</span>
+                        <span className="echo-inv-store-tag">Na Loja</span>
                       )}
                     </div>
 
@@ -657,7 +701,7 @@ export function CosmeticsInventory({
                           className="echo-inv-shop-link-btn"
                           onClick={handleOpenStore}
                         >
-                          <span>Obter na Loja 🛒</span>
+                          <span>Obter na Loja</span>
                         </button>
                       )}
                     </div>
@@ -700,7 +744,7 @@ export function CosmeticsInventory({
                       {isAcquired ? (
                         <span className="echo-inv-owned-tag">✓ No Inventário</span>
                       ) : (
-                        <span className="echo-inv-store-tag">🔒 Na Loja</span>
+                        <span className="echo-inv-store-tag">Na Loja</span>
                       )}
                     </div>
 
@@ -729,7 +773,7 @@ export function CosmeticsInventory({
                           className="echo-inv-shop-link-btn"
                           onClick={handleOpenStore}
                         >
-                          <span>Obter na Loja 🛒</span>
+                          <span>Obter na Loja</span>
                         </button>
                       )}
                     </div>
@@ -739,21 +783,80 @@ export function CosmeticsInventory({
             </div>
           )}
 
-          {/* In-Grid Quick Shop Card */}
-          <div className="echo-inv-store-cta-tile">
-            <div className="cta-tile-icon">🛍️</div>
-            <div className="cta-tile-info">
-              <h4>Descubra Novos Cosméticos na Loja</h4>
-              <p>Explore novas decorações exclusivas, auras neon e efeitos cinematográficos gratuitos.</p>
+          {/* TAB 5: NAME EFFECTS & SOUND AURAS */}
+          {activeTab === 'name_effects' && (
+            <div className="echo-inv-grid">
+              {NAME_EFFECTS.map(effect => {
+                const isAcquired = (inventory.name_effects || []).includes(effect.id)
+                if (filterOnlyAcquired && !isAcquired) return null
+                const isEquipped = currentNameEffect === effect.id
+                const isPreviewing = previewNameEffect === effect.id
+
+                return (
+                  <div
+                    key={effect.id}
+                    className={`echo-inv-card ${isEquipped ? 'equipped' : ''} ${isPreviewing ? 'previewing' : ''}`}
+                    onClick={() => setPreviewNameEffect(effect.id)}
+                  >
+                    <div className="echo-inv-card-stage" style={{ minHeight: '90px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+                      <span className={`name-effect-${effect.id}`} style={{ fontSize: '15px', fontWeight: 700 }}>
+                        {displayName || 'Jogador'}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '6px' }}>
+                        <span className="name-soundwave-indicator">
+                          <span className="name-soundwave-bar" style={{ background: effect.themeColor }} />
+                          <span className="name-soundwave-bar" style={{ background: effect.themeColor }} />
+                          <span className="name-soundwave-bar" style={{ background: effect.themeColor }} />
+                        </span>
+                        <span className="name-effect-badge-tag" style={{ backgroundColor: `${effect.themeColor}20`, color: effect.themeColor, border: `1px solid ${effect.themeColor}50`, fontSize: '8.5px' }}>
+                          {effect.badge}
+                        </span>
+                      </div>
+                      {isEquipped && (
+                        <span className="echo-inv-equipped-pill">● Ativo</span>
+                      )}
+                      {!isAcquired && (
+                        <span className="echo-inv-store-tag">Na Loja</span>
+                      )}
+                    </div>
+
+                    <div className="echo-inv-card-body">
+                      <div className="echo-inv-card-title-row">
+                        <h4>{effect.name}</h4>
+                        <span className="echo-inv-badge-finish" style={{ borderColor: `${effect.themeColor}55`, color: effect.themeColor }}>
+                          {effect.category}
+                        </span>
+                      </div>
+                      <p>{effect.description}</p>
+                    </div>
+
+                    <div className="echo-inv-card-actions" onClick={e => e.stopPropagation()}>
+                      {isEquipped ? (
+                        <span className="echo-inv-equipped-pill">✓ Equipado</span>
+                      ) : isAcquired ? (
+                        <button
+                          type="button"
+                          className="echo-inv-equip-btn"
+                          onClick={() => handleEquipItem('name_effects', effect.id)}
+                        >
+                          Equipar
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="echo-inv-shop-link-btn"
+                          onClick={handleOpenStore}
+                        >
+                          <span>Obter na Loja</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-            <button
-              type="button"
-              className="cta-tile-btn"
-              onClick={handleOpenStore}
-            >
-              <span>Abrir Loja Echo</span>
-            </button>
-          </div>
+          )}
+
         </div>
       </div>
     </div>

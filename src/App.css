@@ -491,7 +491,7 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px 0 16px;
+  padding: 0 148px 0 16px;
   background: rgba(14, 17, 24, 0.94);
   backdrop-filter: blur(16px) saturate(140%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
@@ -499,6 +499,20 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
   flex-shrink: 0;
   z-index: 100;
   transition: background 0.3s ease;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.topbar-left,
+.topbar-right,
+.topbar-nav,
+.topbar-nav-btn,
+.topbar-search-trigger,
+.topbar-user-pill,
+.topbar button,
+.topbar a,
+.topbar input {
+  -webkit-app-region: no-drag;
 }
 
 .topbar-left {
@@ -658,10 +672,10 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
   white-space: nowrap;
 }
 
-/* ── Workspace (3 columns: Guild Rail 72px + Channels Sidebar 240px + Main Content 1fr) ── */
+/* ── Workspace (3 columns: Guild Rail 72px + Channels Sidebar 260px + Main Content 1fr) ── */
 .workspace {
   display: grid; 
-  grid-template-columns: 72px 240px 1fr;
+  grid-template-columns: 72px 260px 1fr;
   height: calc(100vh - 56px); 
   overflow: hidden;
 }
@@ -1581,7 +1595,7 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
 }
 .msg-avatar {
   display: grid; place-items: center; width: 34px; height: 34px;
-  border-radius: 12px; color: #fff; font-weight: 700; font-size: 12px;
+  border-radius: 50%; color: #fff; font-weight: 700; font-size: 12px;
   flex-shrink: 0;
   transition: transform 0.2s var(--ease-spring);
 }
@@ -3805,6 +3819,17 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
   border-color: #f59e0b;
   box-shadow: 0 2px 12px rgba(245, 158, 11, 0.4);
 }
+.picker-config-chip:disabled,
+.picker-config-chip.disabled {
+  opacity: 0.38 !important;
+  cursor: not-allowed !important;
+  pointer-events: auto !important; /* allow title/tooltip on hover */
+  filter: grayscale(0.6);
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+  box-shadow: none !important;
+}
 .screen-picker-audio-pill {
   width: 100%;
   display: flex;
@@ -4923,11 +4948,11 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
 .sidebar-profile-footer {
   display: flex;
   flex-direction: column;
-  padding: 8px 10px;
+  padding: 8px 10px 10px 10px;
   background: var(--bg-tertiary);
   border-top: 1px solid var(--border-color);
   flex-shrink: 0;
-  min-height: 52px;
+  min-height: 56px;
   gap: 4px;
   user-select: none;
   box-sizing: border-box;
@@ -4947,11 +4972,11 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
 .profile-footer-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   min-width: 0;
   flex: 1;
   border-radius: 8px;
-  padding: 3px 4px;
+  padding: 4px 6px;
   transition: background 0.15s ease;
 }
 .profile-footer-info:hover {
@@ -4981,25 +5006,30 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
   display: flex;
   flex-direction: column;
   min-width: 0;
-  overflow: hidden;
+  justify-content: center;
 }
 .profile-footer-name {
   font-size: 13px;
   font-weight: 700;
+  line-height: 1.25;
+  margin-bottom: 2px;
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .profile-footer-status {
-  font-size: 10.5px;
+  font-size: 11px;
+  line-height: 1.25;
   color: var(--text-muted);
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 4px;
   min-width: 0;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 .profile-footer-status.game {
   color: #10b981;
@@ -5027,11 +5057,11 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
 .profile-footer-btn {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 6px;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 13px;
   transition: var(--transition-smooth);
 }
 .profile-footer-btn:hover {
@@ -6327,7 +6357,7 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
 .member-avatar {
   width: 34px;
   height: 34px;
-  border-radius: 10px;
+  border-radius: 50%;
   background: linear-gradient(135deg, var(--accent-color, #00f2fe), #6366f1);
   color: #fff;
   font-weight: 700;
@@ -6342,6 +6372,7 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 50%;
 }
 
 /* Status dots with clean cutout */
@@ -7405,7 +7436,7 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
   position: relative;
   width: 78px;
   height: 78px;
-  border-radius: 22px;
+  border-radius: 50% !important;
   background: var(--bg-tertiary, #1a1d28);
   border: 4px solid var(--bg-primary, #0e1017);
   display: flex;
@@ -7434,7 +7465,7 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 18px;
+  border-radius: 50% !important;
 }
 
 .member-profile-status-ring {
@@ -8787,7 +8818,7 @@ body.theme-valorant, .app-container.theme-valorant {
 .echo-hero-avatar-squircle {
   width: 92px;
   height: 92px;
-  border-radius: 26px;
+  border-radius: 50% !important;
   padding: 3px;
   position: relative;
   background: #11131a;
@@ -8798,7 +8829,7 @@ body.theme-valorant, .app-container.theme-valorant {
 .echo-hero-avatar-inner {
   width: 100%;
   height: 100%;
-  border-radius: 22px;
+  border-radius: 50% !important;
   object-fit: cover;
   display: grid;
   place-items: center;
@@ -8814,12 +8845,13 @@ body.theme-valorant, .app-container.theme-valorant {
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: 50% !important;
 }
 
 .echo-hero-avatar-overlay {
   position: absolute;
   inset: 3px;
-  border-radius: 22px;
+  border-radius: 50% !important;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
   display: grid;
@@ -10180,7 +10212,7 @@ body.density-compact .msg-card {
 body.density-compact .msg-avatar {
   width: 28px !important;
   height: 28px !important;
-  border-radius: 8px !important;
+  border-radius: 50% !important;
   font-size: 11px !important;
 }
 
@@ -10866,18 +10898,56 @@ body.theme-performance-opaque .chat-area-container {
   font-size: 13px;
   color: var(--text-muted, #94a3b8);
 }
-.echo-shop-close-btn {
+.echo-shop-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.echo-shop-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   color: var(--text-primary, #fff);
   padding: 8px 16px;
   border-radius: 10px;
   cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.echo-shop-header-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.28);
+  transform: translateY(-1px);
+}
+
+.echo-shop-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-primary, #fff);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 16px;
   font-weight: 600;
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
+
 .echo-shop-close-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
   transform: translateY(-1px);
 }
 
@@ -11040,21 +11110,22 @@ body.theme-performance-opaque .chat-area-container {
 /* Mock Profile Card in Showcase */
 .echo-shop-mock-profile-card {
   position: relative;
-  width: 236px;
-  height: 144px;
-  background: #11131a;
-  border-radius: 14px;
+  width: 270px;
+  min-height: 176px;
+  background: #0e1017;
+  border-radius: 16px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65), 0 0 1px rgba(255, 255, 255, 0.2);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
 }
 
 .echo-shop-mock-profile-card .mock-card-banner {
-  height: 52px;
-  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+  height: 60px;
+  background: linear-gradient(180deg, #252836 0%, #171922 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   position: relative;
   z-index: 2;
   flex-shrink: 0;
@@ -11063,27 +11134,28 @@ body.theme-performance-opaque .chat-area-container {
 .echo-shop-mock-profile-card .mock-card-body {
   position: relative;
   z-index: 3;
-  padding: 0 14px 10px;
+  padding: 0 16px 16px;
   flex: 1;
+  background: #0e1017;
 }
 
 .echo-shop-mock-profile-card .mock-card-avatar-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-top: -22px;
-  margin-bottom: 6px;
+  margin-top: -25px;
+  margin-bottom: 4px;
 }
 
 .echo-shop-mock-profile-card .mock-card-avatar-squircle {
-  width: 46px;
-  height: 46px;
-  border-radius: 13px;
-  padding: 2px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50% !important;
+  padding: 2.5px;
   position: relative;
-  background: #11131a;
+  background: #0e1017;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
   transition: all 0.25s ease;
   display: block;
 }
@@ -11091,11 +11163,11 @@ body.theme-performance-opaque .chat-area-container {
 .echo-shop-mock-profile-card .mock-card-avatar-inner {
   width: 100%;
   height: 100%;
-  border-radius: 11px;
+  border-radius: 50% !important;
   background: var(--bg-secondary, #1f2330);
   display: grid;
   place-items: center;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: #fff;
   overflow: hidden;
@@ -11106,16 +11178,17 @@ body.theme-performance-opaque .chat-area-container {
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: 50% !important;
 }
 
 .echo-shop-mock-profile-card .mock-card-status-dot {
   position: absolute;
-  bottom: 0px;
-  right: 0px;
-  width: 12px;
-  height: 12px;
+  bottom: 1px;
+  right: 1px;
+  width: 13px;
+  height: 13px;
   border-radius: 50%;
-  border: 2px solid #11131a;
+  border: 2.5px solid #0e1017;
   background: #10b981;
   box-shadow: 0 0 6px #10b981;
   z-index: 5;
@@ -11124,31 +11197,36 @@ body.theme-performance-opaque .chat-area-container {
 .echo-shop-mock-profile-card .mock-card-meta {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
+  margin-top: 3px;
 }
 
 .echo-shop-mock-profile-card .mock-card-name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #fff;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
 .echo-shop-mock-profile-card .mock-card-handle {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted, #94a3b8);
   line-height: 1.2;
 }
 
 .echo-shop-mock-profile-card .mock-card-status {
-  font-size: 10px;
+  font-size: 11px;
   color: #38bdf8;
-  margin-top: 2px;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .echo-shop-mock-profile-card .profile-effect-container {
   z-index: 4 !important;
   pointer-events: none;
+  border-radius: inherit;
 }
 
 /* Category Filter Bar */
@@ -12583,7 +12661,7 @@ body[data-performance-mode="true"] * {
 .echo-stage-avatar-squircle {
   width: 72px;
   height: 72px;
-  border-radius: 20px;
+  border-radius: 50% !important;
   padding: 2.5px;
   position: relative;
   background: #11131a;
@@ -12596,7 +12674,7 @@ body[data-performance-mode="true"] * {
 .echo-stage-avatar-inner {
   width: 100%;
   height: 100%;
-  border-radius: 17px;
+  border-radius: 50% !important;
   object-fit: cover;
   display: grid;
   place-items: center;
@@ -12612,6 +12690,7 @@ body[data-performance-mode="true"] * {
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: 50% !important;
 }
 
 .echo-stage-status-dot {
@@ -13288,6 +13367,165 @@ body[data-performance-mode="true"] * {
   border: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
 }
+
+/* =============================================================================
+   NAME EFFECTS & SOUND AURAS (EFEITOS DE NOME E RESSONÂNCIA)
+   ============================================================================= */
+
+@keyframes nameShimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes soundwaveBar {
+  0% {
+    height: 3px;
+    opacity: 0.4;
+  }
+  100% {
+    height: 10px;
+    opacity: 1;
+  }
+}
+
+/* Base effect styles */
+.name-effect-resonance_cyan {
+  background: linear-gradient(90deg, #00f2fe 0%, #38bdf8 45%, #7dd3fc 70%, #00f2fe 100%) !important;
+  background-size: 200% auto !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  animation: nameShimmer 3s linear infinite !important;
+  filter: drop-shadow(0 0 5px rgba(0, 242, 254, 0.45));
+  font-weight: 700 !important;
+}
+
+.name-effect-solar_flare {
+  background: linear-gradient(90deg, #fbbf24 0%, #f97316 40%, #ef4444 70%, #fbbf24 100%) !important;
+  background-size: 200% auto !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  animation: nameShimmer 2.5s linear infinite !important;
+  filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.5));
+  font-weight: 700 !important;
+}
+
+.name-effect-cyber_matrix {
+  background: linear-gradient(90deg, #f472b6 0%, #c084fc 35%, #38bdf8 70%, #f472b6 100%) !important;
+  background-size: 200% auto !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  animation: nameShimmer 3s linear infinite !important;
+  filter: drop-shadow(0 0 5px rgba(236, 72, 153, 0.45));
+  font-weight: 700 !important;
+}
+
+.name-effect-celestial_gold {
+  background: linear-gradient(90deg, #fef08a 0%, #f59e0b 35%, #fbbf24 60%, #fef08a 100%) !important;
+  background-size: 200% auto !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  animation: nameShimmer 3.2s linear infinite !important;
+  filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.5));
+  font-weight: 700 !important;
+}
+
+.name-effect-abyssal_amethyst {
+  background: linear-gradient(90deg, #c084fc 0%, #a855f7 40%, #6366f1 75%, #c084fc 100%) !important;
+  background-size: 200% auto !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  animation: nameShimmer 3.5s linear infinite !important;
+  filter: drop-shadow(0 0 6px rgba(168, 85, 247, 0.5));
+  font-weight: 700 !important;
+}
+
+.name-effect-emerald_frequency {
+  background: linear-gradient(90deg, #34d399 0%, #10b981 50%, #059669 80%, #34d399 100%) !important;
+  background-size: 200% auto !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  animation: nameShimmer 2.8s linear infinite !important;
+  filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.5));
+  font-weight: 700 !important;
+}
+
+/* Soundwave micro-equalizer pill */
+.name-soundwave-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 12px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.name-soundwave-bar {
+  width: 2px;
+  border-radius: 1px;
+  animation: soundwaveBar 1.2s ease-in-out infinite alternate;
+}
+.name-soundwave-bar:nth-child(1) {
+  animation-delay: 0s;
+  height: 4px;
+}
+.name-soundwave-bar:nth-child(2) {
+  animation-delay: 0.25s;
+  height: 9px;
+}
+.name-soundwave-bar:nth-child(3) {
+  animation-delay: 0.5s;
+  height: 6px;
+}
+
+/* Member card aura interaction */
+.member-card.has-name-effect {
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.member-card.has-name-effect:hover {
+  border-color: var(--member-aura-border, rgba(0, 242, 254, 0.35)) !important;
+  background: linear-gradient(90deg, var(--member-aura-bg, rgba(0, 242, 254, 0.08)), rgba(255, 255, 255, 0.02)) !important;
+  box-shadow: 0 2px 14px var(--member-aura-shadow, rgba(0, 242, 254, 0.12));
+}
+
+/* Sound Aura Badge in Shop & Member Card */
+.name-effect-badge-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1.5px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+/* Shop Name Effects Visualizer */
+.echo-shop-name-stage {
+  width: 100%;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.echo-shop-name-preview-text {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
 
 
 

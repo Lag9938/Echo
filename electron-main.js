@@ -275,8 +275,14 @@ function createWindow() {
     minWidth: 900, 
     minHeight: 600, 
     show: !shouldStartHidden,
-    backgroundColor: '#f5f7f6', 
+    backgroundColor: '#0e1118', 
     autoHideMenuBar: true, 
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#0e1118',
+      symbolColor: '#94a3b8',
+      height: 48
+    },
     webPreferences: { 
       preload: path.join(__dirname, 'electron-preload.cjs'),
       contextIsolation: true, 
@@ -621,16 +627,19 @@ function createWindow() {
     }
   })
 
-  // Windows / System Auto-Start at Login (Discord Style)
+  // Windows / System Auto-Start at Login (Discord Style - Default Enabled)
   ipcMain.handle('get-autostart-settings', () => {
     try {
+      const autostartConfigFile = path.join(app.getPath('userData'), 'autostart_preference.json')
       const settings = app.getLoginItemSettings()
+      const isOpen = Boolean(settings.openAtLogin || settings.executableWillLaunchAtLogin)
+      const effectiveOpen = fs.existsSync(autostartConfigFile) ? isOpen : true
       return {
-        openAtLogin: Boolean(settings.openAtLogin || settings.executableWillLaunchAtLogin)
+        openAtLogin: effectiveOpen
       }
     } catch (err) {
       console.warn('Error fetching login item settings:', err)
-      return { openAtLogin: false }
+      return { openAtLogin: true }
     }
   })
 
@@ -654,6 +663,11 @@ function createWindow() {
           args: [path.resolve(process.argv[1]), ...(isHidden ? ['--hidden'] : [])]
         })
       }
+
+      try {
+        const autostartConfigFile = path.join(app.getPath('userData'), 'autostart_preference.json')
+        fs.writeFileSync(autostartConfigFile, JSON.stringify({ configured: true, openAtLogin: willOpen, openAsHidden: isHidden, timestamp: Date.now() }))
+      } catch (e) {}
 
       const updated = app.getLoginItemSettings()
       return {
@@ -737,6 +751,25 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null)
   ensureLocalLivekitServer()
   createWindow()
+
+  // Ativação padrão de inicialização com o Windows na primeira execução (estilo Discord)
+  try {
+    const autostartConfigFile = path.join(app.getPath('userData'), 'autostart_preference.json')
+    if (!fs.existsSync(autostartConfigFile)) {
+      if (app.isPackaged) {
+        app.setLoginItemSettings({
+          openAtLogin: true,
+          openAsHidden: false,
+          path: process.execPath,
+          args: []
+        })
+      }
+      fs.writeFileSync(autostartConfigFile, JSON.stringify({ configured: true, openAtLogin: true, isDefault: true, timestamp: Date.now() }))
+    }
+  } catch (err) {
+    console.warn('Não foi possível registrar autostart padrão:', err)
+  }
+
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
 })
 app.on('before-quit', () => {
