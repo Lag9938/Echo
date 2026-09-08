@@ -99,8 +99,11 @@ async function scanRunningGames() {
         if (stdout && stdout.trim().startsWith('[')) {
           const windows = JSON.parse(stdout.trim())
           for (const win of windows) {
-            const pName = (win.processName || '').toLowerCase()
-            const matched = POPULAR_GAMES.find(g => g.match.some(m => pName.includes(m)))
+            const pName = (win.processName || '').replace(/\.exe$/i, '').toLowerCase().trim()
+            const matched = POPULAR_GAMES.find(g => g.match.some(m => {
+              const target = m.toLowerCase()
+              return pName === target || pName.startsWith(target + '-') || pName.startsWith(target + '_')
+            }))
             if (matched) {
               foundGame = { name: matched.name, icon: matched.icon, processName: win.processName }
               break
@@ -118,9 +121,18 @@ async function scanRunningGames() {
           const lines = tasklistOut.toLowerCase().split(/\r?\n/)
           for (const line of lines) {
             if (!line.trim()) continue
-            const procName = line.split(',')[0]?.replace(/"/g, '')?.trim() || ''
+            const parts = line.split(',').map(s => s.replace(/"/g, '').trim())
+            const procName = parts[0] || ''
+            const sessionName = parts[2] || ''
+            // Ignora serviços de segundo plano do sistema operacional (Session 0 / Services)
+            if (sessionName === 'services' || sessionName === '0') continue
             if (!procName) continue
-            const matched = POPULAR_GAMES.find(g => g.match.some(m => procName.includes(m)))
+
+            const baseProc = procName.replace(/\.exe$/i, '').toLowerCase()
+            const matched = POPULAR_GAMES.find(g => g.match.some(m => {
+              const target = m.toLowerCase()
+              return baseProc === target || baseProc.startsWith(target + '-') || baseProc.startsWith(target + '_')
+            }))
             if (matched) {
               foundGame = { name: matched.name, icon: matched.icon, processName: procName }
               break

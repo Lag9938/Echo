@@ -14,15 +14,36 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.23.27'
+export const APP_CURRENT_VERSION = '0.23.28'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.23.28',
+    title: 'Correção de Detecção de Jogos e Presença Rica',
+    date: '08 de Setembro de 2026',
+    tagline: 'Filtro inteligente de processos do sistema operacional para evitar falsos-positivos na atividade de jogos.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎮',
+        badge: 'RICH PRESENCE',
+        title: 'Detecção Precisa de Jogos',
+        description: 'Eliminamos falsos-positivos onde serviços do sistema (como TrustedInstaller do Windows) eram confundidos com jogos.'
+      },
+      {
+        icon: '⚡',
+        badge: 'DESEMPENHO',
+        title: 'Filtro de Sessões do Sistema',
+        description: 'Processos de segundo plano e serviços da Sessão 0 são ignorados automaticamente pela rotina de escaneamento.'
+      }
+    ]
+  },
   {
     version: '0.23.27',
     title: 'Modernização de Servidores e Sincronização em Tempo Real',
     date: '08 de Setembro de 2026',
     tagline: 'Configurações de servidores totalmente renovadas, sincronização multi-usuário de cargos em tempo real e nova interface com barra flutuante de alterações.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🛡️',
