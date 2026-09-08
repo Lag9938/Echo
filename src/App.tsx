@@ -84,10 +84,10 @@ type Space = {
   description: string; 
   creator_id: string; 
   created_at?: string;
-  icon_url?: string;
-  banner_url?: string;
-  banner_theme?: string;
-  welcome_channel_id?: string;
+  icon_url?: string | null;
+  banner_url?: string | null;
+  banner_theme?: string | null;
+  welcome_channel_id?: string | null;
   roles?: ServerRole[];
   emojis?: ServerEmoji[];
 }
@@ -248,6 +248,14 @@ function ShieldIcon({ className, style }: { className?: string; style?: React.CS
   return (
     <svg className={className} style={style} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+  )
+}
+
+function CheckIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
     </svg>
   )
 }
@@ -1855,6 +1863,7 @@ function Echo({ user }: { user: User }) {
   const [serverRoles, setServerRoles] = useState<ServerRole[]>([])
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
   const [memberRoleMap, setMemberRoleMap] = useState<Record<string, string[]>>({}) // userId -> roleIds[]
+  const [assigningRoleMemberId, setAssigningRoleMemberId] = useState<string | null>(null)
 
   // Emojis States
   const [serverEmojis, setServerEmojis] = useState<ServerEmoji[]>([])
@@ -3113,11 +3122,12 @@ function Echo({ user }: { user: User }) {
     setLoadingEditingMembers(false)
   }
 
-  function addAuditLog(spaceId: string, action: string, details?: string) {
+  async function addAuditLog(spaceId: string, action: string, details?: string) {
+    const authorName = profileDisplayName || displayName || 'Você'
     const newEntry: ServerAuditLog = {
       id: Math.random().toString(36).substring(2, 9),
       timestamp: new Date().toISOString(),
-      author_name: profileDisplayName || 'Você',
+      author_name: authorName,
       action,
       details
     }
@@ -3134,27 +3144,161 @@ function Echo({ user }: { user: User }) {
     if (editingSpace?.id === spaceId) {
       setServerAuditLogs(updated)
     }
+
+    if (supabase) {
+      try {
+        await supabase.from('space_audit_logs').insert({
+          space_id: spaceId,
+          author_name: authorName,
+          author_id: user.id,
+          action,
+          details
+        })
+      } catch (err) {
+        console.warn("Supabase insert audit log error:", err)
+      }
+    }
   }
 
-  function loadSpaceAuditLogs(spaceId: string) {
+  async function loadSpaceAuditLogs(spaceId: string) {
     try {
       const logsMap = JSON.parse(localStorage.getItem('echo-spaces-audit-logs') || '{}')
       setServerAuditLogs(logsMap[spaceId] || [])
     } catch {
       setServerAuditLogs([])
     }
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('space_audit_logs')
+          .select('*')
+          .eq('space_id', spaceId)
+          .order('created_at', { ascending: false })
+          .limit(100)
+
+        if (!error && data && data.length > 0) {
+          const formatted: ServerAuditLog[] = data.map((d: any) => ({
+            id: d.id,
+            timestamp: d.created_at,
+            author_name: d.author_name,
+            action: d.action,
+            details: d.details
+          }))
+          setServerAuditLogs(formatted)
+        }
+      } catch (err) {
+        console.warn("Supabase load audit logs error:", err)
+      }
+    }
   }
 
-  function loadSpaceRoles(spaceId: string): ServerRole[] {
+  async function loadSpaceRoles(spaceId: string): Promise<ServerRole[]> {
     let rolesMap: Record<string, ServerRole[]> = {}
     try {
       rolesMap = JSON.parse(localStorage.getItem('echo-spaces-roles') || '{}')
     } catch {
       rolesMap = {}
     }
-    let roles = rolesMap[spaceId]
-    if (!roles || roles.length === 0) {
-      roles = [
+    let localRoles = rolesMap[spaceId] || []
+    if (localRoles.length > 0) {
+      setServerRoles(localRoles)
+      if (!selectedRoleId || !localRoles.some(r => r.id === selectedRoleId)) {
+        setSelectedRoleId(localRoles[0].id)
+      }
+    }
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('space_roles')
+          .select('*')
+          .eq('space_id', spaceId)
+          .order('position', { ascending: true })
+
+        if (!error && data && data.length > 0) {
+          const dbRoles: ServerRole[] = data.map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            color: r.color,
+            position: r.position,
+            permissions: r.permissions || {}
+          }))
+          setServerRoles(dbRoles)
+          rolesMap[spaceId] = dbRoles
+          localStorage.setItem('echo-spaces-roles', JSON.stringify(rolesMap))
+          if (!selectedRoleId || !dbRoles.some(r => r.id === selectedRoleId)) {
+            setSelectedRoleId(dbRoles[0].id)
+          }
+          return dbRoles
+        } else if (!error && (!data || data.length === 0)) {
+          // Seed default roles in Supabase
+          const defaultRoles = [
+            {
+              space_id: spaceId,
+              name: '👑 Dono',
+              color: '#eab308',
+              position: 0,
+              permissions: {
+                administrator: true,
+                manageChannels: true,
+                manageMessages: true,
+                kickMembers: true,
+                muteMembers: true,
+                sendInAnnouncementChannels: true
+              }
+            },
+            {
+              space_id: spaceId,
+              name: '🛡️ Moderador',
+              color: '#3b82f6',
+              position: 1,
+              permissions: {
+                manageChannels: true,
+                manageMessages: true,
+                kickMembers: true,
+                muteMembers: true,
+                sendInAnnouncementChannels: true
+              }
+            },
+            {
+              space_id: spaceId,
+              name: '👤 Membro',
+              color: '#99aab5',
+              position: 2,
+              permissions: {
+                sendInAnnouncementChannels: false
+              }
+            }
+          ]
+
+          const { data: inserted } = await supabase
+            .from('space_roles')
+            .insert(defaultRoles)
+            .select()
+
+          if (inserted && inserted.length > 0) {
+            const formatted: ServerRole[] = inserted.map((r: any) => ({
+              id: r.id,
+              name: r.name,
+              color: r.color,
+              position: r.position,
+              permissions: r.permissions || {}
+            }))
+            setServerRoles(formatted)
+            rolesMap[spaceId] = formatted
+            localStorage.setItem('echo-spaces-roles', JSON.stringify(rolesMap))
+            setSelectedRoleId(formatted[0].id)
+            return formatted
+          }
+        }
+      } catch (err) {
+        console.warn("Supabase load roles error:", err)
+      }
+    }
+
+    if (!localRoles || localRoles.length === 0) {
+      localRoles = [
         {
           id: 'role-owner',
           name: '👑 Dono',
@@ -3192,22 +3336,43 @@ function Echo({ user }: { user: User }) {
           }
         }
       ]
-      rolesMap[spaceId] = roles
+      rolesMap[spaceId] = localRoles
       localStorage.setItem('echo-spaces-roles', JSON.stringify(rolesMap))
     }
-    setServerRoles(roles)
-    if (!selectedRoleId || !roles.some(r => r.id === selectedRoleId)) {
-      setSelectedRoleId(roles[0].id)
+    setServerRoles(localRoles)
+    if (!selectedRoleId || !localRoles.some(r => r.id === selectedRoleId)) {
+      setSelectedRoleId(localRoles[0].id)
     }
-    return roles
+    return localRoles
   }
 
-  function loadMemberRoles(spaceId: string) {
+  async function loadMemberRoles(spaceId: string) {
     try {
       const map = JSON.parse(localStorage.getItem(`echo-member-roles-${spaceId}`) || '{}')
       setMemberRoleMap(map)
     } catch {
       setMemberRoleMap({})
+    }
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('space_member_roles')
+          .select('user_id, role_id')
+          .eq('space_id', spaceId)
+
+        if (!error && data) {
+          const map: Record<string, string[]> = {}
+          data.forEach((row: any) => {
+            if (!map[row.user_id]) map[row.user_id] = []
+            map[row.user_id].push(row.role_id)
+          })
+          setMemberRoleMap(map)
+          localStorage.setItem(`echo-member-roles-${spaceId}`, JSON.stringify(map))
+        }
+      } catch (err) {
+        console.warn("Supabase load member roles error:", err)
+      }
     }
   }
 
@@ -3223,20 +3388,60 @@ function Echo({ user }: { user: User }) {
     setServerRoles(updatedRoles)
   }
 
-  function handleCreateRole() {
+  async function handleCreateRole() {
     if (!editingSpace) return
+    const newName = 'Novo Cargo'
+    const newColor = ROLE_COLOR_PRESETS[Math.floor(Math.random() * ROLE_COLOR_PRESETS.length)]
+    const newPosition = serverRoles.length
+    const newPerms = {
+      manageChannels: false,
+      manageMessages: false,
+      kickMembers: false,
+      muteMembers: false,
+      sendInAnnouncementChannels: false
+    }
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('space_roles')
+          .insert({
+            space_id: editingSpace.id,
+            name: newName,
+            color: newColor,
+            position: newPosition,
+            permissions: newPerms
+          })
+          .select()
+          .single()
+
+        if (!error && data) {
+          const createdRole: ServerRole = {
+            id: data.id,
+            name: data.name,
+            color: data.color,
+            position: data.position,
+            permissions: data.permissions || {}
+          }
+          const updated = [...serverRoles, createdRole]
+          setServerRoles(updated)
+          setSelectedRoleId(createdRole.id)
+          saveRolesForSpace(editingSpace.id, updated)
+          addAuditLog(editingSpace.id, `Criou o cargo "${createdRole.name}"`)
+          showToast("Cargo Criado!", `Cargo "${createdRole.name}" foi adicionado.`, "info")
+          return
+        }
+      } catch (err) {
+        console.warn("Supabase create role error:", err)
+      }
+    }
+
     const newRole: ServerRole = {
       id: `role-${Date.now()}`,
-      name: 'Novo Cargo',
-      color: ROLE_COLOR_PRESETS[Math.floor(Math.random() * ROLE_COLOR_PRESETS.length)],
-      position: serverRoles.length,
-      permissions: {
-        manageChannels: false,
-        manageMessages: false,
-        kickMembers: false,
-        muteMembers: false,
-        sendInAnnouncementChannels: false
-      }
+      name: newName,
+      color: newColor,
+      position: newPosition,
+      permissions: newPerms
     }
     const updated = [...serverRoles, newRole]
     saveRolesForSpace(editingSpace.id, updated)
@@ -3245,17 +3450,33 @@ function Echo({ user }: { user: User }) {
     showToast("Cargo Criado!", `Cargo "${newRole.name}" foi adicionado.`, "info")
   }
 
-  function handleUpdateRole(roleId: string, updates: Partial<ServerRole>) {
+  async function handleUpdateRole(roleId: string, updates: Partial<ServerRole>) {
     if (!editingSpace) return
     const updated = serverRoles.map(r => r.id === roleId ? { ...r, ...updates } : r)
     saveRolesForSpace(editingSpace.id, updated)
+
+    if (supabase && !roleId.startsWith('role-')) {
+      try {
+        const dbPayload: any = {}
+        if (updates.name !== undefined) dbPayload.name = updates.name
+        if (updates.color !== undefined) dbPayload.color = updates.color
+        if (updates.position !== undefined) dbPayload.position = updates.position
+        if (updates.permissions !== undefined) dbPayload.permissions = updates.permissions
+        await supabase
+          .from('space_roles')
+          .update(dbPayload)
+          .eq('id', roleId)
+      } catch (err) {
+        console.warn("Supabase update role error:", err)
+      }
+    }
   }
 
-  function handleDeleteRole(roleId: string) {
+  async function handleDeleteRole(roleId: string) {
     if (!editingSpace) return
     const roleToDelete = serverRoles.find(r => r.id === roleId)
     if (!roleToDelete) return
-    if (roleToDelete.id === 'role-owner' || roleToDelete.id === 'role-member') {
+    if (roleToDelete.position === 0 || roleToDelete.name.toLowerCase().includes('dono') || roleToDelete.name.toLowerCase().includes('membro')) {
       showToast("Ação Bloqueada", "Cargos essenciais do sistema não podem ser excluídos.", "info")
       return
     }
@@ -3271,11 +3492,21 @@ function Echo({ user }: { user: User }) {
     })
     setMemberRoleMap(memberMap)
     localStorage.setItem(`echo-member-roles-${editingSpace.id}`, JSON.stringify(memberMap))
+
+    if (supabase && !roleId.startsWith('role-')) {
+      try {
+        await supabase.from('space_roles').delete().eq('id', roleId)
+        await supabase.from('space_member_roles').delete().eq('role_id', roleId)
+      } catch (err) {
+        console.warn("Supabase delete role error:", err)
+      }
+    }
+
     addAuditLog(editingSpace.id, `Excluiu o cargo "${roleToDelete.name}"`)
     showToast("Cargo Excluído", `O cargo "${roleToDelete.name}" foi removido.`, "info")
   }
 
-  function moveRole(roleId: string, direction: 'up' | 'down') {
+  async function moveRole(roleId: string, direction: 'up' | 'down') {
     if (!editingSpace) return
     const list = [...serverRoles]
     const index = list.findIndex(r => r.id === roleId)
@@ -3288,14 +3519,28 @@ function Echo({ user }: { user: User }) {
     list[targetIdx] = temp
     list.forEach((r, idx) => { r.position = idx })
     saveRolesForSpace(editingSpace.id, list)
+
+    if (supabase) {
+      try {
+        for (const r of list) {
+          if (!r.id.startsWith('role-')) {
+            await supabase.from('space_roles').update({ position: r.position }).eq('id', r.id)
+          }
+        }
+      } catch (err) {
+        console.warn("Supabase move role error:", err)
+      }
+    }
   }
 
-  function toggleMemberRole(memberUserId: string, roleId: string, memberName?: string) {
+  async function toggleMemberRole(memberUserId: string, roleId: string, memberName?: string) {
     if (!editingSpace) return
     const currentList = memberRoleMap[memberUserId] || []
     let nextList: string[] = []
     const roleObj = serverRoles.find(r => r.id === roleId)
-    if (currentList.includes(roleId)) {
+    const isRemoving = currentList.includes(roleId)
+
+    if (isRemoving) {
       nextList = currentList.filter(id => id !== roleId)
       addAuditLog(editingSpace.id, `Removeu o cargo "${roleObj?.name || roleId}" de ${memberName || memberUserId}`)
     } else {
@@ -3305,21 +3550,42 @@ function Echo({ user }: { user: User }) {
     const updatedMap = { ...memberRoleMap, [memberUserId]: nextList }
     setMemberRoleMap(updatedMap)
     localStorage.setItem(`echo-member-roles-${editingSpace.id}`, JSON.stringify(updatedMap))
+
+    if (supabase) {
+      try {
+        if (isRemoving) {
+          await supabase
+            .from('space_member_roles')
+            .delete()
+            .match({ space_id: editingSpace.id, user_id: memberUserId, role_id: roleId })
+        } else {
+          await supabase
+            .from('space_member_roles')
+            .insert({
+              space_id: editingSpace.id,
+              user_id: memberUserId,
+              role_id: roleId
+            })
+        }
+      } catch (err) {
+        console.warn("Supabase toggle member role error:", err)
+      }
+    }
   }
 
   function getUserHighestRole(spaceId: string, userId: string): ServerRole | null {
     const space = spaces.find(s => s.id === spaceId)
-    let rolesMap: Record<string, ServerRole[]> = {}
-    try {
-      rolesMap = JSON.parse(localStorage.getItem('echo-spaces-roles') || '{}')
-    } catch {
-      rolesMap = {}
+    let roles = serverRoles
+    if (!roles || roles.length === 0) {
+      try {
+        const rolesMap = JSON.parse(localStorage.getItem('echo-spaces-roles') || '{}')
+        roles = rolesMap[spaceId] || []
+      } catch {}
     }
-    const roles = rolesMap[spaceId] || []
     
     // If user is owner
     if (space && space.creator_id === userId) {
-      const ownerRole = roles.find(r => r.id === 'role-owner' || r.permissions?.administrator)
+      const ownerRole = roles.find(r => r.id === 'role-owner' || r.permissions?.administrator || r.name.toLowerCase().includes('dono'))
       if (ownerRole) return ownerRole
       return {
         id: 'role-owner',
@@ -3330,11 +3596,12 @@ function Echo({ user }: { user: User }) {
       }
     }
 
-    let memberRoles: Record<string, string[]> = {}
-    try {
-      memberRoles = JSON.parse(localStorage.getItem(`echo-member-roles-${spaceId}`) || '{}')
-    } catch {
-      memberRoles = {}
+    let memberRoles: Record<string, string[]> = memberRoleMap
+    if (!memberRoles[userId]) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(`echo-member-roles-${spaceId}`) || '{}')
+        if (stored[userId]) memberRoles = stored
+      } catch {}
     }
     const assignedIds = memberRoles[userId] || []
     if (assignedIds.length === 0) return null
@@ -3347,19 +3614,20 @@ function Echo({ user }: { user: User }) {
     const space = spaces.find(s => s.id === spaceId)
     if (space && space.creator_id === userId) return true
 
-    let rolesMap: Record<string, ServerRole[]> = {}
-    try {
-      rolesMap = JSON.parse(localStorage.getItem('echo-spaces-roles') || '{}')
-    } catch {
-      rolesMap = {}
+    let roles = serverRoles
+    if (!roles || roles.length === 0) {
+      try {
+        const rolesMap = JSON.parse(localStorage.getItem('echo-spaces-roles') || '{}')
+        roles = rolesMap[spaceId] || []
+      } catch {}
     }
-    const roles = rolesMap[spaceId] || []
 
-    let memberRoles: Record<string, string[]> = {}
-    try {
-      memberRoles = JSON.parse(localStorage.getItem(`echo-member-roles-${spaceId}`) || '{}')
-    } catch {
-      memberRoles = {}
+    let memberRoles: Record<string, string[]> = memberRoleMap
+    if (!memberRoles[userId]) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(`echo-member-roles-${spaceId}`) || '{}')
+        if (stored[userId]) memberRoles = stored
+      } catch {}
     }
     const assignedIds = memberRoles[userId] || []
     const userRoles = roles.filter(r => assignedIds.includes(r.id))
@@ -3741,23 +4009,28 @@ function Echo({ user }: { user: User }) {
     setShowSpaceSettingsModal(true)
   }
 
-  async function handleSaveSpaceSettings(event: FormEvent) {
-    event.preventDefault(); if (!supabase || !editingSpace || !editingSpaceName.trim()) return
+  async function handleSaveSpaceSettings(event?: FormEvent) {
+    if (event) event.preventDefault()
+    if (!supabase || !editingSpace || !editingSpaceName.trim()) return
     setError('')
 
+    const payload = {
+      name: editingSpaceName.trim(),
+      description: editingSpaceDescription.trim(),
+      icon_url: editingSpaceIconUrl || null,
+      banner_url: editingSpaceBannerUrl || null,
+      banner_theme: editingSpaceBannerTheme || 'dark',
+      welcome_channel_id: editingSpaceWelcomeChannelId || null
+    }
+
     // Save to local space metadata
-    let localMeta: Record<string, { icon_url?: string; banner_url?: string; banner_theme?: string; welcome_channel_id?: string }> = {}
+    let localMeta: Record<string, any> = {}
     try {
       localMeta = JSON.parse(localStorage.getItem('echo-spaces-metadata') || '{}')
     } catch {
       localMeta = {}
     }
-    localMeta[editingSpace.id] = {
-      icon_url: editingSpaceIconUrl,
-      banner_url: editingSpaceBannerUrl,
-      banner_theme: editingSpaceBannerTheme,
-      welcome_channel_id: editingSpaceWelcomeChannelId
-    }
+    localMeta[editingSpace.id] = payload
     localStorage.setItem('echo-spaces-metadata', JSON.stringify(localMeta))
 
     addAuditLog(editingSpace.id, `Atualizou as configurações gerais do servidor`)
@@ -3766,17 +4039,14 @@ function Echo({ user }: { user: User }) {
     try {
       await supabase
         .from('spaces')
-        .update({ 
-          name: editingSpaceName.trim(),
-          description: editingSpaceDescription.trim()
-        })
+        .update(payload)
         .eq('id', editingSpace.id)
     } catch (e) {
       console.warn("Update spaces DB error:", e)
     }
 
-    showToast("Servidor Atualizado!", "Configurações do servidor salvas com sucesso.", "info")
-    setShowSpaceSettingsModal(false)
+    setEditingSpace(prev => prev ? { ...prev, ...payload } : null)
+    showToast("Servidor Atualizado!", "Configurações salvas com sucesso.", "info")
     await loadSpaces()
   }
 
@@ -4366,6 +4636,8 @@ function Echo({ user }: { user: User }) {
     }
 
     loadSpaceMembers(currentSpaceId)
+    loadSpaceRoles(currentSpaceId)
+    loadMemberRoles(currentSpaceId)
 
     // Canal Realtime para mudanças no banco (Postgres changes)
     const membersChannel = supabase
@@ -4375,6 +4647,15 @@ function Echo({ user }: { user: User }) {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
         loadSpaceMembers(currentSpaceId)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'space_roles', filter: `space_id=eq.${currentSpaceId}` }, () => {
+        loadSpaceRoles(currentSpaceId)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'space_member_roles', filter: `space_id=eq.${currentSpaceId}` }, () => {
+        loadMemberRoles(currentSpaceId)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'spaces', filter: `id=eq.${currentSpaceId}` }, () => {
+        loadSpaces()
       })
       .subscribe()
 
@@ -8864,245 +9145,316 @@ function Echo({ user }: { user: User }) {
           <main className="space-settings-discord-main">
             <div className="space-settings-discord-content">
               {/* ABA 1: VISÃO GERAL */}
-              {activeSpaceTab === 'geral' && (
-                <div className="space-settings-tab-pane">
-                  <div className="space-settings-pane-header">
-                    <h2>Visão Geral do Servidor</h2>
-                    <p>Personalize a identidade visual, banners animados (GIFs), foto e preferências do seu servidor.</p>
-                  </div>
+              {/* ABA 1: VISÃO GERAL */}
+              {activeSpaceTab === 'geral' && (() => {
+                const isGeralDirty = Boolean(
+                  editingSpace && (
+                    editingSpaceName.trim() !== (editingSpace.name || '').trim() ||
+                    (editingSpaceDescription || '').trim() !== (editingSpace.description || '').trim() ||
+                    (editingSpaceIconUrl || '') !== (editingSpace.icon_url || '') ||
+                    (editingSpaceBannerUrl || '') !== (editingSpace.banner_url || '') ||
+                    (editingSpaceBannerTheme || 'dark') !== (editingSpace.banner_theme || 'dark') ||
+                    (editingSpaceWelcomeChannelId || '') !== (editingSpace.welcome_channel_id || '')
+                  )
+                )
 
-                  <div className="space-profile-layout">
-                    <form onSubmit={handleSaveSpaceSettings} className="space-profile-form">
-                      {/* Server Avatar / Icon Section */}
-                      <div className="server-icon-edit-section" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                        <div className="server-avatar-large" style={{ width: '68px', height: '68px', borderRadius: '20px', background: 'linear-gradient(135deg, var(--accent-color), #c75a4a)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: '22px', fontWeight: 600, overflow: 'hidden', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
-                          {editingSpaceIconUrl ? (
-                            <img src={editingSpaceIconUrl} alt="Ícone do servidor" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            (editingSpaceName || 'S').slice(0, 2).toUpperCase()
-                          )}
+                return (
+                  <div className="space-settings-tab-pane">
+                    <div className="space-settings-pane-header">
+                      <h2>Visão Geral do Servidor</h2>
+                      <p>Personalize a identidade visual, banners animados (GIFs), foto e preferências do seu servidor.</p>
+                    </div>
+
+                    <div className="space-profile-layout">
+                      <form onSubmit={handleSaveSpaceSettings} className="space-profile-form">
+                        {/* Server Avatar / Icon Section */}
+                        <div className="server-icon-edit-section" style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '20px', padding: '18px', background: 'var(--bg-secondary)', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
+                          <div className="server-avatar-large" style={{ width: '74px', height: '74px', borderRadius: '22px', background: 'linear-gradient(135deg, var(--accent-color), #c75a4a)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: '24px', fontWeight: 700, overflow: 'hidden', flexShrink: 0, boxShadow: '0 6px 16px rgba(0,0,0,0.3)', border: '2px solid rgba(255,255,255,0.1)' }}>
+                            {editingSpaceIconUrl ? (
+                              <img src={editingSpaceIconUrl} alt="Ícone do servidor" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              (editingSpaceName || 'S').slice(0, 2).toUpperCase()
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>Ícone do Servidor</span>
+                              <span style={{ fontSize: '10.5px', background: 'var(--bg-tertiary)', color: 'var(--accent-color)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>Suporta GIFs</span>
+                            </div>
+                            <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Envie uma imagem estática ou um <strong>GIF animado</strong> (.gif, .png, .jpg, .webp). Mínimo recomendado: 512x512.</span>
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                              <input 
+                                type="file" 
+                                id="server-icon-file-input" 
+                                style={{ display: 'none' }} 
+                                accept="image/*" 
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0]
+                                  if (file) handleSpaceIconUpload(file)
+                                  e.target.value = ''
+                                }} 
+                              />
+                              <button 
+                                type="button" 
+                                className="ch-create-btn" 
+                                style={{ padding: '7px 14px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                                onClick={() => document.getElementById('server-icon-file-input')?.click()}
+                                disabled={uploadingSpaceIcon}
+                              >
+                                <CameraIcon style={{ width: '14px', height: '14px' }} />
+                                <span>{uploadingSpaceIcon ? 'Enviando...' : 'Alterar Foto / GIF'}</span>
+                              </button>
+                              {editingSpaceIconUrl && (
+                                <button 
+                                  type="button" 
+                                  className="settings-channel-delete-btn" 
+                                  style={{ width: 'auto', padding: '6px 12px', fontSize: '12px' }}
+                                  onClick={handleRemoveSpaceIcon}
+                                >
+                                  Remover
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Ícone do Servidor (Suporta GIFs)</span>
-                          <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Envie uma imagem estática ou um <strong>GIF animado</strong> (.gif, .png, .jpg, .webp).</span>
-                          <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+
+                        {/* Server Banner / GIF Section */}
+                        <div className="selector-card" style={{ marginBottom: '18px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
+                          <label style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Faixa do Servidor (Banner / GIF Animado)
+                          </label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '10px', marginBottom: '14px' }}>
                             <input 
                               type="file" 
-                              id="server-icon-file-input" 
+                              id="server-banner-file-input" 
                               style={{ display: 'none' }} 
                               accept="image/*" 
                               onChange={(e) => {
                                 const file = e.target.files?.[0]
-                                if (file) handleSpaceIconUpload(file)
+                                if (file) handleSpaceBannerUpload(file)
                                 e.target.value = ''
                               }} 
                             />
                             <button 
                               type="button" 
                               className="ch-create-btn" 
-                              style={{ padding: '6px 12px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                              onClick={() => document.getElementById('server-icon-file-input')?.click()}
-                              disabled={uploadingSpaceIcon}
+                              style={{ padding: '8px 16px', fontSize: '12.5px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                              onClick={() => document.getElementById('server-banner-file-input')?.click()}
+                              disabled={uploadingSpaceBanner}
                             >
-                              <CameraIcon style={{ width: '14px', height: '14px' }} />
-                              <span>{uploadingSpaceIcon ? 'Enviando...' : 'Alterar Foto / GIF'}</span>
+                              <SparklesIcon style={{ width: '15px', height: '15px' }} />
+                              <span>{uploadingSpaceBanner ? 'Enviando Banner...' : 'Enviar Imagem ou GIF para o Banner'}</span>
                             </button>
-                            {editingSpaceIconUrl && (
+                            {editingSpaceBannerUrl && (
                               <button 
                                 type="button" 
                                 className="settings-channel-delete-btn" 
-                                style={{ width: 'auto', padding: '6px 10px', fontSize: '12px' }}
-                                onClick={handleRemoveSpaceIcon}
+                                style={{ width: 'auto', padding: '8px 12px', fontSize: '12px' }}
+                                onClick={handleRemoveSpaceBanner}
                               >
-                                Remover
+                                Remover Imagem / GIF
                               </button>
                             )}
                           </div>
-                        </div>
-                      </div>
 
-                      {/* Server Banner / GIF Section */}
-                      <div className="selector-card" style={{ marginBottom: '18px' }}>
-                        <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          Faixa do Servidor (Banner / GIF Animado)
-                        </label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px', marginBottom: '12px' }}>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px', fontWeight: 600 }}>Ou escolha um tema de gradiente padrão:</span>
+                          <div className="server-banner-swatches" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px' }}>
+                            {SERVER_BANNER_PRESETS.map(preset => {
+                              const isActive = !editingSpaceBannerUrl && editingSpaceBannerTheme === preset.id
+                              return (
+                                <button 
+                                  key={preset.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingSpaceBannerTheme(preset.id)
+                                    setEditingSpaceBannerUrl('')
+                                  }}
+                                  className={`server-banner-swatch ${isActive ? 'active' : ''}`}
+                                  style={{ background: preset.style }}
+                                  title={preset.name}
+                                >
+                                  {isActive && <span className="server-banner-swatch-check">✓</span>}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="selector-card">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <label style={{ margin: 0 }}>Nome do Servidor</label>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>{editingSpaceName.length}/80</span>
+                          </div>
                           <input 
-                            type="file" 
-                            id="server-banner-file-input" 
-                            style={{ display: 'none' }} 
-                            accept="image/*" 
-                            onChange={(e) => {
-                              const file = e.target.files?.[0]
-                              if (file) handleSpaceBannerUpload(file)
-                              e.target.value = ''
-                            }} 
+                            value={editingSpaceName} 
+                            onChange={(e) => setEditingSpaceName(e.target.value)} 
+                            placeholder="Nome do servidor"
+                            required 
+                            minLength={2}
+                            maxLength={80}
+                            style={{
+                              padding: '12px 14px',
+                              borderRadius: '10px',
+                              border: '1.5px solid var(--border-color)',
+                              background: 'var(--bg-secondary)',
+                              color: 'var(--text-primary)',
+                              fontSize: '13.5px',
+                              fontWeight: 600,
+                              outline: 'none',
+                              width: '100%',
+                              transition: 'border-color 0.15s ease'
+                            }}
                           />
-                          <button 
-                            type="button" 
-                            className="ch-create-btn" 
-                            style={{ padding: '8px 16px', fontSize: '12.5px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                            onClick={() => document.getElementById('server-banner-file-input')?.click()}
-                            disabled={uploadingSpaceBanner}
+                        </div>
+
+                        <div className="selector-card" style={{ marginTop: '16px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <label style={{ margin: 0 }}>Descrição do Servidor</label>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>{editingSpaceDescription.length}/280</span>
+                          </div>
+                          <textarea 
+                            value={editingSpaceDescription} 
+                            onChange={(e) => setEditingSpaceDescription(e.target.value)} 
+                            placeholder="Fale um pouco sobre o que é este servidor, seus jogos ou comunidade..."
+                            className="space-settings-textarea"
+                            maxLength={280}
+                            style={{ minHeight: '90px', borderRadius: '10px' }}
+                          />
+                        </div>
+
+                        {/* Welcome System Channel */}
+                        <div className="selector-card" style={{ marginTop: '16px' }}>
+                          <label>Canal de Boas-Vindas do Sistema</label>
+                          <select 
+                            value={editingSpaceWelcomeChannelId} 
+                            onChange={(e) => setEditingSpaceWelcomeChannelId(e.target.value)}
+                            style={{
+                              padding: '11px 14px',
+                              borderRadius: '10px',
+                              border: '1.5px solid var(--border-color)',
+                              background: 'var(--bg-secondary)',
+                              color: 'var(--text-primary)',
+                              fontSize: '13px',
+                              outline: 'none',
+                              width: '100%',
+                              cursor: 'pointer'
+                            }}
                           >
-                            <SparklesIcon style={{ width: '15px', height: '15px' }} />
-                            <span>{uploadingSpaceBanner ? 'Enviando...' : 'Enviar Imagem ou GIF para o Banner'}</span>
-                          </button>
-                          {editingSpaceBannerUrl && (
-                            <button 
-                              type="button" 
-                              className="settings-channel-delete-btn" 
-                              style={{ width: 'auto', padding: '8px 12px', fontSize: '12px' }}
-                              onClick={handleRemoveSpaceBanner}
-                            >
-                              Remover Banner Personalizado
-                            </button>
-                          )}
+                            <option value="">Nenhum canal selecionado</option>
+                            {(spaceChannels[editingSpace.id] ?? []).filter(c => c.type === 'text').map(ch => (
+                              <option key={ch.id} value={ch.id}># {ch.name}</option>
+                            ))}
+                          </select>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '6px' }}>
+                            Envia automaticamente uma mensagem de boas-vindas do sistema quando alguém entrar neste servidor.
+                          </span>
                         </div>
 
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Ou escolha um tema de gradiente padrão:</span>
-                        <div className="server-banner-swatches" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
-                          {SERVER_BANNER_PRESETS.map(preset => (
-                            <button 
-                              key={preset.id}
-                              type="button"
-                              onClick={() => {
-                                setEditingSpaceBannerTheme(preset.id)
-                                setEditingSpaceBannerUrl('')
-                              }}
-                              style={{
-                                height: '36px',
-                                borderRadius: '8px',
-                                background: preset.style,
-                                border: (!editingSpaceBannerUrl && editingSpaceBannerTheme === preset.id) ? '2.5px solid #fff' : '1px solid var(--border-color)',
-                                boxShadow: (!editingSpaceBannerUrl && editingSpaceBannerTheme === preset.id) ? '0 0 0 2px var(--accent-color)' : 'none',
-                                cursor: 'pointer',
-                                transition: 'transform .15s ease',
-                              }}
-                              title={preset.name}
+                        {/* Server Notifications toggle */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', padding: '14px 18px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            {mutedSpaces.has(editingSpace.id) ? <BellOffIcon style={{ color: '#e0554c' }} /> : <BellIcon style={{ color: 'var(--text-primary)' }} />}
+                            <div>
+                              <span style={{ fontSize: '13.5px', fontWeight: 700, display: 'block', color: 'var(--text-primary)' }}>Silenciar Notificações</span>
+                              <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Desative alertas sonoros e de área de trabalho para este servidor.</span>
+                            </div>
+                          </div>
+                          <label className="echo-switch">
+                            <input 
+                              type="checkbox" 
+                              checked={mutedSpaces.has(editingSpace.id)} 
+                              onChange={() => toggleMuteSpace(editingSpace.id)} 
                             />
-                          ))}
+                            <span className="echo-switch-slider"></span>
+                          </label>
                         </div>
-                      </div>
+                      </form>
 
-                      <div className="selector-card">
-                        <label>Nome do Servidor</label>
-                        <input 
-                          value={editingSpaceName} 
-                          onChange={(e) => setEditingSpaceName(e.target.value)} 
-                          placeholder="Nome do servidor"
-                          required 
-                          minLength={2}
-                          maxLength={80}
-                          style={{
-                            padding: '12px 14px',
-                            borderRadius: '10px',
-                            border: '1.5px solid var(--border-color)',
-                            background: 'var(--bg-secondary)',
-                            color: 'var(--text-primary)',
-                            fontSize: '13.5px',
-                            fontWeight: 600,
-                            outline: 'none',
-                            width: '100%'
-                          }}
-                        />
-                      </div>
-
-                      <div className="selector-card" style={{ marginTop: '16px' }}>
-                        <label>Descrição do Servidor</label>
-                        <textarea 
-                          value={editingSpaceDescription} 
-                          onChange={(e) => setEditingSpaceDescription(e.target.value)} 
-                          placeholder="Fale um pouco sobre o que é este servidor..."
-                          className="space-settings-textarea"
-                          maxLength={280}
-                          style={{ minHeight: '90px' }}
-                        />
-                      </div>
-
-                      {/* Welcome System Channel */}
-                      <div className="selector-card" style={{ marginTop: '16px' }}>
-                        <label>Canal de Boas-Vindas do Sistema</label>
-                        <select 
-                          value={editingSpaceWelcomeChannelId} 
-                          onChange={(e) => setEditingSpaceWelcomeChannelId(e.target.value)}
-                          style={{
-                            padding: '10px 14px',
-                            borderRadius: '10px',
-                            border: '1.5px solid var(--border-color)',
-                            background: 'var(--bg-secondary)',
-                            color: 'var(--text-primary)',
-                            fontSize: '13px',
-                            outline: 'none',
-                            width: '100%'
-                          }}
-                        >
-                          <option value="">Nenhum canal selecionado</option>
-                          {(spaceChannels[editingSpace.id] ?? []).filter(c => c.type === 'text').map(ch => (
-                            <option key={ch.id} value={ch.id}># {ch.name}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Server Notifications toggle */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', padding: '12px 16px', background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          {mutedSpaces.has(editingSpace.id) ? <BellOffIcon style={{ color: '#e0554c' }} /> : <BellIcon style={{ color: 'var(--text-primary)' }} />}
-                          <div>
-                            <span style={{ fontSize: '13px', fontWeight: 700, display: 'block', color: 'var(--text-primary)' }}>Silenciar Notificações</span>
-                            <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Desative alertas sonoros e de área de trabalho para este servidor.</span>
+                      {/* Discord-style Server Card Live Preview */}
+                      <div className="discord-server-preview-column">
+                        <label className="preview-label">PRÉ-VISUALIZAÇÃO DO SERVIDOR</label>
+                        <div className="discord-server-preview-card">
+                          <div 
+                            className="preview-banner-bg" 
+                            style={{ 
+                              background: editingSpaceBannerUrl ? `url(${editingSpaceBannerUrl}) center/cover no-repeat` : (SERVER_BANNER_PRESETS.find(p => p.id === editingSpaceBannerTheme) || SERVER_BANNER_PRESETS[0]).style 
+                            }}
+                          >
+                            <div className="preview-banner-overlay" />
                           </div>
-                        </div>
-                        <button 
-                          type="button" 
-                          className="ch-create-btn" 
-                          style={{ padding: '6px 14px', fontSize: '12px', background: mutedSpaces.has(editingSpace.id) ? '#e0554c' : 'var(--bg-tertiary)', color: mutedSpaces.has(editingSpace.id) ? '#fff' : 'var(--text-primary)' }}
-                          onClick={() => toggleMuteSpace(editingSpace.id)}
-                        >
-                          {mutedSpaces.has(editingSpace.id) ? 'Silenciado' : 'Ativo'}
-                        </button>
-                      </div>
+                          <div className="preview-card-body">
+                            <div className="preview-server-avatar" style={{ overflow: 'hidden' }}>
+                              {editingSpaceIconUrl ? (
+                                <img src={editingSpaceIconUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                (editingSpaceName || 'S').slice(0, 2).toUpperCase()
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
+                              <h3 className="preview-server-name" style={{ margin: 0 }}>{editingSpaceName || 'Nome do Servidor'}</h3>
+                            </div>
+                            <span className="preview-verified-badge">
+                              <span>✦</span> Servidor Verificado Echo
+                            </span>
+                            <p className="preview-server-desc" style={{ marginTop: '10px' }}>{editingSpaceDescription || 'Nenhuma descrição adicionada ainda.'}</p>
+                            
+                            <div className="preview-server-stats">
+                              <span className="stat-bullet">🟢 1 online</span>
+                              <span className="stat-bullet">👥 {editingSpaceMembers.length || 1} membros</span>
+                            </div>
 
-                      <button type="submit" className="add-space-modal-submit-btn" style={{ marginTop: '24px', width: 'auto', padding: '12px 28px', fontSize: '14px' }}>
-                        Salvar Alterações
-                      </button>
-                    </form>
-
-                    {/* Discord-style Server Card Live Preview */}
-                    <div className="discord-server-preview-column">
-                      <label className="preview-label">PRÉ-VISUALIZAÇÃO DO SERVIDOR</label>
-                      <div className="discord-server-preview-card">
-                        <div 
-                          className="preview-banner-bg" 
-                          style={{ 
-                            background: editingSpaceBannerUrl ? `url(${editingSpaceBannerUrl}) center/cover no-repeat` : (SERVER_BANNER_PRESETS.find(p => p.id === editingSpaceBannerTheme) || SERVER_BANNER_PRESETS[0]).style 
-                          }}
-                        />
-                        <div className="preview-card-body">
-                          <div className="preview-server-avatar" style={{ overflow: 'hidden' }}>
-                            {editingSpaceIconUrl ? (
-                              <img src={editingSpaceIconUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : (
-                              (editingSpaceName || 'S').slice(0, 2).toUpperCase()
+                            {editingSpaceWelcomeChannelId && (
+                              <div className="preview-welcome-pill">
+                                <span>📢</span>
+                                <span>Boas-vindas: #{(spaceChannels[editingSpace.id] ?? []).find(c => c.id === editingSpaceWelcomeChannelId)?.name || 'canal'}</span>
+                              </div>
                             )}
-                          </div>
-                          <h3 className="preview-server-name">{editingSpaceName || 'Nome do Servidor'}</h3>
-                          <p className="preview-server-desc">{editingSpaceDescription || 'Nenhuma descrição adicionada ainda.'}</p>
-                          
-                          <div className="preview-server-stats">
-                            <span className="stat-bullet">🟢 1 online</span>
-                            <span className="stat-bullet">👥 {editingSpaceMembers.length || 1} membros</span>
-                          </div>
 
-                          <div className="preview-server-footer">
-                            <span>Servidor no Echo</span>
+                            <div className="preview-server-footer">
+                              <span>Servidor no Echo • Comunidade Ativa</span>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
+
+                    {/* Floating Unsaved Changes Bar */}
+                    {isGeralDirty && (
+                      <div className="space-settings-floating-bar">
+                        <div className="space-settings-floating-bar-text">
+                          <span className="floating-warning-icon">⚠️</span>
+                          <span>Cuidado — você tem alterações não salvas!</span>
+                        </div>
+                        <div className="space-settings-floating-bar-actions">
+                          <button 
+                            type="button" 
+                            className="floating-btn-reset"
+                            onClick={() => {
+                              if (editingSpace) {
+                                setEditingSpaceName(editingSpace.name)
+                                setEditingSpaceDescription(editingSpace.description || '')
+                                setEditingSpaceIconUrl(editingSpace.icon_url || '')
+                                setEditingSpaceBannerUrl(editingSpace.banner_url || '')
+                                setEditingSpaceBannerTheme(editingSpace.banner_theme || 'dark')
+                                setEditingSpaceWelcomeChannelId(editingSpace.welcome_channel_id || '')
+                              }
+                            }}
+                          >
+                            Redefinir
+                          </button>
+                          <button 
+                            type="button" 
+                            className="floating-btn-save"
+                            onClick={() => handleSaveSpaceSettings()}
+                          >
+                            Salvar Alterações
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                )
+              })()}
 
               {/* ABA 2: CARGOS E PERMISSÕES (NOVA ABA DEDICADA) */}
               {activeSpaceTab === 'roles' && (
@@ -9261,101 +9613,145 @@ function Echo({ user }: { user: User }) {
                             </div>
                           </div>
 
-                          {/* Permissões Switches */}
+                          {/* Live Chat Preview of Role */}
+                          <div className="role-chat-preview-box">
+                            <span className="role-preview-label">PRÉVIA DE EXIBIÇÃO NO CHAT</span>
+                            <div className="role-chat-preview-msg">
+                              <div className="role-preview-avatar">
+                                {(profileDisplayName || displayName || 'U')[0].toUpperCase()}
+                              </div>
+                              <div className="role-preview-content">
+                                <div className="role-preview-meta">
+                                  <span className="role-preview-author" style={{ color: currentRole.color }}>
+                                    {profileDisplayName || displayName || 'Seu Nome'}
+                                  </span>
+                                  <span className="role-pill-badge" style={{ background: `${currentRole.color}22`, color: currentRole.color, borderColor: `${currentRole.color}66` }}>
+                                    <span style={{ background: currentRole.color }} className="role-pill-dot" />
+                                    {currentRole.name}
+                                  </span>
+                                  <span className="role-preview-time">Hoje às 12:00</span>
+                                </div>
+                                <p className="role-preview-text">Esta é a cor e a insígnia que identificam os membros com este cargo no chat.</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Permissões Categorizadas com Modern Toggle Switches */}
                           <div className="role-permissions-section">
-                            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '12px' }}>
-                              PERMISSÕES DO CARGO
-                            </span>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                              {/* Permissão 1: Administrador */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                                <div>
-                                  <strong style={{ fontSize: '13px', display: 'block', color: 'var(--text-primary)' }}>🛡️ Administrador</strong>
-                                  <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Membros com este cargo têm todas as permissões e ignoram quaisquer restrições de canais.</span>
+                            {/* Categoria 1: Administração Geral */}
+                            <div className="role-perms-category">
+                              <div className="role-perms-category-header">
+                                <span>🛡️</span>
+                                <span>Administração Geral</span>
+                              </div>
+                              <div className="role-perm-card">
+                                <div className="role-perm-card-info">
+                                  <strong className="role-perm-card-title">Administrador</strong>
+                                  <span className="role-perm-card-desc">Membros com este cargo têm todas as permissões e ignoram quaisquer restrições de canais.</span>
                                 </div>
-                                <input 
-                                  type="checkbox" 
-                                  checked={!!currentRole.permissions?.administrator} 
-                                  disabled={currentRole.id === 'role-owner'}
-                                  onChange={(e) => handleUpdateRole(currentRole.id, { permissions: { ...currentRole.permissions, administrator: e.target.checked } })}
-                                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                                />
+                                <label className="echo-switch">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={!!currentRole.permissions?.administrator} 
+                                    disabled={currentRole.id === 'role-owner' || currentRole.name.toLowerCase().includes('dono')}
+                                    onChange={(e) => handleUpdateRole(currentRole.id, { permissions: { ...currentRole.permissions, administrator: e.target.checked } })}
+                                  />
+                                  <span className="echo-switch-slider"></span>
+                                </label>
+                              </div>
+                            </div>
+
+                            {/* Categoria 2: Moderação & Membros */}
+                            <div className="role-perms-category">
+                              <div className="role-perms-category-header">
+                                <span>👥</span>
+                                <span>Moderação & Membros</span>
+                              </div>
+                              <div className="role-perm-card">
+                                <div className="role-perm-card-info">
+                                  <strong className="role-perm-card-title">Expulsar Membros</strong>
+                                  <span className="role-perm-card-desc">Permite remover membros indesejados do servidor.</span>
+                                </div>
+                                <label className="echo-switch">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={!!currentRole.permissions?.kickMembers || !!currentRole.permissions?.administrator} 
+                                    disabled={!!currentRole.permissions?.administrator || currentRole.id === 'role-owner'}
+                                    onChange={(e) => handleUpdateRole(currentRole.id, { permissions: { ...currentRole.permissions, kickMembers: e.target.checked } })}
+                                  />
+                                  <span className="echo-switch-slider"></span>
+                                </label>
                               </div>
 
-                              {/* Permissão 2: Gerenciar Canais */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                                <div>
-                                  <strong style={{ fontSize: '13px', display: 'block', color: 'var(--text-primary)' }}>📁 Gerenciar Canais</strong>
-                                  <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Permite criar, renomear, reordenar e excluir canais de texto e voz.</span>
+                              <div className="role-perm-card">
+                                <div className="role-perm-card-info">
+                                  <strong className="role-perm-card-title">Moderação de Voz</strong>
+                                  <span className="role-perm-card-desc">Permite silenciar e gerenciar outros membros em salas de voz.</span>
                                 </div>
-                                <input 
-                                  type="checkbox" 
-                                  checked={!!currentRole.permissions?.manageChannels || !!currentRole.permissions?.administrator} 
-                                  disabled={!!currentRole.permissions?.administrator || currentRole.id === 'role-owner'}
-                                  onChange={(e) => handleUpdateRole(currentRole.id, { permissions: { ...currentRole.permissions, manageChannels: e.target.checked } })}
-                                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                                />
+                                <label className="echo-switch">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={!!currentRole.permissions?.muteMembers || !!currentRole.permissions?.administrator} 
+                                    disabled={!!currentRole.permissions?.administrator || currentRole.id === 'role-owner'}
+                                    onChange={(e) => handleUpdateRole(currentRole.id, { permissions: { ...currentRole.permissions, muteMembers: e.target.checked } })}
+                                  />
+                                  <span className="echo-switch-slider"></span>
+                                </label>
+                              </div>
+                            </div>
+
+                            {/* Categoria 3: Canais & Mensagens */}
+                            <div className="role-perms-category">
+                              <div className="role-perms-category-header">
+                                <span>💬</span>
+                                <span>Canais & Mensagens</span>
+                              </div>
+                              <div className="role-perm-card">
+                                <div className="role-perm-card-info">
+                                  <strong className="role-perm-card-title">Gerenciar Canais</strong>
+                                  <span className="role-perm-card-desc">Permite criar, renomear, reordenar e excluir canais de texto e voz.</span>
+                                </div>
+                                <label className="echo-switch">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={!!currentRole.permissions?.manageChannels || !!currentRole.permissions?.administrator} 
+                                    disabled={!!currentRole.permissions?.administrator || currentRole.id === 'role-owner'}
+                                    onChange={(e) => handleUpdateRole(currentRole.id, { permissions: { ...currentRole.permissions, manageChannels: e.target.checked } })}
+                                  />
+                                  <span className="echo-switch-slider"></span>
+                                </label>
                               </div>
 
-                              {/* Permissão 3: Gerenciar Mensagens */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                                <div>
-                                  <strong style={{ fontSize: '13px', display: 'block', color: 'var(--text-primary)' }}>💬 Gerenciar Mensagens</strong>
-                                  <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Permite apagar ou moderar mensagens de outros membros no chat.</span>
+                              <div className="role-perm-card">
+                                <div className="role-perm-card-info">
+                                  <strong className="role-perm-card-title">Gerenciar Mensagens</strong>
+                                  <span className="role-perm-card-desc">Permite apagar ou fixar mensagens de outros membros no chat.</span>
                                 </div>
-                                <input 
-                                  type="checkbox" 
-                                  checked={!!currentRole.permissions?.manageMessages || !!currentRole.permissions?.administrator} 
-                                  disabled={!!currentRole.permissions?.administrator || currentRole.id === 'role-owner'}
-                                  onChange={(e) => handleUpdateRole(currentRole.id, { permissions: { ...currentRole.permissions, manageMessages: e.target.checked } })}
-                                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                                />
+                                <label className="echo-switch">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={!!currentRole.permissions?.manageMessages || !!currentRole.permissions?.administrator} 
+                                    disabled={!!currentRole.permissions?.administrator || currentRole.id === 'role-owner'}
+                                    onChange={(e) => handleUpdateRole(currentRole.id, { permissions: { ...currentRole.permissions, manageMessages: e.target.checked } })}
+                                  />
+                                  <span className="echo-switch-slider"></span>
+                                </label>
                               </div>
 
-                              {/* Permissão 4: Expulsar Membros */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                                <div>
-                                  <strong style={{ fontSize: '13px', display: 'block', color: 'var(--text-primary)' }}>👢 Expulsar Membros</strong>
-                                  <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Permite remover membros do servidor.</span>
+                              <div className="role-perm-card">
+                                <div className="role-perm-card-info">
+                                  <strong className="role-perm-card-title">Postar em Canais de Anúncios</strong>
+                                  <span className="role-perm-card-desc">Permite enviar mensagens em canais configurados como Somente Leitura.</span>
                                 </div>
-                                <input 
-                                  type="checkbox" 
-                                  checked={!!currentRole.permissions?.kickMembers || !!currentRole.permissions?.administrator} 
-                                  disabled={!!currentRole.permissions?.administrator || currentRole.id === 'role-owner'}
-                                  onChange={(e) => handleUpdateRole(currentRole.id, { permissions: { ...currentRole.permissions, kickMembers: e.target.checked } })}
-                                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                                />
-                              </div>
-
-                              {/* Permissão 5: Moderação de Voz */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                                <div>
-                                  <strong style={{ fontSize: '13px', display: 'block', color: 'var(--text-primary)' }}>🔇 Moderação de Voz</strong>
-                                  <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Permite silenciar e gerenciar outros membros em salas de voz.</span>
-                                </div>
-                                <input 
-                                  type="checkbox" 
-                                  checked={!!currentRole.permissions?.muteMembers || !!currentRole.permissions?.administrator} 
-                                  disabled={!!currentRole.permissions?.administrator || currentRole.id === 'role-owner'}
-                                  onChange={(e) => handleUpdateRole(currentRole.id, { permissions: { ...currentRole.permissions, muteMembers: e.target.checked } })}
-                                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                                />
-                              </div>
-
-                              {/* Permissão 6: Postar em Canais de Anúncios */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                                <div>
-                                  <strong style={{ fontSize: '13px', display: 'block', color: 'var(--text-primary)' }}>📢 Postar em Canais de Anúncios</strong>
-                                  <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Permite enviar mensagens em canais configurados como Somente Leitura.</span>
-                                </div>
-                                <input 
-                                  type="checkbox" 
-                                  checked={!!currentRole.permissions?.sendInAnnouncementChannels || !!currentRole.permissions?.administrator} 
-                                  disabled={!!currentRole.permissions?.administrator || currentRole.id === 'role-owner'}
-                                  onChange={(e) => handleUpdateRole(currentRole.id, { permissions: { ...currentRole.permissions, sendInAnnouncementChannels: e.target.checked } })}
-                                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                                />
+                                <label className="echo-switch">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={!!currentRole.permissions?.sendInAnnouncementChannels || !!currentRole.permissions?.administrator} 
+                                    disabled={!!currentRole.permissions?.administrator || currentRole.id === 'role-owner'}
+                                    onChange={(e) => handleUpdateRole(currentRole.id, { permissions: { ...currentRole.permissions, sendInAnnouncementChannels: e.target.checked } })}
+                                  />
+                                  <span className="echo-switch-slider"></span>
+                                </label>
                               </div>
                             </div>
                           </div>
@@ -9816,42 +10212,77 @@ function Echo({ user }: { user: User }) {
                                   </span>
                                 ))}
 
-                                {/* Dropdown de Atribuir Cargo */}
+                                {/* Botão + Popover Moderno de Atribuir Cargo */}
                                 {!isOwner && (
-                                  <select 
-                                    value=""
-                                    onChange={(e) => {
-                                      if (e.target.value === 'TRANSFER_OWNERSHIP') {
-                                        handleRoleChange(member.user?.id, 'owner', member.user?.display_name)
-                                        e.target.value = ''
-                                        return
-                                      }
-                                      if (e.target.value) {
-                                        toggleMemberRole(member.user?.id, e.target.value, member.user?.display_name)
-                                        e.target.value = ''
-                                      }
-                                    }}
-                                    style={{
-                                      padding: '4px 8px',
-                                      borderRadius: '6px',
-                                      fontSize: '11px',
-                                      fontWeight: 600,
-                                      border: '1px dashed var(--border-color)',
-                                      background: 'var(--bg-primary)',
-                                      color: 'var(--text-secondary)',
-                                      cursor: 'pointer'
-                                    }}
-                                  >
-                                    <option value="">+ Gerenciar Cargos</option>
-                                    {serverRoles.filter(r => r.id !== 'role-owner').map(r => (
-                                      <option key={r.id} value={r.id}>
-                                        {assignedRoleIds.includes(r.id) ? `✓ ${r.name} (Remover)` : `+ ${r.name}`}
-                                      </option>
-                                    ))}
-                                    {editingSpace.creator_id === user.id && (
-                                      <option value="TRANSFER_OWNERSHIP">👑 Transferir Posse do Servidor</option>
+                                  <div className="member-role-popover-container">
+                                    <button 
+                                      type="button" 
+                                      className="member-add-role-btn"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setAssigningRoleMemberId(assigningRoleMemberId === member.user?.id ? null : member.user?.id)
+                                      }}
+                                      title="Atribuir ou gerenciar cargos"
+                                    >
+                                      <PlusIcon style={{ width: '12px', height: '12px' }} />
+                                      <span>Cargo</span>
+                                    </button>
+
+                                    {assigningRoleMemberId === member.user?.id && (
+                                      <>
+                                        <div 
+                                          style={{ position: 'fixed', inset: 0, zIndex: 199 }} 
+                                          onClick={() => setAssigningRoleMemberId(null)} 
+                                        />
+                                        <div className="member-roles-popover" onClick={(e) => e.stopPropagation()}>
+                                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', padding: '4px 8px 6px', letterSpacing: '0.5px' }}>
+                                            Cargos do Servidor
+                                          </div>
+                                          {serverRoles.filter(r => r.id !== 'role-owner').length === 0 ? (
+                                            <div style={{ padding: '8px', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                                              Nenhum cargo criado
+                                            </div>
+                                          ) : (
+                                            serverRoles.filter(r => r.id !== 'role-owner').map(r => {
+                                              const isAssigned = assignedRoleIds.includes(r.id)
+                                              return (
+                                                <button
+                                                  key={r.id}
+                                                  type="button"
+                                                  className={`member-roles-popover-item ${isAssigned ? 'assigned' : ''}`}
+                                                  onClick={() => toggleMemberRole(member.user?.id, r.id, member.user?.display_name)}
+                                                >
+                                                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: r.color, flexShrink: 0 }} />
+                                                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {r.name}
+                                                  </span>
+                                                  {isAssigned && <CheckIcon style={{ width: '13px', height: '13px', color: 'var(--accent-color)', flexShrink: 0 }} />}
+                                                </button>
+                                              )
+                                            })
+                                          )}
+
+                                          {editingSpace.creator_id === user.id && (
+                                            <>
+                                              <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '4px 0' }} />
+                                              <button
+                                                type="button"
+                                                className="member-roles-popover-item"
+                                                style={{ color: '#eab308' }}
+                                                onClick={() => {
+                                                  handleRoleChange(member.user?.id, 'owner', member.user?.display_name)
+                                                  setAssigningRoleMemberId(null)
+                                                }}
+                                              >
+                                                <CrownIcon style={{ width: '13px', height: '13px', color: '#eab308' }} />
+                                                <span>Transferir Posse</span>
+                                              </button>
+                                            </>
+                                          )}
+                                        </div>
+                                      </>
                                     )}
-                                  </select>
+                                  </div>
                                 )}
                               </div>
 

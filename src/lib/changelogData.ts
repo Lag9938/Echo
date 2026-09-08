@@ -14,15 +14,48 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.23.26'
+export const APP_CURRENT_VERSION = '0.23.27'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.23.27',
+    title: 'Modernização de Servidores e Sincronização em Tempo Real',
+    date: '08 de Setembro de 2026',
+    tagline: 'Configurações de servidores totalmente renovadas, sincronização multi-usuário de cargos em tempo real e nova interface com barra flutuante de alterações.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🛡️',
+        badge: 'CARGOS & PERMISSÕES',
+        title: 'Sincronização Multi-usuário em Tempo Real',
+        description: 'Cargos e permissões agora são sincronizados instantaneamente entre todos os membros do servidor via Supabase Realtime.'
+      },
+      {
+        icon: '🎨',
+        badge: 'VISÃO GERAL',
+        title: 'Barra Flutuante e Live Preview',
+        description: 'Barra animada para salvar ou redefinir alterações pendentes, seletor visual de banners e card de pré-visualização ao vivo do servidor.'
+      },
+      {
+        icon: '👥',
+        badge: 'MEMBROS',
+        title: 'Gestão Rápida com Popover',
+        description: 'Atribua cargos com facilidade através do novo menu popover interativo e badges coloridos com remoção rápida.'
+      },
+      {
+        icon: '💬',
+        badge: 'MODERAÇÃO',
+        title: 'Permissões Categorizadas e Prévia de Chat',
+        description: 'Visualize na hora como as mensagens do cargo aparecerão no chat e configure permissões organizadas por categorias com switches modernos.'
+      }
+    ]
+  },
   {
     version: '0.23.26',
     title: 'Melhorias de Usabilidade, PTT Instantâneo e Transmissão Precisa',
     date: '07 de Setembro de 2026',
     tagline: 'Configuração reativa de Push-to-Talk sem recarregar telas, leitura dinâmica e fiel de FPS na transmissão e interface de inventário e configurações renovada.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🎙️',
