@@ -76,7 +76,8 @@
     "publish": {
       "provider": "github",
       "owner": "Lag9938",
-      "repo": "Echo"
+      "repo": "Echo",
+      "releaseType": "release"
     }
   }
 }
