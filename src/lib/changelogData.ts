@@ -14,15 +14,42 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.23.28'
+export const APP_CURRENT_VERSION = '0.23.29'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.23.29',
+    title: 'Echo v0.23.29 - Topbar Suave, Controles Integrados & Telas Fluídas',
+    date: '09 de Setembro de 2026',
+    tagline: 'Animação e recolhimento sincronizado da topbar, controles de janela dinâmicos, novo botão fechar minimalista e preenchimento total das telas de Amigos e Ajustes.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '✨',
+        badge: 'INTERFACE',
+        title: 'Animação Suave da Barra Superior',
+        description: 'Transição ultra suave ao recolher e exibir a barra superior, garantindo que os botões de controle acompanhem perfeitamente o movimento.'
+      },
+      {
+        icon: '📐',
+        badge: 'RESPONSIVIDADE',
+        title: 'Expansão Total das Telas',
+        description: 'As telas de Amigos e Ajustes agora ocupam 100% da área útil dinamicamente, sem deixar espaços vazios quando a barra superior se recolhe.'
+      },
+      {
+        icon: '🎯',
+        badge: 'USABILIDADE',
+        title: 'Botão Fechar Reativo & Gestão de Espaços',
+        description: 'Novo botão de fechar modal minimalista no estilo Discord com resposta de clique instantânea e seleção intuitiva de integrantes.'
+      }
+    ]
+  },
   {
     version: '0.23.28',
     title: 'Correção de Detecção de Jogos e Presença Rica',
     date: '08 de Setembro de 2026',
     tagline: 'Filtro inteligente de processos do sistema operacional para evitar falsos-positivos na atividade de jogos.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🎮',

@@ -290,11 +290,6 @@ function createWindow() {
     backgroundColor: '#0e1118', 
     autoHideMenuBar: true, 
     titleBarStyle: 'hidden',
-    titleBarOverlay: {
-      color: '#0e1118',
-      symbolColor: '#94a3b8',
-      height: 48
-    },
     webPreferences: { 
       preload: path.join(__dirname, 'electron-preload.cjs'),
       contextIsolation: true, 
@@ -355,6 +350,25 @@ function createWindow() {
   })
   mainWindow.webContents.session.setPermissionCheckHandler((_webContents, permission) => {
     return ['media', 'microphone', 'audioCapture', 'display-capture'].includes(permission)
+  })
+
+  // Window Management Handlers (Custom Frameless Controls)
+  ipcMain.handle('window-minimize', () => {
+    if (mainWindow) mainWindow.minimize()
+  })
+  ipcMain.handle('window-maximize', () => {
+    if (!mainWindow) return
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize()
+    } else {
+      mainWindow.maximize()
+    }
+  })
+  ipcMain.handle('window-close', () => {
+    if (mainWindow) mainWindow.close()
+  })
+  ipcMain.handle('window-is-maximized', () => {
+    return mainWindow ? mainWindow.isMaximized() : false
   })
 
   // Handler para capturar telas e janelas do sistema operacional com WGC e alta definição

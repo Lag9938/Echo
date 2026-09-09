@@ -252,14 +252,6 @@ function ShieldIcon({ className, style }: { className?: string; style?: React.CS
   )
 }
 
-function CheckIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return (
-    <svg className={className} style={style} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12"/>
-    </svg>
-  )
-}
-
 function ArrowUpIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <svg className={className} style={style} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -366,9 +358,9 @@ function MoonIcon({ className }: { className?: string }) {
   )
 }
 
-function SettingsIcon({ className }: { className?: string }) {
+function SettingsIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
       <circle cx="12" cy="12" r="3"/>
     </svg>
@@ -394,9 +386,9 @@ function LinkIcon({ className, style }: { className?: string; style?: React.CSSP
   )
 }
 
-function HashtagIcon({ className }: { className?: string }) {
+function HashtagIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} style={style} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <line x1="4" y1="9" x2="20" y2="9" />
       <line x1="4" y1="15" x2="20" y2="15" />
       <line x1="10" y1="3" x2="8" y2="21" />
@@ -1500,7 +1492,7 @@ function MemberProfileModal({
         >
           <div className="member-profile-banner-badges">
             {isServerOwner && (
-              <span className="member-banner-badge" title="Dono deste servidor">
+              <span className="member-banner-badge" title="Dono deste espaço">
                 <CrownIcon style={{ width: '12px', height: '12px' }} />
                 <span>Dono</span>
               </span>
@@ -1666,7 +1658,7 @@ function MemberProfileModal({
 
           {/* Roles Section */}
           <div className="member-profile-roles-section">
-            <span className="member-profile-section-title">CARGOS NO SERVIDOR</span>
+            <span className="member-profile-section-title">CARGOS NO ESPAÇO</span>
             <div className="member-profile-roles-wrap">
               {inspectedMember.roles && inspectedMember.roles.length > 0 ? (
                 inspectedMember.roles.map(r => {
@@ -1863,7 +1855,12 @@ function Echo({ user }: { user: User }) {
   const [serverRoles, setServerRoles] = useState<ServerRole[]>([])
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
   const [memberRoleMap, setMemberRoleMap] = useState<Record<string, string[]>>({}) // userId -> roleIds[]
-  const [assigningRoleMemberId, setAssigningRoleMemberId] = useState<string | null>(null)
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  const [editingChannelSettingsId, setEditingChannelSettingsId] = useState<string | null>(null)
+  const navTrackRef = useRef<HTMLDivElement | null>(null)
+  const isDraggingNavRef = useRef(false)
+  const navStartXRef = useRef(0)
+  const navScrollLeftRef = useRef(0)
 
   // Emojis States
   const [serverEmojis, setServerEmojis] = useState<ServerEmoji[]>([])
@@ -2404,6 +2401,73 @@ function Echo({ user }: { user: User }) {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
   }, [])
 
+  // Topbar Horizontal Servers Rail
+  const serversTrackRef = useRef<HTMLDivElement>(null)
+
+  const handleServersWheel = (e: React.WheelEvent) => {
+    if (serversTrackRef.current) {
+      serversTrackRef.current.scrollLeft += e.deltaY || e.deltaX
+    }
+  }
+
+  // Topbar Auto-Hide & Pin State
+  const [topbarPinned, setTopbarPinned] = useState<boolean>(() => {
+    return localStorage.getItem('echo-topbar-pinned') === 'true'
+  })
+  const [topbarHovered, setTopbarHovered] = useState<boolean>(false)
+  const topbarHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const showTopbar = () => {
+    if (topbarHideTimeoutRef.current) {
+      clearTimeout(topbarHideTimeoutRef.current)
+      topbarHideTimeoutRef.current = null
+    }
+    setTopbarHovered(true)
+  }
+
+  const hideTopbar = (delay = 800) => {
+    if (topbarHideTimeoutRef.current) {
+      clearTimeout(topbarHideTimeoutRef.current)
+    }
+    topbarHideTimeoutRef.current = setTimeout(() => {
+      setTopbarHovered(false)
+    }, delay)
+  }
+
+  // Floating Space Card Preview State (Immune to overflow clipping)
+  const [hoveredSpaceCard, setHoveredSpaceCard] = useState<{ space: any; rect: DOMRect } | null>(null)
+  const spaceCardHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const showSpaceCard = (space: any, el: HTMLElement) => {
+    if (spaceCardHideTimeoutRef.current) {
+      clearTimeout(spaceCardHideTimeoutRef.current)
+      spaceCardHideTimeoutRef.current = null
+    }
+    setHoveredSpaceCard({ space, rect: el.getBoundingClientRect() })
+  }
+
+  const hideSpaceCard = (delay = 180) => {
+    if (spaceCardHideTimeoutRef.current) {
+      clearTimeout(spaceCardHideTimeoutRef.current)
+    }
+    spaceCardHideTimeoutRef.current = setTimeout(() => {
+      setHoveredSpaceCard(null)
+    }, delay)
+  }
+
+  // Detect mouse near the top edge to smoothly reveal topbar
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (showSpaceSettingsModal) return
+      if (e.clientY <= 14) {
+        showTopbar()
+      }
+    }
+    window.addEventListener('mousemove', handleMouseMove, { passive: true })
+    return () => window.removeEventListener('mousemove', handleMouseMove)
+  }, [showSpaceSettingsModal])
+
+  const isTopbarVisible = topbarPinned || topbarHovered
 
   // Chat Features: Reply, Reactions, Voice Notes, GIFs
   const [replyingToMessage, setReplyingToMessage] = useState<any | null>(null)
@@ -3647,7 +3711,7 @@ function Echo({ user }: { user: User }) {
           const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
           setEditingSpaceIconUrl(urlData.publicUrl)
           setUploadingSpaceIcon(false)
-          addAuditLog(editingSpace.id, "Alterou o ícone/avatar do servidor")
+          addAuditLog(editingSpace.id, "Alterou o ícone/avatar do espaço")
           return
         }
       }
@@ -3656,7 +3720,7 @@ function Echo({ user }: { user: User }) {
       reader.onload = () => {
         setEditingSpaceIconUrl(reader.result as string)
         setUploadingSpaceIcon(false)
-        addAuditLog(editingSpace.id, "Alterou o ícone/avatar do servidor")
+        addAuditLog(editingSpace.id, "Alterou o ícone/avatar do espaço")
       }
       reader.readAsDataURL(file)
     } catch (err: any) {
@@ -3667,7 +3731,7 @@ function Echo({ user }: { user: User }) {
 
   function handleRemoveSpaceIcon() {
     setEditingSpaceIconUrl('')
-    if (editingSpace) addAuditLog(editingSpace.id, "Removeu o ícone do servidor")
+    if (editingSpace) addAuditLog(editingSpace.id, "Removeu o ícone do espaço")
   }
 
   async function handleSpaceBannerUpload(file: File) {
@@ -3682,7 +3746,7 @@ function Echo({ user }: { user: User }) {
           const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
           setEditingSpaceBannerUrl(urlData.publicUrl)
           setUploadingSpaceBanner(false)
-          addAuditLog(editingSpace.id, "Alterou o banner/capa do servidor")
+          addAuditLog(editingSpace.id, "Alterou o banner/capa do espaço")
           return
         }
       }
@@ -3691,7 +3755,7 @@ function Echo({ user }: { user: User }) {
       reader.onload = () => {
         setEditingSpaceBannerUrl(reader.result as string)
         setUploadingSpaceBanner(false)
-        addAuditLog(editingSpace.id, "Alterou o banner/capa do servidor")
+        addAuditLog(editingSpace.id, "Alterou o banner/capa do espaço")
       }
       reader.readAsDataURL(file)
     } catch (err: any) {
@@ -3702,7 +3766,7 @@ function Echo({ user }: { user: User }) {
 
   function handleRemoveSpaceBanner() {
     setEditingSpaceBannerUrl('')
-    if (editingSpace) addAuditLog(editingSpace.id, "Removeu o banner personalizado do servidor")
+    if (editingSpace) addAuditLog(editingSpace.id, "Removeu o banner personalizado do espaço")
   }
 
   function loadSpaceEmojis(spaceId: string) {
@@ -3851,15 +3915,15 @@ function Echo({ user }: { user: User }) {
     if (newRole === 'owner') {
       setConfirmModalConfig({
         isOpen: true,
-        title: "Transferir Posse do Servidor",
-        message: `Tem certeza de que deseja transferir a posse do servidor "${currentSpace.name}" para "${memberName}"? Você deixará de ser o Dono e passará a ser um Moderador.`,
+        title: "Transferir Posse do Espaço",
+        message: `Tem certeza de que deseja transferir a posse do espaço "${currentSpace.name}" para "${memberName}"? Você deixará de ser o Dono e passará a ser um Moderador.`,
         onConfirm: async () => {
           await client.from('spaces').update({ creator_id: memberUserId }).eq('id', currentSpace.id)
           await client.from('space_members').update({ role: 'owner' }).eq('space_id', currentSpace.id).eq('user_id', memberUserId)
           await client.from('space_members').update({ role: 'moderator' }).eq('space_id', currentSpace.id).eq('user_id', user.id)
           
-          addAuditLog(currentSpace.id, `Transferiu a posse do servidor para ${memberName}`)
-          showToast("Posse Transferida!", `${memberName} agora é o dono do servidor.`, "info")
+          addAuditLog(currentSpace.id, `Transferiu a posse do espaço para ${memberName}`)
+          showToast("Posse Transferida!", `${memberName} agora é o dono do espaço.`, "info")
           setEditingSpace(prev => prev ? { ...prev, creator_id: memberUserId } : null)
           await loadEditingSpaceMembers(currentSpace.id)
           await loadSpaces()
@@ -3888,14 +3952,14 @@ function Echo({ user }: { user: User }) {
 
     const canKick = canUserDo(currentSpace.id, user.id, 'kickMembers') || currentSpace.creator_id === user.id
     if (!canKick) {
-      showToast("Permissão Negada", "Você não tem permissão para expulsar membros deste servidor.", "info")
+      showToast("Permissão Negada", "Você não tem permissão para expulsar membros deste espaço.", "info")
       return
     }
 
     setConfirmModalConfig({
       isOpen: true,
       title: "Expulsar Membro",
-      message: `Tem certeza de que deseja expulsar "${memberName}" do servidor "${currentSpace.name}"? O usuário precisará de um convite para retornar.`,
+      message: `Tem certeza de que deseja expulsar "${memberName}" do espaço "${currentSpace.name}"? O usuário precisará de um convite para retornar.`,
       onConfirm: async () => {
         const { error: kickErr } = await client
           .from('space_members')
@@ -3906,8 +3970,8 @@ function Echo({ user }: { user: User }) {
         if (kickErr) {
           showToast("Erro ao expulsar", kickErr.message, "info")
         } else {
-          addAuditLog(currentSpace.id, `Expulsou o membro "${memberName}" do servidor`)
-          showToast("Membro Expulso", `${memberName} foi removido do servidor.`, "info")
+          addAuditLog(currentSpace.id, `Expulsou o membro "${memberName}" do espaço`)
+          showToast("Membro Expulso", `${memberName} foi removido do espaço.`, "info")
           await loadEditingSpaceMembers(currentSpace.id)
           await loadSpaceMembers(currentSpace.id)
         }
@@ -3966,10 +4030,10 @@ function Echo({ user }: { user: User }) {
       const next = new Set(prev)
       if (next.has(spaceId)) {
         next.delete(spaceId)
-        showToast("Notificações Ativadas", "Você voltará a receber alertas deste servidor.", "info")
+        showToast("Notificações Ativadas", "Você voltará a receber alertas deste espaço.", "info")
       } else {
         next.add(spaceId)
-        showToast("Servidor Silenciado", "As notificações deste servidor foram silenciadas.", "info")
+        showToast("Espaço Silenciado", "As notificações deste espaço foram silenciadas.", "info")
       }
       localStorage.setItem('echo-muted-spaces', JSON.stringify(Array.from(next)))
       return next
@@ -4033,7 +4097,7 @@ function Echo({ user }: { user: User }) {
     localMeta[editingSpace.id] = payload
     localStorage.setItem('echo-spaces-metadata', JSON.stringify(localMeta))
 
-    addAuditLog(editingSpace.id, `Atualizou as configurações gerais do servidor`)
+    addAuditLog(editingSpace.id, `Atualizou as configurações gerais do espaço`)
 
     // Update in Supabase
     try {
@@ -4046,7 +4110,7 @@ function Echo({ user }: { user: User }) {
     }
 
     setEditingSpace(prev => prev ? { ...prev, ...payload } : null)
-    showToast("Servidor Atualizado!", "Configurações salvas com sucesso.", "info")
+    showToast("Espaço Atualizado!", "Configurações salvas com sucesso.", "info")
     await loadSpaces()
   }
 
@@ -4124,8 +4188,8 @@ function Echo({ user }: { user: User }) {
     if (!editingSpace) return
     setConfirmModalConfig({
       isOpen: true,
-      title: "Excluir Servidor",
-      message: `Tem certeza de que deseja excluir permanentemente o servidor "${editingSpace.name}"? Todos os canais e mensagens dele serão perdidos de forma irreversível e esta ação não poderá ser desfeita.`,
+      title: "Encerrar Espaço",
+      message: `Tem certeza de que deseja encerrar permanentemente o espaço "${editingSpace.name}"? Todos os canais e mensagens dele serão perdidos de forma irreversível e esta ação não poderá ser desfeita.`,
       onConfirm: () => {
         executeDeleteSpace()
       }
@@ -4137,8 +4201,8 @@ function Echo({ user }: { user: User }) {
     if (!space || !client) return
     setConfirmModalConfig({
       isOpen: true,
-      title: "Sair do Servidor",
-      message: `Tem certeza de que deseja sair do servidor "${space.name}"? Você precisará de um convite para retornar.`,
+      title: "Sair do Espaço",
+      message: `Tem certeza de que deseja sair do espaço "${space.name}"? Você precisará de um convite para retornar.`,
       onConfirm: async () => {
         await client.from('space_members').delete().eq('space_id', space.id).eq('user_id', user.id)
         if (expandedSpace === space.id) {
@@ -4147,7 +4211,7 @@ function Echo({ user }: { user: User }) {
         }
         await loadSpaces()
         setConfirmModalConfig(null)
-        showToast("Você saiu do servidor", `Você não faz mais parte de "${space.name}".`, 'info')
+        showToast("Você saiu do espaço", `Você não faz mais parte de "${space.name}".`, 'info')
       }
     })
   }
@@ -5234,7 +5298,9 @@ function Echo({ user }: { user: User }) {
 
   useEffect(() => {
     if (isPrependingRef.current) return
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+    }
   }, [messages])
 
   // Listen for realtime direct messages and show notifications (Realtime Broadcast + Database)
@@ -5415,7 +5481,7 @@ function Echo({ user }: { user: User }) {
         .single()
         
       if (spaceError || !space) {
-        setError('Código de convite inválido ou servidor não encontrado.')
+        setError('Código de convite inválido ou espaço não encontrado.')
         setJoining(false)
         return
       }
@@ -5428,7 +5494,7 @@ function Echo({ user }: { user: User }) {
         .maybeSingle()
         
       if (member) {
-        setError('Você já é um membro deste servidor!')
+        setError('Você já é um membro deste espaço!')
         setJoining(false)
         return
       }
@@ -5449,7 +5515,7 @@ function Echo({ user }: { user: User }) {
       setExpandedSpace(space.id)
       await loadChannelsForSpace(space.id)
     } catch (err: any) {
-      setError(err.message || 'Erro ao entrar no servidor.')
+      setError(err.message || 'Erro ao entrar no espaço.')
       setJoining(false)
     }
   }
@@ -5830,82 +5896,69 @@ function Echo({ user }: { user: User }) {
         </div>
       )}
 
-      <header className="topbar">
-        <div className="topbar-left">
+      {/* Sensor de proximidade no topo da tela para disparar a abertura suave da barra */}
+      {!topbarPinned && !isTopbarVisible && !showSpaceSettingsModal && (
+        <div 
+          className="topbar-hover-sensor"
+          onMouseEnter={showTopbar}
+        />
+      )}
+
+      <header 
+        className={`topbar ${isTopbarVisible ? 'visible' : 'auto-hidden'}`}
+        onMouseEnter={showTopbar}
+        onMouseLeave={() => hideTopbar(800)}
+      >
+        {/* ZONA ESQUERDA: Brand + Amigos / DMs */}
+        <div className="topbar-left-zone">
           <Brand />
-          <nav className="topbar-nav">
-            {(['Servidores', 'Amigos', 'Descobrir', 'Loja', 'Configurações'] as Page[]).map((item) => {
-              const totalUnread = item === 'Amigos' ? pendingFriendCount + Object.values(unreadDMs).reduce((a, b) => a + b, 0) : 0
-              return (
-                <button 
-                  key={item} 
-                  className={`topbar-nav-btn ${page === item ? 'nav-active' : ''}`} 
-                  onClick={() => setPage(item)}
-                >
-                  <span>
-                    {item === 'Loja' ? (
-                      <>
-                        <ColoredShopBagIcon size={14} style={{ verticalAlign: 'middle', marginRight: 5 }} /> Loja
-                      </>
-                    ) : item}
-                  </span>
-                  {totalUnread > 0 && <span className="nav-badge">{totalUnread}</span>}
-                </button>
-              )
-            })}
-          </nav>
+          
+          <button 
+            type="button" 
+            className={`topbar-nav-pill ${page === 'Amigos' ? 'active' : ''}`}
+            onClick={() => setPage('Amigos')}
+            title="Mensagens Diretas & Amigos"
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              <circle cx="8.5" cy="10" r="1" fill="currentColor" />
+              <circle cx="12" cy="10" r="1" fill="currentColor" />
+              <circle cx="15.5" cy="10" r="1" fill="currentColor" />
+            </svg>
+            <span>Amigos</span>
+            {(pendingFriendCount + Object.values(unreadDMs).reduce((a, b) => a + b, 0)) > 0 && (
+              <span className="topbar-badge">
+                {pendingFriendCount + Object.values(unreadDMs).reduce((a, b) => a + b, 0)}
+              </span>
+            )}
+          </button>
         </div>
 
-        <div className="topbar-right" />
-      </header>
-
-      <section className="workspace" style={{ display: page === 'Servidores' ? undefined : 'none' }}>
-        {/* 1. ECHO DOCK (Leftmost Server & Communities Glass Rail) */}
-        <nav className="guild-rail">
-          {/* Direct Messages & Friends Hub Button */}
-          <div className="guild-rail-item-wrap">
-            <div className={`guild-rail-pill ${page === 'Amigos' ? 'active' : ''}`} />
-            <button
-              type="button"
-              className="guild-rail-btn guild-home-btn"
-              onClick={() => setPage('Amigos')}
-              title="Mensagens Diretas & Amigos"
-            >
-              <svg className="guild-home-icon-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                <circle cx="8.5" cy="10" r="1" fill="currentColor" />
-                <circle cx="12" cy="10" r="1" fill="currentColor" />
-                <circle cx="15.5" cy="10" r="1" fill="currentColor" />
-              </svg>
-              {(pendingFriendCount + Object.values(unreadDMs).reduce((a, b) => a + b, 0)) > 0 && (
-                <span className="guild-rail-badge">
-                  {pendingFriendCount + Object.values(unreadDMs).reduce((a, b) => a + b, 0)}
-                </span>
-              )}
-            </button>
-            <div className="guild-rail-tooltip">Mensagens Diretas & Amigos</div>
-          </div>
-
-          <div className="guild-rail-divider" />
-
-          {/* Servers list icons */}
-          <div className="guild-rail-list">
+        {/* ZONA CENTRAL: Trilha Horizontal de Servidores com Indicador */}
+        <div className="topbar-center-zone">
+          <div 
+            className="topbar-servers-track"
+            ref={serversTrackRef}
+            onWheel={handleServersWheel}
+          >
             {spaces.map(space => {
-              const isSelected = (expandedSpace === space.id) || (!expandedSpace && spaces[0]?.id === space.id)
+              const isSelected = (page === 'Servidores') && ((expandedSpace === space.id) || (!expandedSpace && spaces[0]?.id === space.id))
               const spaceChs = spaceChannels[space.id] || []
               const unreadInSpace = spaceChs.filter(c => unreadChannels.has(c.id)).length
               const hasActiveVoice = spaceChs.some(c => c.type === 'voice' && ((spaceVoiceUsers[c.id] && spaceVoiceUsers[c.id].length > 0) || (activeVoiceChannelId === c.id && participants.length > 0)))
 
               return (
-                <div key={space.id} className="guild-rail-item-wrap">
-                  <div className={`guild-rail-pill ${isSelected ? 'active' : unreadInSpace > 0 ? 'unread' : ''}`} />
+                <div 
+                  key={space.id} 
+                  className="topbar-server-item-wrap"
+                  onMouseEnter={(e) => showSpaceCard(space, e.currentTarget)}
+                  onMouseLeave={() => hideSpaceCard(200)}
+                >
                   <button
                     type="button"
-                    className={`guild-rail-btn ${isSelected ? 'selected' : ''}`}
-                    style={{
-                      background: space.icon_url ? 'rgba(20, 22, 26, 0.9)' : getServerGradient(space.name)
-                    }}
+                    className={`topbar-server-btn ${isSelected ? 'selected' : ''}`}
                     onClick={() => {
+                      setPage('Servidores')
                       setExpandedSpace(space.id)
                       loadChannelsForSpace(space.id)
                       const chs = spaceChannels[space.id] || []
@@ -5913,92 +5966,247 @@ function Echo({ user }: { user: User }) {
                       if (firstCh && selectedChannel?.space_id !== space.id) {
                         setSelectedChannel(firstCh)
                       }
+                      setHoveredSpaceCard(null)
                     }}
+                    style={{ background: space.icon_url ? 'transparent' : getServerGradient(space.name) }}
+                    title={space.name}
                   >
                     {space.icon_url ? (
-                      <img src={space.icon_url} alt={space.name} className="guild-icon-img" />
+                      <img src={space.icon_url} alt={space.name} className="topbar-server-img" />
                     ) : (
-                      <span className="guild-icon-initials">{getServerInitials(space.name)}</span>
+                      <span className="topbar-server-initials">{getServerInitials(space.name)}</span>
                     )}
 
+                    {/* Badge de Nao Lidas */}
                     {unreadInSpace > 0 && (
-                      <span className="guild-rail-badge">{unreadInSpace}</span>
+                      <span className="topbar-server-badge">{unreadInSpace}</span>
                     )}
 
-                    {hasActiveVoice && unreadInSpace === 0 && (
-                      <span className="guild-voice-wave-badge" title="Amigos conversando em voz">
-                        <span className="echo-wave-bar wave-1" />
-                        <span className="echo-wave-bar wave-2" />
-                        <span className="echo-wave-bar wave-3" />
-                      </span>
+                    {/* Onda Sonora se houver alguem em voz */}
+                    {hasActiveVoice && (
+                      <div className="topbar-voice-wave-badge" title="Canal de voz ativo">
+                        <span className="echo-wave-bar" style={{ height: '6px' }} />
+                        <span className="echo-wave-bar" style={{ height: '10px' }} />
+                        <span className="echo-wave-bar" style={{ height: '5px' }} />
+                      </div>
                     )}
                   </button>
-                  <div className="guild-rail-tooltip">{space.name}</div>
+
+                  {/* Indicador inferior (pílula estilo Discord dock) */}
+                  <div className={`topbar-server-indicator ${isSelected ? 'active' : ''} ${unreadInSpace > 0 ? 'unread' : ''}`} />
                 </div>
               )
             })}
-          </div>
 
-          <div className="guild-rail-divider" />
-
-          {/* Add Server Button */}
-          <div className="guild-rail-item-wrap">
-            <div className="guild-rail-pill" />
+            {/* Botao de Criar / Explorar Espaco */}
             <button
               type="button"
-              className="guild-rail-btn guild-add-btn"
-              onClick={() => { setAddSpaceModalTab('options'); setShowAddSpaceModal(true) }}
-              title="Criar ou Entrar em um Servidor"
+              className="topbar-server-add-btn"
+              onClick={() => {
+                setAddSpaceModalTab('options')
+                setShowAddSpaceModal(true)
+                setHoveredSpaceCard(null)
+              }}
+              title="Adicionar um Espaço"
             >
-              <svg className="guild-action-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
+              <PlusIcon style={{ width: '16px', height: '16px' }} />
             </button>
-            <div className="guild-rail-tooltip">Adicionar um Servidor</div>
           </div>
+        </div>
 
-          {/* Explore Communities Button */}
-          <div className="guild-rail-item-wrap">
-            <div className="guild-rail-pill" />
-            <button
-              type="button"
-              className="guild-rail-btn guild-explore-btn"
-              onClick={() => setPage('Descobrir')}
-              title="Explorar Servidores Públicos"
-            >
-              <svg className="guild-action-icon-svg guild-explore-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill="currentColor" opacity="0.3" />
-                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" stroke="currentColor" strokeWidth="1.5" />
-              </svg>
-            </button>
-            <div className="guild-rail-tooltip">Descobrir Servidores</div>
-          </div>
+        {/* Server Mini Card Flutuante (Renderizado fora com portal fixo para nunca ser cortado pelo overflow) */}
+        {hoveredSpaceCard && (() => {
+          const space = hoveredSpaceCard.space
+          const rect = hoveredSpaceCard.rect
+          const spaceChs = spaceChannels[space.id] || []
+          const hasActiveVoice = spaceChs.some(c => c.type === 'voice' && ((spaceVoiceUsers[c.id] && spaceVoiceUsers[c.id].length > 0) || (activeVoiceChannelId === c.id && participants.length > 0)))
+          const isSelected = (page === 'Servidores') && ((expandedSpace === space.id) || (!expandedSpace && spaces[0]?.id === space.id))
 
-          {/* Echo Shop Button */}
-          <div className="guild-rail-item-wrap">
-            <div className={`guild-rail-pill ${page === 'Loja' ? 'active' : ''}`} />
-            <button
-              type="button"
-              className={`guild-rail-btn guild-shop-btn ${page === 'Loja' ? 'selected' : ''}`}
-              onClick={() => setPage('Loja')}
-              title="Loja do Echo (Decorações & Cosméticos)"
+          // Calcula centro do item mantendo card dentro da janela
+          const centerX = rect.left + (rect.width / 2)
+          const clampedX = Math.max(135, Math.min(window.innerWidth - 135, centerX))
+
+          return (
+            <div 
+              className="topbar-server-card floating"
               style={{
-                background: page === 'Loja' ? 'linear-gradient(135deg, #a855f7, #6366f1)' : undefined,
-                color: page === 'Loja' ? '#ffffff' : undefined
+                top: `${rect.bottom + 8}px`,
+                left: `${clampedX}px`,
+                transform: 'translateX(-50%)',
+                zIndex: 99999,
+                cursor: 'pointer'
+              }}
+              onClick={() => {
+                setPage('Servidores')
+                setExpandedSpace(space.id)
+                loadChannelsForSpace(space.id)
+                const chs = spaceChannels[space.id] || []
+                const firstCh = chs.find(c => c.type === 'text') || chs[0]
+                if (firstCh && selectedChannel?.space_id !== space.id) {
+                  setSelectedChannel(firstCh)
+                }
+                setHoveredSpaceCard(null)
+              }}
+              onMouseEnter={() => {
+                showTopbar()
+                if (spaceCardHideTimeoutRef.current) {
+                  clearTimeout(spaceCardHideTimeoutRef.current)
+                  spaceCardHideTimeoutRef.current = null
+                }
+              }}
+              onMouseLeave={() => {
+                hideSpaceCard(100)
+                hideTopbar(800)
               }}
             >
-              <svg className="guild-action-icon-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-                <line x1="3" y1="6" x2="21" y2="6"/>
-                <path d="M16 10a4 4 0 0 1-8 0"/>
-              </svg>
-            </button>
-            <div className="guild-rail-tooltip">Loja do Echo</div>
-          </div>
-        </nav>
+              <div 
+                className="topbar-server-card-banner"
+                style={{
+                  background: space.banner_url ? `url(${space.banner_url}) center/cover` : getServerGradient(space.name)
+                }}
+              />
+              <div className="topbar-server-card-content">
+                <div className="topbar-server-card-top">
+                  <div 
+                    className="topbar-server-card-avatar"
+                    style={{
+                      background: space.icon_url ? '#10131a' : getServerGradient(space.name)
+                    }}
+                  >
+                    {space.icon_url ? (
+                      <img src={space.icon_url} alt={space.name} />
+                    ) : (
+                      getServerInitials(space.name)
+                    )}
+                  </div>
+                  <div className="topbar-server-card-titles">
+                    <div className="topbar-server-card-name-row">
+                      <h4 className="topbar-server-card-name" title={space.name}>{space.name}</h4>
+                      {space.creator_id === user.id && (
+                        <span className="topbar-server-card-crown" title="Você é o Criador do Espaço">👑</span>
+                      )}
+                    </div>
+                    <span className="topbar-server-card-category">Espaço Echo</span>
+                  </div>
+                </div>
 
+                {space.description && (
+                  <p className="topbar-server-card-desc">{space.description}</p>
+                )}
+
+                <div className="topbar-server-card-stats">
+                  <span className="topbar-server-card-chip" title={`${spaceChs.filter(c => c.type === 'text').length} canais de texto`}>
+                    <HashtagIcon style={{ width: '12px', height: '12px' }} />
+                    <span>{spaceChs.filter(c => c.type === 'text').length} texto</span>
+                  </span>
+                  <span className="topbar-server-card-chip" title={`${spaceChs.filter(c => c.type === 'voice').length} canais de voz`}>
+                    <VolumeIcon style={{ width: '12px', height: '12px' }} />
+                    <span>{spaceChs.filter(c => c.type === 'voice').length} voz</span>
+                  </span>
+                  {hasActiveVoice && (
+                    <span className="topbar-server-card-chip voice-active" title="Membros conversando em chamada de voz">
+                      <span className="topbar-card-live-dot" />
+                      <span>Voz Ativa</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="topbar-server-card-footer">
+                  <span className="topbar-server-card-hint">
+                    {isSelected ? '● Espaço selecionado' : 'Clique para acessar'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* ZONA DIREITA: Descobrir, Loja, Configurações e Pin */}
+        <div className="topbar-right-zone">
+          <button
+            type="button"
+            className={`topbar-nav-pill ${page === 'Descobrir' ? 'active' : ''}`}
+            onClick={() => setPage('Descobrir')}
+            title="Explorar Espaços Públicos"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill="currentColor" opacity="0.3" />
+              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
+            <span>Descobrir</span>
+          </button>
+
+          <button
+            type="button"
+            className={`topbar-nav-pill ${page === 'Loja' ? 'active' : ''}`}
+            onClick={() => setPage('Loja')}
+            title="Loja do Echo (Decorações & Cosméticos)"
+          >
+            <ColoredShopBagIcon size={15} style={{ verticalAlign: 'middle' }} />
+            <span>Loja</span>
+          </button>
+
+          <button
+            type="button"
+            className={`topbar-nav-pill ${page === 'Configurações' ? 'active' : ''}`}
+            onClick={() => setPage('Configurações')}
+            title="Configurações do Usuário"
+          >
+            <SettingsIcon style={{ width: '15px', height: '15px' }} />
+            <span>Ajustes</span>
+          </button>
+
+          {/* Botão de Fixar / Desafixar Barra Superior */}
+          <button
+            type="button"
+            className={`topbar-pin-btn ${topbarPinned ? 'pinned' : ''}`}
+            onClick={() => {
+              setTopbarPinned(prev => {
+                const next = !prev
+                localStorage.setItem('echo-topbar-pinned', String(next))
+                return next
+              })
+            }}
+            title={topbarPinned ? "Barra superior fixada (clique para ocultar automaticamente)" : "Fixar barra superior aberta"}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill={topbarPinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="17" x2="12" y2="22" />
+              <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
+            </svg>
+          </button>
+
+          {/* Controles de Janela Dinâmicos (Minimizar, Maximizar, Fechar) - Fading suave no hover da topbar */}
+          <div className="topbar-window-controls">
+            <button
+              type="button"
+              className="topbar-win-btn win-minimize"
+              onClick={() => (window as any).electronAPI?.minimizeWindow?.()}
+              title="Minimizar"
+            >
+              <svg width="10" height="10" viewBox="0 0 12 12"><rect y="5.5" width="12" height="1.2" fill="currentColor"/></svg>
+            </button>
+            <button
+              type="button"
+              className="topbar-win-btn win-maximize"
+              onClick={() => (window as any).electronAPI?.maximizeWindow?.()}
+              title="Maximizar / Restaurar"
+            >
+              <svg width="10" height="10" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" stroke="currentColor" strokeWidth="1.2" fill="none"/></svg>
+            </button>
+            <button
+              type="button"
+              className="topbar-win-btn win-close"
+              onClick={() => (window as any).electronAPI?.closeWindow?.()}
+              title="Fechar"
+            >
+              <svg width="10" height="10" viewBox="0 0 12 12"><path d="M1.5 1.5l9 9m0-9l-9 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <section className="workspace" style={{ display: page === 'Servidores' ? undefined : 'none' }}>
         {/* 2. CHANNELS SIDEBAR FOR ACTIVE SERVER (240px) */}
         {(() => {
           const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || null
@@ -6010,14 +6218,14 @@ function Echo({ user }: { user: User }) {
                   <div className="empty-servers-icon">
                     <UsersIcon style={{ width: '40px', height: '40px', color: 'var(--text-muted)', opacity: 0.6 }} />
                   </div>
-                  <h3>Nenhum servidor encontrado</h3>
-                  <p>Crie sua própria comunidade gamer ou explore servidores públicos.</p>
+                  <h3>Nenhum espaço encontrado</h3>
+                  <p>Crie sua própria comunidade gamer ou explore espaços públicos.</p>
                   <button 
                     type="button" 
                     className="empty-create-server-btn"
                     onClick={() => { setAddSpaceModalTab('options'); setShowAddSpaceModal(true) }}
                   >
-                    ＋ Criar um Servidor
+                    ＋ Criar um Espaço
                   </button>
                 </div>
                 <UnifiedUserProfileFooter
@@ -6182,7 +6390,7 @@ function Echo({ user }: { user: User }) {
                       {activeSpace.name}
                     </h3>
                     {activeSpace.creator_id === user.id && (
-                      <span className="server-crown-badge" title="Você é o Dono do Servidor" style={{ flexShrink: 0 }}>👑</span>
+                      <span className="server-crown-badge" title="Você é o Dono do Espaço" style={{ flexShrink: 0 }}>👑</span>
                     )}
                   </div>
                   <span className={`server-dropdown-chevron ${showServerDropdown ? 'open' : ''}`} style={{ transition: 'transform 0.2s ease', transform: showServerDropdown ? 'rotate(180deg)' : 'none', color: 'var(--text-muted)' }}>▾</span>
@@ -6211,7 +6419,7 @@ function Echo({ user }: { user: User }) {
                       onClick={() => { setShowServerDropdown(false); openSpaceSettings(activeSpace); }}
                     >
                       <SettingsIcon />
-                      <span>Painel do Servidor</span>
+                      <span>Configurações do Espaço</span>
                     </button>
                     <button 
                       type="button"
@@ -6227,7 +6435,7 @@ function Echo({ user }: { user: User }) {
                       onClick={() => {
                         setShowServerDropdown(false)
                         copyToClipboard(activeSpace.id)
-                        showToast("Convite Copiado!", `Código do servidor "${activeSpace.name}" copiado para a área de transferência.`, 'info')
+                        showToast("Convite Copiado!", `Código do espaço "${activeSpace.name}" copiado para a área de transferência.`, 'info')
                       }}
                     >
                       <LinkIcon />
@@ -6240,7 +6448,7 @@ function Echo({ user }: { user: User }) {
                       onClick={() => { setShowServerDropdown(false); toggleMuteSpace(activeSpace.id); }}
                     >
                       {mutedSpaces.has(activeSpace.id) ? <BellIcon /> : <BellOffIcon />}
-                      <span>{mutedSpaces.has(activeSpace.id) ? 'Ativar Notificações' : 'Silenciar Servidor'}</span>
+                      <span>{mutedSpaces.has(activeSpace.id) ? 'Ativar Notificações' : 'Silenciar Espaço'}</span>
                     </button>
                     {activeSpace.creator_id !== user.id && (
                       <button 
@@ -6249,7 +6457,7 @@ function Echo({ user }: { user: User }) {
                         onClick={() => { setShowServerDropdown(false); handleLeaveSpace(activeSpace); }}
                       >
                         <LogOutIcon />
-                        <span>Sair do Servidor</span>
+                        <span>Sair do Espaço</span>
                       </button>
                     )}
                   </div>
@@ -6654,8 +6862,8 @@ function Echo({ user }: { user: User }) {
                     </button>
                   </div>
                 </header>
-                <div className="chat-workspace-wrapper" style={{ display: 'flex', flex: 1, minHeight: 0, width: '100%', position: 'relative' }}>
-                  <div className="chat-area-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                <div className="chat-workspace-wrapper" style={{ display: 'flex', flex: 1, minHeight: 0, width: '100%', position: 'relative', overflow: 'hidden' }}>
+                  <div className="chat-area-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, height: '100%', overflow: 'hidden' }}>
                       <div 
                         className="messages-area"
                         ref={messagesContainerRef}
@@ -7188,7 +7396,7 @@ function Echo({ user }: { user: User }) {
                                       className={`emoji-tab-btn ${emojiPickerTab === 'server' ? 'active' : ''}`}
                                       onClick={() => setEmojiPickerTab('server')}
                                     >
-                                      🌟 Servidor ({serverEmojis.length})
+                                      🌟 Espaço ({serverEmojis.length})
                                     </button>
                                   </div>
 
@@ -7222,7 +7430,7 @@ function Echo({ user }: { user: User }) {
                                         ))}
                                         {serverEmojis.length === 0 && (
                                           <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '24px 10px', color: 'var(--text-muted)', fontSize: '12px' }}>
-                                            Nenhum emoji personalizado neste servidor.
+                                            Nenhum emoji personalizado neste espaço.
                                           </div>
                                         )}
                                       </div>
@@ -8478,7 +8686,7 @@ function Echo({ user }: { user: User }) {
           </section>
         </section>
 
-      <div style={{ display: page === 'Amigos' ? undefined : 'none' }}>
+      <div style={{ display: page === 'Amigos' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}>
         <FriendsView 
           friendships={friendships}
           friendTab={friendTab}
@@ -8547,7 +8755,7 @@ function Echo({ user }: { user: User }) {
         />
       </div>
 
-      <div style={{ display: page === 'Configurações' ? undefined : 'none' }}>
+      <div style={{ display: page === 'Configurações' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}>
         <SettingsView 
           userId={user.id}
           userCreatedAt={user.created_at}
@@ -8692,11 +8900,11 @@ function Echo({ user }: { user: User }) {
         />
       </div>
 
-      <div style={{ display: page === 'Descobrir' ? undefined : 'none' }}>
+      <div style={{ display: page === 'Descobrir' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}>
         <Placeholder page={'Descobrir'} />
       </div>
 
-      <div style={{ display: page === 'Loja' ? 'flex' : 'none', flex: 1, height: 'calc(100vh - 48px)', overflow: 'hidden' }}>
+      <div style={{ display: page === 'Loja' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}>
         <EchoShop
           userId={user.id}
           displayName={profileDisplayName || displayName}
@@ -8728,20 +8936,20 @@ function Echo({ user }: { user: User }) {
           <div className="screen-picker-modal" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
             {addSpaceModalTab === 'options' && (
               <>
-                <h2 style={{ textAlign: 'center' }}>Adicionar um servidor</h2>
-                <p style={{ textAlign: 'center' }}>Um servidor é onde você e seus amigos se reúnem. Crie o seu próprio ou junte-se a um já existente.</p>
+                <h2 style={{ textAlign: 'center' }}>Adicionar um espaço</h2>
+                <p style={{ textAlign: 'center' }}>Um espaço é onde você e seus amigos se reúnem. Crie o seu próprio ou junte-se a um já existente.</p>
                 <div className="add-space-modal-cards">
                   <div className="add-space-card">
                     <span className="add-space-card-icon">🎨</span>
                     <h3>Criar o meu</h3>
-                    <p>Comece um servidor do seu jeito e convide os amigos para conversar.</p>
-                    <button className="add-space-card-btn" onClick={() => setAddSpaceModalTab('create')}>Criar Servidor</button>
+                    <p>Comece um espaço do seu jeito e convide os amigos para conversar.</p>
+                    <button className="add-space-card-btn" onClick={() => setAddSpaceModalTab('create')}>Criar Espaço</button>
                   </div>
                   <div className="add-space-card">
                     <span className="add-space-card-icon">🤝</span>
                     <h3>Entrar em um</h3>
-                    <p>Tem um código de convite? Junte-se a um servidor ativo agora.</p>
-                    <button className="add-space-card-btn" onClick={() => setAddSpaceModalTab('join')}>Entrar no Servidor</button>
+                    <p>Tem um código de convite? Junte-se a um espaço ativo agora.</p>
+                    <button className="add-space-card-btn" onClick={() => setAddSpaceModalTab('join')}>Entrar no Espaço</button>
                   </div>
                 </div>
                 <button className="picker-close-btn" style={{ width: '100%', marginTop: '16px' }} onClick={() => setShowAddSpaceModal(false)}>Cancelar</button>
@@ -8750,8 +8958,8 @@ function Echo({ user }: { user: User }) {
 
             {addSpaceModalTab === 'create' && (
               <>
-                <h2>Criar seu servidor</h2>
-                <p>Dê um nome ao seu novo servidor. Você poderá alterá-lo a qualquer momento.</p>
+                <h2>Criar seu espaço</h2>
+                <p>Dê um nome ao seu novo espaço. Você poderá alterá-lo a qualquer momento.</p>
                 <form 
                   onSubmit={async (e) => { 
                     e.preventDefault(); 
@@ -8763,7 +8971,7 @@ function Echo({ user }: { user: User }) {
                   <input 
                     value={newSpace} 
                     onChange={(e) => setNewSpace(e.target.value)} 
-                    placeholder="Nome do servidor" 
+                    placeholder="Nome do espaço" 
                     required 
                     minLength={2}
                     maxLength={80}
@@ -8778,8 +8986,8 @@ function Echo({ user }: { user: User }) {
 
             {addSpaceModalTab === 'join' && (
               <>
-                <h2>Entrar em um servidor</h2>
-                <p>Insira o código de convite enviado por um amigo para se juntar ao servidor.</p>
+                <h2>Entrar em um espaço</h2>
+                <p>Insira o código de convite enviado por um amigo para se juntar ao espaço.</p>
                 <form 
                   onSubmit={async (e) => { 
                     e.preventDefault(); 
@@ -9040,112 +9248,186 @@ function Echo({ user }: { user: User }) {
         </div>
       )}
 
-      {/* Discord-Style Fullscreen Server Settings */}
+      {/* Echo Space Studio Deck (Modern Non-Discord Settings Architecture) */}
       {showSpaceSettingsModal && editingSpace && (
-        <div className="space-settings-fullscreen-overlay">
-          <aside className="space-settings-discord-sidebar">
-            <div className="space-settings-sidebar-inner">
-              <div className="space-settings-nav-group">
-                <span className="space-settings-nav-header">
-                  SERVIDOR DE {editingSpace.name.toUpperCase()}
-                </span>
+        <div className="space-studio-overlay">
+          <div className="space-studio-container">
+            {/* Studio Header: Identity + Close Action */}
+            <header className="space-studio-header">
+              <div className="space-studio-header-left">
+                <div 
+                  className="space-studio-header-avatar"
+                  style={{ background: editingSpaceIconUrl ? 'transparent' : getServerGradient(editingSpace.name) }}
+                >
+                  {editingSpaceIconUrl ? (
+                    <img src={editingSpaceIconUrl} alt={editingSpace.name} />
+                  ) : (
+                    getServerInitials(editingSpace.name)
+                  )}
+                </div>
+                <div className="space-studio-header-info">
+                  <div className="space-studio-header-title-row">
+                    <h2>{editingSpace.name}</h2>
+                    <span className="space-studio-badge">✦ Espaço Echo</span>
+                  </div>
+                  <p className="space-studio-header-sub">Painel de Configurações & Gestão da Comunidade</p>
+                </div>
+              </div>
+
+              <div className="space-studio-header-right">
                 <button 
                   type="button" 
-                  className={`space-settings-nav-item ${activeSpaceTab === 'geral' ? 'active' : ''}`}
+                  className="space-studio-close-btn-discord"
+                  onClick={() => setShowSpaceSettingsModal(false)}
+                  title="Fechar Configurações (ESC)"
+                >
+                  <div className="space-studio-close-circle">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </div>
+                  <span className="space-studio-close-label">ESC</span>
+                </button>
+              </div>
+            </header>
+
+            {/* Horizontal Segmented Tabs Navigation with Wheel Scroll & Drag-to-Scroll */}
+            <div className="space-studio-nav-wrapper">
+              <button 
+                type="button" 
+                className="space-studio-nav-arrow left"
+                onClick={() => navTrackRef.current?.scrollBy({ left: -240, behavior: 'smooth' })}
+                title="Rolar abas para a esquerda"
+              >
+                ‹
+              </button>
+
+              <nav 
+                ref={navTrackRef}
+                className="space-studio-nav-track"
+                onWheel={(e) => {
+                  if (navTrackRef.current) {
+                    navTrackRef.current.scrollLeft += e.deltaY
+                  }
+                }}
+                onMouseDown={(e) => {
+                  isDraggingNavRef.current = true
+                  navStartXRef.current = e.pageX - (navTrackRef.current?.offsetLeft || 0)
+                  navScrollLeftRef.current = navTrackRef.current?.scrollLeft || 0
+                }}
+                onMouseMove={(e) => {
+                  if (!isDraggingNavRef.current || !navTrackRef.current) return
+                  e.preventDefault()
+                  const x = e.pageX - (navTrackRef.current.offsetLeft || 0)
+                  const walk = (x - navStartXRef.current) * 1.5
+                  navTrackRef.current.scrollLeft = navScrollLeftRef.current - walk
+                }}
+                onMouseUp={() => {
+                  isDraggingNavRef.current = false
+                }}
+                onMouseLeave={() => {
+                  isDraggingNavRef.current = false
+                }}
+              >
+                <button 
+                  type="button" 
+                  className={`space-studio-tab-btn ${activeSpaceTab === 'geral' ? 'active' : ''}`}
                   onClick={() => setActiveSpaceTab('geral')}
                 >
-                  <SettingsIcon />
-                  <span>Visão Geral</span>
+                  <SettingsIcon style={{ width: '15px', height: '15px' }} />
+                  <span>Identidade & Perfil</span>
                 </button>
+
                 <button 
                   type="button" 
-                  className={`space-settings-nav-item ${activeSpaceTab === 'roles' ? 'active' : ''}`}
+                  className={`space-studio-tab-btn ${activeSpaceTab === 'roles' ? 'active' : ''}`}
                   onClick={() => setActiveSpaceTab('roles')}
                 >
-                  <ShieldIcon />
-                  <span>Cargos</span>
-                  <span className="nav-badge">{serverRoles.length}</span>
+                  <ShieldIcon style={{ width: '15px', height: '15px' }} />
+                  <span>Cargos & Acessos</span>
+                  {serverRoles.length > 0 && <span className="space-studio-tab-badge">{serverRoles.length}</span>}
                 </button>
+
                 <button 
                   type="button" 
-                  className={`space-settings-nav-item ${activeSpaceTab === 'emojis' ? 'active' : ''}`}
+                  className={`space-studio-tab-btn ${activeSpaceTab === 'channels' ? 'active' : ''}`}
+                  onClick={() => setActiveSpaceTab('channels')}
+                >
+                  <HashtagIcon style={{ width: '15px', height: '15px' }} />
+                  <span>Canais</span>
+                  <span className="space-studio-tab-badge">{(spaceChannels[editingSpace.id] ?? []).length}</span>
+                </button>
+
+                <button 
+                  type="button" 
+                  className={`space-studio-tab-btn ${activeSpaceTab === 'emojis' ? 'active' : ''}`}
                   onClick={() => {
                     setActiveSpaceTab('emojis')
                     loadSpaceEmojis(editingSpace.id)
                   }}
                 >
-                  <SmileIcon />
+                  <SmileIcon style={{ width: '15px', height: '15px' }} />
                   <span>Emojis</span>
-                  <span className="nav-badge">{serverEmojis.length}</span>
+                  {serverEmojis.length > 0 && <span className="space-studio-tab-badge">{serverEmojis.length}</span>}
                 </button>
+
                 <button 
                   type="button" 
-                  className={`space-settings-nav-item ${activeSpaceTab === 'channels' ? 'active' : ''}`}
-                  onClick={() => setActiveSpaceTab('channels')}
-                >
-                  <HashtagIcon />
-                  <span>Canais</span>
-                  <span className="nav-badge">{(spaceChannels[editingSpace.id] ?? []).length}</span>
-                </button>
-              </div>
-
-              <div className="space-settings-nav-divider" />
-
-              <div className="space-settings-nav-group">
-                <span className="space-settings-nav-header">PESSOAS</span>
-                <button 
-                  type="button" 
-                  className={`space-settings-nav-item ${activeSpaceTab === 'members' ? 'active' : ''}`}
+                  className={`space-studio-tab-btn ${activeSpaceTab === 'members' ? 'active' : ''}`}
                   onClick={() => {
                     setActiveSpaceTab('members')
                     loadEditingSpaceMembers(editingSpace.id)
                   }}
                 >
-                  <UsersIcon />
-                  <span>Membros</span>
-                  <span className="nav-badge">{editingSpaceMembers.length || 1}</span>
+                  <UsersIcon style={{ width: '15px', height: '15px' }} />
+                  <span>Integrantes</span>
+                  <span className="space-studio-tab-badge">{editingSpaceMembers.length || 1}</span>
                 </button>
+
                 <button 
                   type="button" 
-                  className={`space-settings-nav-item ${activeSpaceTab === 'audit' ? 'active' : ''}`}
+                  className={`space-studio-tab-btn ${activeSpaceTab === 'audit' ? 'active' : ''}`}
                   onClick={() => setActiveSpaceTab('audit')}
                 >
-                  <FileTextIcon />
-                  <span>Registro de Auditoria</span>
+                  <FileTextIcon style={{ width: '15px', height: '15px' }} />
+                  <span>Registro de Ações</span>
                 </button>
+
                 <button 
                   type="button" 
-                  className={`space-settings-nav-item ${activeSpaceTab === 'invites' ? 'active' : ''}`}
+                  className={`space-studio-tab-btn ${activeSpaceTab === 'invites' ? 'active' : ''}`}
                   onClick={() => setActiveSpaceTab('invites')}
                 >
-                  <LinkIcon />
+                  <LinkIcon style={{ width: '15px', height: '15px' }} />
                   <span>Convites</span>
                 </button>
-              </div>
 
-              {editingSpace.creator_id === user.id && (
-                <>
-                  <div className="space-settings-nav-divider" />
-                  <div className="space-settings-nav-group">
-                    <span className="space-settings-nav-header">MODERAÇÃO</span>
-                    <button 
-                      type="button" 
-                      className={`space-settings-nav-item danger ${activeSpaceTab === 'danger' ? 'active' : ''}`}
-                      onClick={() => setActiveSpaceTab('danger')}
-                    >
-                      <UserMinusIcon />
-                      <span>Excluir Servidor</span>
-                    </button>
-                  </div>
-                </>
-              )}
+                {editingSpace.creator_id === user.id && (
+                  <button 
+                    type="button" 
+                    className={`space-studio-tab-btn danger ${activeSpaceTab === 'danger' ? 'active' : ''}`}
+                    onClick={() => setActiveSpaceTab('danger')}
+                  >
+                    <UserMinusIcon style={{ width: '15px', height: '15px' }} />
+                    <span>Encerrar Espaço</span>
+                  </button>
+                )}
+              </nav>
+
+              <button 
+                type="button" 
+                className="space-studio-nav-arrow right"
+                onClick={() => navTrackRef.current?.scrollBy({ left: 240, behavior: 'smooth' })}
+                title="Rolar abas para a direita"
+              >
+                ›
+              </button>
             </div>
-          </aside>
 
-          <main className="space-settings-discord-main">
-            <div className="space-settings-discord-content">
-              {/* ABA 1: VISÃO GERAL */}
-              {/* ABA 1: VISÃO GERAL */}
+            {/* Studio Content Body */}
+            <div className="space-studio-content-body">
+              {/* ABA 1: IDENTIDADE & PERFIL (Live Hero Customizer) */}
               {activeSpaceTab === 'geral' && (() => {
                 const isGeralDirty = Boolean(
                   editingSpace && (
@@ -9158,173 +9440,199 @@ function Echo({ user }: { user: User }) {
                   )
                 )
 
+                const activePreset = SERVER_BANNER_PRESETS.find(p => p.id === editingSpaceBannerTheme) || SERVER_BANNER_PRESETS[0]
+
                 return (
                   <div className="space-settings-tab-pane">
-                    <div className="space-settings-pane-header">
-                      <h2>Visão Geral do Servidor</h2>
-                      <p>Personalize a identidade visual, banners animados (GIFs), foto e preferências do seu servidor.</p>
+                    {/* Live Hero Banner Customizer */}
+                    <div className="space-studio-hero">
+                      <div 
+                        className="space-studio-hero-bg" 
+                        style={{
+                          background: editingSpaceBannerUrl 
+                            ? `url(${editingSpaceBannerUrl}) center/cover no-repeat` 
+                            : activePreset.style
+                        }}
+                      />
+                      <div className="space-studio-hero-overlay" />
+
+                      {/* Banner Top Controls */}
+                      <div className="space-studio-hero-top">
+                        <input 
+                          type="file" 
+                          id="server-banner-file-input" 
+                          style={{ display: 'none' }} 
+                          accept="image/*" 
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) handleSpaceBannerUpload(file)
+                            e.target.value = ''
+                          }} 
+                        />
+                        <button 
+                          type="button" 
+                          className="space-studio-hero-btn"
+                          onClick={() => document.getElementById('server-banner-file-input')?.click()}
+                          disabled={uploadingSpaceBanner}
+                        >
+                          <span>{uploadingSpaceBanner ? 'Enviando...' : 'Alterar Capa (Foto ou GIF)'}</span>
+                        </button>
+                        {editingSpaceBannerUrl && (
+                          <button 
+                            type="button" 
+                            className="space-studio-hero-btn btn-remove"
+                            onClick={handleRemoveSpaceBanner}
+                          >
+                            <span>Remover Capa</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Banner Bottom: Avatar + Live Title */}
+                      <div className="space-studio-hero-bottom">
+                        <input 
+                          type="file" 
+                          id="server-icon-file-input" 
+                          style={{ display: 'none' }} 
+                          accept="image/*" 
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) handleSpaceIconUpload(file)
+                            e.target.value = ''
+                          }} 
+                        />
+                        <div 
+                          className="space-studio-hero-avatar-wrap"
+                          style={{
+                            background: editingSpaceIconUrl ? '#10131a' : getServerGradient(editingSpaceName || editingSpace.name)
+                          }}
+                          onClick={() => document.getElementById('server-icon-file-input')?.click()}
+                          title="Clique para alterar a foto do espaço"
+                        >
+                          {editingSpaceIconUrl ? (
+                            <img src={editingSpaceIconUrl} alt={editingSpaceName} />
+                          ) : (
+                            getServerInitials(editingSpaceName || editingSpace.name)
+                          )}
+                          <div className="space-studio-avatar-hover-hint">
+                            <CameraIcon style={{ width: '18px', height: '18px' }} />
+                            <span>{uploadingSpaceIcon ? 'Enviando...' : 'Mudar Foto'}</span>
+                          </div>
+                        </div>
+
+                        <div className="space-studio-hero-title-group">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <h3 style={{ margin: 0 }}>{editingSpaceName || 'Nome do Espaço'}</h3>
+                            {editingSpaceIconUrl && (
+                              <button 
+                                type="button" 
+                                className="space-studio-hero-btn btn-remove"
+                                onClick={handleRemoveSpaceIcon}
+                                style={{ padding: '3px 8px', fontSize: '11px', height: 'auto' }}
+                                title="Remover foto do espaço"
+                              >
+                                ✕ Remover Foto
+                              </button>
+                            )}
+                          </div>
+                          <p>{editingSpaceDescription || 'Comunidade Echo • Personalize a identidade visual e regras deste espaço.'}</p>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="space-profile-layout">
-                      <form onSubmit={handleSaveSpaceSettings} className="space-profile-form">
-                        {/* Server Avatar / Icon Section */}
-                        <div className="server-icon-edit-section" style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '20px', padding: '18px', background: 'var(--bg-secondary)', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
-                          <div className="server-avatar-large" style={{ width: '74px', height: '74px', borderRadius: '22px', background: 'linear-gradient(135deg, var(--accent-color), #c75a4a)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: '24px', fontWeight: 700, overflow: 'hidden', flexShrink: 0, boxShadow: '0 6px 16px rgba(0,0,0,0.3)', border: '2px solid rgba(255,255,255,0.1)' }}>
-                            {editingSpaceIconUrl ? (
-                              <img src={editingSpaceIconUrl} alt="Ícone do servidor" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : (
-                              (editingSpaceName || 'S').slice(0, 2).toUpperCase()
-                            )}
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>Ícone do Servidor</span>
-                              <span style={{ fontSize: '10.5px', background: 'var(--bg-tertiary)', color: 'var(--accent-color)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>Suporta GIFs</span>
-                            </div>
-                            <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Envie uma imagem estática ou um <strong>GIF animado</strong> (.gif, .png, .jpg, .webp). Mínimo recomendado: 512x512.</span>
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                              <input 
-                                type="file" 
-                                id="server-icon-file-input" 
-                                style={{ display: 'none' }} 
-                                accept="image/*" 
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0]
-                                  if (file) handleSpaceIconUpload(file)
-                                  e.target.value = ''
-                                }} 
-                              />
-                              <button 
-                                type="button" 
-                                className="ch-create-btn" 
-                                style={{ padding: '7px 14px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                                onClick={() => document.getElementById('server-icon-file-input')?.click()}
-                                disabled={uploadingSpaceIcon}
-                              >
-                                <CameraIcon style={{ width: '14px', height: '14px' }} />
-                                <span>{uploadingSpaceIcon ? 'Enviando...' : 'Alterar Foto / GIF'}</span>
-                              </button>
-                              {editingSpaceIconUrl && (
-                                <button 
-                                  type="button" 
-                                  className="settings-channel-delete-btn" 
-                                  style={{ width: 'auto', padding: '6px 12px', fontSize: '12px' }}
-                                  onClick={handleRemoveSpaceIcon}
-                                >
-                                  Remover
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Server Banner / GIF Section */}
-                        <div className="selector-card" style={{ marginBottom: '18px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
-                          <label style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            Faixa do Servidor (Banner / GIF Animado)
-                          </label>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '10px', marginBottom: '14px' }}>
-                            <input 
-                              type="file" 
-                              id="server-banner-file-input" 
-                              style={{ display: 'none' }} 
-                              accept="image/*" 
-                              onChange={(e) => {
-                                const file = e.target.files?.[0]
-                                if (file) handleSpaceBannerUpload(file)
-                                e.target.value = ''
-                              }} 
-                            />
+                    {/* Quick Gradient Palettes if No Custom Image */}
+                    <div style={{ marginBottom: '20px', padding: '14px 18px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>Paleta de Gradientes Padrão do Echo</span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Usado quando nenhuma imagem de capa personalizada está ativa</span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px' }}>
+                        {SERVER_BANNER_PRESETS.map(preset => {
+                          const isActive = !editingSpaceBannerUrl && editingSpaceBannerTheme === preset.id
+                          return (
                             <button 
-                              type="button" 
-                              className="ch-create-btn" 
-                              style={{ padding: '8px 16px', fontSize: '12.5px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                              onClick={() => document.getElementById('server-banner-file-input')?.click()}
-                              disabled={uploadingSpaceBanner}
+                              key={preset.id}
+                              type="button"
+                              onClick={() => {
+                                setEditingSpaceBannerTheme(preset.id)
+                                setEditingSpaceBannerUrl('')
+                              }}
+                              className={`server-banner-swatch ${isActive ? 'active' : ''}`}
+                              style={{ background: preset.style, height: '36px', borderRadius: '8px', border: isActive ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'transform 0.15s ease' }}
+                              title={preset.name}
                             >
-                              <SparklesIcon style={{ width: '15px', height: '15px' }} />
-                              <span>{uploadingSpaceBanner ? 'Enviando Banner...' : 'Enviar Imagem ou GIF para o Banner'}</span>
+                              {isActive && <span style={{ color: '#fff', fontWeight: 800, textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>✓</span>}
                             </button>
-                            {editingSpaceBannerUrl && (
-                              <button 
-                                type="button" 
-                                className="settings-channel-delete-btn" 
-                                style={{ width: 'auto', padding: '8px 12px', fontSize: '12px' }}
-                                onClick={handleRemoveSpaceBanner}
-                              >
-                                Remover Imagem / GIF
-                              </button>
-                            )}
-                          </div>
+                          )
+                        })}
+                      </div>
+                    </div>
 
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px', fontWeight: 600 }}>Ou escolha um tema de gradiente padrão:</span>
-                          <div className="server-banner-swatches" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px' }}>
-                            {SERVER_BANNER_PRESETS.map(preset => {
-                              const isActive = !editingSpaceBannerUrl && editingSpaceBannerTheme === preset.id
-                              return (
-                                <button 
-                                  key={preset.id}
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingSpaceBannerTheme(preset.id)
-                                    setEditingSpaceBannerUrl('')
-                                  }}
-                                  className={`server-banner-swatch ${isActive ? 'active' : ''}`}
-                                  style={{ background: preset.style }}
-                                  title={preset.name}
-                                >
-                                  {isActive && <span className="server-banner-swatch-check">✓</span>}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        </div>
+                    {/* 2-Column Structured Card Grid */}
+                    <form onSubmit={handleSaveSpaceSettings} className="space-studio-grid-2col">
+                      {/* Card 1: Informações do Espaço */}
+                      <div className="space-studio-card">
+                        <h4 className="space-studio-card-title">
+                          <SettingsIcon style={{ width: '16px', height: '16px', color: 'var(--accent-color)' }} />
+                          <span>Informações do Espaço</span>
+                        </h4>
+                        <p className="space-studio-card-desc">Defina o nome de exibição e uma breve descrição da sua comunidade.</p>
 
-                        <div className="selector-card">
+                        <div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                            <label style={{ margin: 0 }}>Nome do Servidor</label>
+                            <label style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)' }}>Nome do Espaço</label>
                             <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>{editingSpaceName.length}/80</span>
                           </div>
                           <input 
                             value={editingSpaceName} 
                             onChange={(e) => setEditingSpaceName(e.target.value)} 
-                            placeholder="Nome do servidor"
+                            placeholder="Ex: Sala dos Amigos, Guilda Gamer..."
                             required 
                             minLength={2}
                             maxLength={80}
                             style={{
-                              padding: '12px 14px',
+                              padding: '11px 14px',
                               borderRadius: '10px',
                               border: '1.5px solid var(--border-color)',
-                              background: 'var(--bg-secondary)',
+                              background: 'var(--bg-tertiary)',
                               color: 'var(--text-primary)',
                               fontSize: '13.5px',
                               fontWeight: 600,
                               outline: 'none',
                               width: '100%',
-                              transition: 'border-color 0.15s ease'
+                              boxSizing: 'border-box'
                             }}
                           />
                         </div>
 
-                        <div className="selector-card" style={{ marginTop: '16px' }}>
+                        <div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                            <label style={{ margin: 0 }}>Descrição do Servidor</label>
+                            <label style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)' }}>Descrição do Espaço</label>
                             <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>{editingSpaceDescription.length}/280</span>
                           </div>
                           <textarea 
                             value={editingSpaceDescription} 
                             onChange={(e) => setEditingSpaceDescription(e.target.value)} 
-                            placeholder="Fale um pouco sobre o que é este servidor, seus jogos ou comunidade..."
+                            placeholder="Fale um pouco sobre o que é este espaço, quais jogos vocês jogam ou as regras da comunidade..."
                             className="space-settings-textarea"
                             maxLength={280}
-                            style={{ minHeight: '90px', borderRadius: '10px' }}
+                            style={{ minHeight: '90px', borderRadius: '10px', background: 'var(--bg-tertiary)', width: '100%', boxSizing: 'border-box' }}
                           />
                         </div>
+                      </div>
 
-                        {/* Welcome System Channel */}
-                        <div className="selector-card" style={{ marginTop: '16px' }}>
-                          <label>Canal de Boas-Vindas do Sistema</label>
+                      {/* Card 2: Experiência & Notificações */}
+                      <div className="space-studio-card">
+                        <h4 className="space-studio-card-title">
+                          <MegaphoneIcon style={{ width: '16px', height: '16px', color: 'var(--accent-color)' }} />
+                          <span>Recepção & Notificações</span>
+                        </h4>
+                        <p className="space-studio-card-desc">Configure mensagens automáticas de chegada e preferências de alerta sonoro.</p>
+
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                            Canal de Boas-Vindas do Sistema
+                          </label>
                           <select 
                             value={editingSpaceWelcomeChannelId} 
                             onChange={(e) => setEditingSpaceWelcomeChannelId(e.target.value)}
@@ -9332,12 +9640,13 @@ function Echo({ user }: { user: User }) {
                               padding: '11px 14px',
                               borderRadius: '10px',
                               border: '1.5px solid var(--border-color)',
-                              background: 'var(--bg-secondary)',
+                              background: 'var(--bg-tertiary)',
                               color: 'var(--text-primary)',
                               fontSize: '13px',
                               outline: 'none',
                               width: '100%',
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              boxSizing: 'border-box'
                             }}
                           >
                             <option value="">Nenhum canal selecionado</option>
@@ -9346,17 +9655,16 @@ function Echo({ user }: { user: User }) {
                             ))}
                           </select>
                           <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '6px' }}>
-                            Envia automaticamente uma mensagem de boas-vindas do sistema quando alguém entrar neste servidor.
+                            Envia automaticamente uma mensagem de boas-vindas do sistema quando alguém entrar neste espaço.
                           </span>
                         </div>
 
-                        {/* Server Notifications toggle */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', padding: '14px 18px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             {mutedSpaces.has(editingSpace.id) ? <BellOffIcon style={{ color: '#e0554c' }} /> : <BellIcon style={{ color: 'var(--text-primary)' }} />}
                             <div>
-                              <span style={{ fontSize: '13.5px', fontWeight: 700, display: 'block', color: 'var(--text-primary)' }}>Silenciar Notificações</span>
-                              <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Desative alertas sonoros e de área de trabalho para este servidor.</span>
+                              <span style={{ fontSize: '13px', fontWeight: 700, display: 'block', color: 'var(--text-primary)' }}>Silenciar Notificações</span>
+                              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Desative alertas sonoros deste espaço no seu app.</span>
                             </div>
                           </div>
                           <label className="echo-switch">
@@ -9368,55 +9676,8 @@ function Echo({ user }: { user: User }) {
                             <span className="echo-switch-slider"></span>
                           </label>
                         </div>
-                      </form>
-
-                      {/* Discord-style Server Card Live Preview */}
-                      <div className="discord-server-preview-column">
-                        <label className="preview-label">PRÉ-VISUALIZAÇÃO DO SERVIDOR</label>
-                        <div className="discord-server-preview-card">
-                          <div 
-                            className="preview-banner-bg" 
-                            style={{ 
-                              background: editingSpaceBannerUrl ? `url(${editingSpaceBannerUrl}) center/cover no-repeat` : (SERVER_BANNER_PRESETS.find(p => p.id === editingSpaceBannerTheme) || SERVER_BANNER_PRESETS[0]).style 
-                            }}
-                          >
-                            <div className="preview-banner-overlay" />
-                          </div>
-                          <div className="preview-card-body">
-                            <div className="preview-server-avatar" style={{ overflow: 'hidden' }}>
-                              {editingSpaceIconUrl ? (
-                                <img src={editingSpaceIconUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              ) : (
-                                (editingSpaceName || 'S').slice(0, 2).toUpperCase()
-                              )}
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
-                              <h3 className="preview-server-name" style={{ margin: 0 }}>{editingSpaceName || 'Nome do Servidor'}</h3>
-                            </div>
-                            <span className="preview-verified-badge">
-                              <span>✦</span> Servidor Verificado Echo
-                            </span>
-                            <p className="preview-server-desc" style={{ marginTop: '10px' }}>{editingSpaceDescription || 'Nenhuma descrição adicionada ainda.'}</p>
-                            
-                            <div className="preview-server-stats">
-                              <span className="stat-bullet">🟢 1 online</span>
-                              <span className="stat-bullet">👥 {editingSpaceMembers.length || 1} membros</span>
-                            </div>
-
-                            {editingSpaceWelcomeChannelId && (
-                              <div className="preview-welcome-pill">
-                                <span>📢</span>
-                                <span>Boas-vindas: #{(spaceChannels[editingSpace.id] ?? []).find(c => c.id === editingSpaceWelcomeChannelId)?.name || 'canal'}</span>
-                              </div>
-                            )}
-
-                            <div className="preview-server-footer">
-                              <span>Servidor no Echo • Comunidade Ativa</span>
-                            </div>
-                          </div>
-                        </div>
                       </div>
-                    </div>
+                    </form>
 
                     {/* Floating Unsaved Changes Bar */}
                     {isGeralDirty && (
@@ -9461,7 +9722,7 @@ function Echo({ user }: { user: User }) {
                 <div className="space-settings-tab-pane">
                   <div className="space-settings-pane-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <h2>Cargos do Servidor</h2>
+                      <h2>Cargos do Espaço</h2>
                       <p>Crie cargos personalizados, defina cores vibrantes e gerencie permissões detalhadas para seus membros.</p>
                     </div>
                     <button 
@@ -9670,7 +9931,7 @@ function Echo({ user }: { user: User }) {
                               <div className="role-perm-card">
                                 <div className="role-perm-card-info">
                                   <strong className="role-perm-card-title">Expulsar Membros</strong>
-                                  <span className="role-perm-card-desc">Permite remover membros indesejados do servidor.</span>
+                                  <span className="role-perm-card-desc">Permite remover membros indesejados do espaço.</span>
                                 </div>
                                 <label className="echo-switch">
                                   <input 
@@ -9762,12 +10023,12 @@ function Echo({ user }: { user: User }) {
                 </div>
               )}
 
-              {/* ABA: EMOJIS DO SERVIDOR */}
+              {/* ABA: EMOJIS DO ESPAÇO */}
               {activeSpaceTab === 'emojis' && (
                 <div className="space-settings-tab-pane">
                   <div className="space-settings-pane-header">
-                    <h2>Emojis e Figurinhas do Servidor</h2>
-                    <p>Envie imagens estáticas ou <strong>GIFs animados</strong> com código :nome: para membros usarem no chat deste servidor.</p>
+                    <h2>Emojis e Figurinhas do Espaço</h2>
+                    <p>Envie imagens estáticas ou <strong>GIFs animados</strong> com código :nome: para membros usarem no chat deste espaço.</p>
                   </div>
 
                   {/* Form de Criação de Emoji */}
@@ -9856,264 +10117,204 @@ function Echo({ user }: { user: User }) {
               {/* ABA 3: CANAIS */}
               {activeSpaceTab === 'channels' && (
                 <div className="space-settings-tab-pane">
-                  <div className="space-settings-pane-header">
-                    <h2>Canais do Servidor</h2>
-                    <p>Gerencie categorias, renomeie, ordene, configure tópicos, modo lento e limites de voz.</p>
+                  <div className="space-settings-pane-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <h2>Canais do Espaço</h2>
+                      <p>Gerencie, ordene e configure os canais de texto e voz da comunidade.</p>
+                    </div>
+                    <button 
+                      type="button" 
+                      className="add-space-card-btn"
+                      style={{ width: 'auto', padding: '9px 18px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      onClick={() => {
+                        setNewChannelName('')
+                        setNewChannelCategory('')
+                        setNewChannelTopic('')
+                        setShowNewChannel(editingSpace.id)
+                      }}
+                    >
+                      <PlusIcon style={{ width: '15px', height: '15px' }} />
+                      <span>Criar Canal</span>
+                    </button>
                   </div>
 
-                  <div className="space-settings-channels-list-full">
-                    {(spaceChannels[editingSpace.id] ?? []).map((ch, idx) => (
-                      <div key={ch.id} className="settings-channel-item-full" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px', padding: '14px 16px', background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div className="ch-type-indicator">
-                            {ch.is_announcement ? <MegaphoneIcon style={{ color: 'var(--accent-color)' }} /> : ch.type === 'text' ? <HashtagIcon /> : <VolumeIcon />}
-                          </div>
-                          <input 
-                            type="text" 
-                            defaultValue={ch.name} 
-                            onBlur={(e) => {
-                              if (e.target.value.trim() && e.target.value.trim() !== ch.name) {
-                                renameChannel(ch.id, e.target.value.trim())
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.currentTarget.blur()
-                              }
-                            }}
-                            placeholder="Nome do canal"
-                            style={{ fontWeight: 700, fontSize: '14px', flex: 1, padding: '6px 10px', background: 'var(--bg-primary)', borderRadius: '6px', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
-                          />
-
-                          {/* Reordering Up/Down controls */}
-                          <div style={{ display: 'flex', gap: '4px' }}>
-                            <button 
-                              type="button" 
-                              className="settings-channel-delete-btn" 
-                              onClick={() => moveChannel(ch.id, 'up')}
-                              disabled={idx === 0}
-                              style={{ opacity: idx === 0 ? 0.3 : 1 }}
-                              title="Mover para cima"
-                            >
-                              <ArrowUpIcon />
-                            </button>
-                            <button 
-                              type="button" 
-                              className="settings-channel-delete-btn" 
-                              onClick={() => moveChannel(ch.id, 'down')}
-                              disabled={idx === (spaceChannels[editingSpace.id] ?? []).length - 1}
-                              style={{ opacity: idx === (spaceChannels[editingSpace.id] ?? []).length - 1 ? 0.3 : 1 }}
-                              title="Mover para baixo"
-                            >
-                              <ArrowDownIcon />
-                            </button>
-                          </div>
-
-                          {ch.name !== 'Geral' ? (
-                            <button 
-                              type="button"
-                              className="settings-channel-delete-btn" 
-                              onClick={() => deleteChannel(ch.id)}
-                              title="Excluir Canal"
-                            >
-                              🗑️
-                            </button>
-                          ) : (
-                            <span className="default-channel-badge">Padrão</span>
-                          )}
-                        </div>
-
-                        {/* Additional Channel Options */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '14px', paddingLeft: '24px' }}>
-                          {/* Categoria */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <FolderIcon style={{ color: 'var(--text-muted)' }} />
-                            <input 
-                              type="text"
-                              defaultValue={ch.category || ''}
-                              onBlur={(e) => updateChannelSettings(ch.id, { category: e.target.value.trim() })}
-                              placeholder="Categoria (ex: Geral, Jogos)"
-                              style={{ fontSize: '11.5px', padding: '3px 8px', borderRadius: '6px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', width: '150px' }}
-                            />
-                          </div>
-
-                          {ch.type === 'text' && (
-                            <>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: '180px' }}>
-                                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Tópico:</span>
-                                <input 
-                                  type="text"
-                                  defaultValue={ch.topic || ''}
-                                  onBlur={(e) => updateChannelSettings(ch.id, { topic: e.target.value.trim() })}
-                                  placeholder="Descrição do canal..."
-                                  style={{
-                                    fontSize: '12px',
-                                    color: 'var(--text-secondary)',
-                                    background: 'var(--bg-primary)',
-                                    border: '1px solid var(--border-color)',
-                                    borderRadius: '6px',
-                                    padding: '4px 8px',
-                                    flex: 1,
-                                    outline: 'none'
-                                  }}
-                                />
+                  <div className="space-channels-compact-list">
+                    {(spaceChannels[editingSpace.id] ?? []).map((ch, idx) => {
+                      const isSettingsOpen = editingChannelSettingsId === ch.id
+                      return (
+                        <div key={ch.id} className="channel-compact-row-container">
+                          <div className="channel-compact-row">
+                            <div className="channel-compact-left">
+                              <div className="channel-compact-icon">
+                                {ch.is_announcement ? (
+                                  <MegaphoneIcon style={{ color: 'var(--accent-color)' }} />
+                                ) : ch.type === 'text' ? (
+                                  <HashtagIcon />
+                                ) : (
+                                  <VolumeIcon />
+                                )}
                               </div>
+                              <span className="channel-compact-name">{ch.name}</span>
+                              {ch.category && (
+                                <span className="channel-compact-category-pill">{ch.category}</span>
+                              )}
+                              {ch.name === 'Geral' && (
+                                <span className="default-channel-badge">Padrão</span>
+                              )}
+                              {ch.is_announcement && (
+                                <span className="channel-compact-meta-chip">📢 Anúncios</span>
+                              )}
+                              {ch.slowmode_seconds ? (
+                                <span className="channel-compact-meta-chip">⏱️ {ch.slowmode_seconds}s</span>
+                              ) : null}
+                              {ch.type === 'voice' && ch.user_limit ? (
+                                <span className="channel-compact-meta-chip">👥 Máx: {ch.user_limit}</span>
+                              ) : null}
+                            </div>
 
-                              {/* Modo Lento */}
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <ClockIcon style={{ width: '13px', height: '13px', color: 'var(--text-muted)' }} />
-                                <select 
-                                  value={ch.slowmode_seconds || 0}
-                                  onChange={(e) => updateChannelSettings(ch.id, { slowmode_seconds: parseInt(e.target.value, 10) })}
-                                  style={{ fontSize: '11.5px', padding: '3px 6px', borderRadius: '6px', background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
-                                  title="Intervalo de envio entre mensagens"
-                                >
-                                  <option value="0">Modo Lento: Off</option>
-                                  <option value="5">5 segundos</option>
-                                  <option value="10">10 segundos</option>
-                                  <option value="15">15 segundos</option>
-                                  <option value="30">30 segundos</option>
-                                  <option value="60">1 minuto</option>
-                                  <option value="120">2 minutos</option>
-                                  <option value="300">5 minutos</option>
-                                </select>
-                              </div>
-
-                              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                                <input 
-                                  type="checkbox" 
-                                  checked={!!ch.is_announcement} 
-                                  onChange={(e) => updateChannelSettings(ch.id, { is_announcement: e.target.checked })}
-                                />
-                                <span>📢 Somente Leitura (Anúncios)</span>
-                              </label>
-                            </>
-                          )}
-
-                          {ch.type === 'voice' && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Limite de Usuários:</span>
-                              <select 
-                                value={ch.user_limit || 0}
-                                onChange={(e) => updateChannelSettings(ch.id, { user_limit: parseInt(e.target.value, 10) })}
-                                style={{
-                                  fontSize: '12px',
-                                  padding: '4px 8px',
-                                  borderRadius: '6px',
-                                  background: 'var(--bg-primary)',
-                                  color: 'var(--text-primary)',
-                                  border: '1px solid var(--border-color)'
-                                }}
+                            <div className="channel-compact-actions">
+                              <button 
+                                type="button" 
+                                className="channel-compact-action-btn" 
+                                onClick={() => moveChannel(ch.id, 'up')}
+                                disabled={idx === 0}
+                                style={{ opacity: idx === 0 ? 0.3 : 1 }}
+                                title="Mover para cima"
                               >
-                                <option value="0">Ilimitado</option>
-                                <option value="2">2 usuários (Duplas)</option>
-                                <option value="4">4 usuários (Squad)</option>
-                                <option value="8">8 usuários</option>
-                                <option value="10">10 usuários</option>
-                                <option value="25">25 usuários</option>
-                              </select>
+                                <ArrowUpIcon style={{ width: '13px', height: '13px' }} />
+                              </button>
+                              <button 
+                                type="button" 
+                                className="channel-compact-action-btn" 
+                                onClick={() => moveChannel(ch.id, 'down')}
+                                disabled={idx === (spaceChannels[editingSpace.id] ?? []).length - 1}
+                                style={{ opacity: idx === (spaceChannels[editingSpace.id] ?? []).length - 1 ? 0.3 : 1 }}
+                                title="Mover para baixo"
+                              >
+                                <ArrowDownIcon style={{ width: '13px', height: '13px' }} />
+                              </button>
+                              <button 
+                                type="button" 
+                                className={`channel-compact-action-btn ${isSettingsOpen ? 'active' : ''}`}
+                                onClick={() => setEditingChannelSettingsId(isSettingsOpen ? null : ch.id)}
+                                title="Configurações do canal"
+                              >
+                                <SettingsIcon style={{ width: '13px', height: '13px' }} />
+                              </button>
+                              {ch.name !== 'Geral' && (
+                                <button 
+                                  type="button" 
+                                  className="channel-compact-action-btn danger" 
+                                  onClick={() => deleteChannel(ch.id)}
+                                  title="Excluir Canal"
+                                >
+                                  <TrashIcon style={{ width: '13px', height: '13px' }} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Gaveta Inline de Configurações Detalhadas */}
+                          {isSettingsOpen && (
+                            <div className="channel-inline-settings-card">
+                              <div className="channel-inline-settings-grid">
+                                <div>
+                                  <label className="channel-inline-label">Nome do Canal</label>
+                                  <input 
+                                    type="text" 
+                                    defaultValue={ch.name} 
+                                    onBlur={(e) => {
+                                      if (e.target.value.trim() && e.target.value.trim() !== ch.name) {
+                                        renameChannel(ch.id, e.target.value.trim())
+                                      }
+                                    }}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                                    placeholder="Nome do canal"
+                                    className="channel-inline-input"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="channel-inline-label">Categoria</label>
+                                  <input 
+                                    type="text"
+                                    defaultValue={ch.category || ''}
+                                    onBlur={(e) => updateChannelSettings(ch.id, { category: e.target.value.trim() })}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                                    placeholder="Ex: Geral, Jogos, Call"
+                                    className="channel-inline-input"
+                                  />
+                                </div>
+
+                                {ch.type === 'text' && (
+                                  <>
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                      <label className="channel-inline-label">Tópico / Descrição do Canal</label>
+                                      <input 
+                                        type="text"
+                                        defaultValue={ch.topic || ''}
+                                        onBlur={(e) => updateChannelSettings(ch.id, { topic: e.target.value.trim() })}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                                        placeholder="Regras ou propósito deste canal..."
+                                        className="channel-inline-input"
+                                      />
+                                    </div>
+
+                                    <div>
+                                      <label className="channel-inline-label">Modo Lento</label>
+                                      <select 
+                                        value={ch.slowmode_seconds || 0}
+                                        onChange={(e) => updateChannelSettings(ch.id, { slowmode_seconds: parseInt(e.target.value, 10) })}
+                                        className="channel-inline-select"
+                                      >
+                                        <option value="0">Desativado</option>
+                                        <option value="5">5 segundos</option>
+                                        <option value="10">10 segundos</option>
+                                        <option value="15">15 segundos</option>
+                                        <option value="30">30 segundos</option>
+                                        <option value="60">1 minuto</option>
+                                        <option value="120">2 minutos</option>
+                                        <option value="300">5 minutos</option>
+                                      </select>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '6px' }}>
+                                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                        <input 
+                                          type="checkbox" 
+                                          checked={!!ch.is_announcement} 
+                                          onChange={(e) => updateChannelSettings(ch.id, { is_announcement: e.target.checked })}
+                                        />
+                                        <span>📢 Somente Leitura (Anúncios)</span>
+                                      </label>
+                                    </div>
+                                  </>
+                                )}
+
+                                {ch.type === 'voice' && (
+                                  <div>
+                                    <label className="channel-inline-label">Limite de Usuários</label>
+                                    <select 
+                                      value={ch.user_limit || 0}
+                                      onChange={(e) => updateChannelSettings(ch.id, { user_limit: parseInt(e.target.value, 10) })}
+                                      className="channel-inline-select"
+                                    >
+                                      <option value="0">Ilimitado</option>
+                                      <option value="2">2 usuários (Duplas)</option>
+                                      <option value="4">4 usuários (Squad)</option>
+                                      <option value="8">8 usuários</option>
+                                      <option value="10">10 usuários</option>
+                                      <option value="25">25 usuários</option>
+                                    </select>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
-
-                  <form 
-                    onSubmit={async (e) => {
-                      e.preventDefault()
-                      await createChannel(e, editingSpace.id)
-                    }}
-                    className="settings-channel-create-full-form"
-                  >
-                    <h4>Criar Novo Canal</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <div className="create-channel-inline-row">
-                        <input 
-                          value={newChannelName}
-                          onChange={(e) => setNewChannelName(e.target.value)}
-                          placeholder="Nome do canal (ex: avisos, jogos)"
-                          required
-                          minLength={2}
-                          maxLength={60}
-                          style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1.5px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13.5px' }}
-                        />
-                        <select 
-                          value={newChannelType} 
-                          onChange={(e) => setNewChannelType(e.target.value as 'text' | 'voice')}
-                          className="channel-type-select"
-                        >
-                          <option value="text"># Canal de Texto</option>
-                          <option value="voice">🔊 Canal de Voz</option>
-                        </select>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <input 
-                          value={newChannelCategory}
-                          onChange={(e) => setNewChannelCategory(e.target.value)}
-                          placeholder="Categoria (ex: Bate-Papo, Jogos, Call)"
-                          maxLength={40}
-                          style={{ width: '220px', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-secondary)', fontSize: '12.5px' }}
-                        />
-
-                        {newChannelType === 'text' && (
-                          <>
-                            <input 
-                              value={newChannelTopic}
-                              onChange={(e) => setNewChannelTopic(e.target.value)}
-                              placeholder="Tópico / descrição do canal (opcional)"
-                              maxLength={120}
-                              style={{ flex: 1, minWidth: '180px', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-secondary)', fontSize: '12.5px' }}
-                            />
-
-                            <select 
-                              value={newChannelSlowmode}
-                              onChange={(e) => setNewChannelSlowmode(parseInt(e.target.value, 10))}
-                              style={{ padding: '8px 10px', borderRadius: '8px', background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', fontSize: '12px' }}
-                              title="Modo Lento"
-                            >
-                              <option value="0">Modo Lento: Off</option>
-                              <option value="5">5s de intervalo</option>
-                              <option value="10">10s de intervalo</option>
-                              <option value="30">30s de intervalo</option>
-                              <option value="60">1m de intervalo</option>
-                            </select>
-
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                              <input 
-                                type="checkbox" 
-                                checked={newChannelIsAnnouncement} 
-                                onChange={(e) => setNewChannelIsAnnouncement(e.target.checked)}
-                              />
-                              <span>📢 Anúncios</span>
-                            </label>
-                          </>
-                        )}
-
-                        {newChannelType === 'voice' && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Limite de Vagas:</span>
-                            <select 
-                              value={newChannelUserLimit}
-                              onChange={(e) => setNewChannelUserLimit(parseInt(e.target.value, 10))}
-                              style={{ padding: '6px 12px', borderRadius: '6px', background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', fontSize: '12px' }}
-                            >
-                              <option value="0">Ilimitado</option>
-                              <option value="2">2 participantes</option>
-                              <option value="4">4 participantes</option>
-                              <option value="8">8 participantes</option>
-                              <option value="10">10 participantes</option>
-                            </select>
-                          </div>
-                        )}
-                      </div>
-
-                      <button type="submit" className="add-space-card-btn" style={{ width: 'auto', alignSelf: 'flex-start', padding: '10px 24px', marginTop: '6px' }}>
-                        Criar Canal
-                      </button>
-                    </div>
-                  </form>
                 </div>
               )}
 
@@ -10121,8 +10322,8 @@ function Echo({ user }: { user: User }) {
               {activeSpaceTab === 'members' && (
                 <div className="space-settings-tab-pane">
                   <div className="space-settings-pane-header">
-                    <h2>Membros do Servidor</h2>
-                    <p>Total de {editingSpaceMembers.length} membro(s) cadastrados no servidor <strong>{editingSpace.name}</strong>.</p>
+                    <h2>Integrantes do Espaço</h2>
+                    <p>Total de {editingSpaceMembers.length} integrante(s) cadastrados no espaço <strong>{editingSpace.name}</strong>.</p>
                   </div>
 
                   <div className="members-search-wrapper">
@@ -10130,7 +10331,7 @@ function Echo({ user }: { user: User }) {
                       type="text"
                       value={memberSearchQuery}
                       onChange={(e) => setMemberSearchQuery(e.target.value)}
-                      placeholder="Buscar membros no servidor..."
+                      placeholder="Buscar integrantes no espaço..."
                       className="members-search-input"
                     />
                   </div>
@@ -10151,152 +10352,166 @@ function Echo({ user }: { user: User }) {
                           const assignedRoles = serverRoles.filter(r => assignedRoleIds.includes(r.id))
                           const canKick = (editingSpace.creator_id === user.id && !isOwner && !isSelf) || (canUserDo(editingSpace.id, user.id, 'kickMembers') && !isOwner && !isSelf)
 
+                          const isSelected = selectedMemberId === member.user?.id
+
                           return (
-                            <div key={member.user?.id} className="settings-member-item-full" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 16px', background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px solid var(--border-color)', marginBottom: '8px' }}>
-                              <div className="settings-member-avatar-full">
-                                {member.user?.avatar_url ? (
-                                  <img src={member.user.avatar_url} alt={member.user.display_name} />
-                                ) : (
-                                  <span>{(member.user?.display_name || '?')[0].toUpperCase()}</span>
-                                )}
-                              </div>
-                              
-                              <div className="settings-member-info-full" style={{ flex: 1 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <span className="settings-member-name-full" style={{ color: highestRole?.color || 'var(--text-primary)', fontWeight: 700, fontSize: '14px' }}>
-                                    {member.user?.display_name}
-                                  </span>
-                                  {isSelf && <span className="self-tag">(Você)</span>}
+                            <div key={member.user?.id} style={{ marginBottom: '8px' }}>
+                              <div 
+                                className={`settings-member-item-full ${isSelected ? 'selected' : ''}`}
+                                onClick={() => setSelectedMemberId(isSelected ? null : member.user?.id)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 16px', background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px solid var(--border-color)' }}
+                              >
+                                <div className="settings-member-avatar-full">
+                                  {member.user?.avatar_url ? (
+                                    <img src={member.user.avatar_url} alt={member.user.display_name} />
+                                  ) : (
+                                    <span>{(member.user?.display_name || '?')[0].toUpperCase()}</span>
+                                  )}
                                 </div>
-                                <span className="settings-member-joined" style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-                                  {member.joined_at ? `Entrou em ${new Date(member.joined_at).toLocaleDateString('pt-BR')}` : 'Membro'}
+                                
+                                <div className="settings-member-info-full" style={{ flex: 1 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="settings-member-name-full" style={{ color: highestRole?.color || 'var(--text-primary)', fontWeight: 700, fontSize: '14px' }}>
+                                      {member.user?.display_name}
+                                    </span>
+                                    {isSelf && <span className="self-tag">(Você)</span>}
+                                  </div>
+                                  <span className="settings-member-joined" style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                                    {member.joined_at ? `Entrou em ${new Date(member.joined_at).toLocaleDateString('pt-BR')}` : 'Membro'}
+                                  </span>
+                                </div>
+
+                                {/* Cargos Badges */}
+                                <div className="settings-member-role-badges" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                                  {isOwner && (
+                                    <span className="role-badge role-owner" style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', border: '1px solid rgba(234, 179, 8, 0.3)', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                      <CrownIcon /> Dono
+                                    </span>
+                                  )}
+
+                                  {assignedRoles.map(r => (
+                                    <span 
+                                      key={r.id}
+                                      style={{ 
+                                        background: `${r.color}22`, 
+                                        color: r.color, 
+                                        border: `1px solid ${r.color}66`, 
+                                        padding: '3px 8px', 
+                                        borderRadius: '6px', 
+                                        fontSize: '11px', 
+                                        fontWeight: 700, 
+                                        display: 'inline-flex', 
+                                        alignItems: 'center', 
+                                        gap: '4px' 
+                                      }}
+                                    >
+                                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: r.color }} />
+                                      {r.name}
+                                    </span>
+                                  ))}
+                                </div>
+
+                                <span className={`member-row-manage-pill ${isSelected ? 'active' : ''}`}>
+                                  {isSelected ? 'Gerenciando ▴' : 'Opções ▾'}
                                 </span>
                               </div>
 
-                              {/* Cargos Badges & Selector */}
-                              <div className="settings-member-role-badges" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                                {isOwner && (
-                                  <span className="role-badge role-owner" style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', border: '1px solid rgba(234, 179, 8, 0.3)', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                    <CrownIcon /> Dono
-                                  </span>
-                                )}
-
-                                {assignedRoles.map(r => (
-                                  <span 
-                                    key={r.id}
-                                    style={{ 
-                                      background: `${r.color}22`, 
-                                      color: r.color, 
-                                      border: `1px solid ${r.color}66`, 
-                                      padding: '3px 8px', 
-                                      borderRadius: '6px', 
-                                      fontSize: '11px', 
-                                      fontWeight: 700, 
-                                      display: 'inline-flex', 
-                                      alignItems: 'center', 
-                                      gap: '4px' 
-                                    }}
-                                  >
-                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: r.color }} />
-                                    {r.name}
-                                    {!isOwner && (
-                                      <button 
-                                        type="button" 
-                                        onClick={() => toggleMemberRole(member.user?.id, r.id, member.user?.display_name)}
-                                        style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '0 2px', fontSize: '10px' }}
-                                        title="Remover cargo"
-                                      >
-                                        ✕
-                                      </button>
-                                    )}
-                                  </span>
-                                ))}
-
-                                {/* Botão + Popover Moderno de Atribuir Cargo */}
-                                {!isOwner && (
-                                  <div className="member-role-popover-container">
+                              {/* Painel de Gestão do Integrante ao Clicar na Linha */}
+                              {isSelected && (
+                                <div className="member-management-panel" onClick={e => e.stopPropagation()}>
+                                  <div className="member-mgmt-header">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <span className="member-mgmt-title">Gerenciar {member.user?.display_name}</span>
+                                      {isSelf && <span className="self-tag">(Você)</span>}
+                                    </div>
                                     <button 
                                       type="button" 
-                                      className="member-add-role-btn"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        setAssigningRoleMemberId(assigningRoleMemberId === member.user?.id ? null : member.user?.id)
-                                      }}
-                                      title="Atribuir ou gerenciar cargos"
+                                      className="member-mgmt-close-btn"
+                                      onClick={() => setSelectedMemberId(null)}
+                                      title="Fechar opções"
                                     >
-                                      <PlusIcon style={{ width: '12px', height: '12px' }} />
-                                      <span>Cargo</span>
+                                      ✕ Fechar
                                     </button>
-
-                                    {assigningRoleMemberId === member.user?.id && (
-                                      <>
-                                        <div 
-                                          style={{ position: 'fixed', inset: 0, zIndex: 199 }} 
-                                          onClick={() => setAssigningRoleMemberId(null)} 
-                                        />
-                                        <div className="member-roles-popover" onClick={(e) => e.stopPropagation()}>
-                                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', padding: '4px 8px 6px', letterSpacing: '0.5px' }}>
-                                            Cargos do Servidor
-                                          </div>
-                                          {serverRoles.filter(r => r.id !== 'role-owner').length === 0 ? (
-                                            <div style={{ padding: '8px', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                                              Nenhum cargo criado
-                                            </div>
-                                          ) : (
-                                            serverRoles.filter(r => r.id !== 'role-owner').map(r => {
-                                              const isAssigned = assignedRoleIds.includes(r.id)
-                                              return (
-                                                <button
-                                                  key={r.id}
-                                                  type="button"
-                                                  className={`member-roles-popover-item ${isAssigned ? 'assigned' : ''}`}
-                                                  onClick={() => toggleMemberRole(member.user?.id, r.id, member.user?.display_name)}
-                                                >
-                                                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: r.color, flexShrink: 0 }} />
-                                                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                    {r.name}
-                                                  </span>
-                                                  {isAssigned && <CheckIcon style={{ width: '13px', height: '13px', color: 'var(--accent-color)', flexShrink: 0 }} />}
-                                                </button>
-                                              )
-                                            })
-                                          )}
-
-                                          {editingSpace.creator_id === user.id && (
-                                            <>
-                                              <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '4px 0' }} />
-                                              <button
-                                                type="button"
-                                                className="member-roles-popover-item"
-                                                style={{ color: '#eab308' }}
-                                                onClick={() => {
-                                                  handleRoleChange(member.user?.id, 'owner', member.user?.display_name)
-                                                  setAssigningRoleMemberId(null)
-                                                }}
-                                              >
-                                                <CrownIcon style={{ width: '13px', height: '13px', color: '#eab308' }} />
-                                                <span>Transferir Posse</span>
-                                              </button>
-                                            </>
-                                          )}
-                                        </div>
-                                      </>
-                                    )}
                                   </div>
-                                )}
-                              </div>
 
-                              {canKick && (
-                                <button 
-                                  type="button" 
-                                  className="settings-member-kick-btn"
-                                  onClick={() => handleKickMember(member.user?.id, member.user?.display_name)}
-                                  title={`Expulsar ${member.user?.display_name} do servidor`}
-                                  style={{ padding: '6px 12px', fontSize: '12px' }}
-                                >
-                                  <UserMinusIcon />
-                                  <span>Expulsar</span>
-                                </button>
+                                  {/* Atribuição de Cargos do Espaço */}
+                                  <div className="member-mgmt-section">
+                                    <label className="member-mgmt-label">Cargos do Espaço</label>
+                                    <div className="member-mgmt-roles-grid">
+                                      {serverRoles.filter(r => r.id !== 'role-owner').map(r => {
+                                        const hasRole = assignedRoleIds.includes(r.id)
+                                        return (
+                                          <button
+                                            key={r.id}
+                                            type="button"
+                                            className={`member-mgmt-role-pill ${hasRole ? 'active' : ''}`}
+                                            style={{
+                                              borderColor: hasRole ? r.color : 'var(--border-color)',
+                                              color: hasRole ? r.color : 'var(--text-secondary)',
+                                              background: hasRole ? `${r.color}22` : 'rgba(255, 255, 255, 0.04)'
+                                            }}
+                                            onClick={() => toggleMemberRole(member.user?.id, r.id, member.user?.display_name)}
+                                          >
+                                            <span className="role-pill-check">{hasRole ? '✓' : '＋'}</span>
+                                            <span className="role-pill-dot" style={{ background: r.color }} />
+                                            <span>{r.name}</span>
+                                          </button>
+                                        )
+                                      })}
+                                      {serverRoles.filter(r => r.id !== 'role-owner').length === 0 && (
+                                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Nenhum cargo personalizado criado neste espaço.</span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Permissão Básica / Moderação */}
+                                  <div className="member-mgmt-section">
+                                    <label className="member-mgmt-label">Cargo Básico</label>
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                      <button
+                                        type="button"
+                                        className={`member-mgmt-role-pill ${member.role === 'member' && !isOwner ? 'active' : ''}`}
+                                        onClick={() => handleRoleChange(member.user?.id, 'member', member.user?.display_name)}
+                                        disabled={isOwner}
+                                      >
+                                        <span>Membro</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={`member-mgmt-role-pill ${member.role === 'moderator' ? 'active' : ''}`}
+                                        onClick={() => handleRoleChange(member.user?.id, 'moderator', member.user?.display_name)}
+                                        disabled={isOwner}
+                                      >
+                                        <span>Moderador</span>
+                                      </button>
+
+                                      {editingSpace.creator_id === user.id && !isOwner && (
+                                        <button
+                                          type="button"
+                                          className="member-mgmt-role-pill"
+                                          style={{ color: '#eab308', borderColor: 'rgba(234, 179, 8, 0.4)' }}
+                                          onClick={() => handleRoleChange(member.user?.id, 'owner', member.user?.display_name)}
+                                        >
+                                          <span>👑 Transferir Posse</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Zona de Moderação / Expulsar */}
+                                  {canKick && (
+                                    <div className="member-mgmt-danger-zone">
+                                      <button 
+                                        type="button" 
+                                        className="member-mgmt-kick-btn"
+                                        onClick={() => handleKickMember(member.user?.id, member.user?.display_name)}
+                                      >
+                                        <UserMinusIcon style={{ width: '14px', height: '14px' }} />
+                                        <span>Expulsar {member.user?.display_name} do Espaço</span>
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                               )}
                             </div>
                           )
@@ -10315,15 +10530,15 @@ function Echo({ user }: { user: User }) {
               {activeSpaceTab === 'audit' && (
                 <div className="space-settings-tab-pane">
                   <div className="space-settings-pane-header">
-                    <h2>Registro de Auditoria do Servidor</h2>
-                    <p>Histórico cronológico em tempo real de eventos de moderação e alterações realizadas no servidor.</p>
+                    <h2>Registro de Ações do Espaço</h2>
+                    <p>Histórico cronológico em tempo real de eventos de moderação e alterações realizadas no espaço.</p>
                   </div>
 
                   <div className="audit-logs-container" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
                     {serverAuditLogs.length === 0 ? (
                       <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                         <FileTextIcon style={{ width: '32px', height: '32px', margin: '0 auto 12px auto', opacity: 0.5 }} />
-                        <p style={{ margin: 0, fontSize: '14px' }}>Nenhum evento registrado recentemente neste servidor.</p>
+                        <p style={{ margin: 0, fontSize: '14px' }}>Nenhum evento registrado recentemente neste espaço.</p>
                       </div>
                     ) : (
                       serverAuditLogs.map(log => (
@@ -10355,8 +10570,8 @@ function Echo({ user }: { user: User }) {
               {activeSpaceTab === 'invites' && (
                 <div className="space-settings-tab-pane">
                   <div className="space-settings-pane-header">
-                    <h2>Convites do Servidor</h2>
-                    <p>Compartilhe o código abaixo para que seus amigos possam entrar no seu servidor.</p>
+                    <h2>Convites do Espaço</h2>
+                    <p>Compartilhe o código abaixo para que seus amigos possam entrar no seu espaço.</p>
                   </div>
 
                   <div className="invites-card-container">
@@ -10388,7 +10603,7 @@ function Echo({ user }: { user: User }) {
                       type="button" 
                       className="invite-message-btn"
                       onClick={() => {
-                        const inviteMsg = `Venha participar do meu servidor "${editingSpace.name}" no Echo! Use o código: ${editingSpace.id}`
+                        const inviteMsg = `Venha participar do meu espaço "${editingSpace.name}" no Echo! Use o código: ${editingSpace.id}`
                         copyToClipboard(inviteMsg)
                         showToast("Mensagem Copiada!", "Texto de convite copiado para a área de transferência.", "info")
                       }}
@@ -10399,25 +10614,25 @@ function Echo({ user }: { user: User }) {
                     <div className="invite-help-box">
                       <span style={{ fontSize: '16px' }}>💡</span>
                       <p>
-                        <strong>Como funciona:</strong> Qualquer amigo pode abrir o Echo, clicar no botão <strong>+</strong> na aba Servidores, escolher "Entrar em um servidor" e colar esse código para entrar imediatamente.
+                        <strong>Como funciona:</strong> Qualquer amigo pode abrir o Echo, clicar no botão <strong>+</strong> no topo, escolher "Entrar em um espaço" e colar esse código para entrar imediatamente.
                       </p>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* ABA 7: ZONA DE PERIGO */}
+              {/* ABA 7: ZONA DE GESTÃO / PERIGO */}
               {activeSpaceTab === 'danger' && (
                 <div className="space-settings-tab-pane">
                   <div className="space-settings-pane-header">
-                    <h2 style={{ color: '#e0554c' }}>Zona de Perigo</h2>
-                    <p>Ações irreversíveis para este servidor.</p>
+                    <h2 style={{ color: '#e0554c' }}>Encerrar Espaço</h2>
+                    <p>Ações irreversíveis para este espaço e comunidade.</p>
                   </div>
 
                   <div className="danger-zone-full">
                     <div className="danger-zone-header">
-                      <h3>Excluir Servidor</h3>
-                      <p>Ao excluir este servidor, todos os canais, mensagens e participantes associados a ele serão deletados permanentemente. Esta ação não pode ser desfeita.</p>
+                      <h3>Encerrar Espaço Definitivamente</h3>
+                      <p>Ao encerrar este espaço, todos os canais, mensagens, cargos e participantes associados a ele serão deletados permanentemente. Esta ação não pode ser desfeita.</p>
                     </div>
                     <button 
                       type="button" 
@@ -10425,26 +10640,13 @@ function Echo({ user }: { user: User }) {
                       style={{ width: 'auto', padding: '12px 24px', fontWeight: 'bold', fontSize: '14px' }} 
                       onClick={handleDeleteSpace}
                     >
-                      Excluir Servidor Permanentemente
+                      Encerrar Espaço Permanentemente
                     </button>
                   </div>
                 </div>
               )}
             </div>
-
-            {/* Discord Close / ESC Button */}
-            <div className="space-settings-esc-container">
-              <button 
-                type="button" 
-                className="space-settings-esc-btn" 
-                onClick={() => setShowSpaceSettingsModal(false)}
-                title="Fechar (Esc)"
-              >
-                ✕
-              </button>
-              <span className="space-settings-esc-text">ESC</span>
-            </div>
-          </main>
+          </div>
         </div>
       )}
 
@@ -11978,7 +12180,7 @@ function FriendsView({
               <div style={{ marginTop: '10px' }}>
                 <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <UsersIcon style={{ width: '15px', height: '15px', color: 'var(--accent-color)' }} />
-                  <span>Sugestões de Jogadores dos seus Servidores</span>
+                  <span>Sugestões de Jogadores dos seus Espaços</span>
                 </h4>
                 <div className="friend-suggestions-grid">
                   {suggestedMembers.map(m => (
@@ -12326,11 +12528,11 @@ function SettingsView({
   const badgesList = [
     { 
       id: 'owner', 
-      label: 'Líder de Servidor', 
+      label: 'Líder de Espaço', 
       icon: <BadgeCrownIcon />, 
       unlocked: Boolean(isServerOwner) || devUnlockBadges,
-      requirement: 'Requer ser proprietário/criador de servidor',
-      desc: 'Fundadores de comunidade e construtores de servidores no Echo' 
+      requirement: 'Requer ser proprietário/criador de espaço',
+      desc: 'Fundadores de comunidade e construtores de espaços no Echo' 
     },
     { 
       id: 'vip', 
@@ -12671,7 +12873,7 @@ function SettingsView({
               type="button" 
               onClick={() => setPage('Servidores')} 
               style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-color)', borderRadius: '8px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.15s ease' }}
-              title="Voltar para os servidores"
+              title="Voltar para os espaços"
             >
               ✕
             </button>
@@ -12877,7 +13079,7 @@ function SettingsView({
                     <div className="echo-hero-prestige-block">
                       {localShowBadge && localBadge !== 'none' && (
                         <div className={`echo-prestige-badge badge-${localBadge}`}>
-                          {localBadge === 'owner' && <><BadgeCrownIcon style={{ width: '15px', height: '15px' }} /> <span>Líder de Servidor</span></>}
+                          {localBadge === 'owner' && <><BadgeCrownIcon style={{ width: '15px', height: '15px' }} /> <span>Líder de Espaço</span></>}
                           {localBadge === 'vip' && <><BadgeVipIcon style={{ width: '15px', height: '15px' }} /> <span>Echo VIP</span></>}
                           {localBadge === 'early' && <><BadgeFounderIcon style={{ width: '15px', height: '15px' }} /> <span>Fundador 2026</span></>}
                           {localBadge === 'gamer' && <><BadgeVeteranIcon style={{ width: '15px', height: '15px' }} /> <span>Membro Veterano</span></>}

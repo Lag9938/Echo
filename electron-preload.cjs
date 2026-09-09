@@ -40,5 +40,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Auto-start with Windows (Startup) API
   getAutoStartSettings: () => ipcRenderer.invoke('get-autostart-settings'),
-  setAutoStartSettings: (settings) => ipcRenderer.invoke('set-autostart-settings', settings)
+  setAutoStartSettings: (settings) => ipcRenderer.invoke('set-autostart-settings', settings),
+
+  // Window Management API (Custom Controls)
+  minimizeWindow: () => ipcRenderer.invoke('window-minimize'),
+  maximizeWindow: () => ipcRenderer.invoke('window-maximize'),
+  closeWindow: () => ipcRenderer.invoke('window-close'),
+  isMaximized: () => ipcRenderer.invoke('window-is-maximized')
 })
