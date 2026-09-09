@@ -59,6 +59,9 @@ namespace AudioCaptureHelper
         private static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
 
         [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
         private static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
 
         private const int SW_RESTORE = 9;
@@ -235,8 +238,148 @@ namespace AudioCaptureHelper
             Console.WriteLine(json);
         }
 
+        private static void GetActiveGameJson()
+        {
+            try
+            {
+                IntPtr fgHwnd = GetForegroundWindow();
+                string fgProcess = "";
+                string fgTitle = "";
+                uint fgPid = 0;
+
+                if (fgHwnd != IntPtr.Zero && IsWindowVisible(fgHwnd) && !IsIconic(fgHwnd))
+                {
+                    GetWindowThreadProcessId(fgHwnd, out fgPid);
+                    if (fgPid != 0)
+                    {
+                        IntPtr hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, fgPid);
+                        if (hProcess != IntPtr.Zero)
+                        {
+                            try
+                            {
+                                var exeSb = new System.Text.StringBuilder(1024);
+                                int size = exeSb.Capacity;
+                                if (QueryFullProcessImageName(hProcess, 0, exeSb, ref size))
+                                {
+                                    fgProcess = System.IO.Path.GetFileNameWithoutExtension(exeSb.ToString());
+                                }
+                            }
+                            finally
+                            {
+                                CloseHandle(hProcess);
+                            }
+                        }
+
+                        if (string.IsNullOrEmpty(fgProcess))
+                        {
+                            try
+                            {
+                                using (var p = System.Diagnostics.Process.GetProcessById((int)fgPid))
+                                {
+                                    fgProcess = p.ProcessName;
+                                }
+                            }
+                            catch {}
+                        }
+
+                        var titleSb = new System.Text.StringBuilder(512);
+                        GetWindowText(fgHwnd, titleSb, 512);
+                        fgTitle = titleSb.ToString().Trim();
+                    }
+                }
+
+                var visibleWindows = new System.Collections.Generic.List<object>();
+                EnumWindows((hWnd, lParam) =>
+                {
+                    try
+                    {
+                        if (!IsWindowVisible(hWnd) || IsIconic(hWnd)) return true;
+
+                        if (!GetWindowRect(hWnd, out RECT rect)) return true;
+                        int width = rect.Right - rect.Left;
+                        int height = rect.Bottom - rect.Top;
+                        if (width < 200 || height < 200) return true;
+
+                        GetWindowThreadProcessId(hWnd, out uint pid);
+                        if (pid == 0) return true;
+
+                        string procName = "";
+                        IntPtr hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+                        if (hProc != IntPtr.Zero)
+                        {
+                            try
+                            {
+                                var sb = new System.Text.StringBuilder(1024);
+                                int sz = sb.Capacity;
+                                if (QueryFullProcessImageName(hProc, 0, sb, ref sz))
+                                {
+                                    procName = System.IO.Path.GetFileNameWithoutExtension(sb.ToString());
+                                }
+                            }
+                            finally
+                            {
+                                CloseHandle(hProc);
+                            }
+                        }
+
+                        if (string.IsNullOrEmpty(procName))
+                        {
+                            try
+                            {
+                                using (var p = System.Diagnostics.Process.GetProcessById((int)pid))
+                                {
+                                    procName = p.ProcessName;
+                                }
+                            }
+                            catch {}
+                        }
+
+                        if (!string.IsNullOrEmpty(procName))
+                        {
+                            var tSb = new System.Text.StringBuilder(512);
+                            GetWindowText(hWnd, tSb, 512);
+                            string t = tSb.ToString().Trim();
+
+                            visibleWindows.Add(new
+                            {
+                                processName = procName,
+                                title = t,
+                                pid = pid,
+                                isForeground = (hWnd == fgHwnd)
+                            });
+                        }
+                    }
+                    catch {}
+                    return true;
+                }, IntPtr.Zero);
+
+                var result = new
+                {
+                    foreground = new
+                    {
+                        processName = fgProcess,
+                        title = fgTitle,
+                        pid = fgPid
+                    },
+                    windows = visibleWindows
+                };
+
+                Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(result));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(new { error = ex.Message }));
+            }
+        }
+
         static async Task Main(string[] args)
         {
+            if (args.Length >= 1 && args[0] == "--get-active-game")
+            {
+                GetActiveGameJson();
+                return;
+            }
+
             if (args.Length >= 1 && args[0] == "--list-windows")
             {
                 ListWindowsJson();

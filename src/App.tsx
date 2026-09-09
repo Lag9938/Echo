@@ -46,6 +46,7 @@ export interface ServerRole {
   color: string;
   position: number;
   permissions: RolePermissions;
+  isDefault?: boolean;
 }
 
 export interface ServerAuditLog {
@@ -341,22 +342,6 @@ function FullscreenIcon({ className }: { className?: string }) {
   )
 }
 
-function SunIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="4"/>
-      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
-    </svg>
-  )
-}
-
-function MoonIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
-    </svg>
-  )
-}
 
 function SettingsIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
@@ -1031,11 +1016,11 @@ interface UnifiedUserProfileFooterProps {
   showStatusMenu?: boolean
   setShowStatusMenu?: (show: any) => void
   updatePresenceStatus: (status: 'online' | 'idle' | 'dnd' | 'invisible') => void
-  theme: string
-  toggleTheme: () => void
+  theme?: string
+  toggleTheme?: () => void
   onOpenSettings?: () => void
   onOpenWhatsNew?: () => void
-  onSignOut: () => void
+  onSignOut?: () => void
   myGamePresence?: { name: string; icon?: string } | null
   avatarDecoration?: string | null
 }
@@ -1047,11 +1032,8 @@ function UnifiedUserProfileFooter({
   showStatusMenu,
   setShowStatusMenu,
   updatePresenceStatus,
-  theme,
-  toggleTheme,
   onOpenSettings,
   onOpenWhatsNew,
-  onSignOut,
   myGamePresence,
   avatarDecoration
 }: UnifiedUserProfileFooterProps) {
@@ -1077,21 +1059,14 @@ function UnifiedUserProfileFooter({
             </div>
             <div className="profile-footer-meta">
               <span className="profile-footer-name" title={displayName}>{displayName}</span>
-              {myGamePresence && presenceStatus !== 'invisible' ? (
-                <span className="profile-footer-status game" title={`Jogando ${myGamePresence.name}`}>
-                  <span className="game-status-icon">{myGamePresence.icon || '🎮'}</span>
-                  <span className="game-status-text">Jogando {myGamePresence.name}</span>
+              <span className="profile-footer-status">
+                <span>
+                  {presenceStatus === 'idle' ? 'Ausente' :
+                   presenceStatus === 'dnd' ? 'Não Perturbe' :
+                   presenceStatus === 'invisible' ? 'Invisível' :
+                   'Disponível'}
                 </span>
-              ) : (
-                <span className="profile-footer-status">
-                  <span>
-                    {presenceStatus === 'idle' ? 'Ausente' :
-                     presenceStatus === 'dnd' ? 'Não Perturbe' :
-                     presenceStatus === 'invisible' ? 'Invisível' :
-                     'Disponível'}
-                  </span>
-                </span>
-              )}
+              </span>
             </div>
 
             {showStatusMenu && (
@@ -1129,9 +1104,6 @@ function UnifiedUserProfileFooter({
           </div>
 
           <div className="profile-footer-actions">
-            <button type="button" className="profile-footer-btn" onClick={toggleTheme} title="Alternar tema">
-              {theme === 'light' ? <MoonIcon /> : <SunIcon />}
-            </button>
             {onOpenWhatsNew && (
               <button type="button" className="profile-footer-btn" onClick={onOpenWhatsNew} title="Novidades & Versões">
                 <SparklesIcon style={{ width: '13px', height: '13px', color: '#facc15' }} />
@@ -1142,11 +1114,17 @@ function UnifiedUserProfileFooter({
                 <SettingsIcon />
               </button>
             )}
-            <button type="button" className="profile-footer-btn logout" onClick={onSignOut} title="Sair da conta">
-              <LogOutIcon />
-            </button>
           </div>
         </div>
+
+        {myGamePresence && presenceStatus !== 'invisible' && (
+          <div className="profile-footer-activity-row" title={`Jogando ${myGamePresence.name}`}>
+            <span className="game-presence-badge">
+              <span className="game-presence-icon">{myGamePresence.icon || '🎮'}</span>
+              <span className="game-presence-text">Jogando {myGamePresence.name}</span>
+            </span>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -2253,6 +2231,7 @@ function Echo({ user }: { user: User }) {
 
   // Voice disconnect handler (chamado apenas quando a conexão for realmente perdida pelo SFU/rede)
   const handleVoiceDisconnected = useCallback(() => {
+    playLeaveSound(sfxVolume)
     setActiveVoiceChannelId(prevChId => {
       if (prevChId && user?.id) {
         setSpaceVoiceUsers(prev => {
@@ -2265,7 +2244,7 @@ function Echo({ user }: { user: User }) {
       }
       return null
     })
-  }, [user?.id])
+  }, [user?.id, sfxVolume])
 
   // Voice hook and state
   const { 
@@ -2302,7 +2281,10 @@ function Echo({ user }: { user: User }) {
     toggleAiDenoise,
     updateScreenSubscriptions,
     updateLocalProfile
-  } = useVoiceChannel({ onDisconnected: handleVoiceDisconnected })
+  } = useVoiceChannel({ 
+    onDisconnected: handleVoiceDisconnected,
+    sfxVolume
+  })
 
   // Soundboard & WhatsNew Modals
   const [showSoundboardModal, setShowSoundboardModal] = useState(false)
@@ -2382,6 +2364,21 @@ function Echo({ user }: { user: User }) {
     if ((window as any).electronAPI?.onGameDetected) {
       (window as any).electronAPI.onGameDetected((game: any) => {
         setMyGamePresence(game)
+      })
+    }
+  }, [])
+
+  // Deep Link: Join space via echo://invite/... or link
+  useEffect(() => {
+    if ((window as any).electronAPI?.onDeepLinkInvite) {
+      (window as any).electronAPI.onDeepLinkInvite((url: string) => {
+        if (!url) return
+        const match = url.match(/(?:invite\/|^)([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
+        if (match && match[1]) {
+          setJoinSpaceCode(match[1])
+          setAddSpaceModalTab('join')
+          setShowAddSpaceModal(true)
+        }
       })
     }
   }, [])
@@ -3286,7 +3283,8 @@ function Echo({ user }: { user: User }) {
             name: r.name,
             color: r.color,
             position: r.position,
-            permissions: r.permissions || {}
+            permissions: r.permissions || {},
+            isDefault: !!(r.is_default || r.isDefault)
           }))
           setServerRoles(dbRoles)
           rolesMap[spaceId] = dbRoles
@@ -3310,7 +3308,8 @@ function Echo({ user }: { user: User }) {
                 kickMembers: true,
                 muteMembers: true,
                 sendInAnnouncementChannels: true
-              }
+              },
+              is_default: false
             },
             {
               space_id: spaceId,
@@ -3323,7 +3322,8 @@ function Echo({ user }: { user: User }) {
                 kickMembers: true,
                 muteMembers: true,
                 sendInAnnouncementChannels: true
-              }
+              },
+              is_default: false
             },
             {
               space_id: spaceId,
@@ -3332,7 +3332,8 @@ function Echo({ user }: { user: User }) {
               position: 2,
               permissions: {
                 sendInAnnouncementChannels: false
-              }
+              },
+              is_default: true
             }
           ]
 
@@ -3347,7 +3348,8 @@ function Echo({ user }: { user: User }) {
               name: r.name,
               color: r.color,
               position: r.position,
-              permissions: r.permissions || {}
+              permissions: r.permissions || {},
+              isDefault: !!(r.is_default || r.isDefault)
             }))
             setServerRoles(formatted)
             rolesMap[spaceId] = formatted
@@ -3516,7 +3518,10 @@ function Echo({ user }: { user: User }) {
 
   async function handleUpdateRole(roleId: string, updates: Partial<ServerRole>) {
     if (!editingSpace) return
-    const updated = serverRoles.map(r => r.id === roleId ? { ...r, ...updates } : r)
+    let updated = serverRoles.map(r => r.id === roleId ? { ...r, ...updates } : r)
+    if (updates.isDefault) {
+      updated = updated.map(r => r.id === roleId ? { ...r, isDefault: true } : { ...r, isDefault: false })
+    }
     saveRolesForSpace(editingSpace.id, updated)
 
     if (supabase && !roleId.startsWith('role-')) {
@@ -3526,6 +3531,12 @@ function Echo({ user }: { user: User }) {
         if (updates.color !== undefined) dbPayload.color = updates.color
         if (updates.position !== undefined) dbPayload.position = updates.position
         if (updates.permissions !== undefined) dbPayload.permissions = updates.permissions
+        if (updates.isDefault !== undefined) {
+          if (updates.isDefault) {
+            await supabase.from('space_roles').update({ is_default: false }).eq('space_id', editingSpace.id)
+          }
+          dbPayload.is_default = updates.isDefault
+        }
         await supabase
           .from('space_roles')
           .update(dbPayload)
@@ -5425,12 +5436,14 @@ function Echo({ user }: { user: User }) {
           setActiveDirectCall(prev => prev ? { ...prev, status: 'connected', startTime: Date.now() } : null)
           showToast('Chamada atendida!', `A chamada foi conectada!`, 'friend')
         } else if (data.type === 'call-rejected' && data.callerId === user.id) {
+          playLeaveSound(sfxVolume)
           stopRingtone()
           leaveVoice()
           setActiveDirectCall(null)
           setActiveVoiceChannelId(null)
           showToast('Chamada recusada', 'O usuário não pôde atender no momento.', 'info')
         } else if (data.type === 'call-ended' && data.targetUserId === user.id) {
+          playLeaveSound(sfxVolume)
           stopRingtone()
           leaveVoice()
           setActiveDirectCall(null)
@@ -5471,7 +5484,13 @@ function Echo({ user }: { user: User }) {
   async function joinSpace(event: FormEvent) {
     event.preventDefault(); if (!supabase || !joinSpaceCode.trim()) return
     setJoining(true); setError('')
-    const code = joinSpaceCode.trim()
+    let code = joinSpaceCode.trim()
+    
+    // Suporta links como https://echo.chat/invite/{id}, echo://invite/{id} ou UUID puro
+    const urlMatch = code.match(/(?:invite\/|^)([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
+    if (urlMatch && urlMatch[1]) {
+      code = urlMatch[1]
+    }
     
     try {
       const { data: space, error: spaceError } = await supabase
@@ -5481,7 +5500,7 @@ function Echo({ user }: { user: User }) {
         .single()
         
       if (spaceError || !space) {
-        setError('Código de convite inválido ou espaço não encontrado.')
+        setError('Link de convite inválido ou espaço não encontrado.')
         setJoining(false)
         return
       }
@@ -5508,12 +5527,33 @@ function Echo({ user }: { user: User }) {
         setJoining(false)
         return
       }
+
+      // Atribuição automática do Cargo Padrão do Espaço para novos membros
+      try {
+        const { data: defaultRoles } = await supabase
+          .from('space_roles')
+          .select('id')
+          .eq('space_id', space.id)
+          .eq('is_default', true)
+          .limit(1)
+
+        if (defaultRoles && defaultRoles.length > 0) {
+          await supabase.from('space_member_roles').insert({
+            space_id: space.id,
+            user_id: user.id,
+            role_id: defaultRoles[0].id
+          })
+        }
+      } catch (errDefault) {
+        console.warn('Erro ao atribuir cargo padrão ao novo membro:', errDefault)
+      }
       
       setJoinSpaceCode('')
       setJoining(false)
       await loadSpaces()
       setExpandedSpace(space.id)
       await loadChannelsForSpace(space.id)
+      showToast("Bem-vindo!", `Você entrou no espaço "${space.name}".`, "info")
     } catch (err: any) {
       setError(err.message || 'Erro ao entrar no espaço.')
       setJoining(false)
@@ -6357,11 +6397,16 @@ function Echo({ user }: { user: User }) {
                               <ScreenIcon style={{ width: '13px', height: '13px' }} />
                             </span>
                           )}
-                          {p.isDeafened ? (
-                            <span title="Ensurdecido" style={{ color: '#e0554c', display: 'inline-flex' }}><HeadphonesOffIcon style={{ width: '13px', height: '13px' }} /></span>
-                          ) : p.isMuted ? (
-                            <span title="Mutado" style={{ color: '#e0554c', display: 'inline-flex' }}><MicOffIcon style={{ width: '13px', height: '13px' }} /></span>
-                          ) : null}
+                          {p.isMuted && (
+                            <span title="Microfone Silenciado" style={{ color: '#e0554c', display: 'inline-flex', alignItems: 'center' }}>
+                              <MicOffIcon style={{ width: '13px', height: '13px' }} />
+                            </span>
+                          )}
+                          {p.isDeafened && (
+                            <span title="Áudio Silenciado (Ensurdecido)" style={{ color: '#e0554c', display: 'inline-flex', alignItems: 'center' }}>
+                              <HeadphonesOffIcon style={{ width: '13px', height: '13px' }} />
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -6403,13 +6448,18 @@ function Echo({ user }: { user: User }) {
                       <div className="server-hub-title-row">
                         <span className="server-hub-title">{activeSpace.name}</span>
                         {activeSpace.creator_id === user.id && (
-                          <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--accent-color)' }}>👑 Dono</span>
+                          <span className="server-owner-chip">👑 Dono</span>
                         )}
                       </div>
                       <div className="server-hub-meta-stats">
-                        <span>💬 {channels.length} canais</span>
-                        <span>•</span>
-                        <span>👥 {spaceMembers.length} membros</span>
+                        <span className="server-stat-chip channels" title={`${channels.length} canais neste espaço`}>
+                          <HashtagIcon style={{ width: '12px', height: '12px' }} />
+                          <span><strong>{channels.length}</strong> canais</span>
+                        </span>
+                        <span className="server-stat-chip members" title={`${spaceMembers.length} membros neste espaço`}>
+                          <UsersIcon style={{ width: '12px', height: '12px' }} />
+                          <span><strong>{spaceMembers.length}</strong> membros</span>
+                        </span>
                       </div>
                     </div>
 
@@ -6418,7 +6468,7 @@ function Echo({ user }: { user: User }) {
                       className="server-dropdown-item" 
                       onClick={() => { setShowServerDropdown(false); openSpaceSettings(activeSpace); }}
                     >
-                      <SettingsIcon />
+                      <SettingsIcon style={{ width: '15px', height: '15px', color: '#94a3b8' }} />
                       <span>Configurações do Espaço</span>
                     </button>
                     <button 
@@ -6426,7 +6476,7 @@ function Echo({ user }: { user: User }) {
                       className="server-dropdown-item" 
                       onClick={() => { setShowServerDropdown(false); setShowNewChannel(activeSpace.id); setNewChannelCategory(''); }}
                     >
-                      <PlusIcon />
+                      <PlusIcon style={{ width: '15px', height: '15px', color: '#38bdf8' }} />
                       <span>Novo Canal</span>
                     </button>
                     <button 
@@ -6434,12 +6484,13 @@ function Echo({ user }: { user: User }) {
                       className="server-dropdown-item" 
                       onClick={() => {
                         setShowServerDropdown(false)
-                        copyToClipboard(activeSpace.id)
-                        showToast("Convite Copiado!", `Código do espaço "${activeSpace.name}" copiado para a área de transferência.`, 'info')
+                        const inviteLink = `https://echo.chat/invite/${activeSpace.id}`
+                        copyToClipboard(inviteLink)
+                        showToast("Link Copiado!", `Link de convite do espaço "${activeSpace.name}" copiado para a área de transferência.`, 'info')
                       }}
                     >
-                      <LinkIcon />
-                      <span>Compartilhar Convite</span>
+                      <LinkIcon style={{ width: '15px', height: '15px', color: '#10b981' }} />
+                      <span>Compartilhar Link de Convite</span>
                     </button>
                     <div className="server-dropdown-divider" />
                     <button 
@@ -8126,17 +8177,20 @@ function Echo({ user }: { user: User }) {
                                             bottom: '-4px',
                                             right: '-4px',
                                             background: '#e0554c',
-                                            borderRadius: '50%',
-                                            width: '24px',
+                                            borderRadius: p.isDeafened && p.isMuted ? '12px' : '50%',
+                                            width: p.isDeafened && p.isMuted ? 'auto' : '24px',
+                                            padding: p.isDeafened && p.isMuted ? '2px 6px' : '0',
                                             height: '24px',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
+                                            gap: '3px',
                                             color: '#fff',
                                             boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
                                             border: '2px solid var(--bg-primary)'
                                           }}>
-                                            {p.isDeafened ? <HeadphonesOffIcon style={{ width: '13px', height: '13px' }} /> : <MicOffIcon style={{ width: '13px', height: '13px' }} />}
+                                            {p.isMuted && <MicOffIcon style={{ width: '13px', height: '13px' }} />}
+                                            {p.isDeafened && <HeadphonesOffIcon style={{ width: '13px', height: '13px' }} />}
                                           </div>
                                         )}
                                       </div>
@@ -8948,7 +9002,7 @@ function Echo({ user }: { user: User }) {
                   <div className="add-space-card">
                     <span className="add-space-card-icon">🤝</span>
                     <h3>Entrar em um</h3>
-                    <p>Tem um código de convite? Junte-se a um espaço ativo agora.</p>
+                    <p>Tem um link de convite? Junte-se a um espaço ativo agora.</p>
                     <button className="add-space-card-btn" onClick={() => setAddSpaceModalTab('join')}>Entrar no Espaço</button>
                   </div>
                 </div>
@@ -8987,7 +9041,7 @@ function Echo({ user }: { user: User }) {
             {addSpaceModalTab === 'join' && (
               <>
                 <h2>Entrar em um espaço</h2>
-                <p>Insira o código de convite enviado por um amigo para se juntar ao espaço.</p>
+                <p>Cole o link ou código de convite enviado por um amigo para se juntar ao espaço.</p>
                 <form 
                   onSubmit={async (e) => { 
                     e.preventDefault(); 
@@ -8999,7 +9053,7 @@ function Echo({ user }: { user: User }) {
                   <input 
                     value={joinSpaceCode} 
                     onChange={(e) => setJoinSpaceCode(e.target.value)} 
-                    placeholder="Código do convite" 
+                    placeholder="https://echo.chat/invite/... ou código" 
                     required 
                   />
                   <button type="submit" className="add-space-modal-submit-btn" disabled={joining}>
@@ -9763,8 +9817,9 @@ function Echo({ user }: { user: User }) {
                               }}
                             >
                               <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: role.color, flexShrink: 0 }} />
-                              <span style={{ fontSize: '13px', fontWeight: 600, color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {role.name}
+                              <span style={{ fontSize: '13px', fontWeight: 600, color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span>{role.name}</span>
+                                {role.isDefault && <span className="role-default-pill">PADRÃO</span>}
                               </span>
                               <div style={{ display: 'flex', gap: '2px' }}>
                                 <button 
@@ -9874,6 +9929,31 @@ function Echo({ user }: { user: User }) {
                             </div>
                           </div>
 
+                          {/* Cargo Padrão para Novos Integrantes */}
+                          {currentRole.id !== 'role-owner' && !currentRole.name.toLowerCase().includes('dono') && (
+                            <div className="role-default-setting-card" style={{ marginBottom: '20px', background: 'var(--bg-primary)', border: currentRole.isDefault ? '1.5px solid var(--accent-color)' : '1px solid var(--border-color)', borderRadius: '10px', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                              <div className="role-perm-card-info" style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                                  <strong className="role-perm-card-title" style={{ fontSize: '13.5px', color: 'var(--text-primary)' }}>Cargo Padrão de Novos Membros</strong>
+                                  {currentRole.isDefault && (
+                                    <span className="role-default-pill">PADRÃO ATIVO</span>
+                                  )}
+                                </div>
+                                <span className="role-perm-card-desc" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                                  Atribuir este cargo automaticamente a qualquer pessoa assim que ela entrar no espaço.
+                                </span>
+                              </div>
+                              <label className="echo-switch">
+                                <input 
+                                  type="checkbox" 
+                                  checked={!!currentRole.isDefault} 
+                                  onChange={(e) => handleUpdateRole(currentRole.id, { isDefault: e.target.checked })}
+                                />
+                                <span className="echo-switch-slider"></span>
+                              </label>
+                            </div>
+                          )}
+
                           {/* Live Chat Preview of Role */}
                           <div className="role-chat-preview-box">
                             <span className="role-preview-label">PRÉVIA DE EXIBIÇÃO NO CHAT</span>
@@ -9902,7 +9982,9 @@ function Echo({ user }: { user: User }) {
                             {/* Categoria 1: Administração Geral */}
                             <div className="role-perms-category">
                               <div className="role-perms-category-header">
-                                <span>🛡️</span>
+                                <span className="role-cat-icon-badge admin">
+                                  <ShieldIcon style={{ width: '13px', height: '13px' }} />
+                                </span>
                                 <span>Administração Geral</span>
                               </div>
                               <div className="role-perm-card">
@@ -9925,7 +10007,9 @@ function Echo({ user }: { user: User }) {
                             {/* Categoria 2: Moderação & Membros */}
                             <div className="role-perms-category">
                               <div className="role-perms-category-header">
-                                <span>👥</span>
+                                <span className="role-cat-icon-badge mod">
+                                  <UsersIcon style={{ width: '13px', height: '13px' }} />
+                                </span>
                                 <span>Moderação & Membros</span>
                               </div>
                               <div className="role-perm-card">
@@ -9964,7 +10048,9 @@ function Echo({ user }: { user: User }) {
                             {/* Categoria 3: Canais & Mensagens */}
                             <div className="role-perms-category">
                               <div className="role-perms-category-header">
-                                <span>💬</span>
+                                <span className="role-cat-icon-badge channels">
+                                  <HashtagIcon style={{ width: '13px', height: '13px' }} />
+                                </span>
                                 <span>Canais & Mensagens</span>
                               </div>
                               <div className="role-perm-card">
@@ -10571,41 +10657,43 @@ function Echo({ user }: { user: User }) {
                 <div className="space-settings-tab-pane">
                   <div className="space-settings-pane-header">
                     <h2>Convites do Espaço</h2>
-                    <p>Compartilhe o código abaixo para que seus amigos possam entrar no seu espaço.</p>
+                    <p>Compartilhe o link direto de convite para que seus amigos possam acessar e entrar no seu espaço com um clique.</p>
                   </div>
 
                   <div className="invites-card-container">
-                    <label className="invite-field-label">CÓDIGO DE ACESSO DIRETO</label>
+                    <label className="invite-field-label">LINK DE CONVITE INSTANTÂNEO</label>
                     <div className="invite-input-row">
                       <input 
                         type="text" 
-                        value={editingSpace.id} 
+                        value={`https://echo.chat/invite/${editingSpace.id}`} 
                         readOnly 
                         className="invite-code-input"
                       />
                       <button 
                         type="button" 
                         className="ch-create-btn" 
-                        style={{ padding: '10px 20px', fontSize: '13px' }}
+                        style={{ padding: '10px 20px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                         onClick={() => {
-                          copyToClipboard(editingSpace.id)
-                          showToast("Código Copiado!", "Código de convite copiado com sucesso.", "info")
+                          const link = `https://echo.chat/invite/${editingSpace.id}`
+                          copyToClipboard(link)
+                          showToast("Link Copiado!", "Link de convite do espaço copiado com sucesso.", "info")
                         }}
                       >
-                        Copiar Código
+                        <LinkIcon style={{ width: '14px', height: '14px' }} />
+                        Copiar Link
                       </button>
                     </div>
 
                     <div className="invite-divider" />
 
-                    <label className="invite-field-label">MENSAGEM DE CONVITE COMPLETA</label>
+                    <label className="invite-field-label">MENSAGEM DE CONVITE PRONTA</label>
                     <button 
                       type="button" 
                       className="invite-message-btn"
                       onClick={() => {
-                        const inviteMsg = `Venha participar do meu espaço "${editingSpace.name}" no Echo! Use o código: ${editingSpace.id}`
+                        const inviteMsg = `Entre no meu espaço "${editingSpace.name}" no Echo! Clique no link para participar: https://echo.chat/invite/${editingSpace.id}`
                         copyToClipboard(inviteMsg)
-                        showToast("Mensagem Copiada!", "Texto de convite copiado para a área de transferência.", "info")
+                        showToast("Mensagem Copiada!", "Texto de convite com link copiado para a área de transferência.", "info")
                       }}
                     >
                       📋 Copiar Mensagem de Convite Pronta
@@ -10614,7 +10702,7 @@ function Echo({ user }: { user: User }) {
                     <div className="invite-help-box">
                       <span style={{ fontSize: '16px' }}>💡</span>
                       <p>
-                        <strong>Como funciona:</strong> Qualquer amigo pode abrir o Echo, clicar no botão <strong>+</strong> no topo, escolher "Entrar em um espaço" e colar esse código para entrar imediatamente.
+                        <strong>Como funciona:</strong> Seus amigos só precisam clicar no link para entrar. Caso prefiram, podem colar esse mesmo link na opção <strong>"Entrar em um Espaço"</strong> no menu superior do Echo.
                       </p>
                     </div>
                   </div>
@@ -11879,30 +11967,30 @@ function FriendsView({
                       <div className="friend-card-actions" onClick={e => e.stopPropagation()}>
                         <button 
                           type="button" 
-                          className="friend-quick-btn" 
+                          className="friend-quick-btn msg" 
                           onClick={() => onOpenDM(friend.user.id)} 
                           title="Enviar Mensagem Direta"
                           style={{ position: 'relative' }}
                         >
-                          <MessageSquareIcon style={{ width: '14px', height: '14px' }} />
+                          <MessageSquareIcon style={{ width: '16px', height: '16px' }} />
                           {unreadDMs[friend.user.id] && <span className="unread-badge">{unreadDMs[friend.user.id]}</span>}
                         </button>
                         <button 
                           type="button" 
-                          className="friend-quick-btn" 
+                          className="friend-quick-btn call" 
                           onClick={() => onStartCall ? onStartCall(friend.user.id, friend.user.display_name, friend.user.avatar_url) : onOpenDM(friend.user.id)} 
                           title="Iniciar Chamada Direta 1v1"
                         >
-                          <PhoneIcon style={{ width: '14px', height: '14px' }} />
+                          <PhoneIcon style={{ width: '16px', height: '16px' }} />
                         </button>
                         {onInspectMember && (
                           <button 
                             type="button" 
-                            className="friend-quick-btn" 
+                            className="friend-quick-btn profile" 
                             onClick={() => onInspectMember({ user: friend.user, role: 'Amigo' })} 
                             title="Ver Perfil Completo"
                           >
-                            <UserIcon style={{ width: '14px', height: '14px' }} />
+                            <UserIcon style={{ width: '16px', height: '16px' }} />
                           </button>
                         )}
                         <button 
@@ -11911,7 +11999,7 @@ function FriendsView({
                           onClick={() => removeFriendship(friend.id)} 
                           title="Desfazer Amizade"
                         >
-                          ✕
+                          <span className="friend-btn-close-icon">✕</span>
                         </button>
                       </div>
                     </div>
@@ -11998,30 +12086,30 @@ function FriendsView({
                       <div className="friend-card-actions" onClick={e => e.stopPropagation()}>
                         <button 
                           type="button" 
-                          className="friend-quick-btn" 
+                          className="friend-quick-btn msg" 
                           onClick={() => onOpenDM(friend.user.id)} 
                           title="Enviar Mensagem Direta"
                           style={{ position: 'relative' }}
                         >
-                          <MessageSquareIcon style={{ width: '14px', height: '14px' }} />
+                          <MessageSquareIcon style={{ width: '16px', height: '16px' }} />
                           {unreadDMs[friend.user.id] && <span className="unread-badge">{unreadDMs[friend.user.id]}</span>}
                         </button>
                         <button 
                           type="button" 
-                          className="friend-quick-btn" 
+                          className="friend-quick-btn call" 
                           onClick={() => onStartCall ? onStartCall(friend.user.id, friend.user.display_name, friend.user.avatar_url) : onOpenDM(friend.user.id)} 
                           title="Iniciar Chamada Direta 1v1"
                         >
-                          <PhoneIcon style={{ width: '14px', height: '14px' }} />
+                          <PhoneIcon style={{ width: '16px', height: '16px' }} />
                         </button>
                         {onInspectMember && (
                           <button 
                             type="button" 
-                            className="friend-quick-btn" 
+                            className="friend-quick-btn profile" 
                             onClick={() => onInspectMember({ user: friend.user, role: 'Amigo' })} 
                             title="Ver Perfil Completo"
                           >
-                            <UserIcon style={{ width: '14px', height: '14px' }} />
+                            <UserIcon style={{ width: '16px', height: '16px' }} />
                           </button>
                         )}
                         <button 
@@ -12030,7 +12118,7 @@ function FriendsView({
                           onClick={() => removeFriendship(friend.id)} 
                           title="Desfazer Amizade"
                         >
-                          ✕
+                          <span className="friend-btn-close-icon">✕</span>
                         </button>
                       </div>
                     </div>

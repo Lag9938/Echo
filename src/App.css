@@ -1583,13 +1583,55 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
   color: var(--text-primary);
   letter-spacing: -0.2px;
 }
+.server-owner-chip {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #eab308;
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.28);
+  padding: 2px 7px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
 .server-hub-meta-stats {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.server-stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
   font-size: 11px;
-  color: var(--text-muted);
   font-weight: 600;
-  margin-top: 2px;
+  letter-spacing: 0.1px;
+  transition: all 0.15s ease;
+}
+.server-stat-chip strong {
+  font-weight: 800;
+}
+.server-stat-chip.channels {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+.server-stat-chip.channels:hover {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.4);
+}
+.server-stat-chip.members {
+  background: rgba(167, 139, 250, 0.12);
+  color: #a78bfa;
+  border: 1px solid rgba(167, 139, 250, 0.25);
+}
+.server-stat-chip.members:hover {
+  background: rgba(167, 139, 250, 0.18);
+  border-color: rgba(167, 139, 250, 0.4);
 }
 
 .server-dropdown-item {
@@ -3338,37 +3380,96 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
 }
 
 .friend-quick-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  font-size: 14px;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
   cursor: pointer;
-  transition: all 0.16s var(--ease-spring);
+  position: relative;
+  transition: all 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(8px);
 }
 
 .dark-theme .friend-quick-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  color: #e2e8f0;
 }
 
-.friend-quick-btn:hover {
-  background: #00f2fe;
-  color: #000;
-  border-color: #00f2fe;
-  transform: translateY(-2px) scale(1.08);
-  box-shadow: 0 4px 14px rgba(0, 242, 254, 0.35);
+.friend-quick-btn:active {
+  transform: scale(0.9) translateY(0) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
 }
 
+.friend-quick-btn svg {
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.18s ease;
+}
+
+/* 1. Chat/DM button (Cyan / Electric Sky) */
+.friend-quick-btn.msg:hover {
+  background: rgba(14, 165, 233, 0.18);
+  border-color: #38bdf8;
+  color: #38bdf8;
+  transform: translateY(-3px) scale(1.1);
+  box-shadow: 0 6px 18px rgba(56, 189, 248, 0.35);
+}
+.friend-quick-btn.msg:hover svg {
+  transform: scale(1.12);
+  color: #38bdf8;
+}
+
+/* 2. Call button (Emerald / Game Green) */
+.friend-quick-btn.call:hover {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: #10b981;
+  color: #10b981;
+  transform: translateY(-3px) scale(1.1);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.35);
+}
+.friend-quick-btn.call:hover svg {
+  transform: scale(1.12) rotate(-10deg);
+  color: #10b981;
+}
+
+/* 3. Profile button (Violet / Royal) */
+.friend-quick-btn.profile:hover {
+  background: rgba(167, 139, 250, 0.18);
+  border-color: #a78bfa;
+  color: #a78bfa;
+  transform: translateY(-3px) scale(1.1);
+  box-shadow: 0 6px 18px rgba(167, 139, 250, 0.35);
+}
+.friend-quick-btn.profile:hover svg {
+  transform: scale(1.12);
+  color: #a78bfa;
+}
+
+/* 4. Danger / Remove friendship button (Coral / Crimson) */
+.friend-quick-btn.danger {
+  color: #94a3b8;
+}
+.friend-btn-close-icon {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
 .friend-quick-btn.danger:hover {
-  background: #ef4444;
-  color: #fff;
+  background: rgba(239, 68, 68, 0.2);
   border-color: #ef4444;
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  transform: translateY(-3px) scale(1.1);
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.38);
+}
+.friend-quick-btn.danger:hover .friend-btn-close-icon {
+  transform: rotate(90deg) scale(1.15);
+  color: #ef4444;
 }
 
 /* ── Option B: Frosted Glass Hero Card (Empty State) ────────── */
@@ -5582,33 +5683,30 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
 .profile-footer-actions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   flex-shrink: 0;
 }
 .profile-footer-btn {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   color: var(--text-secondary);
   font-size: 13px;
-  transition: var(--transition-smooth);
+  transition: all 0.18s var(--ease-spring);
 }
 .profile-footer-btn:hover {
-  background: var(--bg-primary);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
+  transform: translateY(-1px);
 }
 .profile-footer-btn:active {
-  transform: scale(0.9);
+  transform: scale(0.92);
 }
 .profile-footer-btn.active {
   background: var(--bg-primary);
   color: var(--text-primary);
-}
-.profile-footer-btn.logout:hover {
-  background: rgba(223, 109, 93, 0.15);
-  color: var(--accent-color);
 }
 .profile-footer-btn svg {
   display: block;
@@ -5620,31 +5718,43 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
   width: 100%;
   display: flex;
   align-items: center;
-  margin-top: 2px;
-  padding: 0 2px;
+  margin-top: 6px;
+  padding: 0;
+  box-sizing: border-box;
 }
 .game-presence-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11px;
+  gap: 6px;
+  font-size: 11.5px;
   font-weight: 700;
   color: #10b981;
   background: rgba(16, 185, 129, 0.12);
-  padding: 2px 7px;
-  border-radius: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
   border: 1px solid rgba(16, 185, 129, 0.28);
-  max-width: 100%;
+  width: 100%;
   box-sizing: border-box;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.game-presence-badge:hover {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.45);
 }
 .game-presence-icon {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .game-presence-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: 0.2px;
 }
 
 /* ── Echo Channel Studio Modal ─────────────────────── */
@@ -14978,6 +15088,54 @@ body[data-performance-mode="true"] * {
   filter: brightness(1.15);
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(6, 182, 212, 0.45);
+}
+
+/* Default Role Badges & Cards */
+.role-default-pill {
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+.role-default-setting-card {
+  transition: all 0.2s ease;
+}
+.role-default-setting-card:hover {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+/* Role Perms Category Modern Badges */
+.role-cat-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  flex-shrink: 0;
+}
+.role-cat-icon-badge.admin {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+.role-cat-icon-badge.mod {
+  background: rgba(167, 139, 250, 0.15);
+  color: #a78bfa;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+}
+.role-cat-icon-badge.channels {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
 }
 
 /* Modern Toggle Switch */

@@ -14,15 +14,54 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.23.29'
+export const APP_CURRENT_VERSION = '0.3.1'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.3.1',
+    title: 'Echo v0.3.1 - Convites por Link, Cargos Padrão & Efeitos Sonoros',
+    date: '09 de Setembro de 2026',
+    tagline: 'Links de convite direto estilo Discord, cargo padrão automático para novos membros, detecção nativa de jogos ativos, sons de chamada e botões táteis animados.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🔗',
+        badge: 'CONVITES',
+        title: 'Convites por Link Direto (Estilo Discord)',
+        description: 'Chega de códigos UUID! Compartilhe links limpos (https://echo.chat/invite/...) com suporte a deep-link para entrar com 1 clique.'
+      },
+      {
+        icon: '🛡️',
+        badge: 'GESTÃO',
+        title: 'Cargo Padrão Automático',
+        description: 'Defina um cargo padrão nas configurações do espaço para atribuí-lo instantaneamente a qualquer usuário que entrar.'
+      },
+      {
+        icon: '🎮',
+        badge: 'DETECÇÃO',
+        title: 'Filtro Nativo de Jogos Ativos',
+        description: 'Detecção Win32 inteligente em primeiro plano que elimina falsos-positivos de jogos em segundo plano (como Roblox fechado).'
+      },
+      {
+        icon: '🔊',
+        badge: 'ÁUDIO',
+        title: 'Sons de Entrada e Saída de Chamadas',
+        description: 'Efeitos sonoros nítidos avisam quando amigos entram ou saem da chamada de voz em canais ou DMs 1v1.'
+      },
+      {
+        icon: '✨',
+        badge: 'VISUAL',
+        title: 'Botões Táteis & Indicadores Duplos',
+        description: 'Botões de ação de amigos vivos com hover neon, e exibição simultânea de microfone mutado e fone ensurdecido.'
+      }
+    ]
+  },
   {
     version: '0.23.29',
     title: 'Echo v0.23.29 - Topbar Suave, Controles Integrados & Telas Fluídas',
     date: '09 de Setembro de 2026',
     tagline: 'Animação e recolhimento sincronizado da topbar, controles de janela dinâmicos, novo botão fechar minimalista e preenchimento total das telas de Amigos e Ajustes.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '✨',

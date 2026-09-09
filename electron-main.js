@@ -15,6 +15,20 @@ const execFileAsync = promisify(execFile)
 const isDevelopment = !app.isPackaged
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+// Single instance lock & deep-linking protocol registration
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.quit()
+}
+
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('echo', process.execPath, [path.resolve(process.argv[1])])
+  }
+} else {
+  app.setAsDefaultProtocolClient('echo')
+}
+
 if (isDevelopment) {
   try {
     app.setPath('userData', path.join(app.getPath('appData'), 'Echo-Dev'))
@@ -95,51 +109,60 @@ async function scanRunningGames() {
     let foundGame = null
     if (helperPath) {
       try {
-        const { stdout } = await execFileAsync(helperPath, ['--list-windows'], { timeout: 1500 })
-        if (stdout && stdout.trim().startsWith('[')) {
-          const windows = JSON.parse(stdout.trim())
-          for (const win of windows) {
-            const pName = (win.processName || '').replace(/\.exe$/i, '').toLowerCase().trim()
-            const matched = POPULAR_GAMES.find(g => g.match.some(m => {
+        const { stdout } = await execFileAsync(helperPath, ['--get-active-game'], { timeout: 1500 })
+        if (stdout && stdout.trim().startsWith('{')) {
+          const data = JSON.parse(stdout.trim())
+          const fgName = (data.foreground?.processName || '').replace(/\.exe$/i, '').toLowerCase().trim()
+
+          // 1. Prioridade absoluta: Jogo em primeiro plano (ativo na tela)
+          if (fgName) {
+            const matchedFg = POPULAR_GAMES.find(g => g.match.some(m => {
               const target = m.toLowerCase()
-              return pName === target || pName.startsWith(target + '-') || pName.startsWith(target + '_')
+              return fgName === target || fgName.startsWith(target + '-') || fgName.startsWith(target + '_')
             }))
-            if (matched) {
-              foundGame = { name: matched.name, icon: matched.icon, processName: win.processName }
-              break
+            if (matchedFg) {
+              foundGame = { name: matchedFg.name, icon: matchedFg.icon, processName: data.foreground.processName }
+            }
+          }
+
+          // 2. Jogo com janela visível aberta na tela (não minimizada e com dimensões válidas)
+          if (!foundGame && Array.isArray(data.windows)) {
+            for (const win of data.windows) {
+              const pName = (win.processName || '').replace(/\.exe$/i, '').toLowerCase().trim()
+              const matched = POPULAR_GAMES.find(g => g.match.some(m => {
+                const target = m.toLowerCase()
+                return pName === target || pName.startsWith(target + '-') || pName.startsWith(target + '_')
+              }))
+              if (matched) {
+                foundGame = { name: matched.name, icon: matched.icon, processName: win.processName }
+                break
+              }
             }
           }
         }
       } catch (e) {}
-    }
 
-    // Ultra-lightweight fallback using native tasklist.exe (0% CPU impact, no PowerShell/CLR overhead)
-    if (!foundGame) {
-      try {
-        const { stdout: tasklistOut } = await execFileAsync('tasklist.exe', ['/fo', 'csv', '/nh'], { timeout: 2000 })
-        if (tasklistOut) {
-          const lines = tasklistOut.toLowerCase().split(/\r?\n/)
-          for (const line of lines) {
-            if (!line.trim()) continue
-            const parts = line.split(',').map(s => s.replace(/"/g, '').trim())
-            const procName = parts[0] || ''
-            const sessionName = parts[2] || ''
-            // Ignora serviços de segundo plano do sistema operacional (Session 0 / Services)
-            if (sessionName === 'services' || sessionName === '0') continue
-            if (!procName) continue
-
-            const baseProc = procName.replace(/\.exe$/i, '').toLowerCase()
-            const matched = POPULAR_GAMES.find(g => g.match.some(m => {
-              const target = m.toLowerCase()
-              return baseProc === target || baseProc.startsWith(target + '-') || baseProc.startsWith(target + '_')
-            }))
-            if (matched) {
-              foundGame = { name: matched.name, icon: matched.icon, processName: procName }
-              break
+      // Fallback para --list-windows se o helper antigo ainda estiver em execução
+      if (!foundGame) {
+        try {
+          const { stdout } = await execFileAsync(helperPath, ['--list-windows'], { timeout: 1500 })
+          if (stdout && stdout.trim().startsWith('[')) {
+            const windows = JSON.parse(stdout.trim())
+            for (const win of windows) {
+              if (win.isMinimized) continue
+              const pName = (win.processName || '').replace(/\.exe$/i, '').toLowerCase().trim()
+              const matched = POPULAR_GAMES.find(g => g.match.some(m => {
+                const target = m.toLowerCase()
+                return pName === target || pName.startsWith(target + '-') || pName.startsWith(target + '_')
+              }))
+              if (matched) {
+                foundGame = { name: matched.name, icon: matched.icon, processName: win.processName }
+                break
+              }
             }
           }
-        }
-      } catch (e) {}
+        } catch (e) {}
+      }
     }
 
     if (foundGame) {
@@ -176,22 +199,6 @@ app.commandLine.appendSwitch('disable-renderer-backgrounding')
 app.commandLine.appendSwitch('disable-background-timer-throttling')
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
 
-// Garante instância única (evita processos zumbis que travam atualizações e a abertura da janela)
-const gotTheLock = app.requestSingleInstanceLock()
-if (!gotTheLock) {
-  app.quit()
-} else {
-  app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.show()
-      mainWindow.focus()
-      if (isDevelopment) {
-        mainWindow.loadURL('http://127.0.0.1:5173').catch(() => {})
-      }
-    }
-  })
-}
 
 let mainWindow = null
 let tray = null
@@ -797,6 +804,28 @@ app.whenReady().then(() => {
   }
 
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
+
+  app.on('second-instance', (event, commandLine) => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.show()
+      mainWindow.focus()
+      const inviteArg = commandLine.find(arg => arg.startsWith('echo://'))
+      if (inviteArg) {
+        mainWindow.webContents.send('deep-link-invite', inviteArg)
+      }
+    }
+  })
+
+  app.on('open-url', (event, url) => {
+    event.preventDefault()
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.show()
+      mainWindow.focus()
+      mainWindow.webContents.send('deep-link-invite', url)
+    }
+  })
 })
 app.on('before-quit', () => {
   isQuitting = true

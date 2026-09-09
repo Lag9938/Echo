@@ -46,5 +46,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimizeWindow: () => ipcRenderer.invoke('window-minimize'),
   maximizeWindow: () => ipcRenderer.invoke('window-maximize'),
   closeWindow: () => ipcRenderer.invoke('window-close'),
-  isMaximized: () => ipcRenderer.invoke('window-is-maximized')
+  isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
+
+  // Deep-Link Invite API
+  onDeepLinkInvite: (callback) => {
+    ipcRenderer.removeAllListeners('deep-link-invite')
+    ipcRenderer.on('deep-link-invite', (_event, url) => callback(url))
+  }
 })

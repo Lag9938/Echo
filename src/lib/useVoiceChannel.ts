@@ -18,6 +18,7 @@ import { RnnoiseWorkletNode, loadRnnoise } from '@sapphi-red/web-noise-suppresso
 import rnnoiseWorkletPath from '@sapphi-red/web-noise-suppressor/rnnoiseWorklet.js?url'
 import rnnoiseWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise.wasm?url'
 import rnnoiseSimdWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise_simd.wasm?url'
+import { playJoinSound, playLeaveSound } from './soundEffects'
 
 export type VoiceParticipant = {
   userId: string
@@ -199,11 +200,18 @@ function routeAiDenoise(nodes: StudioMicrophoneDSPNodes, enabled: boolean) {
   }
 }
 
-export function useVoiceChannel(options?: { onDisconnected?: () => void }) {
+export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolume?: number }) {
   const onDisconnectedRef = useRef(options?.onDisconnected)
   useEffect(() => {
     onDisconnectedRef.current = options?.onDisconnected
   }, [options?.onDisconnected])
+
+  const sfxVolumeRef = useRef(options?.sfxVolume ?? 0.5)
+  useEffect(() => {
+    if (options?.sfxVolume !== undefined) {
+      sfxVolumeRef.current = options.sfxVolume
+    }
+  }, [options?.sfxVolume])
 
   const [participants, setParticipants] = useState<VoiceParticipant[]>([])
   const [isMuted, setIsMuted] = useState(false)
@@ -760,6 +768,7 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void }) {
 
       room.on(RoomEvent.ParticipantConnected, () => {
         syncParticipants()
+        playJoinSound(sfxVolumeRef.current)
       })
 
       room.on(RoomEvent.TrackPublished, (pub: RemoteTrackPublication) => {
@@ -782,6 +791,7 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void }) {
         const sAudio = audioElementsRef.current.get(screenKey)
         if (sAudio) { sAudio.srcObject = null; sAudio.remove(); audioElementsRef.current.delete(screenKey) }
         syncParticipants()
+        playLeaveSound(sfxVolumeRef.current)
       })
 
       room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _publication: RemoteTrackPublication, participant: RemoteParticipant) => {
