@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onUpdateProgress: (callback) => ipcRenderer.on('update-progress', (_event, progress) => callback(progress)),
   onUpdateReady: (callback) => ipcRenderer.on('update-ready', (_event, info) => callback(info)),
   installUpdate: () => ipcRenderer.send('install-update'),
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
 
   // Rich Presence Game Detection API
   onGameDetected: (callback) => {

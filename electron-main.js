@@ -733,10 +733,24 @@ function createWindow() {
     autoUpdater.quitAndInstall(false, true)
   })
 
+  // Handler para forçar verificação de atualizações sob demanda
+  ipcMain.handle('check-for-updates', async () => {
+    if (!isDevelopment) {
+      try {
+        const result = await autoUpdater.checkForUpdates()
+        return { success: true, updateInfo: result?.updateInfo }
+      } catch (err) {
+        return { success: false, error: err.message }
+      }
+    }
+    return { success: false, message: 'Em modo de desenvolvimento' }
+  })
+
   // Auto-updater (apenas em produção)
   if (!isDevelopment) {
     autoUpdater.autoDownload = true
     autoUpdater.autoInstallOnAppQuit = true
+    autoUpdater.allowDowngrade = true
 
     autoUpdater.on('update-available', (info) => {
       console.log('Atualização disponível:', info.version)
@@ -767,6 +781,11 @@ function createWindow() {
     autoUpdater.checkForUpdates().catch(err => {
       console.error('Erro ao verificar atualizações:', err)
     })
+
+    // Checagem periódica a cada 10 minutos mesmo com o app aberto
+    setInterval(() => {
+      autoUpdater.checkForUpdates().catch(() => {})
+    }, 10 * 60 * 1000)
   }
 
   // Start background game scanner for Rich Presence

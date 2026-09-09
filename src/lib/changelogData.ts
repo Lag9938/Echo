@@ -14,12 +14,12 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.3.3'
+export const APP_CURRENT_VERSION = '0.30.0'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
-    version: '0.3.3',
-    title: 'Echo v0.3.3 - Convites Nativos (echo://) & Membros em Chamadas',
+    version: '0.30.0',
+    title: 'Echo v0.30.0 - Convites Nativos (echo://) & Membros em Chamadas',
     date: '09 de Setembro de 2026',
     tagline: 'Links de convite reais com abertura direta no aplicativo Echo e código de acesso, sincronização imediata de membros em chamadas com mais de 3 pessoas e faixa de participantes ao vivo durante transmissões de tela.',
     isLatest: true,
