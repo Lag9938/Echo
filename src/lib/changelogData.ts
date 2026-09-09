@@ -14,21 +14,87 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.3.1'
+export const APP_CURRENT_VERSION = '0.3.3'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
-    version: '0.3.1',
-    title: 'Echo v0.3.1 - Convites por Link, Cargos Padrão & Efeitos Sonoros',
+    version: '0.3.3',
+    title: 'Echo v0.3.3 - Convites Nativos (echo://) & Membros em Chamadas',
     date: '09 de Setembro de 2026',
-    tagline: 'Links de convite direto estilo Discord, cargo padrão automático para novos membros, detecção nativa de jogos ativos, sons de chamada e botões táteis animados.',
+    tagline: 'Links de convite reais com abertura direta no aplicativo Echo e código de acesso, sincronização imediata de membros em chamadas com mais de 3 pessoas e faixa de participantes ao vivo durante transmissões de tela.',
     isLatest: true,
     highlights: [
       {
         icon: '🔗',
         badge: 'CONVITES',
+        title: 'Links de Convite Reais (echo://)',
+        description: 'Os links de convite agora utilizam o protocolo nativo echo:// com código de espaço copiado automaticamente. Diga adeus aos links quebrados ou sites externos!'
+      },
+      {
+        icon: '👥',
+        badge: 'CHAMADAS',
+        title: 'Membros Sempre Visíveis (4+ Participantes)',
+        description: 'Sincronização imediata de participantes mesclando LiveKit WebRTC e Supabase Presence. Nunca mais perca ninguém de vista ao entrar em chamadas cheias!'
+      },
+      {
+        icon: '📺',
+        badge: 'STREAMING',
+        title: 'Faixa de Participantes em Transmissões',
+        description: 'Assista a transmissões de tela cheia sem perder os avatares dos amigos na chamada. Uma faixa interativa mantém todos os membros visíveis estilo Discord.'
+      },
+      {
+        icon: '⚡',
+        badge: 'ESTABILIDADE',
+        title: 'Conexão Instantânea de Voz',
+        description: 'Correção na geração de tokens do processo nativo para que a conexão com o servidor de áudio seja estabelecida com zero atraso.'
+      }
+    ]
+  },
+  {
+    version: '0.3.2',
+    title: 'Echo v0.3.2 - Otimização de Transmissão (Zero Lag) & Amizades',
+    date: '09 de Setembro de 2026',
+    tagline: 'Transmissão ultra-leve sem perda de FPS em jogos (H.264 GPU Zero-Copy & Fim do Simulcast), adicione amigos direto do card de membro, convites de canal e chat privado estilo Discord.',
+    isLatest: false,
+    highlights: [
+      {
+        icon: '⚡',
+        badge: 'DESEMPENHO',
+        title: 'Transmissão sem Queda de FPS (NVENC/GPU)',
+        description: 'Codificação acelerada por hardware H.264 via GPU e fim do simulcast em transmissões de tela. Chega de quedas bruscas de FPS ou engasgos no Valorant e CS2!'
+      },
+      {
+        icon: '⏸️',
+        badge: 'ECONOMIA',
+        title: 'Pausa Inteligente de Preview Local',
+        description: 'A pré-visualização da sua própria transmissão é pausada automaticamente durante o jogo para liberar 100% de processamento da GPU.'
+      },
+      {
+        icon: '👥',
+        badge: 'SOCIAL',
+        title: 'Adicionar Amigo Direto do Perfil',
+        description: 'Adicione pessoas à sua lista de amigos diretamente ao clicar no nome ou card de qualquer membro do servidor.'
+      },
+      {
+        icon: '🔗',
+        badge: 'CONVITES',
+        title: 'Convites por Canal com Conexão de Áudio',
+        description: 'Compartilhe links diretos de canais (texto ou voz). Ao clicar, o convidado entra direto na chamada do canal sem erros.'
+      }
+    ]
+  },
+  {
+    version: '0.3.1',
+    title: 'Echo v0.3.1 - Convites por Link, Cargos Padrão & Efeitos Sonoros',
+    date: '09 de Setembro de 2026',
+    tagline: 'Links de convite direto estilo Discord, cargo padrão automático para novos membros, detecção nativa de jogos ativos, sons de chamada e botões táteis animados.',
+    isLatest: false,
+    highlights: [
+      {
+        icon: '🔗',
+        badge: 'CONVITES',
         title: 'Convites por Link Direto (Estilo Discord)',
-        description: 'Chega de códigos UUID! Compartilhe links limpos (https://echo.chat/invite/...) com suporte a deep-link para entrar com 1 clique.'
+        description: 'Compartilhe links diretos (echo://invite/...) ou copie o código direto para entrar com 1 clique.'
       },
       {
         icon: '🛡️',

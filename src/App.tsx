@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react'
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import type { FormEvent } from 'react'
 import type { User, RealtimeChannel } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
@@ -889,6 +889,15 @@ function PipIcon({ className, style }: { className?: string; style?: React.CSSPr
   )
 }
 
+function EyeIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
 function EyeOffIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <svg className={className} style={style} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -976,6 +985,16 @@ function UserPlusIcon({ className, style }: { className?: string; style?: React.
       <circle cx="8.5" cy="7" r="4" />
       <line x1="20" y1="8" x2="20" y2="14" />
       <line x1="23" y1="11" x2="17" y2="11" />
+    </svg>
+  )
+}
+
+function UserCheckIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="8.5" cy="7" r="4" />
+      <polyline points="17 11 19 13 23 9" />
     </svg>
   )
 }
@@ -1355,6 +1374,339 @@ function fallbackCopyToClipboard(text: string): boolean {
   }
 }
 
+function ChannelInviteModal({
+  channel,
+  space,
+  onClose,
+  friendships,
+  onSendDMInvite,
+  showToast
+}: {
+  channel: Channel
+  space: Space
+  onClose: () => void
+  friendships: FriendshipRequest[]
+  onSendDMInvite: (friendUserId: string, inviteMessage: string) => Promise<void>
+  showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend') => void
+}) {
+  const [copied, setCopied] = useState(false)
+  const [copiedCode, setCopiedCode] = useState(false)
+  const [invitedFriends, setInvitedFriends] = useState<Record<string, boolean>>({})
+
+  const isVoice = channel.type === 'voice'
+  const inviteLink = `echo://invite/${space.id}?channel=${channel.id}`
+  const formattedInviteMsg = `Entre no meu espaço "${space.name}" no Echo!\n🔗 Link Direto: ${inviteLink}\n🔑 Código do Espaço: ${space.id}`
+
+  const handleCopy = () => {
+    copyToClipboard(inviteLink)
+    setCopied(true)
+    showToast('Link Copiado!', `Link direto para ${isVoice ? 'a chamada' : 'o canal'} ${channel.name} copiado.`, 'info')
+    setTimeout(() => setCopied(false), 2500)
+  }
+
+  const handleCopyCode = () => {
+    copyToClipboard(space.id)
+    setCopiedCode(true)
+    showToast('Código Copiado!', `Código do espaço copiado. Cole no botão "+" do Echo.`, 'info')
+    setTimeout(() => setCopiedCode(false), 2500)
+  }
+
+  const handleInviteFriend = async (friend: FriendshipRequest) => {
+    try {
+      setInvitedFriends(prev => ({ ...prev, [friend.user.id]: true }))
+      const msg = isVoice 
+        ? `🔊 Entre na chamada "${channel.name}" comigo no espaço "${space.name}"!\nClique para entrar: ${inviteLink}\nOu cole o código: ${space.id}`
+        : `💬 Participe do canal #${channel.name} no espaço "${space.name}"!\nClique para entrar: ${inviteLink}\nOu cole o código: ${space.id}`
+      await onSendDMInvite(friend.user.id, msg)
+      showToast('Convite Enviado!', `Convite enviado para @${friend.user.display_name}.`, 'friend')
+    } catch {
+      showToast('Erro ao enviar', 'Não foi possível enviar o convite no chat privado.', 'info')
+    }
+  }
+
+  const acceptedFriends = friendships.filter(f => f.status === 'accepted')
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div 
+        className="channel-invite-modal" 
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '90%',
+          maxWidth: '500px',
+          background: 'var(--bg-secondary, #141721)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          borderRadius: '16px',
+          padding: '24px',
+          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.65)',
+          color: 'var(--text-primary, #fff)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '18px',
+          animation: 'modalScaleSpring 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '18px' }}>{isVoice ? '🔊' : '#'}</span>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>
+                Convidar para {channel.name}
+              </h3>
+            </div>
+            <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-muted, #94a3b8)' }}>
+              {isVoice 
+                ? `Compartilhe o link direto para amigos entrarem nesta chamada no Echo.`
+                : `Compartilhe o link para amigos acessarem diretamente este canal no espaço "${space.name}".`}
+            </p>
+          </div>
+          <button 
+            type="button" 
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-muted, #94a3b8)',
+              fontSize: '18px',
+              cursor: 'pointer',
+              padding: '4px'
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Link Input & Copy Box */}
+        <div>
+          <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted, #94a3b8)', marginBottom: '6px', letterSpacing: '0.5px' }}>
+            LINK DIRETO (ABRE NO APLICATIVO ECHO)
+          </label>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: 'var(--bg-tertiary, #0b0d14)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '10px',
+            padding: '4px 6px 4px 12px',
+            gap: '8px'
+          }}>
+            <input 
+              readOnly 
+              value={inviteLink}
+              style={{
+                flex: 1,
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-primary, #fff)',
+                fontSize: '13px',
+                outline: 'none',
+                fontFamily: 'monospace'
+              }}
+              onClick={e => (e.target as HTMLInputElement).select()}
+            />
+            <button
+              type="button"
+              onClick={handleCopy}
+              style={{
+                padding: '8px 18px',
+                borderRadius: '8px',
+                border: 'none',
+                background: copied ? '#10b981' : 'var(--accent-color, #00f2fe)',
+                color: copied ? '#fff' : '#041018',
+                fontWeight: 700,
+                fontSize: '13px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {copied ? '✓ Copiado!' : 'Copiar Link'}
+            </button>
+          </div>
+        </div>
+
+        {/* Código do Espaço Box */}
+        <div>
+          <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted, #94a3b8)', marginBottom: '6px', letterSpacing: '0.5px' }}>
+            CÓDIGO DE ENTRADA DO ESPAÇO (COLE EM "+ ENTRAR EM UM ESPAÇO")
+          </label>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: 'var(--bg-tertiary, #0b0d14)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '10px',
+            padding: '4px 6px 4px 12px',
+            gap: '8px'
+          }}>
+            <input 
+              readOnly 
+              value={space.id}
+              style={{
+                flex: 1,
+                background: 'none',
+                border: 'none',
+                color: 'var(--accent-color, #00f2fe)',
+                fontSize: '13px',
+                fontWeight: 600,
+                outline: 'none',
+                fontFamily: 'monospace'
+              }}
+              onClick={e => (e.target as HTMLInputElement).select()}
+            />
+            <button
+              type="button"
+              onClick={handleCopyCode}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                background: copiedCode ? '#10b981' : 'rgba(255, 255, 255, 0.08)',
+                color: '#fff',
+                fontWeight: 600,
+                fontSize: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {copiedCode ? '✓ Copiado!' : 'Copiar Código'}
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            copyToClipboard(formattedInviteMsg)
+            showToast('Mensagem Copiada!', 'Texto de convite copiado com link e código.', 'info')
+          }}
+          style={{
+            width: '100%',
+            padding: '9px 16px',
+            borderRadius: '10px',
+            border: '1px dashed rgba(255, 255, 255, 0.2)',
+            background: 'rgba(255, 255, 255, 0.03)',
+            color: 'var(--text-secondary, #b5bac1)',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          📋 Copiar Mensagem de Convite Pronta (Link + Código)
+        </button>
+
+        {/* Quick Invite Friends Section */}
+        {acceptedFriends.length > 0 && (
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted, #94a3b8)', marginBottom: '10px', letterSpacing: '0.5px' }}>
+              ENVIAR DIRETAMENTE PARA UM AMIGO
+            </label>
+            <div style={{
+              maxHeight: '180px',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              paddingRight: '4px'
+            }}>
+              {acceptedFriends.map(friend => {
+                const wasInvited = invitedFriends[friend.user.id]
+                return (
+                  <div 
+                    key={friend.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      borderRadius: '10px',
+                      border: '1px solid rgba(255, 255, 255, 0.05)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: 'var(--accent-light, #00f2fe22)',
+                        color: 'var(--accent-color, #00f2fe)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        overflow: 'hidden'
+                      }}>
+                        {friend.user.avatar_url ? (
+                          <img src={friend.user.avatar_url} alt={friend.user.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          friend.user.display_name.slice(0, 1).toUpperCase()
+                        )}
+                      </div>
+                      <span style={{ fontSize: '13.5px', fontWeight: 600 }}>{friend.user.display_name}</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={wasInvited}
+                      onClick={() => handleInviteFriend(friend)}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '6px',
+                        border: wasInvited ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(255, 255, 255, 0.15)',
+                        background: wasInvited ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+                        color: wasInvited ? '#34d399' : 'var(--text-primary, #fff)',
+                        fontSize: '12.5px',
+                        fontWeight: 600,
+                        cursor: wasInvited ? 'default' : 'pointer',
+                        transition: 'all 0.18s ease'
+                      }}
+                    >
+                      {wasInvited ? '✓ Convidado' : 'Convidar'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        <div style={{
+          fontSize: '11.5px',
+          color: 'var(--text-muted, #94a3b8)',
+          background: 'rgba(0, 242, 254, 0.05)',
+          padding: '10px 14px',
+          borderRadius: '8px',
+          border: '1px solid rgba(0, 242, 254, 0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <span>💡</span>
+          <span>
+            {isVoice 
+              ? 'Ao abrir este link, qualquer membro do espaço será conectado automaticamente a esta chamada.' 
+              : 'Ao abrir este link, o membro será levado diretamente para este canal de texto.'}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface MemberProfileModalProps {
   inspectedMember: {
     user: { id: string; display_name: string; avatar_url?: string }
@@ -1380,6 +1732,9 @@ interface MemberProfileModalProps {
   onAdjustVolume?: (peer: VoiceParticipant) => void
   voicePeer?: VoiceParticipant
   showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend') => void
+  friendships?: FriendshipRequest[]
+  onAddFriend?: (targetUserId: string, targetName: string) => Promise<void>
+  onAcceptFriend?: (friendshipId: string) => Promise<void>
 }
 
 function MemberProfileModal({
@@ -1400,7 +1755,10 @@ function MemberProfileModal({
   onOpenDM,
   onAdjustVolume,
   voicePeer,
-  showToast
+  showToast,
+  friendships = [],
+  onAddFriend,
+  onAcceptFriend
 }: MemberProfileModalProps) {
   const [pokeCount, setPokeCount] = useState(0)
   const [isPoking, setIsPoking] = useState(false)
@@ -1408,6 +1766,7 @@ function MemberProfileModal({
 
   const memberId = inspectedMember.user.id
   const isMe = currentUser?.id === memberId
+  const friendship = friendships.find(f => f.user.id === memberId)
   const noteStorageKey = `echo-member-note-${memberId}`
   const [personalNote, setPersonalNote] = useState<string>(() => {
     return localStorage.getItem(noteStorageKey) || ''
@@ -1515,15 +1874,43 @@ function MemberProfileModal({
             </div>
 
             {!isMe && (
-              <button 
-                type="button" 
-                className="member-profile-poke-trigger"
-                onClick={handlePoke}
-                title="Cutucar com efeito de som divertido"
-              >
-                <ZapIcon style={{ width: '13px', height: '13px' }} />
-                <span>{pokeCount > 0 ? `Cutucar (x${pokeCount})` : 'Cutucar'}</span>
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {!friendship && onAddFriend && (
+                  <button 
+                    type="button" 
+                    className="member-profile-friend-quick-trigger"
+                    onClick={() => onAddFriend(inspectedMember.user.id, inspectedMember.user.display_name)}
+                    title="Adicionar aos amigos"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '6px 12px',
+                      borderRadius: '20px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      background: 'rgba(16, 185, 129, 0.15)',
+                      border: '1px solid rgba(16, 185, 129, 0.45)',
+                      color: '#34d399',
+                      cursor: 'pointer',
+                      transition: 'all 0.18s ease'
+                    }}
+                  >
+                    <UserPlusIcon style={{ width: '13px', height: '13px' }} />
+                    <span>Adicionar</span>
+                  </button>
+                )}
+
+                <button 
+                  type="button" 
+                  className="member-profile-poke-trigger"
+                  onClick={handlePoke}
+                  title="Cutucar com efeito de som divertido"
+                >
+                  <ZapIcon style={{ width: '13px', height: '13px' }} />
+                  <span>{pokeCount > 0 ? `Cutucar (x${pokeCount})` : 'Cutucar'}</span>
+                </button>
+              </div>
             )}
           </div>
 
@@ -1677,6 +2064,82 @@ function MemberProfileModal({
               </button>
             )}
 
+            {!isMe && onAddFriend && (
+              <>
+                {!friendship && (
+                  <button
+                    type="button"
+                    className="member-profile-action-btn success"
+                    onClick={() => onAddFriend(inspectedMember.user.id, inspectedMember.user.display_name)}
+                    style={{
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      color: '#ffffff',
+                      border: '1px solid rgba(16, 185, 129, 0.4)',
+                      boxShadow: '0 4px 14px rgba(16, 185, 129, 0.25)'
+                    }}
+                    title="Enviar pedido de amizade"
+                  >
+                    <UserPlusIcon style={{ width: '15px', height: '15px' }} />
+                    <span>Adicionar Amigo</span>
+                  </button>
+                )}
+
+                {friendship?.status === 'pending' && friendship.initiatorId === currentUser?.id && (
+                  <button
+                    type="button"
+                    className="member-profile-action-btn secondary"
+                    disabled
+                    style={{
+                      opacity: 0.85,
+                      cursor: 'default',
+                      borderColor: 'rgba(234, 179, 8, 0.4)',
+                      color: '#facc15'
+                    }}
+                    title="Você já enviou um pedido de amizade"
+                  >
+                    <ClockIcon style={{ width: '15px', height: '15px' }} />
+                    <span>Solicitação Enviada</span>
+                  </button>
+                )}
+
+                {friendship?.status === 'pending' && friendship.initiatorId !== currentUser?.id && onAcceptFriend && (
+                  <button
+                    type="button"
+                    className="member-profile-action-btn success"
+                    onClick={() => onAcceptFriend(friendship.id)}
+                    style={{
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      color: '#ffffff',
+                      border: '1px solid rgba(16, 185, 129, 0.4)',
+                      boxShadow: '0 4px 14px rgba(16, 185, 129, 0.25)'
+                    }}
+                    title="Aceitar pedido de amizade pendente"
+                  >
+                    <UserCheckIcon style={{ width: '15px', height: '15px' }} />
+                    <span>Aceitar Amizade</span>
+                  </button>
+                )}
+
+                {friendship?.status === 'accepted' && (
+                  <button
+                    type="button"
+                    className="member-profile-action-btn secondary"
+                    disabled
+                    style={{
+                      opacity: 0.85,
+                      cursor: 'default',
+                      borderColor: 'rgba(16, 185, 129, 0.35)',
+                      color: '#34d399'
+                    }}
+                    title="Vocês já são amigos no Echo"
+                  >
+                    <UserCheckIcon style={{ width: '15px', height: '15px' }} />
+                    <span>Amigos</span>
+                  </button>
+                )}
+              </>
+            )}
+
             {voicePeer && !isMe && onAdjustVolume && (
               <button 
                 type="button" 
@@ -1803,6 +2266,49 @@ function Echo({ user }: { user: User }) {
   const [pendingFriendCount, setPendingFriendCount] = useState(0)
   const [unreadDMs, setUnreadDMs] = useState<Record<string, number>>({})
   const [isUploading, setIsUploading] = useState(false)
+  const [knownProfiles, setKnownProfiles] = useState<Record<string, { id: string; display_name: string; avatar_url?: string }>>({})
+  const [recentDMUserIds, setRecentDMUserIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('echo-recent-dm-users')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+
+  // Channel invite modal state (Discord-style)
+  const [channelForInvite, setChannelForInvite] = useState<{ channel: Channel; space: Space } | null>(null)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('echo-recent-dm-users', JSON.stringify(recentDMUserIds))
+    } catch {}
+  }, [recentDMUserIds])
+
+  function handleOpenDirectChat(targetId: string, targetProfile?: { id: string; display_name: string; avatar_url?: string }) {
+    setInspectedMember(null)
+    setHoveredMemberPopover(null)
+    if (targetProfile) {
+      setKnownProfiles(prev => ({ ...prev, [targetId]: targetProfile }))
+    } else {
+      const found = spaceMembers.find(m => (m.user?.id || m.id) === targetId)
+      if (found) {
+        setKnownProfiles(prev => ({
+          ...prev,
+          [targetId]: {
+            id: targetId,
+            display_name: found.user?.display_name || found.name || found.display_name || 'Membro',
+            avatar_url: found.user?.avatar_url || found.avatar_url
+          }
+        }))
+      }
+    }
+    setRecentDMUserIds(prev => Array.from(new Set([targetId, ...prev])))
+    setPage('Amigos')
+    setSelectedDMUserId(targetId)
+    setUnreadDMs(prev => { const next = { ...prev }; delete next[targetId]; return next })
+    loadDirectMessages(targetId)
+  }
 
   const showToast = (title: string, message: string, type: 'info' | 'message' | 'friend' = 'info') => {
     const id = Math.random().toString(36).substring(7)
@@ -2313,6 +2819,31 @@ function Echo({ user }: { user: User }) {
   } | null>(null)
 
   const stopRingtoneRef = useRef<(() => void) | null>(null)
+  const processSpaceInviteRef = useRef<((url: string) => Promise<void>) | null>(null)
+
+  // Deep-Link Protocol Listener (echo://invite/...)
+  useEffect(() => {
+    if (!user?.id || !(window as any).electronAPI) return
+
+    const handleInviteUrl = (url: string) => {
+      if (url && typeof url === 'string' && url.startsWith('echo://')) {
+        console.log('[DeepLink] Convite recebido via echo://', url)
+        processSpaceInviteRef.current?.(url)
+      }
+    }
+
+    if (typeof (window as any).electronAPI.onDeepLinkInvite === 'function') {
+      ;(window as any).electronAPI.onDeepLinkInvite(handleInviteUrl)
+    }
+
+    if (typeof (window as any).electronAPI.getInitialInviteUrl === 'function') {
+      ;(window as any).electronAPI.getInitialInviteUrl().then((initialUrl: string | null) => {
+        if (initialUrl) {
+          handleInviteUrl(initialUrl)
+        }
+      }).catch(() => {})
+    }
+  }, [user?.id])
 
   useEffect(() => {
     selectedDMUserIdRef.current = selectedDMUserId
@@ -4973,6 +5504,90 @@ function Echo({ user }: { user: User }) {
     }
   }
 
+  async function sendFriendRequestToUser(targetUserId: string, targetName?: string) {
+    if (!user || targetUserId === user.id) return
+    const name = targetName || 'usuário'
+
+    // 1. Check local friendships state
+    const existing = friendships.find(f => f.user.id === targetUserId)
+    if (existing) {
+      if (existing.status === 'accepted') {
+        showToast('Já são amigos', `Você e @${name} já são amigos!`, 'info')
+        return
+      }
+      if (existing.initiatorId === user.id) {
+        showToast('Solicitação já enviada', `Você já enviou um pedido de amizade para @${name}.`, 'info')
+        return
+      } else {
+        await acceptFriendRequest(existing.id)
+        return
+      }
+    }
+
+    if (!supabase) return
+
+    try {
+      // 2. Double-check Supabase
+      const { data: existingRows } = await supabase
+        .from('friendships')
+        .select('id, status, user_id, friend_id')
+        .or(`and(user_id.eq.${user.id},friend_id.eq.${targetUserId}),and(user_id.eq.${targetUserId},friend_id.eq.${user.id})`)
+
+      if (existingRows && existingRows.length > 0) {
+        const rel = existingRows[0]
+        if (rel.status === 'accepted') {
+          showToast('Já são amigos', `Você e @${name} já são amigos!`, 'info')
+          await loadFriendships()
+          return
+        }
+        if (rel.user_id === user.id) {
+          showToast('Solicitação já enviada', `Você já enviou um pedido de amizade para @${name}.`, 'info')
+          await loadFriendships()
+          return
+        } else {
+          await acceptFriendRequest(rel.id)
+          return
+        }
+      }
+
+      // 3. Insert friendship request
+      const { error: fError } = await supabase
+        .from('friendships')
+        .insert({
+          user_id: user.id,
+          friend_id: targetUserId,
+          status: 'pending'
+        })
+
+      if (fError) {
+        if (fError.code === '23505') {
+          showToast('Aviso', 'Vocês já possuem uma solicitação pendente.', 'info')
+        } else {
+          showToast('Erro', fError.message, 'info')
+        }
+      } else {
+        playFriendRequestSound(sfxVolume)
+        showToast('Solicitação enviada!', `Pedido de amizade enviado para @${name}!`, 'friend')
+
+        socialChannelRef.current?.send({
+          type: 'broadcast',
+          event: 'friend-event',
+          payload: {
+            type: 'friend-request-sent',
+            targetUserId,
+            senderId: user.id,
+            senderName: profileDisplayName || displayName || user.email || 'Alguém'
+          }
+        })
+
+        await loadFriendships()
+      }
+    } catch (e: any) {
+      console.error('Error in sendFriendRequestToUser:', e)
+      showToast('Erro', 'Não foi possível enviar a solicitação de amizade.', 'info')
+    }
+  }
+
   async function acceptFriendRequest(friendshipId: string) {
     if (!supabase) return
     const req = friendships.find(f => f.id === friendshipId)
@@ -5481,13 +6096,21 @@ function Echo({ user }: { user: User }) {
     await loadChannelsForSpace(space.id)
   }
 
-  async function joinSpace(event: FormEvent) {
-    event.preventDefault(); if (!supabase || !joinSpaceCode.trim()) return
-    setJoining(true); setError('')
-    let code = joinSpaceCode.trim()
-    
-    // Suporta links como https://echo.chat/invite/{id}, echo://invite/{id} ou UUID puro
-    const urlMatch = code.match(/(?:invite\/|^)([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
+  async function processSpaceInvite(rawInput: string) {
+    if (!supabase || !rawInput.trim()) return
+    setJoining(true)
+    setError('')
+    let code = rawInput.trim()
+    let targetChannelId: string | null = null
+
+    // Extrai parâmetro de canal se presente no link (?channel=id ou &channel=id)
+    const chMatch = rawInput.match(/[?&]channel=([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
+    if (chMatch && chMatch[1]) {
+      targetChannelId = chMatch[1]
+    }
+
+    // Suporta links como echo://invite/{id}, https://.../invite/{id} ou UUID puro
+    const urlMatch = rawInput.match(/(?:invite\/|^)([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
     if (urlMatch && urlMatch[1]) {
       code = urlMatch[1]
     }
@@ -5501,6 +6124,7 @@ function Echo({ user }: { user: User }) {
         
       if (spaceError || !space) {
         setError('Link de convite inválido ou espaço não encontrado.')
+        showToast('Convite Inválido', 'Espaço ou canal não encontrado.', 'info')
         setJoining(false)
         return
       }
@@ -5513,8 +6137,30 @@ function Echo({ user }: { user: User }) {
         .maybeSingle()
         
       if (member) {
-        setError('Você já é um membro deste espaço!')
+        // Usuário já faz parte deste Espaço: entra diretamente no canal/chamada sem erro
+        setShowAddSpaceModal(false)
+        setJoinSpaceCode('')
         setJoining(false)
+        setPage('Servidores')
+        setExpandedSpace(space.id)
+        await loadChannelsForSpace(space.id)
+
+        const chs = spaceChannels[space.id] || []
+        const chToJoin = targetChannelId 
+          ? chs.find(c => c.id === targetChannelId)
+          : (chs.find(c => c.type === 'voice') || chs.find(c => c.type === 'text') || chs[0])
+
+        if (chToJoin) {
+          setSelectedChannel(chToJoin)
+          if (chToJoin.type === 'voice') {
+            handleJoinVoice(chToJoin.id, space.id)
+            showToast("Conectado!", `Você entrou na chamada "${chToJoin.name}".`, "info")
+          } else {
+            showToast("Canal Aberto", `Navegando para #${chToJoin.name}.`, "info")
+          }
+        } else {
+          showToast("Espaço Aberto", `Você já está no espaço "${space.name}".`, "info")
+        }
         return
       }
       
@@ -5548,17 +6194,39 @@ function Echo({ user }: { user: User }) {
         console.warn('Erro ao atribuir cargo padrão ao novo membro:', errDefault)
       }
       
+      setShowAddSpaceModal(false)
       setJoinSpaceCode('')
       setJoining(false)
       await loadSpaces()
+      setPage('Servidores')
       setExpandedSpace(space.id)
       await loadChannelsForSpace(space.id)
+
+      const chs = spaceChannels[space.id] || []
+      const chToJoin = targetChannelId 
+        ? chs.find(c => c.id === targetChannelId)
+        : (chs.find(c => c.type === 'voice') || chs.find(c => c.type === 'text') || chs[0])
+
+      if (chToJoin) {
+        setSelectedChannel(chToJoin)
+        if (chToJoin.type === 'voice') {
+          handleJoinVoice(chToJoin.id, space.id)
+        }
+      }
+
       showToast("Bem-vindo!", `Você entrou no espaço "${space.name}".`, "info")
     } catch (err: any) {
       setError(err.message || 'Erro ao entrar no espaço.')
       setJoining(false)
     }
   }
+
+  async function joinSpace(event: FormEvent) {
+    event.preventDefault()
+    if (!joinSpaceCode.trim()) return
+    await processSpaceInvite(joinSpaceCode.trim())
+  }
+  processSpaceInviteRef.current = processSpaceInvite
 
   async function createChannel(event: FormEvent, spaceId: string) {
     event.preventDefault(); if (!supabase || !newChannelName.trim()) return
@@ -6322,6 +6990,16 @@ function Echo({ user }: { user: User }) {
                   <span className="channel-item-name">{ch.name}</span>
                   {ch.is_announcement && <span className="channel-badge-pill">Avisos</span>}
                   {unreadChannels.has(ch.id) && <span className="channel-unread-dot" />}
+                  <span
+                    className="channel-action-btn invite-btn"
+                    title={`Convidar amigos para #${ch.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setChannelForInvite({ channel: ch, space: activeSpace })
+                    }}
+                  >
+                    <UserPlusIcon style={{ width: '13px', height: '13px' }} />
+                  </span>
                 </button>
               )
             }
@@ -6368,6 +7046,16 @@ function Echo({ user }: { user: User }) {
                       {channelVoiceUsers.length}
                     </span>
                   ) : null}
+                  <span
+                    className="channel-action-btn invite-btn"
+                    title={`Convidar amigos para a chamada ${ch.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setChannelForInvite({ channel: ch, space: activeSpace })
+                    }}
+                  >
+                    <UserPlusIcon style={{ width: '13px', height: '13px' }} />
+                  </span>
                 </button>
                 {channelVoiceUsers.length > 0 && (
                   <div className="sidebar-voice-users">
@@ -6484,7 +7172,7 @@ function Echo({ user }: { user: User }) {
                       className="server-dropdown-item" 
                       onClick={() => {
                         setShowServerDropdown(false)
-                        const inviteLink = `https://echo.chat/invite/${activeSpace.id}`
+                        const inviteLink = `echo://invite/${activeSpace.id}`
                         copyToClipboard(inviteLink)
                         showToast("Link Copiado!", `Link de convite do espaço "${activeSpace.name}" copiado para a área de transferência.`, 'info')
                       }}
@@ -7878,8 +8566,34 @@ function Echo({ user }: { user: User }) {
                       <div className="voice-split-layout" style={!showVoiceChat ? { gridTemplateColumns: '1fr' } : undefined}>
                           {/* Media pane (Left) */}
                           <div className="voice-media-pane">
-                            {activeScreenSharers.length > 0 && isWatchingStreams ? (
-                              <div className="voice-streams-container">
+                            {(() => {
+                              const callMembersMap = new Map<string, VoiceParticipant>()
+                              if (activeVoiceChannelId === selectedChannel.id && isConnected) {
+                                participants.forEach(p => { if (p?.userId) callMembersMap.set(p.userId, p) })
+                              }
+                              const spUsers = spaceVoiceUsers[selectedChannel.id] || []
+                              spUsers.forEach(p => {
+                                if (p?.userId && !callMembersMap.has(p.userId)) {
+                                  callMembersMap.set(p.userId, p)
+                                }
+                              })
+                              if (activeVoiceChannelId === selectedChannel.id && user?.id && !callMembersMap.has(user.id)) {
+                                callMembersMap.set(user.id, {
+                                  userId: user.id,
+                                  displayName: profileDisplayName || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Você',
+                                  avatarUrl: profileAvatarUrl || user.user_metadata?.avatar_url,
+                                  isSpeaking: false,
+                                  isMuted,
+                                  isDeafened,
+                                  screenStream: localScreenStream || undefined
+                                })
+                              }
+                              const callMembersList = Array.from(callMembersMap.values())
+
+                              return (
+                                <>
+                                  {activeScreenSharers.length > 0 && isWatchingStreams ? (
+                                    <div className="voice-streams-container">
                                 <div className="streams-switcher-bar">
                                   <div className="streams-switcher-tabs">
                                     {activeScreenSharers.map(sharer => {
@@ -8010,6 +8724,48 @@ function Echo({ user }: { user: User }) {
                                     />
                                   </div>
                                 ) : null}
+
+                                {/* Strip horizontal de participantes durante transmissão ao vivo */}
+                                {callMembersList.length > 0 && (
+                                  <div className="stream-participants-strip">
+                                    {callMembersList.map(p => {
+                                      const isSharer = !!(p.screenStream && p.screenStream.getVideoTracks().length > 0)
+                                      return (
+                                        <div
+                                          key={p.userId}
+                                          className={`stream-strip-card ${p.isSpeaking ? 'speaking' : ''} ${isSharer ? 'is-sharer' : ''}`}
+                                          onClick={() => {
+                                            if (isSharer) {
+                                              setSelectedScreenSharerUserId(p.userId)
+                                              setIsWatchingStreams(true)
+                                              setScreenShareViewMode('focus')
+                                            } else if (p.userId !== user.id) {
+                                              setVolumeControlUser(p)
+                                            }
+                                          }}
+                                          title={isSharer ? `Clique para alternar para a transmissão de ${p.displayName}` : (p.userId !== user.id ? `Ajustar volume de áudio` : p.displayName)}
+                                        >
+                                          <div className="stream-strip-avatar">
+                                            {p.avatarUrl ? (
+                                              <img src={p.avatarUrl} alt={p.displayName} />
+                                            ) : (
+                                              <span>{(p.displayName || 'M').slice(0, 1).toUpperCase()}</span>
+                                            )}
+                                            {p.isMuted && (
+                                              <span className="stream-strip-badge" title="Mutado">
+                                                <MicOffIcon style={{ width: '8px', height: '8px' }} />
+                                              </span>
+                                            )}
+                                          </div>
+                                          <span className="stream-strip-name">{p.displayName}{p.userId === user.id ? ' (Você)' : ''}</span>
+                                          {isSharer && (
+                                            <span className="stream-strip-live-dot" title="Transmitindo tela" />
+                                          )}
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <div className="participants-grid">
@@ -8061,9 +8817,7 @@ function Echo({ user }: { user: User }) {
                                 )}
 
                                 {(() => {
-                                  const displayList = (activeVoiceChannelId === selectedChannel.id && isConnected)
-                                    ? participants
-                                    : (spaceVoiceUsers[selectedChannel.id] || [])
+                                  const displayList = callMembersList
 
                                   if (displayList.length === 0) {
                                     return (
@@ -8234,6 +8988,9 @@ function Echo({ user }: { user: User }) {
                               })()}
                               </div>
                             )}
+                          </>
+                        )
+                      })()}
 
                             {/* Push-to-Talk Indicator */}
                             {isPttMode && (
@@ -8806,6 +9563,16 @@ function Echo({ user }: { user: User }) {
           isDeafened={isDeafened}
           toggleMute={handleToggleMute}
           toggleDeafen={handleToggleDeafen}
+          knownProfiles={knownProfiles}
+          recentDMUserIds={recentDMUserIds}
+          onRemoveRecentDM={(dmId) => {
+            setRecentDMUserIds(prev => prev.filter(id => id !== dmId))
+            if (selectedDMUserId === dmId) {
+              setSelectedDMUserId(null)
+              setDirectMessages([])
+            }
+          }}
+          onAddFriend={sendFriendRequestToUser}
         />
       </div>
 
@@ -9053,7 +9820,7 @@ function Echo({ user }: { user: User }) {
                   <input 
                     value={joinSpaceCode} 
                     onChange={(e) => setJoinSpaceCode(e.target.value)} 
-                    placeholder="https://echo.chat/invite/... ou código" 
+                    placeholder="echo://invite/... ou código do espaço" 
                     required 
                   />
                   <button type="submit" className="add-space-modal-submit-btn" disabled={joining}>
@@ -10665,7 +11432,7 @@ function Echo({ user }: { user: User }) {
                     <div className="invite-input-row">
                       <input 
                         type="text" 
-                        value={`https://echo.chat/invite/${editingSpace.id}`} 
+                        value={`echo://invite/${editingSpace.id}`} 
                         readOnly 
                         className="invite-code-input"
                       />
@@ -10674,9 +11441,9 @@ function Echo({ user }: { user: User }) {
                         className="ch-create-btn" 
                         style={{ padding: '10px 20px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                         onClick={() => {
-                          const link = `https://echo.chat/invite/${editingSpace.id}`
+                          const link = `echo://invite/${editingSpace.id}`
                           copyToClipboard(link)
-                          showToast("Link Copiado!", "Link de convite do espaço copiado com sucesso.", "info")
+                          showToast("Link Copiado!", "Link de convite direto do espaço copiado com sucesso.", "info")
                         }}
                       >
                         <LinkIcon style={{ width: '14px', height: '14px' }} />
@@ -10691,9 +11458,9 @@ function Echo({ user }: { user: User }) {
                       type="button" 
                       className="invite-message-btn"
                       onClick={() => {
-                        const inviteMsg = `Entre no meu espaço "${editingSpace.name}" no Echo! Clique no link para participar: https://echo.chat/invite/${editingSpace.id}`
+                        const inviteMsg = `Entre no meu espaço "${editingSpace.name}" no Echo!\n🔗 Link Direto: echo://invite/${editingSpace.id}\n🔑 Código do Espaço: ${editingSpace.id}`
                         copyToClipboard(inviteMsg)
-                        showToast("Mensagem Copiada!", "Texto de convite com link copiado para a área de transferência.", "info")
+                        showToast("Mensagem Copiada!", "Texto de convite com link e código copiado para a área de transferência.", "info")
                       }}
                     >
                       📋 Copiar Mensagem de Convite Pronta
@@ -10953,12 +11720,11 @@ function Echo({ user }: { user: User }) {
             profileEffect={inspectedEffect}
             voicePeer={voicePeer}
             showToast={showToast}
+            friendships={friendships}
+            onAddFriend={sendFriendRequestToUser}
+            onAcceptFriend={acceptFriendRequest}
             onOpenDM={(targetId) => {
-              setInspectedMember(null)
-              setPage('Amigos')
-              setSelectedDMUserId(targetId)
-              setUnreadDMs(prev => { const next = { ...prev }; delete next[targetId]; return next })
-              loadDirectMessages(targetId)
+              handleOpenDirectChat(targetId, inspectedMember.user)
             }}
             onAdjustVolume={(peer) => {
               setVolumeControlUser(peer)
@@ -11091,9 +11857,58 @@ function Echo({ user }: { user: User }) {
         </div>
       )})()}
 
+      {/* Canal / Voice Channel Invite Modal (Discord-style) */}
+      {channelForInvite && (
+        <ChannelInviteModal
+          channel={channelForInvite.channel}
+          space={channelForInvite.space}
+          onClose={() => setChannelForInvite(null)}
+          friendships={friendships}
+          onSendDMInvite={async (friendUserId, inviteMessage) => {
+            if (!supabase || !user) return
+            await supabase.from('direct_messages').insert({
+              sender_id: user.id,
+              receiver_id: friendUserId,
+              body: inviteMessage
+            })
+            socialChannelRef.current?.send({
+              type: 'broadcast',
+              event: 'dm-event',
+              payload: {
+                receiverId: friendUserId,
+                senderId: user.id,
+                senderName: profileDisplayName || displayName || 'Amigo',
+                body: inviteMessage
+              }
+            })
+          }}
+          showToast={showToast}
+        />
+      )}
+
       {/* Soundboard Modal */}
       {showSoundboardModal && (
-        <div className="modal-backdrop" onClick={() => setShowSoundboardModal(false)}>
+        <div 
+          className="modal-backdrop" 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)'
+          }}
+          onClick={() => setShowSoundboardModal(false)}
+        >
           <div className="modal-content" style={{ maxWidth: '520px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -11157,9 +11972,18 @@ function Echo({ user }: { user: User }) {
         <div 
           className="modal-backdrop" 
           style={{ 
+            position: 'fixed',
+            inset: 0,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
             zIndex: 99999, 
-            backdropFilter: 'blur(10px)', 
-            backgroundColor: 'rgba(0, 0, 0, 0.78)',
+            backdropFilter: 'blur(12px)', 
+            WebkitBackdropFilter: 'blur(12px)',
+            backgroundColor: 'rgba(0, 0, 0, 0.76)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
@@ -11261,9 +12085,18 @@ function Echo({ user }: { user: User }) {
         <div 
           className="modal-backdrop" 
           style={{ 
+            position: 'fixed',
+            inset: 0,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
             zIndex: 99999, 
-            backdropFilter: 'blur(10px)', 
-            backgroundColor: 'rgba(0, 0, 0, 0.78)',
+            backdropFilter: 'blur(12px)', 
+            WebkitBackdropFilter: 'blur(12px)',
+            backgroundColor: 'rgba(0, 0, 0, 0.76)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
@@ -11512,7 +12345,11 @@ function FriendsView({
   isMuted = false,
   isDeafened = false,
   toggleMute,
-  toggleDeafen
+  toggleDeafen,
+  knownProfiles = {},
+  recentDMUserIds = [],
+  onRemoveRecentDM,
+  onAddFriend
 }: {
   friendships: FriendshipRequest[]
   friendTab: 'online' | 'all' | 'pending' | 'add'
@@ -11559,6 +12396,10 @@ function FriendsView({
   isDeafened?: boolean
   toggleMute?: () => void
   toggleDeafen?: () => void
+  knownProfiles?: Record<string, { id: string; display_name: string; avatar_url?: string; custom_status?: string; avatar_decoration?: string | null }>
+  recentDMUserIds?: string[]
+  onRemoveRecentDM?: (userId: string) => void
+  onAddFriend?: (targetUserId: string, targetName: string) => Promise<void> | void
 }) {
   const dmFileRef = useRef<HTMLInputElement>(null)
   const dmMessagesEndRef = useRef<HTMLDivElement>(null)
@@ -11645,53 +12486,245 @@ function FriendsView({
     }
   }
 
+  // Scroll to bottom of DM messages automatically when opened or when messages change
+  useEffect(() => {
+    if (selectedDMUserId && directMessages.length > 0) {
+      dmMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [selectedDMUserId, directMessages.length])
+
+  // Resolve active DM target user info across friendships, knownProfiles, and spaceMembers
+  const dmUser = useMemo(() => {
+    if (!selectedDMUserId) return null
+    const friend = friendships.find(f => f.user.id === selectedDMUserId)
+    if (friend) {
+      const pres = presenceData[friend.user.id]
+      return {
+        id: friend.user.id,
+        display_name: friend.user.display_name,
+        avatar_url: friend.user.avatar_url,
+        avatar_decoration: pres?.avatar_decoration || (friend.user as any).avatar_decoration || null,
+        isFriend: true,
+        status: pres?.custom_status || (pres?.current_game ? `Jogando ${pres.current_game.name}` : null)
+      }
+    }
+    const known = knownProfiles[selectedDMUserId]
+    if (known) {
+      const pres = presenceData[known.id]
+      return {
+        id: known.id,
+        display_name: known.display_name || 'Usuário',
+        avatar_url: known.avatar_url,
+        avatar_decoration: pres?.avatar_decoration || known.avatar_decoration || null,
+        isFriend: false,
+        status: pres?.custom_status || (pres?.current_game ? `Jogando ${pres.current_game.name}` : null)
+      }
+    }
+    const member = spaceMembers.find(m => m.user?.id === selectedDMUserId)?.user
+    if (member) {
+      const pres = presenceData[member.id]
+      return {
+        id: member.id,
+        display_name: member.display_name || 'Usuário',
+        avatar_url: member.avatar_url,
+        avatar_decoration: pres?.avatar_decoration || (member as any).avatar_decoration || null,
+        isFriend: false,
+        status: pres?.custom_status || (pres?.current_game ? `Jogando ${pres.current_game.name}` : null)
+      }
+    }
+    return {
+      id: selectedDMUserId,
+      display_name: 'Usuário',
+      avatar_url: undefined,
+      avatar_decoration: null,
+      isFriend: false,
+      status: null
+    }
+  }, [selectedDMUserId, friendships, knownProfiles, spaceMembers, presenceData])
+
+  // Combined list of DM channels: selected DM, unread DMs, and recent DMs
+  const allDMPartnerIds = useMemo(() => {
+    const list: string[] = []
+    if (selectedDMUserId && !list.includes(selectedDMUserId)) {
+      list.push(selectedDMUserId)
+    }
+    Object.keys(unreadDMs).forEach(id => {
+      if (unreadDMs[id] > 0 && !list.includes(id)) list.push(id)
+    })
+    recentDMUserIds.forEach(id => {
+      if (!list.includes(id)) list.push(id)
+    })
+    return list
+  }, [selectedDMUserId, unreadDMs, recentDMUserIds])
+
+  const getPartnerInfo = (partnerId: string) => {
+    const friend = friendships.find(f => f.user.id === partnerId)
+    if (friend) {
+      return {
+        id: friend.user.id,
+        display_name: friend.user.display_name,
+        avatar_url: friend.user.avatar_url,
+        avatar_decoration: presenceData[friend.user.id]?.avatar_decoration || (friend.user as any).avatar_decoration || null
+      }
+    }
+    const known = knownProfiles[partnerId]
+    if (known) {
+      return {
+        id: known.id,
+        display_name: known.display_name || 'Usuário',
+        avatar_url: known.avatar_url,
+        avatar_decoration: known.avatar_decoration || null
+      }
+    }
+    const member = spaceMembers.find(m => m.user?.id === partnerId)?.user
+    if (member) {
+      return {
+        id: member.id,
+        display_name: member.display_name || 'Usuário',
+        avatar_url: member.avatar_url,
+        avatar_decoration: (member as any).avatar_decoration || null
+      }
+    }
+    return {
+      id: partnerId,
+      display_name: 'Conversa',
+      avatar_url: undefined,
+      avatar_decoration: null
+    }
+  }
+
   return (
     <section className={`friends-workspace ${selectedDMUserId ? 'has-dm-open' : ''} ${!showSidebar ? 'sidebar-collapsed' : ''}`}>
-      {/* 1. Left Sidebar: Atividades dos Amigos & Perfil */}
+      {/* 1. Left Sidebar: Navigation, Direct Messages, and Activity */}
       <aside className={`friends-sidebar ${!showSidebar ? 'collapsed' : ''}`}>
-        <div className="sidebar-activity-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ActivityIcon style={{ width: '16px', height: '16px', color: 'var(--accent-color)' }} />
-            <span style={{ fontSize: '14.5px', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.2px' }}>
-              Atividades
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {activeFeedFriends.length > 0 ? (
-              <span className="activity-live-badge">
-                <span className="live-dot" />
-                {activeFeedFriends.length} ao vivo
-              </span>
-            ) : (
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700 }}>
-                0 ao vivo
-              </span>
+        {/* Top: Amigos Hub navigation button (Discord-style) */}
+        <div className="friends-sidebar-top" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button
+            type="button"
+            className={`friends-sidebar-home-btn ${!selectedDMUserId ? 'active' : ''}`}
+            onClick={onCloseDM}
+            style={{ flex: 1 }}
+          >
+            <div className="home-btn-left">
+              <UsersIcon style={{ width: '18px', height: '18px' }} />
+              <span>Amigos</span>
+            </div>
+            {pendingRequests.length > 0 && (
+              <span className="home-pending-badge">{pendingRequests.length}</span>
             )}
-            <button 
-              type="button" 
-              className="sidebar-collapse-btn" 
-              onClick={() => setShowSidebar(false)}
-              title="Ocultar barra lateral de atividades"
-            >
-              <PanelLeftCloseIcon style={{ width: '14px', height: '14px' }} />
-            </button>
-          </div>
+          </button>
+          <button 
+            type="button" 
+            className="sidebar-collapse-btn" 
+            onClick={() => setShowSidebar(false)}
+            title="Ocultar barra lateral"
+            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '6px', borderRadius: '4px', display: 'flex', alignItems: 'center' }}
+          >
+            <PanelLeftCloseIcon style={{ width: '15px', height: '15px' }} />
+          </button>
         </div>
 
         <div className="friends-sidebar-scrollable">
+          {/* Direct Messages Section */}
+          <div className="dm-section-header">
+            <span>MENSAGENS DIRETAS</span>
+          </div>
+
+          {allDMPartnerIds.length === 0 ? (
+            <div className="dm-sidebar-empty">
+              <span>Nenhuma conversa recente</span>
+            </div>
+          ) : (
+            <div className="dm-sidebar-list">
+              {allDMPartnerIds.map(pId => {
+                const info = getPartnerInfo(pId)
+                const isOnline = onlineUsers.has(pId)
+                const pres = presenceData[pId]
+                const unread = unreadDMs[pId] || 0
+                const isGaming = isFriendGaming(pId)
+                const gameName = pres?.current_game?.name || pres?.custom_status?.replace(/^jogando\s+/i, '') || ''
+                const subText = isGaming 
+                  ? `Jogando ${gameName}` 
+                  : pres?.custom_status || (isOnline ? 'Online' : 'Offline')
+
+                return (
+                  <div
+                    key={pId}
+                    className={`dm-list-item ${selectedDMUserId === pId ? 'active' : ''}`}
+                    onClick={() => onOpenDM(pId)}
+                  >
+                    <div className="dm-item-avatar-wrapper">
+                      <div className="friend-avatar" style={{ width: 32, height: 32, fontSize: 13 }}>
+                        {info.avatar_url ? (
+                          <img src={info.avatar_url} alt={info.display_name} />
+                        ) : (
+                          info.display_name.slice(0, 1).toUpperCase()
+                        )}
+                        {info.avatar_decoration && info.avatar_decoration !== 'none' && (
+                          <AvatarDecoration decorationId={info.avatar_decoration} />
+                        )}
+                      </div>
+                      <span className={`online-indicator ${isOnline ? 'online' : 'offline'}`} />
+                    </div>
+
+                    <div className="dm-item-text">
+                      <span className="dm-item-name">{info.display_name}</span>
+                      <span className="dm-item-sub">{subText}</span>
+                    </div>
+
+                    {unread > 0 && (
+                      <span className="dm-unread-badge">{unread}</span>
+                    )}
+
+                    <button
+                      type="button"
+                      className="dm-dismiss-btn"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (onRemoveRecentDM) {
+                          onRemoveRecentDM(pId)
+                        } else if (selectedDMUserId === pId) {
+                          onCloseDM()
+                        }
+                      }}
+                      title="Fechar conversa direta"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Activity Section / Header */}
+          <div className="sidebar-activity-header" style={{ marginTop: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ActivityIcon style={{ width: '15px', height: '15px', color: 'var(--accent-color)' }} />
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Atividades Ao Vivo
+              </span>
+            </div>
+            {activeFeedFriends.length > 0 && (
+              <span className="activity-live-badge">
+                <span className="live-dot" />
+                {activeFeedFriends.length}
+              </span>
+            )}
+          </div>
+
           {activeFeedFriends.length === 0 ? (
-            <div className="sidebar-radar-quiet-card">
-              <div className="echo-radar-mini">
-                <div className="echo-radar-mini-wave" />
-                <GamepadIcon style={{ width: '18px', height: '18px', color: '#00f2fe' }} />
+            <div className="sidebar-radar-quiet-card" style={{ margin: '8px 10px', padding: '12px 10px' }}>
+              <div className="echo-radar-mini" style={{ width: 32, height: 32 }}>
+                <GamepadIcon style={{ width: '16px', height: '16px', color: '#00f2fe' }} />
               </div>
-              <span className="sidebar-radar-quiet-title">Por aqui tudo quieto</span>
-              <span className="sidebar-radar-quiet-desc">
-                Quando amigos iniciarem jogos ou transmissões, a atividade aparecerá aqui.
+              <span className="sidebar-radar-quiet-title" style={{ fontSize: '12px' }}>Tudo calmo</span>
+              <span className="sidebar-radar-quiet-desc" style={{ fontSize: '11px' }}>
+                Atividades de jogos aparecerão aqui.
               </span>
             </div>
           ) : (
-            <div className="sidebar-activity-list">
+            <div className="sidebar-activity-list" style={{ padding: '0 8px' }}>
               {activeFeedFriends.map(friend => {
                 const pres = presenceData[friend.user.id]
                 const isGaming = isFriendGaming(friend.user.id)
@@ -11725,18 +12758,6 @@ function FriendsView({
                         {isGaming ? gameName : (pres?.custom_status || 'Em atividade')}
                       </span>
                     </div>
-
-                    <div className="sidebar-activity-actions">
-                      <button
-                        type="button"
-                        className="sidebar-activity-btn"
-                        onClick={(e) => { e.stopPropagation(); onOpenDM(friend.user.id); }}
-                        title="Enviar Mensagem Direta"
-                      >
-                        <MessageSquareIcon style={{ width: '12px', height: '12px' }} />
-                        <span>Conversar</span>
-                      </button>
-                    </div>
                   </div>
                 )
               })}
@@ -11761,8 +12782,190 @@ function FriendsView({
         />
       </aside>
 
-      {/* 2. Center Content Area */}
-      <section className="friends-content">
+      {/* 2. Center Content Area: Full DM Chat if active, otherwise Friends Hub */}
+      {selectedDMUserId && dmUser ? (
+        <section className="dm-full-chat">
+          {/* Header */}
+          <div className="dm-full-header">
+            <div className="dm-full-header-left">
+              <button
+                type="button"
+                className="dm-back-to-friends-btn"
+                onClick={onCloseDM}
+                title="Voltar para a lista de amigos"
+              >
+                ←
+              </button>
+
+              <div className="dm-header-avatar-wrap">
+                <div className="friend-avatar" style={{ width: 36, height: 36, fontSize: 15, position: 'relative' }}>
+                  {dmUser.avatar_url ? (
+                    <img src={dmUser.avatar_url} alt={dmUser.display_name} />
+                  ) : (
+                    dmUser.display_name.slice(0, 1).toUpperCase()
+                  )}
+                  {dmUser.avatar_decoration && dmUser.avatar_decoration !== 'none' && (
+                    <AvatarDecoration decorationId={dmUser.avatar_decoration} />
+                  )}
+                </div>
+                <span className={`online-indicator ${onlineUsers.has(dmUser.id) ? 'online' : 'offline'}`} />
+              </div>
+
+              <div className="dm-header-user-meta">
+                <div className="dm-header-title-row">
+                  <span className="dm-header-username">{dmUser.display_name}</span>
+                  {!dmUser.isFriend && (
+                    <span className="dm-non-friend-badge">Membro do Servidor</span>
+                  )}
+                </div>
+                <span className="dm-header-sub">
+                  {dmUser.status || (onlineUsers.has(dmUser.id) ? 'Online' : 'Offline')}
+                </span>
+              </div>
+            </div>
+
+            <div className="dm-full-header-actions">
+              {!dmUser.isFriend && onAddFriend && (
+                <button
+                  type="button"
+                  className="dm-header-add-friend-btn"
+                  onClick={() => onAddFriend(dmUser.id, dmUser.display_name)}
+                  title="Adicionar à lista de amigos"
+                >
+                  <UserPlusIcon style={{ width: '14px', height: '14px' }} />
+                  <span>Adicionar Amigo</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="dm-header-action-btn call"
+                onClick={() => onStartCall && onStartCall(dmUser.id, dmUser.display_name, dmUser.avatar_url)}
+                title="Iniciar Chamada de Voz 1x1"
+              >
+                <PhoneIcon style={{ width: '15px', height: '15px' }} />
+                <span>Chamada de Voz</span>
+              </button>
+
+              <button
+                type="button"
+                className="dm-header-action-btn close"
+                onClick={onCloseDM}
+                title="Fechar Chat"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          {/* Active 1x1 Call Bar (if call is ongoing with this user or in general) */}
+          {activeDirectCall && (activeDirectCall.targetUserId === dmUser.id || activeDirectCall.targetUserId === user.id) && (
+            <div className="direct-call-active-bar">
+              <div className="direct-call-user-meta">
+                <span className="direct-call-wave-dot" />
+                <div>
+                  <div className="direct-call-user-title">
+                    {activeDirectCall.status === 'calling' ? 'Chamando...' : `Em chamada de voz com ${dmUser.display_name}`}
+                  </div>
+                </div>
+              </div>
+              <div className="direct-call-controls">
+                <button 
+                  type="button" 
+                  className={`direct-call-ctrl-btn ${isMuted ? 'active' : ''}`} 
+                  onClick={toggleMute} 
+                  title={isMuted ? 'Desmutar Microfone' : 'Mutar Microfone'}
+                >
+                  {isMuted ? <MicOffIcon style={{ width: '14px', height: '14px' }} /> : <MicIcon style={{ width: '14px', height: '14px' }} />}
+                </button>
+                <button 
+                  type="button" 
+                  className={`direct-call-ctrl-btn ${isDeafened ? 'active' : ''}`} 
+                  onClick={toggleDeafen} 
+                  title={isDeafened ? 'Desativar Ensurdecer' : 'Ensurdecer'}
+                >
+                  {isDeafened ? <HeadphonesOffIcon style={{ width: '14px', height: '14px' }} /> : <HeadphonesIcon style={{ width: '14px', height: '14px' }} />}
+                </button>
+                <button 
+                  type="button" 
+                  className="direct-call-hangup-btn" 
+                  onClick={endDirectCall} 
+                  title="Desligar Chamada"
+                >
+                  <PhoneOffIcon style={{ width: '14px', height: '14px' }} />
+                  <span>Desligar</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Messages Feed */}
+          <div className="dm-full-messages-list">
+            <div className="dm-welcome-hero">
+              <div className="friend-avatar" style={{ width: 72, height: 72, fontSize: 28, position: 'relative' }}>
+                {dmUser.avatar_url ? (
+                  <img src={dmUser.avatar_url} alt={dmUser.display_name} />
+                ) : (
+                  dmUser.display_name.slice(0, 1).toUpperCase()
+                )}
+                {dmUser.avatar_decoration && dmUser.avatar_decoration !== 'none' && (
+                  <AvatarDecoration decorationId={dmUser.avatar_decoration} />
+                )}
+              </div>
+              <h2 className="dm-welcome-name">{dmUser.display_name}</h2>
+              <p className="dm-welcome-sub">
+                Este é o início da sua conversa privada com <strong>{dmUser.display_name}</strong>.
+              </p>
+              {!dmUser.isFriend && onAddFriend && (
+                <div style={{ marginTop: '10px' }}>
+                  <button
+                    type="button"
+                    className="dm-welcome-add-btn"
+                    onClick={() => onAddFriend(dmUser.id, dmUser.display_name)}
+                  >
+                    <UserPlusIcon style={{ width: '14px', height: '14px' }} />
+                    <span>Adicionar Amigo</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {directMessages.map(msg => (
+              <div key={msg.id} className={`dm-message ${msg.sender_id === user.id ? 'dm-sent' : 'dm-received'}`}>
+                <div className="dm-bubble">
+                  {msg.attachment_url && msg.attachment_type === 'image' && (
+                    <img src={msg.attachment_url} alt="anexo" className="dm-attachment-img" onClick={() => window.open(msg.attachment_url, '_blank')} />
+                  )}
+                  {msg.attachment_url && msg.attachment_type !== 'image' && (
+                    <a href={msg.attachment_url} target="_blank" rel="noopener noreferrer" className="dm-attachment-file">📎 {msg.body}</a>
+                  )}
+                  {(!msg.attachment_url || msg.attachment_type === 'image') && <span>{msg.body}</span>}
+                  <span className="dm-time">{new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+              </div>
+            ))}
+            <div ref={dmMessagesEndRef} />
+          </div>
+
+          {/* Full Composer */}
+          <form className="dm-full-compose" onSubmit={onSendDM}>
+            <input type="file" ref={dmFileRef} style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadFile(f); e.target.value = '' }} />
+            <button type="button" className="dm-attach-btn" onClick={() => dmFileRef.current?.click()} disabled={isUploading} title="Anexar arquivo">
+              {isUploading ? <ClockIcon style={{ width: '16px', height: '16px' }} /> : <PaperclipIcon style={{ width: '16px', height: '16px' }} />}
+            </button>
+            <input 
+              value={dmDraft} 
+              onChange={(e) => setDmDraft(e.target.value)} 
+              placeholder={`Conversar com @${dmUser.display_name}…`}
+              autoFocus
+            />
+            <button type="submit" disabled={!dmDraft.trim() && !isUploading} className="dm-send-btn" title="Enviar mensagem">
+              <SendIcon style={{ width: '16px', height: '16px' }} />
+            </button>
+          </form>
+        </section>
+      ) : (
+        <section className="friends-content">
         {/* Discord-inspired Top Navigation Bar with Echo DNA */}
         <div className="friends-header-toolbar">
           <div className="friends-header-nav-left">
@@ -12304,117 +13507,7 @@ function FriendsView({
           </div>
         )}
       </section>
-
-      {/* 3. Right Sidebar: Activity Feed Panel OR DM Chat */}
-      {selectedDMUserId ? (() => {
-        const dmFriend = friendships.find(f => f.user.id === selectedDMUserId)
-        const dmFriendName = dmFriend?.user.display_name || 'Amigo'
-        return (
-          <aside className="dm-chat-panel">
-            <div className="dm-chat-header">
-              <div className="dm-chat-header-info">
-                {(() => {
-                  const dmDeco = dmFriend ? (presenceData[dmFriend.user.id]?.avatar_decoration || (dmFriend.user as any).avatar_decoration || null) : null
-                  return (
-                    <div className="friend-avatar" style={{ width: 32, height: 32, fontSize: 14, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {dmFriend?.user.avatar_url ? (
-                        <img src={dmFriend.user.avatar_url} alt={dmFriendName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                      ) : (
-                        dmFriendName.slice(0, 1).toUpperCase()
-                      )}
-                      {dmDeco && dmDeco !== 'none' && (
-                        <AvatarDecoration decorationId={dmDeco} />
-                      )}
-                    </div>
-                  )
-                })()}
-                <span className="dm-chat-name">{dmFriendName}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <button 
-                  type="button" 
-                  className="dm-call-btn" 
-                  onClick={() => dmFriend && onStartCall && onStartCall(dmFriend.user.id, dmFriendName, dmFriend.user.avatar_url)} 
-                  title="Iniciar Chamada de Voz 1x1"
-                >
-                  <PhoneIcon style={{ width: '15px', height: '15px' }} />
-                </button>
-                <button className="dm-close-btn" onClick={onCloseDM} title="Fechar">✕</button>
-              </div>
-            </div>
-            {activeDirectCall && (activeDirectCall.targetUserId === dmFriend?.user.id || activeDirectCall.targetUserId === user.id) && (
-              <div className="direct-call-active-bar">
-                <div className="direct-call-user-meta">
-                  <span className="direct-call-wave-dot" />
-                  <div>
-                    <div className="direct-call-user-title">
-                      {activeDirectCall.status === 'calling' ? 'Chamando...' : 'Em chamada de voz'}
-                    </div>
-                  </div>
-                </div>
-                <div className="direct-call-controls">
-                  <button 
-                    type="button" 
-                    className={`direct-call-ctrl-btn ${isMuted ? 'active' : ''}`} 
-                    onClick={toggleMute} 
-                    title={isMuted ? 'Desmutar Microfone' : 'Mutar Microfone'}
-                  >
-                    {isMuted ? <MicOffIcon style={{ width: '14px', height: '14px' }} /> : <MicIcon style={{ width: '14px', height: '14px' }} />}
-                  </button>
-                  <button 
-                    type="button" 
-                    className={`direct-call-ctrl-btn ${isDeafened ? 'active' : ''}`} 
-                    onClick={toggleDeafen} 
-                    title={isDeafened ? 'Desativar Ensurdecer' : 'Ensurdecer'}
-                  >
-                    {isDeafened ? <HeadphonesOffIcon style={{ width: '14px', height: '14px' }} /> : <HeadphonesIcon style={{ width: '14px', height: '14px' }} />}
-                  </button>
-                  <button 
-                    type="button" 
-                    className="direct-call-hangup-btn" 
-                    onClick={endDirectCall} 
-                    title="Desligar Chamada"
-                  >
-                    <PhoneOffIcon style={{ width: '14px', height: '14px' }} />
-                    <span>Desligar</span>
-                  </button>
-                </div>
-              </div>
-            )}
-            <div className="dm-messages-list">
-              {directMessages.length === 0 ? (
-                <div className="dm-empty">Nenhuma mensagem ainda. Diga oi!</div>
-              ) : (
-                directMessages.map(msg => (
-                  <div key={msg.id} className={`dm-message ${msg.sender_id === user.id ? 'dm-sent' : 'dm-received'}`}>
-                    <div className="dm-bubble">
-                      {msg.attachment_url && msg.attachment_type === 'image' && (
-                        <img src={msg.attachment_url} alt="anexo" className="dm-attachment-img" onClick={() => window.open(msg.attachment_url, '_blank')} />
-                      )}
-                      {msg.attachment_url && msg.attachment_type !== 'image' && (
-                        <a href={msg.attachment_url} target="_blank" rel="noopener noreferrer" className="dm-attachment-file">📎 {msg.body}</a>
-                      )}
-                      {(!msg.attachment_url || msg.attachment_type === 'image') && <span>{msg.body}</span>}
-                      <span className="dm-time">{new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-              <div ref={dmMessagesEndRef} />
-            </div>
-            <form className="dm-compose" onSubmit={onSendDM}>
-              <input type="file" ref={dmFileRef} style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadFile(f); e.target.value = '' }} />
-              <button type="button" className="dm-attach-btn" onClick={() => dmFileRef.current?.click()} disabled={isUploading} title="Anexar arquivo">
-                {isUploading ? <ClockIcon style={{ width: '14px', height: '14px' }} /> : <PaperclipIcon style={{ width: '14px', height: '14px' }} />}
-              </button>
-              <input value={dmDraft} onChange={(e) => setDmDraft(e.target.value)} placeholder="Escreva uma mensagem…" />
-              <button type="submit" disabled={!dmDraft.trim() && !isUploading}>
-                <SendIcon style={{ width: '14px', height: '14px' }} />
-              </button>
-            </form>
-          </aside>
-        )
-      })() : null}
+      )}
     </section>
   )
 }
@@ -14680,6 +15773,7 @@ function StreamTile({
   const hideTimeoutRef = useRef<any>(null)
 
   const isLocalSharer = participant.userId === user.id
+  const [showLocalPreview, setShowLocalPreview] = useState(false)
   const [detectedFps, setDetectedFps] = useState<number>(30)
   const streamFps = isLocalSharer ? (localScreenFps || 30) : detectedFps
 
@@ -14760,6 +15854,11 @@ function StreamTile({
   useEffect(() => {
     const videoEl = videoRef.current
     if (videoEl) {
+      if (isLocalSharer && !showLocalPreview) {
+        videoEl.srcObject = null
+        return
+      }
+
       const stream = participant.screenStream || null
       const currentTrackId = (videoEl.srcObject as MediaStream)?.getVideoTracks?.()[0]?.id
       const newTrackId = stream?.getVideoTracks?.()[0]?.id
@@ -14797,7 +15896,7 @@ function StreamTile({
         videoEl.removeEventListener('waiting', handleAutoResume)
       }
     }
-  }, [participant.screenStream])
+  }, [participant.screenStream, isLocalSharer, showLocalPreview])
 
   const volumeVal = peerScreenVolumes[participant.userId] !== undefined ? peerScreenVolumes[participant.userId] : 100
 
@@ -14807,13 +15906,34 @@ function StreamTile({
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
-      <video 
-        ref={videoRef}
-        autoPlay 
-        playsInline 
-        muted
-        className="screen-share-video-el"
-      />
+      {isLocalSharer && !showLocalPreview ? (
+        <div className="local-stream-placeholder">
+          <div className="local-stream-beacon">
+            <ScreenIcon style={{ width: '42px', height: '42px', color: 'var(--accent-color)' }} />
+          </div>
+          <h3 className="local-stream-title">Você está transmitindo sua tela</h3>
+          <p className="local-stream-desc">
+            A prévia local foi pausada para priorizar 100% do FPS e desempenho do seu jogo.
+          </p>
+          <button
+            type="button"
+            className="local-stream-preview-toggle-btn"
+            onClick={() => setShowLocalPreview(true)}
+            title="Ver a sua transmissão em tempo real"
+          >
+            <EyeIcon style={{ width: '15px', height: '15px' }} />
+            <span>Ver Pré-visualização</span>
+          </button>
+        </div>
+      ) : (
+        <video 
+          ref={videoRef}
+          autoPlay 
+          playsInline 
+          muted
+          className="screen-share-video-el"
+        />
+      )}
 
       {/* Stream Info Tag Header */}
       <div className="screen-share-tag" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -14883,6 +16003,20 @@ function StreamTile({
           <PipIcon />
           <span>{isPiPActive ? 'Mini Player ON' : 'Mini Player'}</span>
         </button>
+
+        {/* Toggle Local Preview for Streamer to save FPS */}
+        {isLocalSharer && showLocalPreview && (
+          <button
+            type="button"
+            className="stream-action-btn"
+            onClick={() => setShowLocalPreview(false)}
+            title="Pausar prévia local para economizar FPS do jogo"
+            style={{ color: '#22c55e', borderColor: 'rgba(34, 197, 94, 0.4)' }}
+          >
+            <EyeOffIcon style={{ width: '14px', height: '14px' }} />
+            <span>Pausar Prévia (FPS+)</span>
+          </button>
+        )}
 
         {/* Volume Booster Slider (0% - 200%) */}
         {participant.userId !== user.id && (

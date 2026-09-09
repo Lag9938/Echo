@@ -29,6 +29,9 @@ if (process.defaultApp) {
   app.setAsDefaultProtocolClient('echo')
 }
 
+// Armazena URL de convite recebida no arranque para repassar ao carregamento da janela
+let pendingInviteUrl = process.argv.find(arg => typeof arg === 'string' && arg.startsWith('echo://')) || null
+
 if (isDevelopment) {
   try {
     app.setPath('userData', path.join(app.getPath('appData'), 'Echo-Dev'))
@@ -185,14 +188,17 @@ async function scanRunningGames() {
   } catch (err) {}
 }
 
-// Hardware Acceleration & High-Performance Screen Capture for Games (Valorant, CS2, etc.)
-app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer,WindowsGraphicsCapture,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization')
-app.commandLine.appendSwitch('disable-features', 'HardwareAcceleratedDirectScanout')
+// Hardware Acceleration & High-Performance Screen Capture for Games (Zero FPS drop in Valorant, CS2, etc.)
+app.commandLine.appendSwitch('enable-features', 'WindowsGraphicsCapture,MediaFoundationD3D11VideoCapture,PlatformHEVCDecoderSupport,CanvasOopRasterization,ZeroCopyVideoCapture')
+app.commandLine.appendSwitch('enable-webrtc-hw-encoding')
+app.commandLine.appendSwitch('enable-webrtc-hw-decoding')
 app.commandLine.appendSwitch('enable-gpu-rasterization')
 app.commandLine.appendSwitch('enable-zero-copy')
 app.commandLine.appendSwitch('ignore-gpu-blocklist')
 app.commandLine.appendSwitch('enable-accelerated-video-decode')
+app.commandLine.appendSwitch('enable-accelerated-video-encode')
 app.commandLine.appendSwitch('enable-accelerated-mjpeg-decode')
+app.commandLine.appendSwitch('enable-native-gpu-memory-buffers')
 app.commandLine.appendSwitch('force_high_performance_gpu')
 // Impede que o Chromium congele / reduza o framerate da transmissão quando o Echo estiver em segundo plano durante um jogo
 app.commandLine.appendSwitch('disable-renderer-backgrounding')
@@ -622,12 +628,13 @@ function createWindow() {
   // LiveKit SFU Connection & Token Generation Handler (com tolerância a relógio descalibrado)
   ipcMain.handle('get-livekit-connection', async (_event, params = {}) => {
     try {
-      let livekitUrl = cloudUrl || process.env.LIVEKIT_URL || 'wss://137-131-144-255.sslip.io'
+      const { room, identity, name, avatarUrl } = params || {}
+      let livekitUrl = process.env.LIVEKIT_URL || 'wss://137-131-144-255.sslip.io'
       if (livekitUrl.includes('136-248-75-151')) {
         livekitUrl = 'wss://137-131-144-255.sslip.io'
       }
-      const apiKey = cloudApiKey || process.env.LIVEKIT_API_KEY || 'APIi5XDp34K5gP3'
-      const apiSecret = cloudApiSecret || process.env.LIVEKIT_API_SECRET || 'LTl6XQ3ozsSupX8Ydva6erDmcmIVnbi7BFS6H7GPQDQ'
+      const apiKey = process.env.LIVEKIT_API_KEY || 'APIi5XDp34K5gP3'
+      const apiSecret = process.env.LIVEKIT_API_SECRET || 'LTl6XQ3ozsSupX8Ydva6erDmcmIVnbi7BFS6H7GPQDQ'
 
       const now = Math.floor(Date.now() / 1000)
       const header = { alg: 'HS256', typ: 'JWT' }
@@ -658,6 +665,13 @@ function createWindow() {
       console.error('[LiveKit] Failed to generate token:', err)
       return { success: false, error: err.message }
     }
+  })
+
+  // Retorna qualquer URL de convite recebida no arranque para o frontend
+  ipcMain.handle('get-initial-invite-url', () => {
+    const url = pendingInviteUrl
+    pendingInviteUrl = null
+    return url
   })
 
   // Windows / System Auto-Start at Login (Discord Style - Default Enabled)
@@ -806,12 +820,15 @@ app.whenReady().then(() => {
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
 
   app.on('second-instance', (event, commandLine) => {
+    const inviteArg = commandLine.find(arg => typeof arg === 'string' && arg.startsWith('echo://'))
+    if (inviteArg) {
+      pendingInviteUrl = inviteArg
+    }
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore()
       mainWindow.show()
       mainWindow.focus()
-      const inviteArg = commandLine.find(arg => arg.startsWith('echo://'))
-      if (inviteArg) {
+      if (inviteArg && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('deep-link-invite', inviteArg)
       }
     }
@@ -819,11 +836,14 @@ app.whenReady().then(() => {
 
   app.on('open-url', (event, url) => {
     event.preventDefault()
+    pendingInviteUrl = url
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore()
       mainWindow.show()
       mainWindow.focus()
-      mainWindow.webContents.send('deep-link-invite', url)
+      if (!mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('deep-link-invite', url)
+      }
     }
   })
 })

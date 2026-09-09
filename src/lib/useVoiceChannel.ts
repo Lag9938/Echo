@@ -729,7 +729,8 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
         adaptiveStream: true,
         dynacast: true,
         publishDefaults: {
-          simulcast: true,
+          simulcast: false,
+          videoCodec: 'h264',
           dtx: true,
         }
       })
@@ -1221,12 +1222,13 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
           await room.localParticipant.publishTrack(localVideoTrack, {
             source: Track.Source.ScreenShare,
             name: 'screen_video',
-            simulcast: true,
+            simulcast: false,
+            videoCodec: 'h264',
             videoEncoding: {
               maxBitrate: calculatedBitrate,
               maxFramerate: targetFps
             },
-            degradationPreference: 'maintain-framerate'
+            degradationPreference: 'maintain-resolution'
           })
 
           if (audioTrack) {
@@ -1358,8 +1360,18 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
     isSpatialAudioEnabledRef.current = enabled
   }, [])
 
-  const changeScreenShareSettings = useCallback(async (_width?: number, _height?: number, _fps?: number) => {
-    // LiveKit SFU automatically optimizes bitrate and framerate
+  const changeScreenShareSettings = useCallback(async (width?: number, height?: number, fps?: number) => {
+    if (localScreenVideoTrackRef.current) {
+      try {
+        const constraints: MediaTrackConstraints = {}
+        if (width) constraints.width = { max: width }
+        if (height) constraints.height = { max: height }
+        if (fps) constraints.frameRate = { max: fps }
+        await localScreenVideoTrackRef.current.mediaStreamTrack.applyConstraints(constraints)
+      } catch (e) {
+        console.warn('[ScreenShare] Erro ao aplicar novas configurações na faixa de vídeo:', e)
+      }
+    }
   }, [])
 
   // Push-to-Talk

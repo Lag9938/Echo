@@ -49,6 +49,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
 
   // Deep-Link Invite API
+  getInitialInviteUrl: () => ipcRenderer.invoke('get-initial-invite-url'),
   onDeepLinkInvite: (callback) => {
     ipcRenderer.removeAllListeners('deep-link-invite')
     ipcRenderer.on('deep-link-invite', (_event, url) => callback(url))
