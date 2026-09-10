@@ -14,15 +14,167 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.32.2'
+export const APP_CURRENT_VERSION = '0.32.8'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.32.8',
+    title: 'Echo v0.32.8 - Áudio de Tela em Tempo Real (Estilo Discord & Zero Atraso)',
+    date: '10 de Setembro de 2026',
+    tagline: 'Eliminação definitiva de buffers artificiais na captura de áudio: voz e lábios 100% em sincronia automática, player minimalista limpo e atalhos rápidos.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '⚡',
+        badge: 'ZERO BUFFER ARTIFICIAL',
+        title: 'Buffer de Captura Reduzido para 20ms',
+        description: 'Eliminados os 120ms de retenção artificial de áudio. Agora os pacotes de som do jogo/filme são emitidos instantaneamente com os quadros de vídeo H.264.'
+      },
+      {
+        icon: '✨',
+        badge: 'INTERFACE MINIMALISTA',
+        title: 'Player Limpo Sem Botões Manuais Desnecessários',
+        description: 'Removido o seletor manual da barra de controles para oferecer a mesma experiência pura e elegante do Discord. A sincronia é automática.'
+      },
+      {
+        icon: '⌨️',
+        badge: 'ATALHOS SILENCIOSOS',
+        title: 'Atalhos [ e ] para Ajuste Fino Opcional',
+        description: 'Usuários avançados que desejarem compensar latência de telas específicas ainda podem usar as teclas [ e ] com diagnóstico visível no painel Stats.'
+      }
+    ]
+  },
+  {
+    version: '0.32.7',
+    title: 'Echo v0.32.7 - Calibração Fina de Sincronia Labial',
+    date: '10 de Setembro de 2026',
+    tagline: 'Ajuste milimétrico de latência de buffer para transmissão de tela.',
+    highlights: [
+      {
+        icon: '🎯',
+        badge: 'SINCRONIA EXATA',
+        title: 'Calibração Fina a 120ms',
+        description: 'Redução do tempo de buffer para 120ms (5760 amostras), eliminando o descompasso onde a boca abria ligeiramente antes do som.'
+      },
+      {
+        icon: '⚡',
+        badge: 'AJUSTE DINÂMICO',
+        title: 'Buffer NetEQ e Controle ao Vivo',
+        description: 'Mantido controle dinâmico no player com atalhos de teclado para compensação instantânea em qualquer monitor.'
+      }
+    ]
+  },
+  {
+    version: '0.32.6',
+    title: 'Echo v0.32.6 - Sincronização Labial A/V Definitiva (Emissor & Receptor)',
+    date: '10 de Setembro de 2026',
+    tagline: 'Alinhamento em tempo real entre a fala dos personagens e a imagem em filmes e jogos: buffer calibrado na captura (160ms) e controle nativo WebRTC jitterBufferTarget no player.',
+    highlights: [
+      {
+        icon: '🎬',
+        badge: 'ALINHAMENTO EMISSOR',
+        title: 'Buffer de Captura Calibrado com H.264 (160ms)',
+        description: 'O áudio da tela capturado pelo AudioWorklet agora acompanha o tempo exato de compressão e renderização de vídeo da GPU, eliminando o som adiantado na raiz.'
+      },
+      {
+        icon: '⚡',
+        badge: 'WEBRTC JITTER BUFFER',
+        title: 'Controle de Playout Nativo no Espectador',
+        description: 'Ajuste de sincronia no player com suporte a atalhos ([ diminui, ] aumenta) atuando diretamente no buffer NetEQ em C++ do Chromium.'
+      },
+      {
+        icon: '🛡️',
+        badge: 'DRIFT CORRECTION',
+        title: 'Zero Deslocamento e Voz Limpa',
+        description: 'Compensação automática e suave de buffer: a sincronia se mantém firme mesmo após horas de filme sem robotização.'
+      }
+    ]
+  },
+  {
+    version: '0.32.5',
+    title: 'Echo v0.32.5 - Sincronização Labial Nativa WebRTC (Estilo Discord)',
+    date: '10 de Setembro de 2026',
+    tagline: 'Solução definitiva para sincronia de filmes e jogos: unificação de áudio e vídeo de tela no mesmo fluxo nativo com Lip-Sync automático em C++ no Chromium, sem necessidade de ajustes manuais.',
+    highlights: [
+      {
+        icon: '⚡',
+        badge: 'LIP-SYNC NATIVO',
+        title: 'Sincronização Labial Automática via C++ (WebRTC A/V)',
+        description: 'Faixas de áudio e vídeo da transmissão agora são entregues unificadas no elemento de vídeo, ativando o motor interno de sincronização automática do Chromium que adapta a fala em tempo real à renderização da GPU.'
+      },
+      {
+        icon: '🎯',
+        badge: 'ZERO CONFIGURAÇÃO',
+        title: 'Fim dos Ajustes Manuais de Milissegundos',
+        description: 'O som não fica adiantado e nem atrasado: a sincronia acompanha dinamicamente variações de framerate e jitter de rede como no Discord.'
+      },
+      {
+        icon: '📻',
+        badge: 'BACKGROUND PLAY',
+        title: 'Áudio Contínuo em Segundo Plano',
+        description: 'Se você trocar para o chat de texto ou minimizar o player, o áudio da live continua tocando perfeitamente sem interrupção e sem eco.'
+      }
+    ]
+  },
+  {
+    version: '0.32.4',
+    title: 'Echo v0.32.4 - Sincronização Labial A/V Exata & Controle de Sincronia ao Vivo',
+    date: '10 de Setembro de 2026',
+    tagline: 'Alinhamento milimétrico entre fala e vídeo para quem assiste: motor de atraso Web Audio DelayNode que neutraliza a latência de decodificação H.264 do vídeo, além de seletor ao vivo de sincronia (ms) na tela.',
+    highlights: [
+      {
+        icon: '🎬',
+        badge: 'LIP-SYNC',
+        title: 'Compensação de Decodificação de Vídeo no Espectador',
+        description: 'Implementado motor Web Audio com DelayNode calibrado por padrão em 200ms para o espectador, neutralizando o tempo de jitter buffer e decodificação H.264 da GPU para que a fala dos personagens nunca chegue adiantada em relação à boca.'
+      },
+      {
+        icon: '⏱️',
+        badge: 'CONTROLE AO VIVO',
+        title: 'Seletor Interativo de Sincronia Labial',
+        description: 'Novo controle "[-] 200ms [+]" na barra do player de transmissão (e atalhos de teclado "[" e "]") para ajuste milimétrico instantâneo de acordo com o filme, série ou taxa de quadros.'
+      },
+      {
+        icon: '🎧',
+        badge: 'ÁUDIO CRISTALINO',
+        title: 'Pipeline Estéreo 128 kbps Sem Cortes',
+        description: 'Buffer do transmissor e receptor otimizados contra robotização, oscilações de rede e cortes DTX.'
+      }
+    ]
+  },
+  {
+    version: '0.32.3',
+    title: 'Echo v0.32.3 - Sincronização Labial & Áudio Cristalino em Transmissões',
+    date: '10 de Setembro de 2026',
+    tagline: 'Fim do atraso na fala dos personagens e da voz robótica em filmes e jogos: novo pipeline de áudio via AudioWorklet com correção de deriva (drift) em tempo real e streaming estéreo de 128 kbps sem cortes.',
+    isLatest: false,
+    highlights: [
+      {
+        icon: '🎙️',
+        badge: 'ÁUDIO',
+        title: 'Sincronização Labial em Tempo Real (Soft Drift)',
+        description: 'Buffer travado a ~30ms que compensa e descarta atrasos automaticamente, mantendo a fala dos personagens 100% alinhada à boca no vídeo durante todo o filme.'
+      },
+      {
+        icon: '⚡',
+        badge: 'WORKLET',
+        title: 'AudioWorklet em Thread Isolada do SO',
+        description: 'O som da tela agora roda em thread dedicada de áudio em tempo real, imune a picos de CPU, renderização do React ou janelas de jogos, eliminando estalos e voz robótica.'
+      },
+      {
+        icon: '🎵',
+        badge: 'QUALIDADE',
+        title: 'Streaming Estéreo 128 kbps Sem DTX',
+        description: 'Transmissão contínua sem cortes em sussurros e trilhas orquestradas, preservando a fidelidade cinematográfica original com transporte TCP imediato (Zero Nagle).'
+      }
+    ]
+  },
   {
     version: '0.32.2',
     title: 'Echo v0.32.2 - Tela Cheia Imersiva Sem Barra do Windows em Transmissões',
     date: '10 de Setembro de 2026',
     tagline: 'Experiência de tela cheia 100% imersiva ao assistir transmissões de amigos: o aplicativo agora entra no modo Tela Cheia Nativo do Windows ocultando completamente a barra de tarefas.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🖥️',

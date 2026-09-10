@@ -3823,6 +3823,8 @@ function Echo({ user }: { user: User }) {
     toggleAiDenoise,
     updateScreenSubscriptions,
     updateLocalProfile,
+    screenAudioSyncDelayMs,
+    changeScreenAudioSyncDelay,
     isReconnecting: isVoiceReconnecting,
     reconnectCountdown: voiceReconnectCountdown,
     reconnectAttempt: voiceReconnectAttempt,
@@ -10458,6 +10460,8 @@ function Echo({ user }: { user: User }) {
                                         }}
                                         onCloseStream={() => setIsWatchingStreams(false)}
                                         localScreenFps={screenFps}
+                                        screenAudioSyncDelayMs={screenAudioSyncDelayMs}
+                                        onChangeScreenAudioSyncDelay={changeScreenAudioSyncDelay}
                                       />
                                     ))}
                                   </div>
@@ -10477,6 +10481,8 @@ function Echo({ user }: { user: User }) {
                                         setIsWatchingStreams(false)
                                       }}
                                       localScreenFps={screenFps}
+                                      screenAudioSyncDelayMs={screenAudioSyncDelayMs}
+                                      onChangeScreenAudioSyncDelay={changeScreenAudioSyncDelay}
                                     />
                                   </div>
                                 ) : null}
@@ -17955,7 +17961,9 @@ function StreamTile({
   isPiPActive,
   onToggleFloatingPiP,
   onCloseStream,
-  localScreenFps = 30
+  localScreenFps = 30,
+  screenAudioSyncDelayMs,
+  onChangeScreenAudioSyncDelay
 }: {
   participant: VoiceParticipant;
   user: User;
@@ -17969,6 +17977,8 @@ function StreamTile({
   onToggleFloatingPiP?: () => void;
   onCloseStream?: () => void;
   localScreenFps?: number;
+  screenAudioSyncDelayMs?: number;
+  onChangeScreenAudioSyncDelay?: (ms: number) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [streamResolution, setStreamResolution] = useState<string>('')
@@ -17977,6 +17987,7 @@ function StreamTile({
   const hideTimeoutRef = useRef<any>(null)
 
   const isLocalSharer = participant.userId === user.id
+  const volumeVal = peerScreenVolumes[participant.userId] !== undefined ? peerScreenVolumes[participant.userId] : 100
   const [showLocalPreview, setShowLocalPreview] = useState(false)
   const [detectedFps, setDetectedFps] = useState<number>(30)
   const streamFps = isLocalSharer ? (localScreenFps || 30) : detectedFps
@@ -18007,6 +18018,23 @@ function StreamTile({
       if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current)
     }
   }, [])
+
+  // Atalhos de teclado para calibrar a Sincronia Labial em tempo real: [ diminui, ] aumenta
+  useEffect(() => {
+    if (isLocalSharer || !onChangeScreenAudioSyncDelay) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.key === '[') {
+        const current = screenAudioSyncDelayMs !== undefined ? screenAudioSyncDelayMs : 0
+        onChangeScreenAudioSyncDelay(Math.max(0, current - 25))
+      } else if (e.key === ']') {
+        const current = screenAudioSyncDelayMs !== undefined ? screenAudioSyncDelayMs : 0
+        onChangeScreenAudioSyncDelay(Math.min(1000, current + 25))
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isLocalSharer, screenAudioSyncDelayMs, onChangeScreenAudioSyncDelay])
 
   // Detect real FPS for remote participants
   useEffect(() => {
@@ -18055,6 +18083,15 @@ function StreamTile({
     }
   }, [participant.screenStream, isLocalSharer])
 
+  // Notifica o canal de voz que o StreamTile está ativo na tela para o usuário (evita som duplicado / eco no fundo)
+  useEffect(() => {
+    if (isLocalSharer) return
+    window.dispatchEvent(new CustomEvent('echo-stream-tile-active', { detail: { userId: participant.userId, active: true } }))
+    return () => {
+      window.dispatchEvent(new CustomEvent('echo-stream-tile-active', { detail: { userId: participant.userId, active: false } }))
+    }
+  }, [participant.userId, isLocalSharer])
+
   useEffect(() => {
     const videoEl = videoRef.current
     if (videoEl) {
@@ -18064,11 +18101,21 @@ function StreamTile({
       }
 
       const stream = participant.screenStream || null
-      const currentTrackId = (videoEl.srcObject as MediaStream)?.getVideoTracks?.()[0]?.id
+      const currentStream = videoEl.srcObject as MediaStream
+      const currentTrackId = currentStream?.getVideoTracks?.()[0]?.id
       const newTrackId = stream?.getVideoTracks?.()[0]?.id
-      if (currentTrackId !== newTrackId) {
+      const currentAudioId = currentStream?.getAudioTracks?.()[0]?.id
+      const newAudioId = stream?.getAudioTracks?.()[0]?.id
+
+      if (currentTrackId !== newTrackId || currentAudioId !== newAudioId) {
         videoEl.srcObject = stream
       }
+
+      // Sincronização Labial Nativa WebRTC A/V: o elemento <video> reproduz o áudio unificado
+      // com volume aplicado nativamente sem eco para o streamer
+      videoEl.muted = isLocalSharer ? true : (participant.isDeafened || false)
+      videoEl.volume = Math.max(0, Math.min(1, volumeVal / 100))
+
       if (stream && videoEl.paused) {
         videoEl.play().catch(() => {})
       }
@@ -18100,9 +18147,15 @@ function StreamTile({
         videoEl.removeEventListener('waiting', handleAutoResume)
       }
     }
-  }, [participant.screenStream, isLocalSharer, showLocalPreview])
+  }, [participant.screenStream, isLocalSharer, showLocalPreview, participant.isDeafened])
 
-  const volumeVal = peerScreenVolumes[participant.userId] !== undefined ? peerScreenVolumes[participant.userId] : 100
+  // Ajuste em tempo real do volume no elemento de vídeo
+  useEffect(() => {
+    const videoEl = videoRef.current
+    if (videoEl && !isLocalSharer) {
+      videoEl.volume = Math.max(0, Math.min(1, volumeVal / 100))
+    }
+  }, [volumeVal, isLocalSharer])
 
   return (
     <div 
@@ -18134,7 +18187,7 @@ function StreamTile({
           ref={videoRef}
           autoPlay 
           playsInline 
-          muted
+          muted={isLocalSharer || (participant.isDeafened || false)}
           className="screen-share-video-el"
         />
       )}
@@ -18170,6 +18223,7 @@ function StreamTile({
             <div className="stats-row"><span>Bitrate de Vídeo:</span> <strong>~2.4 - 3.2 Mbps (Otimizado SFU / Simulcast)</strong></div>
             <div className="stats-row"><span>Codec de Vídeo:</span> <strong>H.264 High Profile (GPU HW)</strong></div>
             <div className="stats-row"><span>Áudio do Jogo:</span> <strong>Opus 48kHz Estéreo (128 kbps)</strong></div>
+            <div className="stats-row"><span>Sincronia Labial:</span> <strong style={{ color: '#10b981' }}>{screenAudioSyncDelayMs !== undefined && screenAudioSyncDelayMs > 0 ? `+${screenAudioSyncDelayMs}ms (Manual [ / ])` : 'Automática (Tempo Real / 20ms Buffer)'}</strong></div>
             <div className="stats-row"><span>Degradação:</span> <strong>Maintain Framerate (Sem Lag)</strong></div>
           </div>
         </div>
@@ -18179,6 +18233,7 @@ function StreamTile({
       <div className="screen-share-overlay-controls">
         {onSelectFocus && (
           <button 
+            type="button"
             className="stream-action-btn"
             onClick={onSelectFocus}
             title="Expandir e focar nesta transmissão"
@@ -18188,15 +18243,35 @@ function StreamTile({
           </button>
         )}
 
-        {/* Stats Diagnostic HUD Button */}
+        {/* HUD de Estatísticas (Bitrate, FPS, Resolução e Codecs) */}
         <button
-          className={`stream-action-btn ${showStatsHud ? 'active' : ''}`}
-          onClick={() => setShowStatsHud(prev => !prev)}
-          title="Ver Estatísticas da Transmissão (FPS, Bitrate, Codec)"
+          type="button"
+          className={`stream-action-btn stats-hud-btn ${showStatsHud ? 'active' : ''}`}
+          onClick={() => setShowStatsHud(!showStatsHud)}
+          title="Ver Estatísticas da Transmissão (FPS, Resolução, Codec e Sincronia)"
+          style={{
+            background: showStatsHud ? 'rgba(56, 189, 248, 0.25)' : 'rgba(0, 0, 0, 0.45)',
+            borderColor: showStatsHud ? 'var(--accent-color)' : 'rgba(255, 255, 255, 0.1)',
+            color: showStatsHud ? 'var(--accent-color)' : '#fff'
+          }}
         >
-          <BarChartIcon />
+          <BarChartIcon style={{ width: '14px', height: '14px' }} />
           <span>Stats</span>
         </button>
+
+        {/* Botão de Pausar Prévia Local para liberar GPU/FPS em jogos */}
+        {isLocalSharer && showLocalPreview && (
+          <button
+            type="button"
+            className="stream-action-btn local-preview-pause-btn"
+            onClick={() => setShowLocalPreview(false)}
+            title="Pausar prévia local para economizar FPS do jogo"
+            style={{ color: '#22c55e', borderColor: 'rgba(34, 197, 94, 0.4)' }}
+          >
+            <EyeOffIcon style={{ width: '14px', height: '14px' }} />
+            <span>Pausar Prévia (FPS+)</span>
+          </button>
+        )}
 
         {/* Picture-in-Picture Button */}
         <button
@@ -18207,20 +18282,6 @@ function StreamTile({
           <PipIcon />
           <span>{isPiPActive ? 'Mini Player ON' : 'Mini Player'}</span>
         </button>
-
-        {/* Toggle Local Preview for Streamer to save FPS */}
-        {isLocalSharer && showLocalPreview && (
-          <button
-            type="button"
-            className="stream-action-btn"
-            onClick={() => setShowLocalPreview(false)}
-            title="Pausar prévia local para economizar FPS do jogo"
-            style={{ color: '#22c55e', borderColor: 'rgba(34, 197, 94, 0.4)' }}
-          >
-            <EyeOffIcon style={{ width: '14px', height: '14px' }} />
-            <span>Pausar Prévia (FPS+)</span>
-          </button>
-        )}
 
         {/* Volume Booster Slider (0% - 200%) */}
         {participant.userId !== user.id && (

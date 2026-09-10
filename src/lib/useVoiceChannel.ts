@@ -288,6 +288,26 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
   const peerPansRef = useRef<Map<string, number>>(new Map())
   const isSpatialAudioEnabledRef = useRef(true)
 
+  // Active Stream Tiles tracking (muting background audio when video player is visible on screen to enable native WebRTC Lip-Sync without echo)
+  const activeStreamTilesRef = useRef<Set<string>>(new Set())
+
+  // Screen Audio Lip-Sync Delay State (WebRTC jitterBufferTarget & playoutDelayHint)
+  const [screenAudioSyncDelayMs, setScreenAudioSyncDelayMs] = useState<number>(() => {
+    try {
+      if (!localStorage.getItem('echo-screen-audio-delay-v3')) {
+        localStorage.removeItem('echo-screen-audio-delay-ms')
+        localStorage.setItem('echo-screen-audio-delay-v3', 'true')
+        return 0
+      }
+      const saved = localStorage.getItem('echo-screen-audio-delay-ms')
+      return saved !== null ? Math.max(0, Math.min(1000, parseInt(saved, 10))) : 0
+    } catch (e) {
+      return 0
+    }
+  })
+  const screenAudioSyncDelayMsRef = useRef<number>(screenAudioSyncDelayMs)
+  screenAudioSyncDelayMsRef.current = screenAudioSyncDelayMs
+
   const selectedInputIdRef = useRef<string>('default')
   const selectedOutputIdRef = useRef<string>('default')
   const activeChannelIdRef = useRef<string | null>(null)
@@ -318,6 +338,46 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
   const startReconnectionLoopRef = useRef<() => void>(() => {})
   const attemptReconnectRef = useRef<() => Promise<void>>(async () => {})
 
+  const applyScreenAudioDelayToTrack = useCallback((track: any, delayMs: number) => {
+    if (!track) return
+    const delaySec = delayMs / 1000
+    try {
+      if (typeof track.setPlayoutDelay === 'function') {
+        track.setPlayoutDelay(delaySec)
+      }
+    } catch (e) {}
+
+    const receiver = track.receiver
+    if (receiver) {
+      try {
+        if ('playoutDelayHint' in receiver) {
+          receiver.playoutDelayHint = delaySec
+        }
+        if ('jitterBufferTarget' in receiver) {
+          receiver.jitterBufferTarget = delayMs
+        }
+      } catch (e) {}
+    }
+  }, [])
+
+  const changeScreenAudioSyncDelay = useCallback((delayMs: number) => {
+    const clamped = Math.max(0, Math.min(1000, delayMs))
+    setScreenAudioSyncDelayMs(clamped)
+    screenAudioSyncDelayMsRef.current = clamped
+    try {
+      localStorage.setItem('echo-screen-audio-delay-ms', clamped.toString())
+    } catch (e) {}
+
+    if (roomRef.current) {
+      roomRef.current.remoteParticipants.forEach((rp) => {
+        const audioPub = rp.getTrackPublication(Track.Source.ScreenShareAudio)
+        if (audioPub && audioPub.track) {
+          applyScreenAudioDelayToTrack(audioPub.track, clamped)
+        }
+      })
+    }
+  }, [applyScreenAudioDelayToTrack])
+
   // Sync all participants into React state
   const syncParticipants = useCallback(() => {
     const room = roomRef.current
@@ -338,18 +398,35 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
       })
     }
 
-    // 2. Remote Participants from LiveKit SFU (com cache estável de MediaStream para Zero Piscadas)
+    // 2. Remote Participants from LiveKit SFU (com unificação de áudio e vídeo no mesmo MediaStream para Lip-Sync nativo)
     if (room) {
       room.remoteParticipants.forEach((rp) => {
         let screenStream: MediaStream | undefined = undefined
         const screenPub = rp.getTrackPublication(Track.Source.ScreenShare)
+        const screenAudioPub = rp.getTrackPublication(Track.Source.ScreenShareAudio)
+
         if (screenPub && screenPub.track && screenPub.track.mediaStreamTrack) {
-          const track = screenPub.track.mediaStreamTrack
+          const videoTrack = screenPub.track.mediaStreamTrack
+          const audioTrack = screenAudioPub?.track?.mediaStreamTrack
+
           let existing = remoteScreenStreamsRef.current.get(rp.identity)
-          const curTrack = existing?.getVideoTracks()[0]
-          if (!existing || !curTrack || curTrack.id !== track.id) {
-            existing = new MediaStream([track])
+          const curVideoTrack = existing?.getVideoTracks()[0]
+          const curAudioTrack = existing?.getAudioTracks()[0]
+
+          const needsRecreate = !existing 
+            || !curVideoTrack 
+            || curVideoTrack.id !== videoTrack.id 
+            || (audioTrack ? curAudioTrack?.id !== audioTrack.id : false)
+
+          if (needsRecreate || !existing) {
+            const tracks: MediaStreamTrack[] = [videoTrack]
+            if (audioTrack) {
+              tracks.push(audioTrack)
+            }
+            existing = new MediaStream(tracks)
             remoteScreenStreamsRef.current.set(rp.identity, existing)
+          } else if (audioTrack && existing.getAudioTracks().length === 0) {
+            existing.addTrack(audioTrack)
           }
           screenStream = existing
         } else {
@@ -624,6 +701,8 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
     }
     localDspNodesRef.current = null
 
+    activeStreamTilesRef.current.clear()
+
     audioElementsRef.current.forEach(audio => {
       audio.srcObject = null
       audio.remove()
@@ -867,8 +946,10 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
 
       room.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
         remoteScreenStreamsRef.current.delete(participant.identity)
+        activeStreamTilesRef.current.delete(participant.identity)
         const voiceKey = `${participant.identity}-voice`
         const screenKey = `${participant.identity}-screen`
+
         const vAudio = audioElementsRef.current.get(voiceKey)
         if (vAudio) { vAudio.srcObject = null; vAudio.remove(); audioElementsRef.current.delete(voiceKey) }
         const sAudio = audioElementsRef.current.get(screenKey)
@@ -893,9 +974,15 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
             ? (peerScreenVolumesRef.current.get(participant.identity) ?? 1.0)
             : (peerVolumesRef.current.get(participant.identity) ?? 1.0)
           audio.volume = Math.max(0, Math.min(1, savedVol))
-          audio.muted = isDeafenedRef.current
 
-          // Anexa a faixa de áudio oficial do LiveKit sem suspensão de contexto
+          // Se for áudio de tela e a StreamTile estiver ativa na tela, o áudio de fundo fica mudo
+          // para dar lugar ao som unificado com Lip-Sync nativo do WebRTC via C++ no <video>!
+          audio.muted = isDeafenedRef.current || (isScreen && activeStreamTilesRef.current.has(participant.identity))
+
+          if (isScreen) {
+            applyScreenAudioDelayToTrack(track, screenAudioSyncDelayMsRef.current)
+          }
+
           track.attach(audio)
 
           if (typeof (audio as any).setSinkId === 'function' && selectedOutputIdRef.current !== 'default') {
@@ -903,6 +990,7 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
           }
 
           audio.play().catch(e => console.warn('[LiveKit] Audio play:', e))
+          syncParticipants()
         } else if (track.kind === Track.Kind.Video) {
           syncParticipants()
         }
@@ -917,6 +1005,7 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
             track.detach(audio)
             audioElementsRef.current.delete(key)
           }
+          syncParticipants()
         } else if (track.kind === Track.Kind.Video) {
           remoteScreenStreamsRef.current.delete(participant.identity)
           syncParticipants()
@@ -1207,8 +1296,13 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
     isDeafenedRef.current = next
     setIsDeafened(next)
 
-    audioElementsRef.current.forEach(audio => {
-      audio.muted = next
+    audioElementsRef.current.forEach((audio, key) => {
+      if (key.endsWith('-screen')) {
+        const participantId = key.replace(/-screen$/, '')
+        audio.muted = next || activeStreamTilesRef.current.has(participantId)
+      } else {
+        audio.muted = next
+      }
     })
 
     if (next && !isMutedRef.current) {
@@ -1267,73 +1361,185 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
             await procCtx.resume().catch(() => {})
             const dest = procCtx.createMediaStreamDestination()
 
-            const RING_SIZE = 48000 * 2
-            const ringL = new Float32Array(RING_SIZE)
-            const ringR = new Float32Array(RING_SIZE)
-            let writeIdx = 0
-            let readIdx = 0
-            let available = 0
-            let isPrimed = false
-            const PREBUFFER_SAMPLES = 7680 // ~160ms de pre-buffer para evitar underruns em picos de CPU dos jogos
+            // Processador de alta fidelidade com sincronização labial (Drift Correction) e zero robotização
+            let workletNode: AudioWorkletNode | null = null
+            let scriptNode: ScriptProcessorNode | null = null
 
-            ;(window as any).electronAPI?.onScreenshareAudioChunk((chunk: Uint8Array | ArrayBuffer) => {
-              const raw = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk)
-              const int16 = new Int16Array(raw.buffer, raw.byteOffset, Math.floor(raw.byteLength / 2))
-              const samples = Math.floor(int16.length / 2)
-              for (let i = 0; i < samples; i++) {
-                ringL[writeIdx] = int16[i * 2] / 32768.0
-                ringR[writeIdx] = int16[i * 2 + 1] / 32768.0
-                writeIdx = (writeIdx + 1) % RING_SIZE
-              }
-              available = Math.min(RING_SIZE, available + samples)
-              if (available >= PREBUFFER_SAMPLES) {
-                isPrimed = true
-              }
-            })
+            try {
+              const workletCode = `
+                class ScreenAudioWorkletProcessor extends AudioWorkletProcessor {
+                  constructor() {
+                    super();
+                    this.RING = 48000;
+                    this.ringL = new Float32Array(this.RING);
+                    this.ringR = new Float32Array(this.RING);
+                    this.writeIdx = 0;
+                    this.readIdx = 0;
+                    this.available = 0;
+                    this.targetLatency = 960;  // ~20ms (Buffer ultra-baixo para absorver jitter sem causar atraso no áudio)
+                    this.maxLatency = 1920;    // ~40ms (Teto máximo para drift correction)
+                    this.isPrimed = false;
 
-            const scriptNode = procCtx.createScriptProcessor(2048, 0, 2)
-            let lastL = 0
-            let lastR = 0
-            scriptNode.onaudioprocess = (e) => {
-              const outL = e.outputBuffer.getChannelData(0)
-              const outR = e.outputBuffer.getChannelData(1)
-              const len = outL.length
-              if (!isPrimed) {
-                for (let i = 0; i < len; i++) {
-                  lastL *= 0.95
-                  lastR *= 0.95
-                  outL[i] = lastL
-                  outR[i] = lastR
+                    this.port.onmessage = (e) => {
+                      const left = e.data.left;
+                      const right = e.data.right;
+                      const len = left.length;
+                      for (let i = 0; i < len; i++) {
+                        this.ringL[this.writeIdx] = left[i];
+                        this.ringR[this.writeIdx] = right[i];
+                        this.writeIdx = (this.writeIdx + 1) % this.RING;
+                      }
+                      this.available = Math.min(this.RING, this.available + len);
+
+                      // Soft Drift Correction: Se o áudio acumular mais que maxLatency (ex: pico de CPU),
+                      // salta o excesso para colar de volta nos 20ms da captura em tempo real!
+                      if (this.available > this.maxLatency) {
+                        const excess = this.available - this.targetLatency;
+                        this.readIdx = (this.readIdx + excess) % this.RING;
+                        this.available = this.targetLatency;
+                      }
+                    };
+                  }
+
+                  process(inputs, outputs) {
+                    const output = outputs[0];
+                    if (!output || output.length < 2) return true;
+                    const outL = output[0];
+                    const outR = output[1];
+                    const len = outL.length;
+
+                    if (!this.isPrimed) {
+                      if (this.available >= this.targetLatency) {
+                        this.isPrimed = true;
+                      } else {
+                        outL.fill(0);
+                        outR.fill(0);
+                        return true;
+                      }
+                    }
+
+                    if (this.available < len) {
+                      outL.fill(0);
+                      outR.fill(0);
+                      return true;
+                    }
+
+                    for (let i = 0; i < len; i++) {
+                      outL[i] = this.ringL[this.readIdx];
+                      outR[i] = this.ringR[this.readIdx];
+                      this.readIdx = (this.readIdx + 1) % this.RING;
+                    }
+                    this.available -= len;
+                    return true;
+                  }
                 }
-              } else {
+                registerProcessor('screen-audio-processor', ScreenAudioWorkletProcessor);
+              `
+              const blob = new Blob([workletCode], { type: 'application/javascript' })
+              const workletUrl = URL.createObjectURL(blob)
+              await procCtx.audioWorklet.addModule(workletUrl)
+              URL.revokeObjectURL(workletUrl)
+
+              workletNode = new AudioWorkletNode(procCtx, 'screen-audio-processor', {
+                numberOfInputs: 0,
+                numberOfOutputs: 1,
+                outputChannelCount: [2]
+              })
+              workletNode.connect(dest)
+
+              ;(window as any).electronAPI?.onScreenshareAudioChunk((chunk: Uint8Array | ArrayBuffer) => {
+                const raw = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk)
+                const int16 = new Int16Array(raw.buffer, raw.byteOffset, Math.floor(raw.byteLength / 2))
+                const samples = Math.floor(int16.length / 2)
+                if (samples <= 0) return
+
+                const left = new Float32Array(samples)
+                const right = new Float32Array(samples)
+                for (let i = 0; i < samples; i++) {
+                  left[i] = int16[i * 2] / 32768.0
+                  right[i] = int16[i * 2 + 1] / 32768.0
+                }
+                workletNode?.port.postMessage({ left, right }, [left.buffer, right.buffer])
+              })
+            } catch (workletErr) {
+              console.warn('[ScreenShareAudio] AudioWorklet fallback para ScriptProcessor com drift correction:', workletErr)
+
+              const RING_SIZE = 48000
+              const ringL = new Float32Array(RING_SIZE)
+              const ringR = new Float32Array(RING_SIZE)
+              let writeIdx = 0
+              let readIdx = 0
+              let available = 0
+              let isPrimed = false
+              const TARGET_LATENCY = 960  // ~20ms
+              const MAX_LATENCY = 1920    // ~40ms
+
+              ;(window as any).electronAPI?.onScreenshareAudioChunk((chunk: Uint8Array | ArrayBuffer) => {
+                const raw = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk)
+                const int16 = new Int16Array(raw.buffer, raw.byteOffset, Math.floor(raw.byteLength / 2))
+                const samples = Math.floor(int16.length / 2)
+                for (let i = 0; i < samples; i++) {
+                  ringL[writeIdx] = int16[i * 2] / 32768.0
+                  ringR[writeIdx] = int16[i * 2 + 1] / 32768.0
+                  writeIdx = (writeIdx + 1) % RING_SIZE
+                }
+                available = Math.min(RING_SIZE, available + samples)
+
+                if (available > MAX_LATENCY) {
+                  const excess = available - TARGET_LATENCY
+                  readIdx = (readIdx + excess) % RING_SIZE
+                  available = TARGET_LATENCY
+                }
+              })
+
+              scriptNode = procCtx.createScriptProcessor(1024, 0, 2)
+              scriptNode.onaudioprocess = (e) => {
+                const outL = e.outputBuffer.getChannelData(0)
+                const outR = e.outputBuffer.getChannelData(1)
+                const len = outL.length
+
+                if (!isPrimed) {
+                  if (available >= TARGET_LATENCY) {
+                    isPrimed = true
+                  } else {
+                    outL.fill(0)
+                    outR.fill(0)
+                    return
+                  }
+                }
+
                 const samplesToRead = Math.min(len, available)
+
                 for (let i = 0; i < samplesToRead; i++) {
                   outL[i] = ringL[readIdx]
                   outR[i] = ringR[readIdx]
                   readIdx = (readIdx + 1) % RING_SIZE
                 }
                 available -= samplesToRead
-                if (samplesToRead > 0) {
-                  lastL = outL[samplesToRead - 1]
-                  lastR = outR[samplesToRead - 1]
-                }
-                if (samplesToRead < len) {
-                  // Decaimento suave para preencher a lacuna sem estalo ou robotização
-                  for (let i = samplesToRead; i < len; i++) {
-                    lastL *= 0.95
-                    lastR *= 0.95
-                    outL[i] = lastL
-                    outR[i] = lastR
-                  }
-                  isPrimed = false
+
+                for (let i = samplesToRead; i < len; i++) {
+                  outL[i] = 0
+                  outR[i] = 0
                 }
               }
+              scriptNode.connect(dest)
             }
 
-            scriptNode.connect(dest)
             nativeAudioTrack = dest.stream.getAudioTracks()[0]
+            if (nativeAudioTrack) {
+              try {
+                await nativeAudioTrack.applyConstraints({
+                  echoCancellation: false,
+                  noiseSuppression: false,
+                  autoGainControl: false,
+                  channelCount: 2
+                })
+              } catch (e) {}
+            }
+
             nativeAudioCleanupRef.current = () => {
-              try { scriptNode.disconnect() } catch (e) {}
+              try { workletNode?.disconnect() } catch (e) {}
+              try { scriptNode?.disconnect() } catch (e) {}
               try { procCtx.close() } catch (e) {}
               ;(window as any).electronAPI?.stopProcessAudioCapture()
             }
@@ -1449,9 +1655,9 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
               await room.localParticipant.publishTrack(localAudioTrack, {
                 source: Track.Source.ScreenShareAudio,
                 name: 'screen_audio',
-                dtx: true,
+                dtx: false,
                 audioPreset: {
-                  maxBitrate: 64000
+                  maxBitrate: 128000
                 }
               })
             } catch (aPubErr) {
@@ -1562,7 +1768,31 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
     const clamped = Math.max(0, Math.min(2, volume))
     peerScreenVolumesRef.current.set(peerId, clamped)
     const audio = audioElementsRef.current.get(`${peerId}-screen`)
-    if (audio) audio.volume = Math.max(0, Math.min(1, clamped))
+    if (audio) {
+      audio.volume = Math.max(0, Math.min(1, clamped))
+    }
+  }, [])
+
+  // Gerencia ativação do player de vídeo na tela para desmutar som do <video> com Lip-Sync nativo
+  // e silenciar o áudio duplicado de fundo enquanto o player de tela estiver ativo
+  useEffect(() => {
+    const handleTileActive = (e: any) => {
+      const { userId, active } = e.detail || {}
+      if (!userId) return
+      if (active) {
+        activeStreamTilesRef.current.add(userId)
+      } else {
+        activeStreamTilesRef.current.delete(userId)
+      }
+      const bgAudio = audioElementsRef.current.get(`${userId}-screen`)
+      if (bgAudio) {
+        bgAudio.muted = isDeafenedRef.current || activeStreamTilesRef.current.has(userId)
+      }
+    }
+    window.addEventListener('echo-stream-tile-active', handleTileActive as EventListener)
+    return () => {
+      window.removeEventListener('echo-stream-tile-active', handleTileActive as EventListener)
+    }
   }, [])
 
   const changePeerPan = useCallback((peerId: string, pan: number) => {
@@ -1749,6 +1979,8 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
     toggleAiDenoise,
     updateScreenSubscriptions,
     updateLocalProfile,
+    screenAudioSyncDelayMs,
+    changeScreenAudioSyncDelay,
     isReconnecting,
     reconnectCountdown,
     reconnectAttempt,

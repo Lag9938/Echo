@@ -662,6 +662,7 @@ function createWindow() {
         let isConnected = false
         const client = net.createConnection({ port, host: '127.0.0.1' }, () => {
           isConnected = true
+          client.setNoDelay(true)
           audioTcpClient = client
           console.log('[AudioCaptureHelper] Connected to TCP audio stream successfully!')
           resolve({ success: true })
