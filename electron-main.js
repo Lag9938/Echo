@@ -466,6 +466,18 @@ function createWindow() {
     }
   })
 
+  // Bridge HTML5 requestFullscreen to native OS fullscreen (hides Windows taskbar)
+  mainWindow.on('enter-html-full-screen', () => {
+    if (mainWindow && !mainWindow.isFullScreen()) {
+      mainWindow.setFullScreen(true)
+    }
+  })
+  mainWindow.on('leave-html-full-screen', () => {
+    if (mainWindow && mainWindow.isFullScreen()) {
+      mainWindow.setFullScreen(false)
+    }
+  })
+
   // Permitir acesso ao microfone para canais de voz (WebRTC)
   mainWindow.webContents.session.setPermissionRequestHandler((_webContents, permission, callback) => {
     const allowed = ['media', 'microphone', 'audioCapture', 'display-capture'].includes(permission)
@@ -492,6 +504,14 @@ function createWindow() {
   })
   ipcMain.handle('window-is-maximized', () => {
     return mainWindow ? mainWindow.isMaximized() : false
+  })
+  ipcMain.handle('window-set-fullscreen', (_event, flag) => {
+    if (!mainWindow) return false
+    mainWindow.setFullScreen(Boolean(flag))
+    return mainWindow.isFullScreen()
+  })
+  ipcMain.handle('window-is-fullscreen', () => {
+    return mainWindow ? mainWindow.isFullScreen() : false
   })
 
   // Handler para capturar telas e janelas do sistema operacional com WGC e alta definição

@@ -14,15 +14,36 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.32.1'
+export const APP_CURRENT_VERSION = '0.32.2'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.32.2',
+    title: 'Echo v0.32.2 - Tela Cheia Imersiva Sem Barra do Windows em Transmissões',
+    date: '10 de Setembro de 2026',
+    tagline: 'Experiência de tela cheia 100% imersiva ao assistir transmissões de amigos: o aplicativo agora entra no modo Tela Cheia Nativo do Windows ocultando completamente a barra de tarefas.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🖥️',
+        badge: 'TELA CHEIA',
+        title: 'Modo Tela Cheia Real no Windows',
+        description: 'Ao clicar no botão de tela cheia ou pressionar Esc, o Echo agora alterna a janela para Tela Cheia Nativa do sistema operacional, ocultando a barra de tarefas do Windows para uma visualização imersiva e sem distrações.'
+      },
+      {
+        icon: '⌨️',
+        badge: 'ATALHOS',
+        title: 'Saída Rápida com Esc ou Botão',
+        description: 'Pressione Esc a qualquer momento ou clique no botão do player para restaurar instantaneamente a janela do Echo ao tamanho normal e reexibir a barra do Windows.'
+      }
+    ]
+  },
   {
     version: '0.32.1',
     title: 'Echo v0.32.1 - Correção Visual do Rodapé de Perfil, Auréolas & Status Gamer',
     date: '10 de Setembro de 2026',
     tagline: 'Ajustes finos no rodapé de perfil: auréolas e decorações com respiro total sem cortes, separação impecável de nome e status, indicador luminoso de presença e sincronização contínua de jogos ativos.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '👑',

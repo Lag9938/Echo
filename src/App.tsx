@@ -4343,20 +4343,79 @@ function Echo({ user }: { user: User }) {
     return () => clearInterval(interval)
   }, [showScreenPicker])
 
+  // Native Fullscreen Controller for Streams (Hides Windows Taskbar)
+  const toggleScreenFullScreen = useCallback((targetVal?: boolean) => {
+    const next = typeof targetVal === 'boolean' ? targetVal : !isScreenFullScreen
+    setIsScreenFullScreen(next)
+
+    // 1. Electron Native OS Fullscreen (removes taskbar completely at OS level)
+    try {
+      if ((window as any).electronAPI?.setFullScreen) {
+        (window as any).electronAPI.setFullScreen(next).catch(() => {})
+      }
+    } catch (e) {}
+
+    // 2. Synchronous HTML5 Fullscreen API (standard Chromium fullscreen, hides taskbar instantly)
+    try {
+      if (next) {
+        if (!document.fullscreenElement) {
+          const el = document.documentElement || document.body
+          if (el.requestFullscreen) {
+            el.requestFullscreen().catch(() => {})
+          } else if ((el as any).webkitRequestFullscreen) {
+            (el as any).webkitRequestFullscreen()
+          }
+        }
+      } else {
+        if (document.fullscreenElement) {
+          if (document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {})
+          } else if ((document as any).webkitExitFullscreen) {
+            (document as any).webkitExitFullscreen()
+          }
+        }
+      }
+    } catch (e) {}
+  }, [isScreenFullScreen])
+
+  // Sync state if user exits fullscreen via browser / system shortcut
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      const isFull = !!document.fullscreenElement
+      setIsScreenFullScreen(isFull)
+      if (!isFull) {
+        try {
+          if ((window as any).electronAPI?.setFullScreen) {
+            (window as any).electronAPI.setFullScreen(false).catch(() => {})
+          }
+        } catch (e) {}
+      }
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }, [])
+
   // Exit fullscreen / settings on Esc key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (showSpaceSettingsModal) {
           setShowSpaceSettingsModal(false)
-        } else {
-          setIsScreenFullScreen(false)
+        } else if (isScreenFullScreen) {
+          toggleScreenFullScreen(false)
         }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [showSpaceSettingsModal])
+  }, [showSpaceSettingsModal, isScreenFullScreen, toggleScreenFullScreen])
+
+  // Automatically exit fullscreen if stream ends or call disconnects
+  useEffect(() => {
+    if ((!isConnected || activeScreenSharers.length === 0) && isScreenFullScreen) {
+      toggleScreenFullScreen(false)
+    }
+  }, [isConnected, activeScreenSharers.length, isScreenFullScreen, toggleScreenFullScreen])
 
   // ── Otimização Discord: Assinatura Dinâmica de Vídeo (Economia de Banda Oracle Cloud) ──
   useEffect(() => {
@@ -10410,11 +10469,14 @@ function Echo({ user }: { user: User }) {
                                       peerScreenVolumes={peerScreenVolumes}
                                       setPeerScreenVolumes={setPeerScreenVolumes}
                                       isFullScreen={isScreenFullScreen}
-                                      onToggleFullScreen={() => setIsScreenFullScreen(!isScreenFullScreen)}
+                                      onToggleFullScreen={() => toggleScreenFullScreen()}
                                       isPiPActive={isPiPActive}
                                       onToggleFloatingPiP={() => setIsPiPActive(!isPiPActive)}
-                                      onCloseStream={() => setIsWatchingStreams(false)}
-                                        localScreenFps={screenFps}
+                                      onCloseStream={() => {
+                                        if (isScreenFullScreen) toggleScreenFullScreen(false)
+                                        setIsWatchingStreams(false)
+                                      }}
+                                      localScreenFps={screenFps}
                                     />
                                   </div>
                                 ) : null}
@@ -18185,9 +18247,9 @@ function StreamTile({
 
         {onToggleFullScreen && (
           <button 
-            className="fullscreen-toggle-btn"
+            className={`fullscreen-toggle-btn ${isFullScreen ? 'active' : ''}`}
             onClick={onToggleFullScreen}
-            title="Tela Cheia"
+            title={isFullScreen ? "Sair da Tela Cheia (Esc)" : "Tela Cheia"}
           >
             <FullscreenIcon />
           </button>
