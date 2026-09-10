@@ -54,5 +54,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onDeepLinkInvite: (callback) => {
     ipcRenderer.removeAllListeners('deep-link-invite')
     ipcRenderer.on('deep-link-invite', (_event, url) => callback(url))
-  }
+  },
+
+  // Mini Overlay Window API
+  toggleOverlay: () => ipcRenderer.invoke('toggle-overlay'),
+  openOverlay: () => ipcRenderer.invoke('open-overlay'),
+  closeOverlay: () => ipcRenderer.invoke('close-overlay'),
+  isOverlayOpen: () => ipcRenderer.invoke('is-overlay-open')
 })

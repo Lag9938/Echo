@@ -216,6 +216,8 @@ export function AvatarDecoration({ decorationId, className = '', style }: Avatar
         inset: '-26%',
         width: '152%',
         height: '152%',
+        maxWidth: '120px',
+        maxHeight: '120px',
         pointerEvents: 'none',
         zIndex: 2,
         borderRadius: '50%',

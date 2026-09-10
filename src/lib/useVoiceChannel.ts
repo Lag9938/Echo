@@ -35,6 +35,7 @@ export interface StudioMicrophoneDSPNodes {
   highpass: BiquadFilterNode;
   lowpass: BiquadFilterNode;
   compressor: DynamicsCompressorNode;
+  limiter: DynamicsCompressorNode;
   dest: MediaStreamAudioDestinationNode;
   rnnoiseNode: any | null;
   audioCtx: AudioContext;
@@ -131,13 +132,21 @@ async function createStudioMicrophoneDSP(stream: MediaStream, enableAi = false):
   lowpass.frequency.value = 14000;
   lowpass.Q.value = 0.707;
 
-  // Compressor de Estúdio
+  // Compressor de Estúdio (Nivelamento Suave)
   const compressor = audioCtx.createDynamicsCompressor();
   compressor.threshold.value = -24;
   compressor.knee.value = 10;
   compressor.ratio.value = 4;
   compressor.attack.value = 0.003;
   compressor.release.value = 0.15;
+
+  // Brickwall Peak Limiter (Corta 100% dos picos que excedem -2 dBFS, eliminando estouros)
+  const limiter = audioCtx.createDynamicsCompressor();
+  limiter.threshold.value = -2.0;
+  limiter.knee.value = 0.0;
+  limiter.ratio.value = 20.0;
+  limiter.attack.value = 0.001;
+  limiter.release.value = 0.05;
 
   // Configuração estritamente MONO para garantir que a voz toque perfeitamente nos dois lados do fone
   const dest = audioCtx.createMediaStreamDestination();
@@ -146,6 +155,9 @@ async function createStudioMicrophoneDSP(stream: MediaStream, enableAi = false):
 
   compressor.channelCount = 1;
   compressor.channelCountMode = 'explicit';
+
+  limiter.channelCount = 1;
+  limiter.channelCountMode = 'explicit';
 
   source.connect(highpass);
   highpass.connect(lowpass);
@@ -170,12 +182,13 @@ async function createStudioMicrophoneDSP(stream: MediaStream, enableAi = false):
     lowpass.connect(compressor);
   }
 
-  compressor.connect(dest);
+  compressor.connect(limiter);
+  limiter.connect(dest);
 
   return { 
     finalStream: dest.stream, 
     audioCtx,
-    nodes: { source, highpass, lowpass, compressor, dest, rnnoiseNode, audioCtx }
+    nodes: { source, highpass, lowpass, compressor, limiter, dest, rnnoiseNode, audioCtx }
   };
 }
 
@@ -283,6 +296,27 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
   const nativeAudioCleanupRef = useRef<(() => void) | null>(null)
   const remoteScreenStreamsRef = useRef<Map<string, MediaStream>>(new Map())
   const overrideProfilesRef = useRef<Map<string, { displayName?: string; avatarUrl?: string }>>(new Map())
+
+  // Reconnection Loop State
+  const [isReconnecting, setIsReconnecting] = useState(false)
+  const [reconnectCountdown, setReconnectCountdown] = useState(5)
+  const [reconnectAttempt, setReconnectAttempt] = useState(0)
+  const isReconnectingRef = useRef(false)
+  const isManualDisconnectRef = useRef(false)
+  const reconnectTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastJoinParamsRef = useRef<{
+    channelId: string
+    userId: string
+    displayName: string
+    avatarUrl?: string
+    inputId?: string
+    outputId?: string
+    noiseSuppression?: boolean
+    echoCancellation?: boolean
+    spaceId?: string
+  } | null>(null)
+  const startReconnectionLoopRef = useRef<() => void>(() => {})
+  const attemptReconnectRef = useRef<() => Promise<void>>(async () => {})
 
   // Sync all participants into React state
   const syncParticipants = useCallback(() => {
@@ -546,6 +580,15 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
 
   // Leave voice channel cleanly
   const leaveVoice = useCallback(() => {
+    isManualDisconnectRef.current = true
+    if (reconnectTimerRef.current) {
+      clearInterval(reconnectTimerRef.current)
+      reconnectTimerRef.current = null
+    }
+    isReconnectingRef.current = false
+    setIsReconnecting(false)
+    lastJoinParamsRef.current = null
+
     isConnectingRef.current = false
     activeChannelIdRef.current = null
     activeSpaceIdRef.current = null
@@ -627,6 +670,21 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
       leaveVoice()
     }
 
+    if (!isReconnectingRef.current) {
+      isManualDisconnectRef.current = false
+      lastJoinParamsRef.current = {
+        channelId,
+        userId,
+        displayName,
+        avatarUrl,
+        inputId,
+        outputId,
+        noiseSuppression,
+        echoCancellation,
+        spaceId
+      }
+    }
+
     isConnectingRef.current = true
     activeChannelIdRef.current = channelId
     activeSpaceIdRef.current = spaceId || null
@@ -682,6 +740,9 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
         localDspCtxRef.current = audioCtx
         localDspNodesRef.current = nodes
         finalStream = dspStream
+        if (isMutedRef.current && audioCtx.state === 'running') {
+          audioCtx.suspend().catch(() => {})
+        }
       } catch (dspErr) {
         console.error('[Voice] Falha no pipeline DSP:', dspErr)
       }
@@ -739,6 +800,13 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
       // Setup LiveKit room events
       room.on(RoomEvent.Connected, () => {
         setIsConnected(true)
+        setIsReconnecting(false)
+        isReconnectingRef.current = false
+        setReconnectAttempt(0)
+        if (reconnectTimerRef.current) {
+          clearInterval(reconnectTimerRef.current)
+          reconnectTimerRef.current = null
+        }
         syncParticipants()
         updateScreenSubscriptions()
         console.log('[LiveKit] Conectado ao SFU na sala:', channelId)
@@ -751,6 +819,13 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
       room.on(RoomEvent.Reconnected, () => {
         console.log('[LiveKit] Reconectado com sucesso ao SFU!')
         setIsConnected(true)
+        setIsReconnecting(false)
+        isReconnectingRef.current = false
+        setReconnectAttempt(0)
+        if (reconnectTimerRef.current) {
+          clearInterval(reconnectTimerRef.current)
+          reconnectTimerRef.current = null
+        }
         syncParticipants()
         updateScreenSubscriptions()
       })
@@ -762,9 +837,16 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
       room.on(RoomEvent.Disconnected, (reason) => {
         console.warn('[LiveKit] Desconectado do SFU. Motivo:', reason)
         setIsConnected(false)
-        if (onDisconnectedRef.current) {
-          onDisconnectedRef.current()
+        if (isManualDisconnectRef.current) {
+          if (onDisconnectedRef.current) {
+            onDisconnectedRef.current()
+          }
+          return
         }
+
+        // Queda inesperada (perda de Wi-Fi, roteador reiniciando, queda de rede prolongada)
+        // Dispara o loop contínuo de reconexão
+        startReconnectionLoopRef.current()
       })
 
       room.on(RoomEvent.ParticipantConnected, () => {
@@ -953,12 +1035,132 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
       }
     } catch (err) {
       console.error('[LiveKit] Falha ao entrar no canal de voz:', err)
-      leaveVoice()
+      if (isReconnectingRef.current) {
+        stopLocalVad()
+        stopScreenShare()
+        const r = roomRef.current
+        if (r) {
+          try { r.disconnect() } catch (e) {}
+          roomRef.current = null
+        }
+      } else {
+        leaveVoice()
+      }
       throw err
     } finally {
       isConnectingRef.current = false
     }
-  }, [startLocalVad, syncParticipants, leaveVoice])
+  }, [startLocalVad, syncParticipants, leaveVoice, stopLocalVad, stopScreenShare])
+
+  const attemptReconnect = useCallback(async () => {
+    if (isManualDisconnectRef.current || !lastJoinParamsRef.current) return
+    const params = lastJoinParamsRef.current
+
+    try {
+      console.log(`[LiveKit] Tentativa de reconexão contínua ao canal: ${params.channelId}`)
+      if (roomRef.current) {
+        try { roomRef.current.disconnect() } catch (e) {}
+        roomRef.current = null
+      }
+      isConnectingRef.current = false
+
+      await joinVoice(
+        params.channelId,
+        params.userId,
+        params.displayName,
+        params.avatarUrl,
+        params.inputId,
+        params.outputId,
+        params.noiseSuppression,
+        params.echoCancellation,
+        params.spaceId
+      )
+      console.log('[LiveKit] Chamada restabelecida com sucesso!')
+      setIsReconnecting(false)
+      isReconnectingRef.current = false
+      setReconnectAttempt(0)
+      if (reconnectTimerRef.current) {
+        clearInterval(reconnectTimerRef.current)
+        reconnectTimerRef.current = null
+      }
+    } catch (err) {
+      console.warn('[LiveKit] Falha na tentativa de reconexão (rede offline), reagendando em 5s...', err)
+      startReconnectionLoopRef.current()
+    }
+  }, [joinVoice])
+  attemptReconnectRef.current = attemptReconnect
+
+  const startReconnectionLoop = useCallback(() => {
+    if (isManualDisconnectRef.current || !lastJoinParamsRef.current) return
+    if (reconnectTimerRef.current) {
+      clearInterval(reconnectTimerRef.current)
+      reconnectTimerRef.current = null
+    }
+
+    isReconnectingRef.current = true
+    setIsReconnecting(true)
+    setReconnectCountdown(5)
+    setReconnectAttempt(prev => prev + 1)
+
+    // Limpa instâncias antigas de áudio para evitar ruído órfão
+    audioElementsRef.current.forEach(audio => {
+      audio.srcObject = null
+      audio.remove()
+    })
+    audioElementsRef.current.clear()
+
+    let currentSec = 5
+    reconnectTimerRef.current = setInterval(async () => {
+      currentSec -= 1
+      if (currentSec > 0) {
+        setReconnectCountdown(currentSec)
+      } else {
+        if (reconnectTimerRef.current) {
+          clearInterval(reconnectTimerRef.current)
+          reconnectTimerRef.current = null
+        }
+        await attemptReconnectRef.current()
+      }
+    }, 1000)
+  }, [])
+  startReconnectionLoopRef.current = startReconnectionLoop
+
+  const retryVoiceReconnect = useCallback(async () => {
+    if (reconnectTimerRef.current) {
+      clearInterval(reconnectTimerRef.current)
+      reconnectTimerRef.current = null
+    }
+    await attemptReconnectRef.current()
+  }, [])
+
+  const cancelVoiceReconnect = useCallback(() => {
+    isManualDisconnectRef.current = true
+    if (reconnectTimerRef.current) {
+      clearInterval(reconnectTimerRef.current)
+      reconnectTimerRef.current = null
+    }
+    isReconnectingRef.current = false
+    setIsReconnecting(false)
+    lastJoinParamsRef.current = null
+    leaveVoice()
+    if (onDisconnectedRef.current) {
+      onDisconnectedRef.current()
+    }
+  }, [leaveVoice])
+
+  // Ouvinte nativo do sistema operacional: quando o sinal de internet voltar, tenta na hora
+  useEffect(() => {
+    const handleOnline = () => {
+      if (isReconnectingRef.current) {
+        console.log('[Network] Sinal de internet online restabelecido! Disparando reconexão imediata...')
+        retryVoiceReconnect()
+      }
+    }
+    window.addEventListener('online', handleOnline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+    }
+  }, [retryVoiceReconnect])
 
   // Toggle Mute
   const toggleMute = useCallback(() => {
@@ -971,6 +1173,15 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
         localAudioTrackRef.current.mute()
       } else {
         localAudioTrackRef.current.unmute()
+      }
+    }
+
+    // Economia de CPU e bateria: suspende o AudioContext do DSP quando o mic estiver mutado
+    if (localDspCtxRef.current) {
+      if (next && localDspCtxRef.current.state === 'running') {
+        localDspCtxRef.current.suspend().catch(() => {})
+      } else if (!next && localDspCtxRef.current.state === 'suspended') {
+        localDspCtxRef.current.resume().catch(() => {})
       }
     }
 
@@ -1308,6 +1519,9 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
         localDspCtxRef.current = audioCtx
         localDspNodesRef.current = nodes
         finalStream = dspStream
+        if (isMutedRef.current && audioCtx.state === 'running') {
+          audioCtx.suspend().catch(() => {})
+        }
       } catch (dspErr) {
         console.error('[Voice] Falha no DSP após troca de dispositivo:', dspErr)
       }
@@ -1534,6 +1748,11 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
     isAiDenoiseEnabled,
     toggleAiDenoise,
     updateScreenSubscriptions,
-    updateLocalProfile
+    updateLocalProfile,
+    isReconnecting,
+    reconnectCountdown,
+    reconnectAttempt,
+    retryVoiceReconnect,
+    cancelVoiceReconnect
   }
 }

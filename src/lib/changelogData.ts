@@ -14,15 +14,114 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.30.0'
+export const APP_CURRENT_VERSION = '0.32.1'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.32.1',
+    title: 'Echo v0.32.1 - Correção Visual do Rodapé de Perfil, Auréolas & Status Gamer',
+    date: '10 de Setembro de 2026',
+    tagline: 'Ajustes finos no rodapé de perfil: auréolas e decorações com respiro total sem cortes, separação impecável de nome e status, indicador luminoso de presença e sincronização contínua de jogos ativos.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '👑',
+        badge: 'VISUAL',
+        title: 'Auréola e Decorações com Respiro Perfeito',
+        description: 'Ajustado o padding superior do rodapé para 16px com overflow visível, garantindo que a Auréola Celestial e efeitos elevados fiquem inteiros e sem cortes na borda superior.'
+      },
+      {
+        icon: '👤',
+        badge: 'PERFIL',
+        title: 'Separação Elegante de Nome e Status',
+        description: 'Corrigida a tipografia do rodapé para dispor o nome de exibição e o sub-status ("Online", "Ausente", etc.) em linhas separadas e bem alinhadas, além do ponto circular de status no avatar.'
+      },
+      {
+        icon: '🎮',
+        badge: 'JOGOS',
+        title: 'Presença Gamer Contínua e Persistente',
+        description: 'O card de jogo ativo (como Valorant) agora se mantém persistente mesmo após recarregar a interface, com re-sincronização instantânea e atualização de tempo de partida.'
+      }
+    ]
+  },
+  {
+    version: '0.32.0',
+    title: 'Echo v0.32.0 - Detecção Automática de Jogos, Mini Overlay Gamer & Mensagens Salvas',
+    date: '10 de Setembro de 2026',
+    tagline: 'Detecção ao vivo dos seus jogos no Windows com tempo de partida, Mini Overlay flutuante com indicador de voz para jogar sem Alt+Tab e salvamento de mensagens importantes com estrela.',
+    isLatest: false,
+    highlights: [
+      {
+        icon: '🎮',
+        badge: 'JOGOS',
+        title: 'Detecção Automática de Jogos (Rich Presence Real)',
+        description: 'O Echo detecta seus jogos abertos no Windows (como Valorant, CS2, League of Legends, GTA V, Minecraft e outros) e exibe seu status com tempo de partida para todos os seus amigos.'
+      },
+      {
+        icon: '🪟',
+        badge: 'OVERLAY',
+        title: 'Mini Overlay Flutuante (Picture-in-Picture)',
+        description: 'Uma janela compacta e translúcida que fica sempre no topo por cima dos seus jogos, mostrando quem está falando na chamada com anel verde luminoso e controles rápidos.'
+      },
+      {
+        icon: '⭐',
+        badge: 'FAVORITOS',
+        title: 'Mensagens Salvas com Estrela',
+        description: 'Guarde links, estratégias, prints, áudios e anotações com apenas um clique em uma aba privada de acesso rápido com filtros e busca.'
+      },
+      {
+        icon: '⚡',
+        badge: 'ATALHOS',
+        title: 'Acesso Rápido na Barra Superior e Chamadas',
+        description: 'Novo botão de Mensagens Salvas na barra de navegação com contador e botão de ativação do Mini Overlay diretamente no painel de voz.'
+      }
+    ]
+  },
+  {
+    version: '0.31.0',
+    title: 'Echo v0.31.0 - Mensagens de Voz Modernas, Exclusão de Mensagens & Visual Dinâmico',
+    date: '10 de Setembro de 2026',
+    tagline: 'Novo player de áudio com ondas sonoras, envio de mensagens de voz em conversas privadas, exclusão de mensagens enviadas e novas animações táteis na barra de navegação.',
+    isLatest: false,
+    highlights: [
+      {
+        icon: '🎵',
+        badge: 'NOVIDADE',
+        title: 'Player Moderno com Ondas Sonoras',
+        description: 'Visual totalmente renovado para mensagens de áudio com ondas sonoras dinâmicas, controle de velocidade de reprodução (1x, 1.5x, 2x) e design limpo sem emojis antigos.'
+      },
+      {
+        icon: '💬',
+        badge: 'PRIVADO',
+        title: 'Áudios nas Conversas Privadas',
+        description: 'Agora você pode gravar e enviar mensagens de voz diretamente nas conversas privadas com seus amigos, com barra de gravação e temporizador em tempo real.'
+      },
+      {
+        icon: '🗑️',
+        badge: 'MENSAGENS',
+        title: 'Excluir Mensagens Enviadas',
+        description: 'Enviou algo por engano? Agora você pode apagar mensagens de texto e áudio tanto nos canais dos servidores quanto nas conversas diretas com facilidade.'
+      },
+      {
+        icon: '✨',
+        badge: 'VISUAL',
+        title: 'Interface Mais Viva com Animações',
+        description: 'A barra superior, os ícones de servidores e as ações do canal agora respondem com animações suaves ao passar o mouse e clicar, dando mais vida ao aplicativo.'
+      },
+      {
+        icon: '👥',
+        badge: 'COMUNIDADE',
+        title: 'Convidar Amigos para o Servidor',
+        description: 'Adicione seus amigos da lista diretamente ao seu servidor de forma simples e rápida, sem precisar copiar e colar códigos manuais.'
+      }
+    ]
+  },
   {
     version: '0.30.0',
     title: 'Echo v0.30.0 - Convites Nativos (echo://) & Membros em Chamadas',
     date: '09 de Setembro de 2026',
     tagline: 'Links de convite reais com abertura direta no aplicativo Echo e código de acesso, sincronização imediata de membros em chamadas com mais de 3 pessoas e faixa de participantes ao vivo durante transmissões de tela.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🔗',

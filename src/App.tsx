@@ -28,6 +28,7 @@ import { AvatarDecoration } from './components/AvatarDecoration'
 import { ProfileEffect } from './components/ProfileEffect'
 import { CosmeticsInventory } from './components/CosmeticsInventory'
 import { NAME_EFFECTS } from './lib/cosmeticsData'
+import { GameLogo } from './components/GameLogos'
 
 type Page = 'Amigos' | 'Mensagens' | 'Servidores' | 'Descobrir' | 'Configurações' | 'Loja'
 
@@ -89,6 +90,7 @@ type Space = {
   banner_url?: string | null;
   banner_theme?: string | null;
   welcome_channel_id?: string | null;
+  member_count?: number;
   roles?: ServerRole[];
   emojis?: ServerEmoji[];
 }
@@ -184,6 +186,35 @@ type FriendshipRequest = {
   user: { id: string; display_name: string; avatar_url?: string }
   status: 'pending' | 'accepted'
   initiatorId: string
+}
+
+function formatGameDuration(startedAt?: number): string {
+  if (!startedAt) return ''
+  const diffMs = Math.max(0, Date.now() - startedAt)
+  const diffMins = Math.floor(diffMs / 60000)
+  if (diffMins < 1) return 'há 1m'
+  if (diffMins < 60) return `há ${diffMins}m`
+  const diffHours = Math.floor(diffMins / 60)
+  const remMins = diffMins % 60
+  return remMins > 0 ? `há ${diffHours}h ${remMins}m` : `há ${diffHours}h`
+}
+
+function StarIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  )
+}
+
+function OverlayPipIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <rect x="11" y="9" width="9" height="7" rx="1.5" fill="currentColor" opacity="0.35" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M7 21h10" />
+    </svg>
+  )
 }
 
 /* ── Modern SVG Icons for Call Controls ──────────────── */
@@ -321,6 +352,15 @@ function PlayIcon({ className, style }: { className?: string; style?: React.CSSP
   return (
     <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
       <polygon points="5 3 19 12 5 21 5 3" />
+    </svg>
+  )
+}
+
+function PauseIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <rect x="6" y="4" width="4" height="16" rx="1.5" />
+      <rect x="14" y="4" width="4" height="16" rx="1.5" />
     </svg>
   )
 }
@@ -1040,7 +1080,7 @@ interface UnifiedUserProfileFooterProps {
   onOpenSettings?: () => void
   onOpenWhatsNew?: () => void
   onSignOut?: () => void
-  myGamePresence?: { name: string; icon?: string } | null
+  myGamePresence?: { name: string; icon?: string; startedAt?: number } | null
   avatarDecoration?: string | null
 }
 
@@ -1063,31 +1103,31 @@ function UnifiedUserProfileFooter({
           <div 
             className="profile-footer-info" 
             onClick={() => setShowStatusMenu?.(!showStatusMenu)} 
-            title="Alterar seu status online"
+            title="Alterar Status de Presença"
+            style={{ cursor: 'pointer' }}
           >
-            <div className="profile-footer-avatar" style={{ position: 'relative' }}>
-              {avatarUrl ? (
-                <img src={avatarUrl} alt={displayName} />
-              ) : (
-                displayName.slice(0, 1).toUpperCase()
-              )}
+            <div className="profile-footer-avatar-wrap" style={{ position: 'relative', width: '32px', height: '32px', flexShrink: 0 }}>
+              <div className="profile-footer-avatar">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={displayName} />
+                ) : (
+                  displayName.slice(0, 1).toUpperCase()
+                )}
+              </div>
               {avatarDecoration && avatarDecoration !== 'none' && (
                 <AvatarDecoration decorationId={avatarDecoration} />
               )}
-              <span className={`my-status-dot ${presenceStatus}`} />
+              <span className={`profile-status-indicator ${presenceStatus}`} />
             </div>
-            <div className="profile-footer-meta">
-              <span className="profile-footer-name" title={displayName}>{displayName}</span>
-              <span className="profile-footer-status">
-                <span>
-                  {presenceStatus === 'idle' ? 'Ausente' :
-                   presenceStatus === 'dnd' ? 'Não Perturbe' :
-                   presenceStatus === 'invisible' ? 'Invisível' :
-                   'Disponível'}
-                </span>
+            <div className="profile-footer-names">
+              <span className="profile-footer-display-name">{displayName}</span>
+              <span className="profile-footer-sub-status">
+                {presenceStatus === 'online' && 'Online'}
+                {presenceStatus === 'idle' && 'Ausente'}
+                {presenceStatus === 'dnd' && 'Não Perturbar'}
+                {presenceStatus === 'invisible' && 'Invisível'}
               </span>
             </div>
-
             {showStatusMenu && (
               <div className="status-picker-popover" onClick={(e) => e.stopPropagation()}>
                 <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('online'); setShowStatusMenu?.(false); }}>
@@ -1137,11 +1177,17 @@ function UnifiedUserProfileFooter({
         </div>
 
         {myGamePresence && presenceStatus !== 'invisible' && (
-          <div className="profile-footer-activity-row" title={`Jogando ${myGamePresence.name}`}>
-            <span className="game-presence-badge">
-              <span className="game-presence-icon">{myGamePresence.icon || '🎮'}</span>
-              <span className="game-presence-text">Jogando {myGamePresence.name}</span>
-            </span>
+          <div className="profile-footer-activity-card" title={`Jogando ${myGamePresence.name}${myGamePresence.startedAt ? ` • ${formatGameDuration(myGamePresence.startedAt)}` : ''}`}>
+            <div className="profile-footer-activity-logo">
+              <GameLogo gameName={myGamePresence.name} size={22} />
+            </div>
+            <div className="profile-footer-activity-details">
+              <span className="profile-footer-activity-label">JOGANDO</span>
+              <span className="profile-footer-activity-gamename">{myGamePresence.name}</span>
+              {myGamePresence.startedAt && (
+                <span className="profile-footer-activity-elapsed">{formatGameDuration(myGamePresence.startedAt)}</span>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -1707,6 +1753,546 @@ function ChannelInviteModal({
   )
 }
 
+function SpaceAddMembersModal({
+  space,
+  onClose,
+  friendships,
+  spaceMembers,
+  onlineUsers,
+  onAddMember,
+  showToast
+}: {
+  space: Space
+  onClose: () => void
+  friendships: FriendshipRequest[]
+  spaceMembers: any[]
+  onlineUsers: Set<string>
+  onAddMember: (friend: FriendshipRequest) => Promise<boolean>
+  showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend') => void
+}) {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [addingIds, setAddingIds] = useState<Record<string, boolean>>({})
+  const [addedIds, setAddedIds] = useState<Record<string, boolean>>({})
+  const [copiedLink, setCopiedLink] = useState(false)
+  const [copiedCode, setCopiedCode] = useState(false)
+
+  const inviteLink = `echo://invite/${space.id}`
+  const formattedInviteMsg = `Entre no meu espaço "${space.name}" no Echo!\n🔗 Link Direto: ${inviteLink}\n🔑 Código do Espaço: ${space.id}`
+
+  const handleCopyLink = () => {
+    copyToClipboard(inviteLink)
+    setCopiedLink(true)
+    showToast('Link Copiado!', `Link de convite do espaço "${space.name}" copiado.`, 'info')
+    setTimeout(() => setCopiedLink(false), 2500)
+  }
+
+  const handleCopyCode = () => {
+    copyToClipboard(space.id)
+    setCopiedCode(true)
+    showToast('Código Copiado!', `Código do espaço copiado. Cole no botão "+" do Echo.`, 'info')
+    setTimeout(() => setCopiedCode(false), 2500)
+  }
+
+  const handleAddFriend = async (friend: FriendshipRequest) => {
+    try {
+      setAddingIds(prev => ({ ...prev, [friend.user.id]: true }))
+      const success = await onAddMember(friend)
+      if (success) {
+        setAddedIds(prev => ({ ...prev, [friend.user.id]: true }))
+      }
+    } finally {
+      setAddingIds(prev => ({ ...prev, [friend.user.id]: false }))
+    }
+  }
+
+  const acceptedFriends = friendships.filter(f => f.status === 'accepted')
+  const filteredFriends = acceptedFriends.filter(f =>
+    (f.user.display_name || '').toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div 
+        className="space-add-members-modal" 
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '90%',
+          maxWidth: '520px',
+          background: 'var(--bg-secondary, #141721)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          borderRadius: '18px',
+          padding: '24px',
+          boxShadow: '0 24px 70px rgba(0, 0, 0, 0.75)',
+          color: 'var(--text-primary, #fff)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '18px',
+          animation: 'modalScaleSpring 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          maxHeight: '90vh',
+          overflow: 'hidden'
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                background: 'rgba(0, 242, 254, 0.12)',
+                border: '1px solid rgba(0, 242, 254, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--accent-color, #00f2fe)'
+              }}>
+                <UserPlusIcon style={{ width: '18px', height: '18px' }} />
+              </span>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>
+                  Adicionar Membros ao Espaço
+                </h3>
+                <span style={{ fontSize: '12px', color: 'var(--accent-color, #00f2fe)', fontWeight: 600 }}>
+                  {space.name}
+                </span>
+              </div>
+            </div>
+            <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: 'var(--text-muted, #94a3b8)', lineHeight: 1.4 }}>
+              Adicione seus amigos diretamente ao servidor com 1 clique ou compartilhe o link de convite.
+            </p>
+          </div>
+          <button 
+            type="button" 
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-muted, #94a3b8)',
+              fontSize: '18px',
+              cursor: 'pointer',
+              padding: '4px',
+              borderRadius: '6px'
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Search Friend Input */}
+        {acceptedFriends.length > 0 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: 'var(--bg-tertiary, #0b0d14)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '10px',
+            padding: '8px 12px',
+            gap: '10px'
+          }}>
+            <SearchIcon style={{ width: '14px', height: '14px', color: 'var(--text-muted, #94a3b8)' }} />
+            <input 
+              type="text"
+              placeholder="Buscar amigos pelo nome..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{
+                flex: 1,
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-primary, #fff)',
+                fontSize: '13px',
+                outline: 'none'
+              }}
+            />
+            {searchQuery && (
+              <button 
+                type="button" 
+                onClick={() => setSearchQuery('')}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '12px' }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Friends List */}
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted, #94a3b8)', marginBottom: '8px', letterSpacing: '0.5px' }}>
+            SEUS AMIGOS NO ECHO ({acceptedFriends.length})
+          </label>
+          
+          <div style={{
+            maxHeight: '220px',
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
+            paddingRight: '4px'
+          }}>
+            {acceptedFriends.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '24px 16px',
+                background: 'rgba(255, 255, 255, 0.02)',
+                borderRadius: '12px',
+                border: '1px dashed rgba(255, 255, 255, 0.1)',
+                color: 'var(--text-muted, #94a3b8)',
+                fontSize: '13px'
+              }}>
+                <div style={{ fontSize: '24px', marginBottom: '6px' }}>👥</div>
+                Você ainda não tem amigos adicionados no Echo.<br />
+                Compartilhe o link de convite abaixo para que eles entrem!
+              </div>
+            ) : filteredFriends.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted, #94a3b8)', fontSize: '12.5px' }}>
+                Nenhum amigo encontrado para "{searchQuery}".
+              </div>
+            ) : (
+              filteredFriends.map(friend => {
+                const isOnline = onlineUsers.has(friend.user.id)
+                const isAlreadyIn = addedIds[friend.user.id] || spaceMembers.some(m => (m?.user?.id || m?.id) === friend.user.id)
+                const isAdding = addingIds[friend.user.id]
+
+                return (
+                  <div
+                    key={friend.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      borderRadius: '10px',
+                      border: '1px solid rgba(255, 255, 255, 0.05)',
+                      transition: 'background 0.15s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                      <div style={{ position: 'relative' }}>
+                        <div style={{
+                          width: '34px',
+                          height: '34px',
+                          borderRadius: '50%',
+                          background: 'var(--accent-light, #00f2fe22)',
+                          color: 'var(--accent-color, #00f2fe)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '13px',
+                          fontWeight: 700,
+                          overflow: 'hidden'
+                        }}>
+                          {friend.user.avatar_url ? (
+                            <img src={friend.user.avatar_url} alt={friend.user.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            friend.user.display_name.slice(0, 1).toUpperCase()
+                          )}
+                        </div>
+                        <span style={{
+                          position: 'absolute',
+                          bottom: '-1px',
+                          right: '-1px',
+                          width: '9px',
+                          height: '9px',
+                          borderRadius: '50%',
+                          backgroundColor: isOnline ? '#10b981' : '#64748b',
+                          border: '2px solid var(--bg-secondary, #141721)'
+                        }} />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                        <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--text-primary, #fff)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {friend.user.display_name}
+                        </span>
+                        <span style={{ fontSize: '11px', color: isOnline ? '#34d399' : 'var(--text-muted, #94a3b8)' }}>
+                          {isOnline ? 'Online' : 'Offline'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {isAlreadyIn ? (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        padding: '5px 12px',
+                        borderRadius: '6px',
+                        background: 'rgba(16, 185, 129, 0.12)',
+                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                        color: '#34d399',
+                        fontSize: '11.5px',
+                        fontWeight: 600
+                      }}>
+                        ✓ Já no Espaço
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isAdding}
+                        onClick={() => handleAddFriend(friend)}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          background: 'var(--accent-color, #00f2fe)',
+                          color: '#041018',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          cursor: isAdding ? 'wait' : 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.15s ease',
+                          opacity: isAdding ? 0.6 : 1
+                        }}
+                      >
+                        <UserPlusIcon style={{ width: '13px', height: '13px' }} />
+                        <span>{isAdding ? 'Adicionando...' : 'Adicionar'}</span>
+                      </button>
+                    )}
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Link Direto e Código do Espaço */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted, #94a3b8)', marginBottom: '5px', letterSpacing: '0.5px' }}>
+              OU COMPARTILHE O LINK DIRETO
+            </label>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: 'var(--bg-tertiary, #0b0d14)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '10px',
+              padding: '4px 6px 4px 12px',
+              gap: '8px'
+            }}>
+              <input 
+                readOnly 
+                value={inviteLink}
+                style={{
+                  flex: 1,
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-primary, #fff)',
+                  fontSize: '12.5px',
+                  outline: 'none',
+                  fontFamily: 'monospace'
+                }}
+                onClick={e => (e.target as HTMLInputElement).select()}
+              />
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: '7px',
+                  border: 'none',
+                  background: copiedLink ? '#10b981' : 'rgba(255, 255, 255, 0.1)',
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.18s ease',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {copiedLink ? '✓ Copiado!' : 'Copiar Link'}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={handleCopyCode}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                background: copiedCode ? '#10b981' : 'rgba(255, 255, 255, 0.04)',
+                color: '#fff',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
+              }}
+            >
+              🔑 {copiedCode ? 'Código Copiado!' : `Copiar Código (${space.id.slice(0, 8)}...)`}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                copyToClipboard(formattedInviteMsg)
+                showToast('Mensagem Copiada!', 'Texto formatado de convite copiado.', 'info')
+              }}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px dashed rgba(255, 255, 255, 0.2)',
+                background: 'rgba(255, 255, 255, 0.02)',
+                color: 'var(--text-secondary, #b5bac1)',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
+              }}
+            >
+              📋 Mensagem Pronta
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface ModernVoiceNotePlayerProps {
+  audioUrl: string
+  messageId: string
+  activePlayingId: string | null
+  onTogglePlay: () => void
+  speed: number
+  onChangeSpeed: () => void
+  activeAudioRef: React.MutableRefObject<HTMLAudioElement | null>
+}
+
+function ModernVoiceNotePlayer({
+  audioUrl,
+  messageId,
+  activePlayingId,
+  onTogglePlay,
+  speed,
+  onChangeSpeed,
+  activeAudioRef
+}: ModernVoiceNotePlayerProps) {
+  const isPlaying = activePlayingId === messageId
+  const [duration, setDuration] = useState<number>(0)
+  const [currentTime, setCurrentTime] = useState<number>(0)
+
+  useEffect(() => {
+    const a = new Audio(audioUrl)
+    const onLoaded = () => {
+      if (a.duration && !isNaN(a.duration) && isFinite(a.duration)) {
+        setDuration(a.duration)
+      }
+    }
+    a.addEventListener('loadedmetadata', onLoaded)
+    return () => {
+      a.removeEventListener('loadedmetadata', onLoaded)
+    }
+  }, [audioUrl])
+
+  useEffect(() => {
+    let animId: number
+    const updateTime = () => {
+      if (isPlaying && activeAudioRef.current) {
+        setCurrentTime(activeAudioRef.current.currentTime || 0)
+        if (activeAudioRef.current.duration && !isNaN(activeAudioRef.current.duration) && isFinite(activeAudioRef.current.duration)) {
+          setDuration(activeAudioRef.current.duration)
+        }
+      }
+      if (isPlaying) {
+        animId = requestAnimationFrame(updateTime)
+      }
+    }
+    if (isPlaying) {
+      animId = requestAnimationFrame(updateTime)
+    } else {
+      setCurrentTime(0)
+    }
+    return () => cancelAnimationFrame(animId)
+  }, [isPlaying, activeAudioRef])
+
+  const progress = duration > 0 ? Math.min(1, Math.max(0, currentTime / duration)) : 0
+  const formatTime = (secs: number) => {
+    if (!secs || isNaN(secs)) return '0:00'
+    const m = Math.floor(secs / 60)
+    const s = Math.floor(secs % 60)
+    return `${m}:${String(s).padStart(2, '0')}`
+  }
+
+  // 22 aesthetic soundwave height percentages
+  const waveHeights = [30, 50, 75, 40, 65, 95, 80, 45, 90, 100, 70, 55, 85, 90, 40, 60, 75, 50, 65, 45, 35, 25]
+
+  return (
+    <div className="modern-voice-note-card">
+      <button 
+        type="button" 
+        className={`modern-voice-play-btn ${isPlaying ? 'playing' : ''}`}
+        onClick={onTogglePlay}
+        title={isPlaying ? 'Pausar Áudio' : 'Reproduzir Áudio'}
+      >
+        {isPlaying ? (
+          <PauseIcon style={{ width: '14px', height: '14px' }} />
+        ) : (
+          <PlayIcon style={{ width: '14px', height: '14px', marginLeft: '2px' }} />
+        )}
+      </button>
+
+      <div className="modern-voice-content">
+        <div 
+          className="modern-voice-waveform-track"
+          onClick={(e) => {
+            if (activeAudioRef.current && isPlaying && duration > 0) {
+              const rect = e.currentTarget.getBoundingClientRect()
+              const clickX = e.clientX - rect.left
+              const pct = Math.max(0, Math.min(1, clickX / rect.width))
+              activeAudioRef.current.currentTime = pct * duration
+            }
+          }}
+          title="Clique para avançar/retroceder"
+        >
+          {waveHeights.map((h, i) => {
+            const barPct = i / waveHeights.length
+            const isFilled = isPlaying && progress >= barPct
+            return (
+              <span 
+                key={i} 
+                className={`modern-wave-bar ${isFilled ? 'filled' : ''} ${isPlaying ? 'wave-anim' : ''}`}
+                style={{ 
+                  height: `${h}%`,
+                  animationDelay: `${(i % 6) * 0.1}s`
+                }} 
+              />
+            )
+          })}
+        </div>
+
+        <div className="modern-voice-meta-row">
+          <span className="modern-voice-time">
+            {isPlaying ? `${formatTime(currentTime)} / ${formatTime(duration)}` : (duration > 0 ? formatTime(duration) : 'Mensagem de voz')}
+          </span>
+          <span className="modern-voice-badge">Áudio HD</span>
+        </div>
+      </div>
+
+      <button 
+        type="button" 
+        className="modern-voice-speed-btn"
+        onClick={onChangeSpeed}
+        title="Alterar velocidade de reprodução"
+      >
+        {speed}x
+      </button>
+    </div>
+  )
+}
+
 interface MemberProfileModalProps {
   inspectedMember: {
     user: { id: string; display_name: string; avatar_url?: string }
@@ -1723,6 +2309,7 @@ interface MemberProfileModalProps {
   memberClanTag: string | null
   memberClanTagColor: string
   activeGame: string | null
+  activeGameStartedAt?: number | null
   isVoiceUser: boolean
   voiceChannelName?: string
   isServerOwner: boolean
@@ -1747,6 +2334,7 @@ function MemberProfileModal({
   memberClanTag,
   memberClanTagColor,
   activeGame,
+  activeGameStartedAt,
   isVoiceUser,
   voiceChannelName,
   isServerOwner,
@@ -1977,7 +2565,7 @@ function MemberProfileModal({
                 </div>
                 <div>
                   <h4 className="member-activity-name">{activeGame}</h4>
-                  <p className="member-activity-sub">Echo Game Presence • Em partida</p>
+                  <p className="member-activity-sub">Echo Game Presence • {activeGameStartedAt ? formatGameDuration(activeGameStartedAt) : 'Em partida'}</p>
                 </div>
               </div>
             </div>
@@ -2166,7 +2754,442 @@ function MemberProfileModal({
   )
 }
 
+/* ── Mini Voice Overlay (Picture-in-Picture Always-on-Top) ─────────────── */
+function VoiceMiniOverlay() {
+  const [voiceData, setVoiceData] = useState<{
+    channelName: string;
+    participants: {
+      userId: string;
+      displayName: string;
+      avatarUrl?: string;
+      isSpeaking: boolean;
+      isMuted?: boolean;
+      isDeafened?: boolean;
+      hasScreen?: boolean;
+    }[];
+    isMuted: boolean;
+    isDeafened: boolean;
+    activeVoiceChannelId: string | null;
+  }>(() => {
+    try {
+      const cached = localStorage.getItem('echo-voice-overlay-cache')
+      if (cached) return JSON.parse(cached)
+    } catch (e) {}
+    return {
+      channelName: 'Chamada de Voz',
+      participants: [],
+      isMuted: false,
+      isDeafened: false,
+      activeVoiceChannelId: null
+    }
+  })
+
+  useEffect(() => {
+    document.body.classList.add('is-overlay-mode')
+    return () => {
+      document.body.classList.remove('is-overlay-mode')
+    }
+  }, [])
+
+  useEffect(() => {
+    const channel = new BroadcastChannel('echo-voice-overlay-sync')
+    channel.onmessage = (event) => {
+      if (event.data?.type === 'VOICE_STATE_UPDATE' && event.data.payload) {
+        setVoiceData(event.data.payload)
+        try {
+          localStorage.setItem('echo-voice-overlay-cache', JSON.stringify(event.data.payload))
+        } catch (e) {}
+      }
+    }
+    channel.postMessage({ type: 'REQUEST_SYNC' })
+    return () => {
+      channel.close()
+    }
+  }, [])
+
+  const handleAction = (action: 'toggleMute' | 'toggleDeafen' | 'leaveVoice') => {
+    const channel = new BroadcastChannel('echo-voice-overlay-sync')
+    channel.postMessage({ type: 'OVERLAY_ACTION', action })
+    channel.close()
+    if (action === 'toggleMute') {
+      setVoiceData(prev => ({ ...prev, isMuted: !prev.isMuted }))
+    } else if (action === 'toggleDeafen') {
+      setVoiceData(prev => ({ ...prev, isDeafened: !prev.isDeafened }))
+    } else if (action === 'leaveVoice') {
+      setVoiceData(prev => ({ ...prev, activeVoiceChannelId: null, participants: [] }))
+    }
+  }
+
+  const handleClose = () => {
+    if ((window as any).electronAPI?.closeOverlay) {
+      (window as any).electronAPI.closeOverlay()
+    } else {
+      window.close()
+    }
+  }
+
+  const hasActiveCall = Boolean(voiceData.activeVoiceChannelId && voiceData.participants && voiceData.participants.length > 0)
+
+  return (
+    <div className="voice-mini-overlay">
+      {!hasActiveCall ? (
+        <div className="mini-overlay-idle-chip" title="Arraste para mover ou clique no ✕ para fechar">
+          <span className="mini-overlay-idle-dot" />
+          <span className="mini-overlay-idle-text">Echo Overlay</span>
+          <button
+            type="button"
+            className="mini-overlay-chip-close"
+            onClick={handleClose}
+            title="Fechar overlay"
+          >
+            ✕
+          </button>
+        </div>
+      ) : (
+        <div className="mini-overlay-hud-container">
+          {/* Draggable HUD Action Bar */}
+          <div className="mini-overlay-hud-bar">
+            <div className="mini-overlay-hud-drag" title="Arraste para mover o overlay">
+              <span className="mini-overlay-live-indicator" />
+              <span className="mini-overlay-hud-channel" title={voiceData.channelName}>
+                {voiceData.channelName}
+              </span>
+            </div>
+            <div className="mini-overlay-hud-actions">
+              <button
+                type="button"
+                className={`mini-overlay-hud-btn ${voiceData.isMuted ? 'active-mute' : ''}`}
+                onClick={() => handleAction('toggleMute')}
+                title={voiceData.isMuted ? "Desmutar microfone" : "Mutar microfone"}
+              >
+                {voiceData.isMuted ? <MicOffIcon style={{ width: 12, height: 12 }} /> : <MicIcon style={{ width: 12, height: 12 }} />}
+              </button>
+              <button
+                type="button"
+                className={`mini-overlay-hud-btn ${voiceData.isDeafened ? 'active-deaf' : ''}`}
+                onClick={() => handleAction('toggleDeafen')}
+                title={voiceData.isDeafened ? "Desensurdecer" : "Ensurdecer"}
+              >
+                {voiceData.isDeafened ? <HeadphonesOffIcon style={{ width: 12, height: 12 }} /> : <HeadphonesIcon style={{ width: 12, height: 12 }} />}
+              </button>
+              <button
+                type="button"
+                className="mini-overlay-hud-btn leave-call-btn"
+                onClick={() => handleAction('leaveVoice')}
+                title="Sair da chamada"
+              >
+                <PhoneOffIcon style={{ width: 12, height: 12 }} />
+              </button>
+              <button
+                type="button"
+                className="mini-overlay-hud-btn close-btn"
+                onClick={handleClose}
+                title="Fechar overlay"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          {/* Discord-Style Floating Active Participants */}
+          <div className="mini-overlay-participants-list">
+            {voiceData.participants.map(p => {
+              return (
+                <div key={p.userId} className={`mini-overlay-participant ${p.isSpeaking ? 'is-speaking' : ''}`}>
+                  <div className="mini-overlay-avatar-wrapper">
+                    <div className="mini-overlay-avatar">
+                      {p.avatarUrl ? (
+                        <img src={p.avatarUrl} alt={p.displayName} />
+                      ) : (
+                        (p.displayName || 'M').slice(0, 1).toUpperCase()
+                      )}
+                    </div>
+                    {p.isSpeaking && <div className="mini-overlay-speaker-pulse" />}
+                    {p.isMuted && (
+                      <span className="mini-overlay-avatar-status muted" title="Mutado">
+                        <MicOffIcon style={{ width: 8, height: 8 }} />
+                      </span>
+                    )}
+                    {p.isDeafened && (
+                      <span className="mini-overlay-avatar-status deafened" title="Ensurdecido">
+                        <HeadphonesOffIcon style={{ width: 8, height: 8 }} />
+                      </span>
+                    )}
+                  </div>
+                  <div className="mini-overlay-p-info">
+                    <span className="mini-overlay-p-name">{p.displayName}</span>
+                    {p.hasScreen && (
+                      <span className="mini-overlay-screen-badge" title="Transmitindo tela">🖥️</span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Saved Messages Data Model & Modal ─────────────────────────────────── */
+export interface SavedMessageItem {
+  id: string;
+  sourceType: 'channel' | 'dm';
+  sourceName: string;
+  spaceId?: string;
+  channelId?: string;
+  dmUserId?: string;
+  authorName: string;
+  authorAvatar?: string;
+  authorId: string;
+  body: string;
+  attachmentUrl?: string;
+  attachmentType?: string;
+  createdAt: string;
+  savedAt: number;
+}
+
+function SavedMessagesModal({
+  isOpen,
+  onClose,
+  savedMessages,
+  onUnstar,
+  onJumpToMessage
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  savedMessages: SavedMessageItem[];
+  onUnstar: (msgId: string) => void;
+  onJumpToMessage: (item: SavedMessageItem) => void;
+}) {
+  const [activeTab, setActiveTab] = useState<'all' | 'links' | 'media' | 'text'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  if (!isOpen) return null
+
+  const filteredMessages = savedMessages.filter(item => {
+    if (activeTab === 'links') {
+      const hasLink = /(https?:\/\/[^\s]+)/i.test(item.body)
+      if (!hasLink) return false
+    } else if (activeTab === 'media') {
+      if (!item.attachmentUrl && item.attachmentType !== 'audio') return false
+    } else if (activeTab === 'text') {
+      if (item.attachmentUrl || /(https?:\/\/[^\s]+)/i.test(item.body)) return false
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      const matchText = item.body.toLowerCase().includes(q)
+      const matchAuthor = item.authorName.toLowerCase().includes(q)
+      const matchSource = item.sourceName.toLowerCase().includes(q)
+      return matchText || matchAuthor || matchSource
+    }
+
+    return true
+  })
+
+  const linksCount = savedMessages.filter(m => /(https?:\/\/[^\s]+)/i.test(m.body)).length
+  const mediaCount = savedMessages.filter(m => m.attachmentUrl || m.attachmentType === 'audio').length
+  const textCount = savedMessages.filter(m => !m.attachmentUrl && !/(https?:\/\/[^\s]+)/i.test(m.body)).length
+
+  const handleCopyText = (id: string, text: string) => {
+    navigator.clipboard.writeText(text)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  return (
+    <div className="saved-messages-backdrop" onClick={onClose}>
+      <div className="saved-messages-modal" onClick={e => e.stopPropagation()}>
+        <div className="saved-messages-header">
+          <div className="saved-header-left">
+            <div className="saved-star-badge">
+              <StarIcon style={{ width: 18, height: 18, color: '#ffc107', fill: '#ffc107' }} />
+            </div>
+            <div>
+              <h3>Mensagens Salvas</h3>
+              <p>Seus links, notas e mídias favoritas guardadas com privacidade</p>
+            </div>
+          </div>
+          <button type="button" className="saved-close-btn" onClick={onClose} title="Fechar">✕</button>
+        </div>
+
+        <div className="saved-filter-bar">
+          <div className="saved-search-wrap">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              type="text"
+              placeholder="Pesquisar por texto, autor ou canal..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              autoFocus
+            />
+            {searchQuery && (
+              <button type="button" className="saved-clear-search" onClick={() => setSearchQuery('')}>✕</button>
+            )}
+          </div>
+
+          <div className="saved-filter-tabs">
+            <button
+              type="button"
+              className={`saved-tab-btn ${activeTab === 'all' ? 'active' : ''}`}
+              onClick={() => setActiveTab('all')}
+            >
+              Todas <span className="tab-count">{savedMessages.length}</span>
+            </button>
+            <button
+              type="button"
+              className={`saved-tab-btn ${activeTab === 'links' ? 'active' : ''}`}
+              onClick={() => setActiveTab('links')}
+            >
+              🔗 Links <span className="tab-count">{linksCount}</span>
+            </button>
+            <button
+              type="button"
+              className={`saved-tab-btn ${activeTab === 'media' ? 'active' : ''}`}
+              onClick={() => setActiveTab('media')}
+            >
+              🖼️ Mídias & Áudios <span className="tab-count">{mediaCount}</span>
+            </button>
+            <button
+              type="button"
+              className={`saved-tab-btn ${activeTab === 'text' ? 'active' : ''}`}
+              onClick={() => setActiveTab('text')}
+            >
+              📝 Textos <span className="tab-count">{textCount}</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="saved-messages-list">
+          {filteredMessages.length === 0 ? (
+            <div className="saved-empty-state">
+              <div className="saved-empty-star">⭐</div>
+              <h4>Nenhuma mensagem favoritada</h4>
+              <p>
+                {searchQuery
+                  ? 'Nenhum resultado encontrado para a pesquisa.'
+                  : 'Passe o mouse sobre qualquer mensagem em um canal ou conversa privada e clique na estrela (⭐) para guardar aqui.'}
+              </p>
+            </div>
+          ) : (
+            filteredMessages.map(item => (
+              <div key={item.id} className="saved-msg-card">
+                <div className="saved-card-header">
+                  <div className="saved-card-author-info">
+                    <div className="saved-author-avatar">
+                      {item.authorAvatar ? (
+                        <img src={item.authorAvatar} alt={item.authorName} />
+                      ) : (
+                        item.authorName.slice(0, 1).toUpperCase()
+                      )}
+                    </div>
+                    <div>
+                      <span className="saved-author-name">{item.authorName}</span>
+                      <button
+                        type="button"
+                        className="saved-source-tag"
+                        onClick={() => onJumpToMessage(item)}
+                        title="Ir para o canal ou conversa"
+                      >
+                        📍 {item.sourceName}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="saved-card-header-actions">
+                    <span className="saved-date">
+                      {new Date(item.savedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <button
+                      type="button"
+                      className="saved-unstar-btn"
+                      onClick={() => onUnstar(item.id)}
+                      title="Remover dos favoritos"
+                    >
+                      <StarIcon style={{ width: 15, height: 15, color: '#ffc107', fill: '#ffc107' }} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="saved-card-body">
+                  {item.body && (
+                    <div className="saved-card-text">
+                      {item.body.split(/(https?:\/\/[^\s]+)/g).map((part, idx) => {
+                        if (part.match(/^https?:\/\//i)) {
+                          return (
+                            <a key={idx} href={part} target="_blank" rel="noopener noreferrer" className="saved-link">
+                              {part}
+                            </a>
+                          )
+                        }
+                        return <span key={idx}>{part}</span>
+                      })}
+                    </div>
+                  )}
+
+                  {item.attachmentUrl && item.attachmentType === 'image' && (
+                    <div className="saved-card-media">
+                      <img
+                        src={item.attachmentUrl}
+                        alt="Anexo salvo"
+                        onClick={() => window.open(item.attachmentUrl, '_blank')}
+                        title="Abrir imagem"
+                      />
+                    </div>
+                  )}
+
+                  {item.attachmentUrl && item.attachmentType === 'audio' && (
+                    <div className="saved-card-audio">
+                      <audio controls src={item.attachmentUrl} style={{ width: '100%', height: '36px' }} />
+                    </div>
+                  )}
+
+                  {item.attachmentUrl && item.attachmentType !== 'image' && item.attachmentType !== 'audio' && (
+                    <div className="saved-card-file">
+                      <a href={item.attachmentUrl} target="_blank" rel="noopener noreferrer">
+                        📎 Baixar arquivo anexo
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                <div className="saved-card-footer">
+                  <button
+                    type="button"
+                    className="saved-action-link"
+                    onClick={() => onJumpToMessage(item)}
+                  >
+                    Ir para conversa →
+                  </button>
+                  {item.body && (
+                    <button
+                      type="button"
+                      className="saved-copy-btn"
+                      onClick={() => handleCopyText(item.id, item.body)}
+                    >
+                      {copiedId === item.id ? '✓ Copiado!' : 'Copiar texto'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
+  const isOverlayMode = typeof window !== 'undefined' && window.location.search.includes('mode=overlay')
+  if (isOverlayMode) {
+    return <VoiceMiniOverlay />
+  }
+
   const isMock = typeof window !== 'undefined' && window.location.search.includes('mock=true')
   const [user, setUser] = useState<User | null>(() => {
     if (isMock) {
@@ -2333,7 +3356,15 @@ function Echo({ user }: { user: User }) {
   const [memberSearchQuery, setMemberSearchQuery] = useState('')
   const [loadingEditingMembers, setLoadingEditingMembers] = useState(false)
   const [showSpaceSettingsModal, setShowSpaceSettingsModal] = useState(false)
-  const [confirmModalConfig, setConfirmModalConfig] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void } | null>(null)
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{ 
+    isOpen: boolean; 
+    title: string; 
+    message: string; 
+    confirmText?: string; 
+    cancelText?: string; 
+    isDanger?: boolean; 
+    onConfirm: () => void 
+  } | null>(null)
   
   // Roles Management States
   const [serverRoles, setServerRoles] = useState<ServerRole[]>([])
@@ -2383,6 +3414,7 @@ function Echo({ user }: { user: User }) {
     clanTag?: string | null
     clanTagColor?: string
     activeGame?: string | null
+    activeGameStartedAt?: number | null
     isVoiceUser?: boolean
     userPresenceStatus: string
     isOnline: boolean
@@ -2415,9 +3447,9 @@ function Echo({ user }: { user: User }) {
   const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true)
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false)
   const [spaceMembers, setSpaceMembers] = useState<any[]>([])
+  const [spaceForAddMembers, setSpaceForAddMembers] = useState<Space | null>(null)
   const [showMembersList, setShowMembersList] = useState(true)
   const [showVoiceChat, setShowVoiceChat] = useState(false)
-  const [showVoiceMembers, setShowVoiceMembers] = useState(false)
   const [customStatus, setCustomStatus] = useState(() => localStorage.getItem('echo-custom-status') || '')
   const [presenceData, setPresenceData] = useState<Record<string, any>>({})
   const [avatarDecoration, setAvatarDecoration] = useState<string>(() => {
@@ -2601,6 +3633,10 @@ function Echo({ user }: { user: User }) {
   }, [])
 
   const displayName = (user.user_metadata.display_name as string | undefined) || user.email?.split('@')[0] || 'Você'
+
+  // Local profile states
+  const [profileDisplayName, setProfileDisplayName] = useState(displayName)
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState('')
 
   // Theme state
   const [theme, setTheme] = useState<string>(() => {
@@ -2786,7 +3822,12 @@ function Echo({ user }: { user: User }) {
     isAiDenoiseEnabled,
     toggleAiDenoise,
     updateScreenSubscriptions,
-    updateLocalProfile
+    updateLocalProfile,
+    isReconnecting: isVoiceReconnecting,
+    reconnectCountdown: voiceReconnectCountdown,
+    reconnectAttempt: voiceReconnectAttempt,
+    retryVoiceReconnect,
+    cancelVoiceReconnect
   } = useVoiceChannel({ 
     onDisconnected: handleVoiceDisconnected,
     sfxVolume
@@ -2890,14 +3931,136 @@ function Echo({ user }: { user: User }) {
   }, [pttModeSetting, pttKey, isConnected, setPttActive])
 
   // Rich Presence: My active game
-  const [myGamePresence, setMyGamePresence] = useState<{ name: string; icon: string; startedAt: number } | null>(null)
+  const [myGamePresence, setMyGamePresence] = useState<{ name: string; icon: string; startedAt: number } | null>(() => {
+    try {
+      const cached = localStorage.getItem('echo-my-game-presence')
+      if (cached) return JSON.parse(cached)
+    } catch {}
+    return null
+  })
   useEffect(() => {
+    const handleGame = (game: any) => {
+      setMyGamePresence(game)
+      try {
+        if (game) {
+          localStorage.setItem('echo-my-game-presence', JSON.stringify(game))
+        } else {
+          localStorage.removeItem('echo-my-game-presence')
+        }
+      } catch {}
+    }
+
     if ((window as any).electronAPI?.onGameDetected) {
-      (window as any).electronAPI.onGameDetected((game: any) => {
-        setMyGamePresence(game)
-      })
+      (window as any).electronAPI.onGameDetected(handleGame)
+    }
+    if ((window as any).electronAPI?.checkActiveGame) {
+      (window as any).electronAPI.checkActiveGame().then(handleGame).catch(() => {})
+      const pollTimer = setInterval(() => {
+        (window as any).electronAPI.checkActiveGame().then(handleGame).catch(() => {})
+      }, 5000)
+      return () => clearInterval(pollTimer)
     }
   }, [])
+
+  // Auto-broadcast game presence to Supabase presence channel
+  useEffect(() => {
+    if (presenceChannelRef.current) {
+      const savedStatus = presenceStatus === 'invisible' ? '' : (localStorage.getItem('echo-custom-status') || '')
+      const gameData = presenceStatus === 'invisible' ? null : myGamePresence
+      const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || avatarDecoration || ''
+      const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || profileEffect || ''
+      const curNameEff = localStorage.getItem(`echo-name-effect-${user.id}`) || nameEffect || 'resonance_cyan'
+      presenceChannelRef.current.track({
+        user_id: user.id,
+        display_name: profileDisplayName,
+        online_at: new Date().toISOString(),
+        custom_status: savedStatus,
+        presence_status: presenceStatus,
+        current_game: gameData,
+        game_presence: gameData,
+        avatar_decoration: curDeco,
+        profile_effect: curEff,
+        name_effect: curNameEff
+      }).catch(() => {})
+    }
+  }, [myGamePresence, presenceStatus, profileDisplayName, avatarDecoration, profileEffect, nameEffect, user.id])
+
+  // Mini Overlay Flutuante Control
+  const handleToggleOverlay = useCallback(() => {
+    if ((window as any).electronAPI?.toggleOverlay) {
+      (window as any).electronAPI.toggleOverlay()
+    } else {
+      showToast('Mini Overlay', 'O Mini Overlay flutuante está disponível no aplicativo Echo para Windows.', 'info')
+    }
+  }, [showToast])
+
+  // Saved Messages State & Handlers
+  const [savedMessages, setSavedMessages] = useState<SavedMessageItem[]>(() => {
+    try {
+      const raw = localStorage.getItem(`echo-saved-messages-${user.id}`) || localStorage.getItem('echo-saved-messages')
+      if (raw) return JSON.parse(raw)
+    } catch (e) {}
+    return []
+  })
+  const [showSavedMessagesModal, setShowSavedMessagesModal] = useState(false)
+
+  const isMessageSaved = useCallback((msgId: string) => {
+    return savedMessages.some(m => m.id === msgId)
+  }, [savedMessages])
+
+  const toggleSaveMessage = useCallback((
+    msg: any,
+    sourceType: 'channel' | 'dm',
+    meta: { sourceName: string; spaceId?: string; channelId?: string; dmUserId?: string }
+  ) => {
+    setSavedMessages(prev => {
+      const exists = prev.some(m => m.id === msg.id)
+      let next: SavedMessageItem[]
+      if (exists) {
+        next = prev.filter(m => m.id !== msg.id)
+        showToast('Estrela removida', 'Mensagem removida dos seus itens salvos.', 'info')
+      } else {
+        const newItem: SavedMessageItem = {
+          id: msg.id,
+          sourceType,
+          sourceName: meta.sourceName,
+          spaceId: meta.spaceId,
+          channelId: meta.channelId,
+          dmUserId: meta.dmUserId,
+          authorName: msg.profile?.display_name || (sourceType === 'dm' ? (msg.sender_id === user.id ? profileDisplayName : meta.sourceName.replace('@', '')) : 'Membro'),
+          authorAvatar: msg.profile?.avatar_url || (sourceType === 'dm' && msg.sender_id === user.id ? profileAvatarUrl : undefined),
+          authorId: msg.author_id || msg.sender_id,
+          body: msg.body || '',
+          attachmentUrl: msg.attachment_url,
+          attachmentType: msg.attachment_type,
+          createdAt: msg.created_at || new Date().toISOString(),
+          savedAt: Date.now()
+        }
+        next = [newItem, ...prev]
+        showToast('Mensagem salva ⭐', 'Item guardado na sua aba privada de favoritos.', 'info')
+      }
+      try {
+        localStorage.setItem(`echo-saved-messages-${user.id}`, JSON.stringify(next))
+        localStorage.setItem('echo-saved-messages', JSON.stringify(next))
+      } catch (e) {}
+      return next
+    })
+  }, [user.id, profileDisplayName, profileAvatarUrl, showToast])
+
+  const handleJumpToSavedMessage = useCallback((item: SavedMessageItem) => {
+    setShowSavedMessagesModal(false)
+    if (item.sourceType === 'channel' && item.spaceId && item.channelId) {
+      setExpandedSpace(item.spaceId)
+      const ch = (spaceChannels[item.spaceId] || []).find(c => c.id === item.channelId)
+      if (ch) {
+        setSelectedChannel(ch)
+      }
+      setPage('Servidores')
+    } else if (item.sourceType === 'dm' && item.dmUserId) {
+      setSelectedDMUserId(item.dmUserId)
+      setPage('Amigos')
+    }
+  }, [spaceChannels])
 
   // Deep Link: Join space via echo://invite/... or link
   useEffect(() => {
@@ -3012,6 +4175,7 @@ function Echo({ user }: { user: User }) {
   // Voice Notes recording in chat
   const [isVoiceNoteRecording, setIsVoiceNoteRecording] = useState(false)
   const [voiceNoteDuration, setVoiceNoteDuration] = useState(0)
+  const [voiceNoteTarget, setVoiceNoteTarget] = useState<'channel' | 'dm'>('channel')
   const voiceNoteRecorderRef = useRef<MediaRecorder | null>(null)
   const voiceNoteChunksRef = useRef<Blob[]>([])
   const voiceNoteTimerRef = useRef<any>(null)
@@ -3019,9 +4183,30 @@ function Echo({ user }: { user: User }) {
   const [voiceNotePlaySpeed, setVoiceNotePlaySpeed] = useState<number>(1)
   const voiceNoteAudioRef = useRef<HTMLAudioElement | null>(null)
 
-  // Local profile states
-  const [profileDisplayName, setProfileDisplayName] = useState(displayName)
-  const [profileAvatarUrl, setProfileAvatarUrl] = useState('')
+  const handleToggleVoicePlay = useCallback((messageId: string, audioUrl: string) => {
+    if (activePlayingVoiceNote === messageId) {
+      voiceNoteAudioRef.current?.pause()
+      setActivePlayingVoiceNote(null)
+    } else {
+      if (voiceNoteAudioRef.current) {
+        voiceNoteAudioRef.current.pause()
+      }
+      const audio = new Audio(audioUrl)
+      audio.playbackRate = voiceNotePlaySpeed
+      audio.play().catch(e => console.error('Audio play error:', e))
+      audio.onended = () => setActivePlayingVoiceNote(null)
+      voiceNoteAudioRef.current = audio
+      setActivePlayingVoiceNote(messageId)
+    }
+  }, [activePlayingVoiceNote, voiceNotePlaySpeed])
+
+  const handleChangeVoiceSpeed = useCallback(() => {
+    const nextSpeed = voiceNotePlaySpeed === 1 ? 1.5 : voiceNotePlaySpeed === 1.5 ? 2 : 1
+    setVoiceNotePlaySpeed(nextSpeed)
+    if (voiceNoteAudioRef.current) {
+      voiceNoteAudioRef.current.playbackRate = nextSpeed
+    }
+  }, [voiceNotePlaySpeed])
 
   useEffect(() => {
     async function loadUserProfile() {
@@ -3523,6 +4708,7 @@ function Echo({ user }: { user: User }) {
   function handleLeaveVoice() {
     playLeaveSound(sfxVolume)
     const prevChId = activeVoiceChannelId
+    cancelVoiceReconnect()
     leaveVoice()
     setActiveVoiceChannelId(null)
     setActiveSharingSource(null)
@@ -4459,6 +5645,9 @@ function Echo({ user }: { user: User }) {
         isOpen: true,
         title: "Transferir Posse do Espaço",
         message: `Tem certeza de que deseja transferir a posse do espaço "${currentSpace.name}" para "${memberName}"? Você deixará de ser o Dono e passará a ser um Moderador.`,
+        confirmText: "Sim, Transferir",
+        cancelText: "Não, Cancelar",
+        isDanger: false,
         onConfirm: async () => {
           await client.from('spaces').update({ creator_id: memberUserId }).eq('id', currentSpace.id)
           await client.from('space_members').update({ role: 'owner' }).eq('space_id', currentSpace.id).eq('user_id', memberUserId)
@@ -4502,6 +5691,9 @@ function Echo({ user }: { user: User }) {
       isOpen: true,
       title: "Expulsar Membro",
       message: `Tem certeza de que deseja expulsar "${memberName}" do espaço "${currentSpace.name}"? O usuário precisará de um convite para retornar.`,
+      confirmText: "Sim, Expulsar",
+      cancelText: "Não, Cancelar",
+      isDanger: true,
       onConfirm: async () => {
         const { error: kickErr } = await client
           .from('space_members')
@@ -4701,6 +5893,9 @@ function Echo({ user }: { user: User }) {
       isOpen: true,
       title: "Excluir Canal",
       message: `Tem certeza de que deseja excluir o canal "# ${ch.name}"? Todas as mensagens dele serão perdidas permanentemente e esta ação não poderá ser desfeita.`,
+      confirmText: "Sim, Excluir",
+      cancelText: "Não, Cancelar",
+      isDanger: true,
       onConfirm: () => {
         executeDeleteChannel(channelId)
       }
@@ -4732,6 +5927,9 @@ function Echo({ user }: { user: User }) {
       isOpen: true,
       title: "Encerrar Espaço",
       message: `Tem certeza de que deseja encerrar permanentemente o espaço "${editingSpace.name}"? Todos os canais e mensagens dele serão perdidos de forma irreversível e esta ação não poderá ser desfeita.`,
+      confirmText: "Sim, Encerrar",
+      cancelText: "Não, Cancelar",
+      isDanger: true,
       onConfirm: () => {
         executeDeleteSpace()
       }
@@ -4745,6 +5943,9 @@ function Echo({ user }: { user: User }) {
       isOpen: true,
       title: "Sair do Espaço",
       message: `Tem certeza de que deseja sair do espaço "${space.name}"? Você precisará de um convite para retornar.`,
+      confirmText: "Sim, Sair",
+      cancelText: "Não, Cancelar",
+      isDanger: true,
       onConfirm: async () => {
         await client.from('space_members').delete().eq('space_id', space.id).eq('user_id', user.id)
         if (expandedSpace === space.id) {
@@ -4756,6 +5957,80 @@ function Echo({ user }: { user: User }) {
         showToast("Você saiu do espaço", `Você não faz mais parte de "${space.name}".`, 'info')
       }
     })
+  }
+
+  async function handleAddMemberToSpace(spaceId: string, friend: FriendshipRequest): Promise<boolean> {
+    if (!supabase || !user) return false
+    try {
+      // 1. Inserir na tabela space_members
+      const { error: insertError } = await supabase
+        .from('space_members')
+        .insert({ space_id: spaceId, user_id: friend.user.id, role: 'member' })
+
+      if (insertError) {
+        if (!insertError.message?.includes('duplicate') && !insertError.message?.includes('unique')) {
+          throw insertError
+        }
+      }
+
+      // 2. Atribuir cargo padrão do espaço (se configurado)
+      try {
+        const { data: defaultRoles } = await supabase
+          .from('space_roles')
+          .select('id')
+          .eq('space_id', spaceId)
+          .eq('is_default', true)
+        if (defaultRoles && defaultRoles.length > 0) {
+          for (const dr of defaultRoles) {
+            await supabase.from('space_member_roles').insert({
+              space_id: spaceId,
+              user_id: friend.user.id,
+              role_id: dr.id
+            })
+          }
+        }
+      } catch (roleErr) {
+        console.warn('Erro ao atribuir cargo padrão ao novo membro:', roleErr)
+      }
+
+      // 3. Atualizar estado local de spaceMembers
+      setSpaceMembers(prev => {
+        if (prev.some(m => (m?.user?.id || m?.id) === friend.user.id)) return prev
+        return [...prev, { role: 'member', user: friend.user }]
+      })
+
+      // 4. Atualizar contagem de membros no espaço
+      setSpaces(prev => prev.map(s => s.id === spaceId ? { ...s, member_count: (s.member_count || 1) + 1 } : s))
+
+      // 5. Enviar mensagem de convite/boas-vindas no chat privado
+      try {
+        const spObj = spaces.find(s => s.id === spaceId)
+        const spaceName = spObj?.name || 'servidor'
+        const msg = `👋 Olá! Adicionei você ao espaço "${spaceName}" no Echo!\n🔗 Entre diretamente por aqui: echo://invite/${spaceId}\n🔑 Código do Espaço: ${spaceId}`
+        await supabase.from('direct_messages').insert({
+          sender_id: user.id,
+          receiver_id: friend.user.id,
+          body: msg
+        })
+        socialChannelRef.current?.send({
+          type: 'broadcast',
+          event: 'dm-event',
+          payload: {
+            receiverId: friend.user.id,
+            senderId: user.id,
+            senderName: profileDisplayName || displayName || 'Amigo',
+            body: msg
+          }
+        })
+      } catch (dmErr) {}
+
+      showToast('Membro Adicionado!', `@${friend.user.display_name} agora faz parte do espaço.`, 'friend')
+      return true
+    } catch (err: any) {
+      console.error('handleAddMemberToSpace error:', err)
+      showToast('Erro ao adicionar', err?.message || 'Não foi possível adicionar o membro.', 'info')
+      return false
+    }
   }
 
   function getQualityDimensions(quality: '720p' | '1080p' | 'native') {
@@ -4974,13 +6249,17 @@ function Echo({ user }: { user: User }) {
     result.sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
 
     setSpaceChannels(prev => ({ ...prev, [spaceId]: result }))
-    if (!selectedChannel && result.length > 0) {
-      const firstText = result.find(c => c.type === 'text')
-      if (firstText) setSelectedChannel(firstText)
+    if (result.length > 0) {
+      if (!selectedChannel || selectedChannel.space_id !== spaceId) {
+        const firstText = result.find(c => c.type === 'text') || result[0]
+        if (firstText) {
+          setSelectedChannel(firstText)
+        }
+      }
     }
   }
 
-  async function loadMessages(channelId: string) {
+  async function loadMessages(channelId: string, forceFullFetch = false) {
     const isMock = typeof window !== 'undefined' && window.location.search.includes('mock=true')
     if (isMock) {
       setMessages([
@@ -4992,22 +6271,84 @@ function Echo({ user }: { user: User }) {
     if (!supabase) return
 
     // 1. Render instantâneo do cache local (0ms e 0 requisições desnecessárias)
+    let currentCached: Message[] = []
+    let foundCached = false
     if (messagesCacheRef.current[channelId] && messagesCacheRef.current[channelId].length > 0) {
-      setMessages(messagesCacheRef.current[channelId])
+      currentCached = messagesCacheRef.current[channelId]
+      setMessages(currentCached)
+      foundCached = true
     } else {
       try {
         const cached = localStorage.getItem(`echo-msgs-${channelId}`)
         if (cached) {
           const parsed = JSON.parse(cached)
           if (Array.isArray(parsed) && parsed.length > 0) {
+            currentCached = parsed
             messagesCacheRef.current[channelId] = parsed
             setMessages(parsed)
+            foundCached = true
           }
         }
       } catch (e) {}
     }
 
-    // 2. Busca paginada (as 50 mensagens mais recentes)
+    // Se o canal ainda não possui cache, limpa a tela de mensagens antigas imediatamente
+    if (!foundCached) {
+      setMessages([])
+    }
+
+    // 2. Busca Delta Inteligente (Supabase Query Optimization)
+    // Se já temos mensagens em cache e não for um forceFullFetch, busca apenas mensagens criadas APÓS a mais recente salva
+    const newestCached = !forceFullFetch && currentCached.length > 0
+      ? [...currentCached].reverse().find(m => m.status === 'sent' && m.created_at)
+      : null
+
+    if (newestCached && newestCached.created_at) {
+      try {
+        const { data: deltaData, error: deltaErr } = await supabase
+          .from('messages')
+          .select('id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
+          .eq('channel_id', channelId)
+          .gt('created_at', newestCached.created_at)
+          .order('created_at', { ascending: true })
+          .limit(50)
+
+        if (!deltaErr && deltaData) {
+          if (deltaData.length === 0) {
+            // 0 consultas/transferências adicionais: o cache já estava 100% atualizado!
+            return
+          }
+
+          const newLoaded: Message[] = deltaData.map((row: any) => ({
+            ...row,
+            profile: Array.isArray(row.profiles) ? row.profiles?.[0] : row.profiles,
+            status: 'sent' as const
+          }))
+
+          setMessages(prev => {
+            const existingMap = new Map(prev.map(m => [m.id, m]))
+            newLoaded.forEach(nm => {
+              existingMap.set(nm.id, nm)
+            })
+            const merged = Array.from(existingMap.values()).sort((a, b) => {
+              const tA = a.created_at ? new Date(a.created_at).getTime() : 0
+              const tB = b.created_at ? new Date(b.created_at).getTime() : 0
+              return tA - tB
+            })
+            messagesCacheRef.current[channelId] = merged
+            try {
+              localStorage.setItem(`echo-msgs-${channelId}`, JSON.stringify(merged.slice(-50)))
+            } catch (e) {}
+            return merged
+          })
+          return
+        }
+      } catch (deltaCatchErr) {
+        console.warn('[Cache] Erro no fetch delta, caindo para busca completa:', deltaCatchErr)
+      }
+    }
+
+    // 3. Busca Completa Paginada (Fallback ou primeira abertura do canal)
     const { data, error: queryError } = await supabase
       .from('messages')
       .select('id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
@@ -5700,6 +7041,38 @@ function Echo({ user }: { user: User }) {
     }
   }
 
+  async function handleDeleteDM(messageId: string) {
+    if (!supabase || !user) return
+    const msg = directMessages.find(m => m.id === messageId)
+    if (!msg) return
+    if (msg.sender_id !== user.id) {
+      showToast("Permissão Negada", "Você só pode excluir mensagens que você enviou.", "info")
+      return
+    }
+
+    try {
+      const { error: delErr } = await supabase.from('direct_messages').delete().eq('id', messageId)
+      if (delErr) {
+        console.error('Error deleting direct message:', delErr)
+        showToast("Erro ao Excluir", delErr.message, "info")
+        return
+      }
+
+      setDirectMessages(prev => prev.filter(m => m.id !== messageId))
+
+      socialChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'dm-delete',
+        payload: { id: messageId, receiverId: selectedDMUserId, senderId: user.id }
+      })
+
+      showToast("Mensagem Excluída", "Mensagem privada removida.", "info")
+    } catch (err: any) {
+      console.error('Failed to delete direct message:', err)
+      showToast("Erro", "Não foi possível excluir a mensagem.", "info")
+    }
+  }
+
   async function handleChatFileUpload(file: File) {
     if (!supabase || !selectedChannel) return
     setIsUploading(true)
@@ -5779,6 +7152,7 @@ function Echo({ user }: { user: User }) {
       const savedPresStatus = localStorage.getItem('echo-presence-status') || 'online'
       const savedDecoration = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
       const savedEffect = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
+      const gameData = savedPresStatus === 'invisible' ? null : myGamePresence
       await presenceChannel.track({
         user_id: user.id,
         display_name: profileDisplayName || displayName,
@@ -5786,7 +7160,9 @@ function Echo({ user }: { user: User }) {
         custom_status: savedStatus,
         presence_status: savedPresStatus,
         avatar_decoration: savedDecoration,
-        profile_effect: savedEffect
+        profile_effect: savedEffect,
+        current_game: gameData,
+        game_presence: gameData
       }).catch(() => {})
     }
 
@@ -5849,7 +7225,15 @@ function Echo({ user }: { user: User }) {
   }, [spaceChannels])
 
   useEffect(() => {
-    if (expandedSpace) loadChannelsForSpace(expandedSpace)
+    if (expandedSpace) {
+      if (selectedChannel && selectedChannel.space_id !== expandedSpace) {
+        setMessages([])
+        const chs = spaceChannelsRef.current[expandedSpace] || []
+        const firstCh = chs.find(c => c.type === 'text') || chs[0] || null
+        setSelectedChannel(firstCh)
+      }
+      loadChannelsForSpace(expandedSpace)
+    }
   }, [expandedSpace])
 
   useEffect(() => {
@@ -5862,6 +7246,13 @@ function Echo({ user }: { user: User }) {
     setHasMoreMessages(true)
     setIsLoadingMore(false)
     isPrependingRef.current = false
+
+    const initialCache = messagesCacheRef.current[selectedChannel.id] || []
+    if (initialCache.length > 0) {
+      setMessages(initialCache)
+    } else {
+      setMessages([])
+    }
 
     loadMessages(selectedChannel.id)
 
@@ -5903,14 +7294,29 @@ function Echo({ user }: { user: User }) {
       }
     })
 
+    live.on('broadcast', { event: 'delete-message' }, ({ payload }) => {
+      if (!payload || !payload.id) return
+      setMessages(prev => {
+        const updated = prev.filter(m => m.id !== payload.id)
+        if (selectedChannel) {
+          messagesCacheRef.current[selectedChannel.id] = updated
+          try {
+            localStorage.setItem(`echo-msgs-${selectedChannel.id}`, JSON.stringify(updated.slice(-50)))
+          } catch (e) {}
+        }
+        return updated
+      })
+    })
+
     // 2. PostgreSQL Changes (sincronização contínua com banco de dados)
     live.on('postgres_changes', { 
       event: '*', 
       schema: 'public', 
       table: 'messages', 
       filter: `channel_id=eq.${selectedChannel.id}` 
-    }, () => {
-      loadMessages(selectedChannel.id)
+    }, (payload: any) => {
+      const isDeleteOrUpdate = payload && (payload.eventType === 'DELETE' || payload.eventType === 'UPDATE')
+      loadMessages(selectedChannel.id, isDeleteOrUpdate)
     })
 
     live.subscribe()
@@ -6032,6 +7438,13 @@ function Echo({ user }: { user: User }) {
               triggerDesktopNotification(`Mensagem de ${data.senderName}`, data.body)
             }
           }
+        }
+      })
+      .on('broadcast', { event: 'dm-delete' }, (payload: any) => {
+        const data = payload?.payload
+        if (!data || !data.id) return
+        if (data.receiverId === user.id || data.senderId === user.id) {
+          setDirectMessages(prev => prev.filter(m => m.id !== data.id))
         }
       })
       .on('broadcast', { event: 'call-event' }, (payload: any) => {
@@ -6311,8 +7724,9 @@ function Echo({ user }: { user: User }) {
     })
   }
 
-  async function startVoiceNoteRecording() {
+  async function startVoiceNoteRecording(target: 'channel' | 'dm' = 'channel') {
     try {
+      setVoiceNoteTarget(target)
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const rec = new MediaRecorder(stream)
       voiceNoteChunksRef.current = []
@@ -6321,23 +7735,44 @@ function Echo({ user }: { user: User }) {
       }
       rec.onstop = async () => {
         stream.getTracks().forEach(t => t.stop())
-        if (voiceNoteChunksRef.current.length > 0 && selectedChannel && supabase && user) {
+        if (voiceNoteChunksRef.current.length > 0 && supabase && user) {
           const blob = new Blob(voiceNoteChunksRef.current, { type: 'audio/webm' })
-          const audioPath = `voice-notes/${selectedChannel.id}/${Date.now()}-${user.id}.webm`
-          try {
-            const { error: uploadErr } = await supabase.storage.from('attachments').upload(audioPath, blob, {
-              contentType: 'audio/webm'
-            })
-            if (uploadErr) {
-              console.error('Storage upload error for voice note:', uploadErr)
-              showToast('Erro no Áudio', 'Falha ao salvar áudio no servidor.', 'info')
-              return
+          if (target === 'channel') {
+            if (!selectedChannel) return
+            const audioPath = `voice-notes/${selectedChannel.id}/${Date.now()}-${user.id}.webm`
+            try {
+              const { error: uploadErr } = await supabase.storage.from('attachments').upload(audioPath, blob, {
+                contentType: 'audio/webm'
+              })
+              if (uploadErr) {
+                console.error('Storage upload error for voice note:', uploadErr)
+                showToast('Erro no Áudio', 'Falha ao salvar áudio no servidor.', 'info')
+                return
+              }
+              const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(audioPath)
+              await postChannelMessage(selectedChannel.id, '🎙️ Mensagem de Voz', urlData.publicUrl, 'audio')
+            } catch (err: any) {
+              console.error('Failed to send voice note:', err)
+              showToast('Erro no Áudio', 'Erro ao processar gravação de voz.', 'info')
             }
-            const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(audioPath)
-            await postChannelMessage(selectedChannel.id, '🎙️ Mensagem de Voz', urlData.publicUrl, 'audio')
-          } catch (err: any) {
-            console.error('Failed to send voice note:', err)
-            showToast('Erro no Áudio', 'Erro ao processar gravação de voz.', 'info')
+          } else if (target === 'dm') {
+            if (!selectedDMUserId) return
+            const audioPath = `dm/${user.id}/${Date.now()}.webm`
+            try {
+              const { error: uploadErr } = await supabase.storage.from('attachments').upload(audioPath, blob, {
+                contentType: 'audio/webm'
+              })
+              if (uploadErr) {
+                console.error('Storage upload error for DM voice note:', uploadErr)
+                showToast('Erro no Áudio', 'Falha ao salvar áudio no servidor.', 'info')
+                return
+              }
+              const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(audioPath)
+              await sendDirectMessage('🎙️ Mensagem de Voz', urlData.publicUrl, 'audio')
+            } catch (err: any) {
+              console.error('Failed to send DM voice note:', err)
+              showToast('Erro no Áudio', 'Erro ao processar gravação de voz.', 'info')
+            }
           }
         }
       }
@@ -6512,6 +7947,49 @@ function Echo({ user }: { user: User }) {
     postChannelMessage(selectedChannel.id, msg.body, msg.attachment_url, msg.attachment_type, msg.tempId || msg.id)
   }
 
+  async function handleDeleteMessage(messageId: string) {
+    if (!supabase || !selectedChannel) return
+    const msgToDelete = messages.find(m => m.id === messageId)
+    if (!msgToDelete) return
+
+    const currentSp = getSpaceForChannel(selectedChannel)
+    const isAuthor = msgToDelete.author_id === user.id
+    const canManage = currentSp && (canUserDo(currentSp.id, user.id, 'manageMessages') || currentSp.creator_id === user.id)
+    if (!isAuthor && !canManage) {
+      showToast("Permissão Negada", "Você só pode excluir suas próprias mensagens.", "info")
+      return
+    }
+
+    try {
+      const { error: delErr } = await supabase.from('messages').delete().eq('id', messageId)
+      if (delErr) {
+        console.error('Error deleting message:', delErr)
+        showToast("Erro ao Excluir", delErr.message, "info")
+        return
+      }
+
+      setMessages(prev => {
+        const next = prev.filter(m => m.id !== messageId)
+        messagesCacheRef.current[selectedChannel.id] = next
+        try {
+          localStorage.setItem(`echo-msgs-${selectedChannel.id}`, JSON.stringify(next.slice(-50)))
+        } catch (e) {}
+        return next
+      })
+
+      channelBroadcastRef.current?.send({
+        type: 'broadcast',
+        event: 'delete-message',
+        payload: { id: messageId }
+      }).catch(() => {})
+
+      showToast("Mensagem Excluída", "A mensagem foi removida do canal.", "info")
+    } catch (err: any) {
+      console.error('Failed to delete message:', err)
+      showToast("Erro", "Não foi possível excluir a mensagem.", "info")
+    }
+  }
+
   async function send(event: FormEvent) {
     event.preventDefault(); if (!supabase || !selectedChannel || !draft.trim()) return
     const currentSp = getSpaceForChannel(selectedChannel)
@@ -6552,6 +8030,73 @@ function Echo({ user }: { user: User }) {
   const activeVoiceChannel = activeVoiceChannelId
     ? Object.values(spaceChannels).flat().find(c => c.id === activeVoiceChannelId)
     : null
+
+  // Synchronize Live Voice State with Mini Overlay
+  useEffect(() => {
+    const channel = new BroadcastChannel('echo-voice-overlay-sync')
+
+    const broadcastState = () => {
+      const channelName = activeVoiceChannel?.name || 'Chamada de Voz'
+      const parts = participants.map(p => ({
+        userId: p.userId,
+        displayName: p.displayName,
+        avatarUrl: p.avatarUrl,
+        isSpeaking: Boolean(p.isSpeaking),
+        isMuted: Boolean(p.isMuted),
+        isDeafened: Boolean(p.isDeafened),
+        hasScreen: Boolean(p.screenStream)
+      }))
+
+      if (activeVoiceChannelId && user?.id && !parts.some(p => p.userId === user.id)) {
+        parts.unshift({
+          userId: user.id,
+          displayName: profileDisplayName || 'Você',
+          avatarUrl: profileAvatarUrl,
+          isSpeaking: false,
+          isMuted: Boolean(isMuted),
+          isDeafened: Boolean(isDeafened),
+          hasScreen: Boolean(activeSharingSource)
+        })
+      }
+
+      const payload = {
+        channelName,
+        participants: parts,
+        isMuted: Boolean(isMuted),
+        isDeafened: Boolean(isDeafened),
+        activeVoiceChannelId
+      }
+
+      try {
+        localStorage.setItem('echo-voice-overlay-cache', JSON.stringify(payload))
+      } catch (e) {}
+
+      channel.postMessage({
+        type: 'VOICE_STATE_UPDATE',
+        payload
+      })
+    }
+
+    broadcastState()
+
+    channel.onmessage = (event) => {
+      if (event.data?.type === 'REQUEST_SYNC') {
+        broadcastState()
+      } else if (event.data?.type === 'OVERLAY_ACTION') {
+        if (event.data.action === 'toggleMute') {
+          handleToggleMute()
+        } else if (event.data.action === 'toggleDeafen') {
+          handleToggleDeafen()
+        } else if (event.data.action === 'leaveVoice') {
+          handleLeaveVoice()
+        }
+      }
+    }
+
+    return () => {
+      channel.close()
+    }
+  }, [activeVoiceChannel?.name, participants, isMuted, isDeafened, activeVoiceChannelId, user.id, profileDisplayName, profileAvatarUrl, activeSharingSource, handleToggleMute, handleToggleDeafen, handleLeaveVoice])
 
   return (
     <main className="echo-app">
@@ -6610,6 +8155,39 @@ function Echo({ user }: { user: User }) {
           className="topbar-hover-sensor"
           onMouseEnter={showTopbar}
         />
+      )}
+
+      {/* Barra Discreta de Reconexão Automática de Voz */}
+      {isVoiceReconnecting && (
+        <div className="voice-reconnecting-banner">
+          <div className="voice-reconnecting-left">
+            <span className="voice-reconnecting-spinner" />
+            <div className="voice-reconnecting-info">
+              <span className="voice-reconnecting-title">Conexão Interrompida</span>
+              <span className="voice-reconnecting-desc">
+                Tentando restabelecer chamada em <strong>{voiceReconnectCountdown}s</strong>... {voiceReconnectAttempt > 1 ? `(Tentativa ${voiceReconnectAttempt})` : ''}
+              </span>
+            </div>
+          </div>
+          <div className="voice-reconnecting-actions">
+            <button 
+              type="button" 
+              className="voice-reconnect-now-btn"
+              onClick={retryVoiceReconnect}
+              title="Tentar reconectar imediatamente"
+            >
+              Reconectar Agora
+            </button>
+            <button 
+              type="button" 
+              className="voice-reconnect-cancel-btn"
+              onClick={cancelVoiceReconnect}
+              title="Cancelar e sair da chamada"
+            >
+              Desconectar
+            </button>
+          </div>
+        </div>
       )}
 
       <header 
@@ -6853,6 +8431,19 @@ function Echo({ user }: { user: User }) {
           >
             <ColoredShopBagIcon size={15} style={{ verticalAlign: 'middle' }} />
             <span>Loja</span>
+          </button>
+
+          <button
+            type="button"
+            className="topbar-nav-pill saved-messages-pill"
+            onClick={() => setShowSavedMessagesModal(true)}
+            title="Mensagens Salvas com Estrela (Links, Estratégias & Mídias)"
+          >
+            <StarIcon style={{ width: '15px', height: '15px', color: savedMessages.length > 0 ? '#ffc107' : 'currentColor', fill: savedMessages.length > 0 ? '#ffc107' : 'none' }} />
+            <span>Salvos</span>
+            {savedMessages.length > 0 && (
+              <span className="topbar-badge saved-count-badge">{savedMessages.length}</span>
+            )}
           </button>
 
           <button
@@ -7162,6 +8753,18 @@ function Echo({ user }: { user: User }) {
                     <button 
                       type="button"
                       className="server-dropdown-item" 
+                      onClick={() => {
+                        setShowServerDropdown(false)
+                        setSpaceForAddMembers(activeSpace)
+                      }}
+                      style={{ color: 'var(--accent-color, #00f2fe)', fontWeight: 600 }}
+                    >
+                      <UserPlusIcon style={{ width: '15px', height: '15px', color: 'var(--accent-color, #00f2fe)' }} />
+                      <span>Convidar Amigos / Adicionar Membros</span>
+                    </button>
+                    <button 
+                      type="button"
+                      className="server-dropdown-item" 
                       onClick={() => { setShowServerDropdown(false); setShowNewChannel(activeSpace.id); setNewChannelCategory(''); }}
                     >
                       <PlusIcon style={{ width: '15px', height: '15px', color: '#38bdf8' }} />
@@ -7424,7 +9027,7 @@ function Echo({ user }: { user: User }) {
                     <div className="voice-status-header-row">
                       <div className="voice-status-info">
                         <div className="connection-quality-indicator" style={{ position: 'relative', cursor: 'pointer' }}>
-                          <div className={`connection-bars ${rtcStats && rtcStats.ping < 100 ? 'good' : rtcStats && rtcStats.ping < 200 ? 'medium' : 'bad'}`}>
+                          <div className={`connection-bars ${isVoiceReconnecting ? 'reconnecting' : (rtcStats && rtcStats.ping < 100 ? 'good' : rtcStats && rtcStats.ping < 200 ? 'medium' : 'bad')}`}>
                             <i /><i /><i />
                           </div>
                           
@@ -7437,7 +9040,9 @@ function Echo({ user }: { user: User }) {
                           </div>
                         </div>
                         <div className="voice-status-text">
-                          <span className="voice-status-label">Voz conectada</span>
+                          <span className="voice-status-label" style={isVoiceReconnecting ? { color: '#f59e0b', fontWeight: 600 } : undefined}>
+                            {isVoiceReconnecting ? 'Reconectando...' : 'Voz conectada'}
+                          </span>
                           <span className="voice-status-channel" title={activeVoiceChannel?.name}>{activeVoiceChannel?.name}</span>
                         </div>
                       </div>
@@ -7500,7 +9105,7 @@ function Echo({ user }: { user: User }) {
           <section className="main-content">
             {error && <div className="app-error">{error}<button className="dismiss-error" onClick={() => setError('')}>✕</button></div>}
 
-            {selectedChannel ? (
+            {selectedChannel && (!expandedSpace || selectedChannel.space_id === expandedSpace) ? (
               selectedChannel.type === 'text' ? (
                 <>
                 <header className="content-header">
@@ -7535,7 +9140,7 @@ function Echo({ user }: { user: User }) {
                     {/* Search messages in channel */}
                     <div className="channel-search-box-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                       {showSearchInput ? (
-                        <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', borderRadius: '6px', border: '1px solid var(--border-color)', padding: '2px 8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)', padding: '2px 8px' }}>
                           <SearchIcon style={{ width: '13px', height: '13px', color: 'var(--text-muted)' }} />
                           <input 
                             type="text" 
@@ -7553,12 +9158,11 @@ function Echo({ user }: { user: User }) {
                       ) : (
                         <button 
                           type="button" 
-                          className="profile-footer-btn" 
+                          className="channel-header-action-btn" 
                           onClick={() => setShowSearchInput(true)} 
                           title="Buscar no canal"
-                          style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          <SearchIcon />
+                          <SearchIcon style={{ width: '15px', height: '15px' }} />
                         </button>
                       )}
                     </div>
@@ -7566,14 +9170,13 @@ function Echo({ user }: { user: User }) {
                     {/* Pinned Messages Button */}
                     <button 
                       type="button" 
-                      className={`profile-footer-btn ${(pinnedMessages[selectedChannel.id]?.length || 0) > 0 ? 'active' : ''}`}
+                      className={`channel-header-action-btn ${showPinnedMessagesPanel || (pinnedMessages[selectedChannel.id]?.length || 0) > 0 ? 'active' : ''}`}
                       onClick={() => setShowPinnedMessagesPanel(!showPinnedMessagesPanel)}
                       title="Mensagens Fixadas"
-                      style={{ position: 'relative', border: 'none', background: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
-                      <PinIcon />
+                      <PinIcon style={{ width: '15px', height: '15px' }} />
                       {(pinnedMessages[selectedChannel.id]?.length || 0) > 0 && (
-                        <span style={{ position: 'absolute', top: '-2px', right: '-2px', background: 'var(--accent-color)', color: '#fff', fontSize: '9px', fontWeight: 600, padding: '1px 4px', borderRadius: '8px', minWidth: '14px', textAlign: 'center' }}>
+                        <span className="channel-header-badge">
                           {pinnedMessages[selectedChannel.id]?.length}
                         </span>
                       )}
@@ -7592,12 +9195,12 @@ function Echo({ user }: { user: User }) {
                     )}
 
                     <button 
-                      className={`profile-footer-btn ${showMembersList ? 'active' : ''}`} 
+                      type="button"
+                      className={`channel-header-action-btn ${showMembersList ? 'active' : ''}`} 
                       onClick={() => setShowMembersList(!showMembersList)}
                       title={showMembersList ? "Ocultar Lista de Membros" : "Mostrar Lista de Membros"}
-                      style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
-                      <UsersIcon />
+                      <UsersIcon style={{ width: '15px', height: '15px' }} />
                     </button>
                   </div>
                 </header>
@@ -7676,10 +9279,11 @@ function Echo({ user }: { user: User }) {
                                   }
                                 }
 
-                                // Consecutive Message Grouping (Same author within 5 min, same calendar day, and not a reply)
+                                // Consecutive Message Grouping (Same author within 5 min, same calendar day, not a reply, and not voice note)
                                 const isSameAuthor = prevMessage && prevMessage.author_id === message.author_id
                                 const isWithinWindow = prevMessage && (msgDate.getTime() - prevDate!.getTime() < 5 * 60 * 1000)
-                                const isConsecutive = !isDifferentDay && isSameAuthor && isWithinWindow && !replyQuoteText
+                                const isAudioNote = message.attachment_type === 'audio' || prevMessage?.attachment_type === 'audio'
+                                const isConsecutive = !isDifferentDay && isSameAuthor && isWithinWindow && !replyQuoteText && !isAudioNote
 
                                 const isMentioned = message.author_id !== user.id && message.body.toLowerCase().includes(`@${profileDisplayName.toLowerCase()}`)
                                 const msgRole = currentSpace ? getUserHighestRole(currentSpace.id, message.author_id) : null
@@ -7703,7 +9307,7 @@ function Echo({ user }: { user: User }) {
                                     )}
 
                                     <article 
-                                      className={`msg-card ${isConsecutive ? 'msg-consecutive' : ''} ${message.author_id === user.id ? 'msg-own' : ''} ${isMentioned ? 'mention-highlight' : ''} ${message.status === 'sending' ? 'msg-sending' : ''} ${message.status === 'failed' ? 'msg-failed' : ''}`} 
+                                      className={`msg-card ${isConsecutive ? 'msg-consecutive' : ''} ${message.attachment_type === 'audio' ? 'has-voice-note' : ''} ${message.author_id === user.id ? 'msg-own' : ''} ${isMentioned ? 'mention-highlight' : ''} ${message.status === 'sending' ? 'msg-sending' : ''} ${message.status === 'failed' ? 'msg-failed' : ''}`} 
                                       style={{ position: 'relative' }}
                                     >
                                       {/* Message Hover Action Bar */}
@@ -7727,6 +9331,38 @@ function Echo({ user }: { user: User }) {
                                         >
                                           ↩️
                                         </button>
+                                        <button 
+                                          type="button" 
+                                          className={`hover-action-btn star-btn ${isMessageSaved(message.id) ? 'active' : ''}`}
+                                          onClick={() => toggleSaveMessage(message, 'channel', {
+                                            sourceName: `#${selectedChannel.name} • ${currentSpace?.name || 'Servidor'}`,
+                                            spaceId: currentSpace?.id,
+                                            channelId: selectedChannel.id
+                                          })}
+                                          title={isMessageSaved(message.id) ? "Remover dos favoritos" : "Salvar mensagem com estrela (⭐)"}
+                                        >
+                                          <StarIcon style={{ width: '13px', height: '13px', color: isMessageSaved(message.id) ? '#ffc107' : 'inherit', fill: isMessageSaved(message.id) ? '#ffc107' : 'none' }} />
+                                        </button>
+                                        {canManagePins && (
+                                          <button 
+                                            type="button" 
+                                            className="hover-action-btn"
+                                            onClick={() => togglePinMessage(message, currentSpace.id, selectedChannel.id)}
+                                            title={isPinned ? "Desafixar Mensagem" : "Fixar Mensagem no Canal"}
+                                          >
+                                            <PinIcon style={{ width: '13px', height: '13px', color: isPinned ? 'var(--accent-color)' : 'inherit' }} />
+                                          </button>
+                                        )}
+                                        {(message.author_id === user.id || canManagePins) && (
+                                          <button 
+                                            type="button" 
+                                            className="hover-action-btn delete-btn"
+                                            onClick={() => handleDeleteMessage(message.id)}
+                                            title="Excluir mensagem"
+                                          >
+                                            <TrashIcon style={{ width: '13px', height: '13px' }} />
+                                          </button>
+                                        )}
                                       </div>
 
                                       {isConsecutive ? (
@@ -7854,26 +9490,12 @@ function Echo({ user }: { user: User }) {
 
                                               <time>{msgDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
                                               
-                                              {isPinned && (
-                                                <span title="Mensagem Fixada" style={{ fontSize: '11px', color: 'var(--accent-color)', marginLeft: '4px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                                                  📌 <span style={{ fontSize: '10px', fontWeight: 700 }}>Fixada</span>
-                                                </span>
-                                              )}
-
-                                              {/* Action button to Pin/Unpin */}
-                                              {canManagePins && (
-                                                <button 
-                                                  type="button" 
-                                                  onClick={() => togglePinMessage(message, currentSpace.id, selectedChannel.id)}
-                                                  title={isPinned ? "Desafixar Mensagem" : "Fixar Mensagem no Canal"}
-                                                  style={{ marginLeft: 'auto', border: 'none', background: 'transparent', cursor: 'pointer', opacity: 0.5, padding: '2px', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
-                                                  onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                                                  onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.5')}
-                                                >
-                                                  <PinIcon style={{ width: '12px', height: '12px', color: isPinned ? 'var(--accent-color)' : 'inherit' }} />
-                                                </button>
-                                              )}
-                                            </div>
+                                               {isPinned && (
+                                                 <span title="Mensagem Fixada" style={{ fontSize: '11px', color: 'var(--accent-color)', marginLeft: '4px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                                                   📌 <span style={{ fontSize: '10px', fontWeight: 700 }}>Fixada</span>
+                                                 </span>
+                                               )}
+                                             </div>
                                           </>
                                         )}
 
@@ -7881,47 +9503,15 @@ function Echo({ user }: { user: User }) {
                                         {message.attachment_url && message.attachment_type === 'image' ? (
                                           <img src={message.attachment_url} alt="anexo" className="msg-attachment-img" onClick={() => window.open(message.attachment_url, '_blank')} />
                                         ) : message.attachment_url && message.attachment_type === 'audio' ? (
-                                          <div className="voice-note-player-card">
-                                            <button 
-                                              type="button" 
-                                              className="voice-note-play-btn"
-                                              onClick={() => {
-                                                if (activePlayingVoiceNote === message.id) {
-                                                  voiceNoteAudioRef.current?.pause()
-                                                  setActivePlayingVoiceNote(null)
-                                                } else {
-                                                  if (voiceNoteAudioRef.current) voiceNoteAudioRef.current.pause()
-                                                  const audio = new Audio(message.attachment_url)
-                                                  audio.playbackRate = voiceNotePlaySpeed
-                                                  audio.play()
-                                                  audio.onended = () => setActivePlayingVoiceNote(null)
-                                                  voiceNoteAudioRef.current = audio
-                                                  setActivePlayingVoiceNote(message.id)
-                                                }
-                                              }}
-                                            >
-                                              {activePlayingVoiceNote === message.id ? '⏸️' : '▶️'}
-                                            </button>
-                                            <div style={{ flex: 1 }}>
-                                              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                                                Mensagem de Áudio
-                                              </div>
-                                              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                                {activePlayingVoiceNote === message.id ? 'Reproduzindo...' : 'Clique para ouvir'}
-                                              </div>
-                                            </div>
-                                            <button 
-                                              type="button" 
-                                              className="voice-note-speed-btn"
-                                              onClick={() => {
-                                                const nextSpeed = voiceNotePlaySpeed === 1 ? 1.5 : voiceNotePlaySpeed === 1.5 ? 2 : 1
-                                                setVoiceNotePlaySpeed(nextSpeed)
-                                                if (voiceNoteAudioRef.current) voiceNoteAudioRef.current.playbackRate = nextSpeed
-                                              }}
-                                            >
-                                              {voiceNotePlaySpeed}x
-                                            </button>
-                                          </div>
+                                          <ModernVoiceNotePlayer
+                                            audioUrl={message.attachment_url}
+                                            messageId={message.id}
+                                            activePlayingId={activePlayingVoiceNote}
+                                            onTogglePlay={() => handleToggleVoicePlay(message.id, message.attachment_url!)}
+                                            speed={voiceNotePlaySpeed}
+                                            onChangeSpeed={handleChangeVoiceSpeed}
+                                            activeAudioRef={voiceNoteAudioRef}
+                                          />
                                         ) : message.attachment_url && message.attachment_type !== 'image' ? (
                                           <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-file">📎 {displayedBody}</a>
                                         ) : (
@@ -8007,28 +9597,47 @@ function Echo({ user }: { user: User }) {
                             </div>
                           )}
 
-                          {isVoiceNoteRecording ? (
+                          {isVoiceNoteRecording && voiceNoteTarget === 'channel' ? (
                             <div className="composer" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              <div className="voice-note-recorder-bar">
-                                <div className="recording-dot-pulse" />
-                                <span className="recording-timer-text">
-                                  Gravando Áudio... {Math.floor(voiceNoteDuration / 60)}:{String(voiceNoteDuration % 60).padStart(2, '0')}
+                              <div className="modern-voice-recorder-bar">
+                                <div className="modern-recording-live-indicator">
+                                  <div className="recording-dot-pulse" />
+                                  <span className="recording-live-text">REC</span>
+                                </div>
+                                <div className="modern-recording-wave-preview">
+                                  <div className="record-wave-bar b1" />
+                                  <div className="record-wave-bar b2" />
+                                  <div className="record-wave-bar b3" />
+                                  <div className="record-wave-bar b4" />
+                                  <div className="record-wave-bar b5" />
+                                  <div className="record-wave-bar b6" />
+                                  <div className="record-wave-bar b7" />
+                                  <div className="record-wave-bar b8" />
+                                </div>
+                                <span className="modern-recording-timer">
+                                  {Math.floor(voiceNoteDuration / 60)}:{String(voiceNoteDuration % 60).padStart(2, '0')}
                                 </span>
+                                <div className="modern-recording-actions">
+                                  <button 
+                                    type="button" 
+                                    className="modern-record-cancel-btn" 
+                                    onClick={cancelVoiceNoteRecording}
+                                    title="Cancelar gravação"
+                                  >
+                                    <TrashIcon style={{ width: '14px', height: '14px' }} />
+                                    <span>Cancelar</span>
+                                  </button>
+                                  <button 
+                                    type="button" 
+                                    className="modern-record-send-btn" 
+                                    onClick={stopVoiceNoteRecording}
+                                    title="Enviar áudio"
+                                  >
+                                    <SendIcon style={{ width: '14px', height: '14px' }} />
+                                    <span>Enviar</span>
+                                  </button>
+                                </div>
                               </div>
-                              <button 
-                                type="button" 
-                                onClick={cancelVoiceNoteRecording} 
-                                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', fontWeight: 700 }}
-                              >
-                                Cancelar
-                              </button>
-                              <button 
-                                type="button" 
-                                onClick={stopVoiceNoteRecording} 
-                                style={{ background: 'var(--accent-color)', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 700 }}
-                              >
-                                <ColoredRocketIcon size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Enviar Áudio
-                              </button>
                             </div>
                           ) : (
                             <form className="composer" onSubmit={send} style={{ position: 'relative' }}>
@@ -8041,7 +9650,7 @@ function Echo({ user }: { user: User }) {
                               <button 
                                 type="button" 
                                 className="dm-attach-btn" 
-                                onClick={startVoiceNoteRecording} 
+                                onClick={() => startVoiceNoteRecording('channel')} 
                                 title="Gravar Mensagem de Voz"
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 6px 0 0', display: 'flex', alignItems: 'center' }}
                               >
@@ -8299,9 +9908,11 @@ function Echo({ user }: { user: User }) {
                               const memberClanTag = localStorage.getItem(`echo-clan-tag-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-${user.id}`) : null)
                               const memberClanTagColor = localStorage.getItem(`echo-clan-tag-color-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-color-${user.id}`) : '#00f2fe') || '#00f2fe'
 
-                              const activeGame = member.user.id === user.id 
-                                ? (presenceStatus !== 'invisible' ? myGamePresence?.name : null)
-                                : (presenceData[member.user.id]?.game_presence?.name || null)
+                              const activeGameObj = member.user.id === user.id 
+                                ? (presenceStatus !== 'invisible' ? myGamePresence : null)
+                                : (presenceData[member.user.id]?.game_presence || presenceData[member.user.id]?.current_game || null)
+                              const activeGame = activeGameObj?.name || null
+                              const activeGameStartedAt = activeGameObj?.startedAt || null
 
                               const rawCustomStatus = presenceData[member.user.id]?.custom_status
                               const isSameAsName = rawCustomStatus && (rawCustomStatus.trim().toLowerCase() === member.user.display_name.trim().toLowerCase())
@@ -8342,6 +9953,7 @@ function Echo({ user }: { user: User }) {
                                         clanTag: memberClanTag,
                                         clanTagColor: memberClanTagColor,
                                         activeGame,
+                                        activeGameStartedAt,
                                         isVoiceUser,
                                         userPresenceStatus,
                                         isOnline,
@@ -8423,8 +10035,12 @@ function Echo({ user }: { user: User }) {
                                     </div>
 
                                     {activeGame ? (
-                                      <span className="member-status-text activity-game" title={`Jogando ${activeGame}`}>
-                                        🎮 Jogando {activeGame}
+                                      <span className="member-status-text activity-game" title={`Jogando ${activeGame}${activeGameStartedAt ? ` • ${formatGameDuration(activeGameStartedAt)}` : ''}`}>
+                                        <GameLogo gameName={activeGame} size={13} className="member-mini-game-logo" />
+                                        <span className="member-game-title">Jogando {activeGame}</span>
+                                        {activeGameStartedAt && (
+                                          <span className="member-game-time">• {formatGameDuration(activeGameStartedAt)}</span>
+                                        )}
                                       </span>
                                     ) : isVoiceUser ? (
                                       <span className="member-status-text activity-voice">
@@ -8466,6 +10082,32 @@ function Echo({ user }: { user: User }) {
 
                             return (
                               <>
+                                <div style={{ padding: '4px 6px 12px 6px' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSpaceForAddMembers(currentSpace)}
+                                    style={{
+                                      width: '100%',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '7px',
+                                      padding: '8px 12px',
+                                      borderRadius: '8px',
+                                      background: 'rgba(0, 242, 254, 0.08)',
+                                      border: '1px solid rgba(0, 242, 254, 0.25)',
+                                      color: 'var(--accent-color, #00f2fe)',
+                                      fontSize: '12px',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      transition: 'all 0.15s ease'
+                                    }}
+                                  >
+                                    <UserPlusIcon style={{ width: '14px', height: '14px' }} />
+                                    <span>Convidar Amigos</span>
+                                  </button>
+                                </div>
+
                                 {/* 1. Creator / Owner Group */}
                                 {creatorOnlineMembers.length > 0 && (
                                   <div className="members-group-section">
@@ -8538,25 +10180,77 @@ function Echo({ user }: { user: User }) {
                       {currentSpace && <span className="header-space">{currentSpace.name}</span>}
                       <h1><span className="header-icon"><VolumeIcon /></span> {selectedChannel.name}</h1>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="channel-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       {activeVoiceChannelId === selectedChannel.id && isConnected && (
                         <span className="live-badge voice-live">● Conectado</span>
                       )}
+
+                      {/* Search messages in channel */}
+                      <div className="channel-search-box-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        {showSearchInput ? (
+                          <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)', padding: '2px 8px' }}>
+                            <SearchIcon style={{ width: '13px', height: '13px', color: 'var(--text-muted)' }} />
+                            <input 
+                              type="text" 
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              placeholder="Buscar mensagens..."
+                              autoFocus
+                              style={{ border: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: '12px', padding: '4px 6px', outline: 'none', width: '160px' }}
+                            />
+                            {searchQuery && (
+                              <button type="button" onClick={() => setSearchQuery('')} style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '11px', padding: '0 2px' }}>✕</button>
+                            )}
+                            <button type="button" onClick={() => { setShowSearchInput(false); setSearchQuery('') }} style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '12px', marginLeft: '4px' }}>✕</button>
+                          </div>
+                        ) : (
+                          <button 
+                            type="button" 
+                            className="channel-header-action-btn" 
+                            onClick={() => {
+                              setShowSearchInput(true)
+                              setShowVoiceChat(true)
+                            }} 
+                            title="Buscar mensagens no chat da call"
+                          >
+                            <SearchIcon style={{ width: '15px', height: '15px' }} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Pinned Messages Button */}
                       <button 
-                        className={`profile-footer-btn ${showVoiceChat ? 'active' : ''}`} 
-                        onClick={() => setShowVoiceChat(!showVoiceChat)}
-                        title="Chat de Texto"
-                        style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        type="button" 
+                        className={`channel-header-action-btn ${showPinnedMessagesPanel || (pinnedMessages[selectedChannel.id]?.length || 0) > 0 ? 'active' : ''}`}
+                        onClick={() => setShowPinnedMessagesPanel(!showPinnedMessagesPanel)}
+                        title="Mensagens Fixadas"
                       >
-                        <MessageSquareIcon />
+                        <PinIcon style={{ width: '15px', height: '15px' }} />
+                        {(pinnedMessages[selectedChannel.id]?.length || 0) > 0 && (
+                          <span className="channel-header-badge">
+                            {pinnedMessages[selectedChannel.id]?.length}
+                          </span>
+                        )}
                       </button>
+
+                      {/* Voice Text Chat Toggle Button */}
                       <button 
-                        className={`profile-footer-btn ${showVoiceMembers ? 'active' : ''}`} 
-                        onClick={() => setShowVoiceMembers(!showVoiceMembers)}
-                        title="Lista de Membros"
-                        style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        type="button"
+                        className={`channel-header-action-btn ${showVoiceChat ? 'active' : ''}`} 
+                        onClick={() => setShowVoiceChat(!showVoiceChat)}
+                        title={showVoiceChat ? "Ocultar Chat de Texto" : "Mostrar Chat de Texto"}
                       >
-                        <UsersIcon />
+                        <MessageSquareIcon style={{ width: '15px', height: '15px' }} />
+                      </button>
+
+                      {/* Members List Button */}
+                      <button 
+                        type="button"
+                        className={`channel-header-action-btn ${showMembersList ? 'active' : ''}`} 
+                        onClick={() => setShowMembersList(!showMembersList)}
+                        title={showMembersList ? "Ocultar Lista de Membros" : "Mostrar Lista de Membros"}
+                      >
+                        <UsersIcon style={{ width: '15px', height: '15px' }} />
                       </button>
                     </div>
                   </header>
@@ -9160,8 +10854,33 @@ function Echo({ user }: { user: User }) {
                               )}
                               {messages.map((message) => {
                                 const isMentioned = message.author_id !== user.id && message.body.toLowerCase().includes(`@${profileDisplayName.toLowerCase()}`)
+                                const canManageMsg = currentSpace && (canUserDo(currentSpace.id, user.id, 'manageMessages') || currentSpace.creator_id === user.id)
                                 return (
-                                  <article className={`msg-card ${message.author_id === user.id ? 'msg-own' : ''} ${isMentioned ? 'mention-highlight' : ''}`} key={message.id}>
+                                  <article className={`msg-card ${message.author_id === user.id ? 'msg-own' : ''} ${message.attachment_type === 'audio' ? 'has-voice-note' : ''} ${isMentioned ? 'mention-highlight' : ''}`} key={message.id} style={{ position: 'relative' }}>
+                                    <div className="message-hover-actions">
+                                      <button 
+                                        type="button" 
+                                        className={`hover-action-btn star-btn ${isMessageSaved(message.id) ? 'active' : ''}`}
+                                        onClick={() => toggleSaveMessage(message, 'channel', {
+                                          sourceName: `#${selectedChannel.name} • ${currentSpace?.name || 'Servidor'}`,
+                                          spaceId: currentSpace?.id,
+                                          channelId: selectedChannel.id
+                                        })}
+                                        title={isMessageSaved(message.id) ? "Remover dos favoritos" : "Salvar mensagem com estrela (⭐)"}
+                                      >
+                                        <StarIcon style={{ width: '13px', height: '13px', color: isMessageSaved(message.id) ? '#ffc107' : 'inherit', fill: isMessageSaved(message.id) ? '#ffc107' : 'none' }} />
+                                      </button>
+                                      {(message.author_id === user.id || canManageMsg) && (
+                                        <button 
+                                          type="button" 
+                                          className="hover-action-btn delete-btn"
+                                          onClick={() => handleDeleteMessage(message.id)}
+                                          title="Excluir mensagem"
+                                        >
+                                          <TrashIcon style={{ width: '13px', height: '13px' }} />
+                                        </button>
+                                      )}
+                                    </div>
                                     <div className={`msg-avatar ${message.author_id === user.id ? 'avatar-self' : 'avatar-other'}`} style={{ position: 'relative', overflow: 'visible' }}>
                                       <div style={{ width: '100%', height: '100%', borderRadius: 'inherit', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         {message.profile?.avatar_url ? (
@@ -9182,6 +10901,16 @@ function Echo({ user }: { user: User }) {
                                       </div>
                                       {message.attachment_url && message.attachment_type === 'image' ? (
                                         <img src={message.attachment_url} alt="anexo" className="msg-attachment-img" onClick={() => window.open(message.attachment_url, '_blank')} />
+                                      ) : message.attachment_url && message.attachment_type === 'audio' ? (
+                                        <ModernVoiceNotePlayer
+                                          audioUrl={message.attachment_url}
+                                          messageId={message.id}
+                                          activePlayingId={activePlayingVoiceNote}
+                                          onTogglePlay={() => handleToggleVoicePlay(message.id, message.attachment_url!)}
+                                          speed={voiceNotePlaySpeed}
+                                          onChangeSpeed={handleChangeVoiceSpeed}
+                                          activeAudioRef={voiceNoteAudioRef}
+                                        />
                                       ) : message.attachment_url && message.attachment_type !== 'image' ? (
                                         <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-file">{message.body}</a>
                                       ) : (
@@ -9206,8 +10935,67 @@ function Echo({ user }: { user: User }) {
                           </div>
                         </div>
                     </div>
+                    {/* Pinned Messages Drawer in Voice Workspace */}
+                    {showPinnedMessagesPanel && (
+                      <aside className="pinned-messages-drawer">
+                        <div className="pinned-drawer-header">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <PinIcon style={{ color: 'var(--accent-color)' }} />
+                            <h3>Mensagens Fixadas</h3>
+                          </div>
+                          <button type="button" className="settings-close-btn" onClick={() => setShowPinnedMessagesPanel(false)}>✕</button>
+                        </div>
+                        <div className="pinned-messages-list">
+                          {(pinnedMessages[selectedChannel.id] || []).length === 0 ? (
+                            <div className="no-pinned-messages">
+                              <PinIcon style={{ width: '32px', height: '32px', opacity: 0.3, margin: '0 auto 8px auto' }} />
+                              <p>Nenhuma mensagem fixada neste canal.</p>
+                            </div>
+                          ) : (
+                            (pinnedMessages[selectedChannel.id] || []).map(pin => (
+                              <div key={pin.id} className="pinned-msg-item">
+                                <div className="pinned-msg-author-row">
+                                  <div className="pinned-avatar">
+                                    {pin.author_avatar ? (
+                                      <img src={pin.author_avatar} alt={pin.author_name} />
+                                    ) : (
+                                      pin.author_name.slice(0, 1).toUpperCase()
+                                    )}
+                                  </div>
+                                  <strong className="pinned-author-name">{pin.author_name}</strong>
+                                  <time className="pinned-time">{new Date(pin.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
+                                  {currentSpace && (canUserDo(currentSpace.id, user.id, 'manageMessages') || currentSpace.creator_id === user.id) && (
+                                    <button 
+                                      type="button" 
+                                      className="unpin-action-btn"
+                                      onClick={() => {
+                                        const originalMsg = messages.find(m => m.id === pin.message_id) || ({ id: pin.message_id, body: pin.body, author_id: '', channel_id: selectedChannel.id, created_at: pin.created_at } as Message)
+                                        togglePinMessage(originalMsg, currentSpace.id, selectedChannel.id)
+                                      }}
+                                      title="Desafixar mensagem"
+                                    >
+                                      ✕
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="pinned-msg-content">
+                                  {pin.attachment_url && pin.attachment_type === 'image' ? (
+                                    <img src={pin.attachment_url} alt="anexo fixado" style={{ maxWidth: '100%', maxHeight: '120px', borderRadius: '6px', objectFit: 'cover' }} />
+                                  ) : null}
+                                  <p>{formatMessageText(pin.body, profileDisplayName, serverEmojis)}</p>
+                                </div>
+                                <div className="pinned-by-meta">
+                                  Fixado por {pin.pinned_by_name || 'Moderador'}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </aside>
+                    )}
+
                     {currentSpace && (
-                      <aside className="members-sidebar" style={!showVoiceMembers ? { display: 'none' } : undefined}>
+                      <aside className="members-sidebar" style={!showMembersList ? { display: 'none' } : undefined}>
                         <div className="members-sidebar-inner">
                           {(() => {
                             // Combina membros do banco (spaceMembers) com usuários ativos em chamada ou presença deste espaço
@@ -9257,9 +11045,11 @@ function Echo({ user }: { user: User }) {
                               const memberClanTag = localStorage.getItem(`echo-clan-tag-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-${user.id}`) : null)
                               const memberClanTagColor = localStorage.getItem(`echo-clan-tag-color-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-color-${user.id}`) : '#00f2fe') || '#00f2fe'
 
-                              const activeGame = member.user.id === user.id 
-                                ? (presenceStatus !== 'invisible' ? myGamePresence?.name : null)
-                                : (presenceData[member.user.id]?.game_presence?.name || null)
+                              const activeGameObj = member.user.id === user.id 
+                                ? (presenceStatus !== 'invisible' ? myGamePresence : null)
+                                : (presenceData[member.user.id]?.game_presence || presenceData[member.user.id]?.current_game || null)
+                              const activeGame = activeGameObj?.name || null
+                              const activeGameStartedAt = activeGameObj?.startedAt || null
 
                               const rawCustomStatus = presenceData[member.user.id]?.custom_status
                               const isSameAsName = rawCustomStatus && (rawCustomStatus.trim().toLowerCase() === member.user.display_name.trim().toLowerCase())
@@ -9300,6 +11090,7 @@ function Echo({ user }: { user: User }) {
                                         clanTag: memberClanTag,
                                         clanTagColor: memberClanTagColor,
                                         activeGame,
+                                        activeGameStartedAt,
                                         isVoiceUser,
                                         userPresenceStatus,
                                         isOnline,
@@ -9378,8 +11169,12 @@ function Echo({ user }: { user: User }) {
                                     </div>
 
                                     {activeGame ? (
-                                      <span className="member-status-text activity-game" title={`Jogando ${activeGame}`}>
-                                        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}><GamepadIcon style={{ width: "12px", height: "12px" }} /> Jogando {activeGame}</span>
+                                      <span className="member-status-text activity-game" title={`Jogando ${activeGame}${activeGameStartedAt ? ` • ${formatGameDuration(activeGameStartedAt)}` : ''}`}>
+                                        <GameLogo gameName={activeGame} size={13} className="member-mini-game-logo" />
+                                        <span className="member-game-title">Jogando {activeGame}</span>
+                                        {activeGameStartedAt && (
+                                          <span className="member-game-time">• {formatGameDuration(activeGameStartedAt)}</span>
+                                        )}
                                       </span>
                                     ) : isVoiceUser ? (
                                       <span className="member-status-text activity-voice">
@@ -9421,6 +11216,32 @@ function Echo({ user }: { user: User }) {
 
                             return (
                               <>
+                                <div style={{ padding: '4px 6px 12px 6px' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSpaceForAddMembers(currentSpace)}
+                                    style={{
+                                      width: '100%',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '7px',
+                                      padding: '8px 12px',
+                                      borderRadius: '8px',
+                                      background: 'rgba(0, 242, 254, 0.08)',
+                                      border: '1px solid rgba(0, 242, 254, 0.25)',
+                                      color: 'var(--accent-color, #00f2fe)',
+                                      fontSize: '12px',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      transition: 'all 0.15s ease'
+                                    }}
+                                  >
+                                    <UserPlusIcon style={{ width: '14px', height: '14px' }} />
+                                    <span>Convidar Amigos</span>
+                                  </button>
+                                </div>
+
                                 {/* 1. Creator / Owner Group */}
                                 {creatorOnlineMembers.length > 0 && (
                                   <div className="members-group-section">
@@ -9573,6 +11394,24 @@ function Echo({ user }: { user: User }) {
             }
           }}
           onAddFriend={sendFriendRequestToUser}
+          onStartVoiceNote={() => startVoiceNoteRecording('dm')}
+          onStopVoiceNote={stopVoiceNoteRecording}
+          onCancelVoiceNote={cancelVoiceNoteRecording}
+          isVoiceNoteRecording={isVoiceNoteRecording}
+          voiceNoteDuration={voiceNoteDuration}
+          voiceNoteTarget={voiceNoteTarget}
+          activePlayingVoiceNote={activePlayingVoiceNote}
+          voiceNotePlaySpeed={voiceNotePlaySpeed}
+          voiceNoteAudioRef={voiceNoteAudioRef}
+          handleToggleVoicePlay={handleToggleVoicePlay}
+          onDeleteDM={handleDeleteDM}
+          onToggleSaveDM={(msg, targetUser) => {
+            toggleSaveMessage(msg, 'dm', {
+              sourceName: `@${targetUser.display_name}`,
+              dmUserId: targetUser.id
+            })
+          }}
+          isMessageSaved={isMessageSaved}
         />
       </div>
 
@@ -9718,6 +11557,7 @@ function Echo({ user }: { user: User }) {
           onPttModeChange={setPttModeSetting}
           pttKey={pttKey}
           onPttKeyChange={setPttKey}
+          onToggleOverlay={handleToggleOverlay}
         />
       </div>
 
@@ -11661,18 +13501,27 @@ function Echo({ user }: { user: User }) {
               <button 
                 type="button" 
                 className="ch-create-btn" 
-                style={{ background: 'none', border: '1.5px solid var(--border-color)', color: 'var(--text-primary)', padding: '10px 20px', borderRadius: '10px', fontSize: '13.5px', fontWeight: 'bold' }} 
+                style={{ background: 'none', border: '1.5px solid var(--border-color)', color: 'var(--text-primary)', padding: '10px 20px', borderRadius: '10px', fontSize: '13.5px', fontWeight: 'bold', cursor: 'pointer' }} 
                 onClick={() => setConfirmModalConfig(null)}
               >
-                Cancelar
+                {confirmModalConfig.cancelText || 'Cancelar'}
               </button>
               <button 
                 type="button" 
-                className="dropdown-action-btn danger" 
-                style={{ width: 'auto', padding: '10px 20px', borderRadius: '10px', fontSize: '13.5px', fontWeight: 'bold' }} 
+                className={`dropdown-action-btn ${confirmModalConfig.isDanger !== false ? 'danger' : 'primary'}`} 
+                style={{ 
+                  width: 'auto', 
+                  padding: '10px 20px', 
+                  borderRadius: '10px', 
+                  fontSize: '13.5px', 
+                  fontWeight: 'bold', 
+                  cursor: 'pointer',
+                  background: confirmModalConfig.isDanger === false ? 'var(--accent-color, #00f2fe)' : undefined,
+                  color: confirmModalConfig.isDanger === false ? '#041018' : '#fff'
+                }} 
                 onClick={confirmModalConfig.onConfirm}
               >
-                Excluir
+                {confirmModalConfig.confirmText || (confirmModalConfig.isDanger !== false ? 'Excluir' : 'Confirmar')}
               </button>
             </div>
           </div>
@@ -11688,9 +13537,11 @@ function Echo({ user }: { user: User }) {
         const validCustomStatus = (rawCustomStatus && !isSameAsName) ? rawCustomStatus : null
         const memberClanTag = localStorage.getItem(`echo-clan-tag-${inspectedMember.user.id}`) || (inspectedMember.user.id === user.id ? localStorage.getItem(`echo-clan-tag-${user.id}`) : null)
         const memberClanTagColor = localStorage.getItem(`echo-clan-tag-color-${inspectedMember.user.id}`) || (inspectedMember.user.id === user.id ? localStorage.getItem(`echo-clan-tag-color-${user.id}`) : '#00f2fe') || '#00f2fe'
-        const activeGame = inspectedMember.user.id === user.id 
-          ? (presenceStatus !== 'invisible' ? myGamePresence?.name : null)
-          : (presenceData[inspectedMember.user.id]?.game_presence?.name || null)
+        const activeGameObj = inspectedMember.user.id === user.id 
+          ? (presenceStatus !== 'invisible' ? myGamePresence : null)
+          : (presenceData[inspectedMember.user.id]?.game_presence || presenceData[inspectedMember.user.id]?.current_game || null)
+        const activeGame = activeGameObj?.name || null
+        const activeGameStartedAt = activeGameObj?.startedAt || null
         const isVoiceUser = participants.some(p => p.userId === inspectedMember.user.id)
         const currentActiveSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || null
         const isServerOwner = currentActiveSpace?.creator_id === inspectedMember.user.id
@@ -11713,6 +13564,7 @@ function Echo({ user }: { user: User }) {
             memberClanTag={memberClanTag}
             memberClanTagColor={memberClanTagColor}
             activeGame={activeGame}
+            activeGameStartedAt={activeGameStartedAt}
             isVoiceUser={isVoiceUser}
             voiceChannelName={activeVoiceChannel?.name}
             isServerOwner={isServerOwner}
@@ -11817,7 +13669,8 @@ function Echo({ user }: { user: User }) {
 
             {hoveredMemberPopover.activeGame && (
               <div className="hover-popover-activity game">
-                <span>🎮 Jogando <strong>{hoveredMemberPopover.activeGame}</strong></span>
+                <GameLogo gameName={hoveredMemberPopover.activeGame} size={16} style={{ flexShrink: 0 }} />
+                <span>Jogando <strong>{hoveredMemberPopover.activeGame}</strong>{hoveredMemberPopover.activeGameStartedAt ? ` • ${formatGameDuration(hoveredMemberPopover.activeGameStartedAt)}` : ''}</span>
               </div>
             )}
 
@@ -11881,6 +13734,21 @@ function Echo({ user }: { user: User }) {
                 body: inviteMessage
               }
             })
+          }}
+          showToast={showToast}
+        />
+      )}
+
+      {/* Modal de Convidar / Adicionar Amigos ao Espaço */}
+      {spaceForAddMembers && (
+        <SpaceAddMembersModal
+          space={spaceForAddMembers}
+          onClose={() => setSpaceForAddMembers(null)}
+          friendships={friendships}
+          spaceMembers={spaceMembers}
+          onlineUsers={onlineUsers}
+          onAddMember={async (friend) => {
+            return await handleAddMemberToSpace(spaceForAddMembers.id, friend)
           }}
           showToast={showToast}
         />
@@ -11965,6 +13833,18 @@ function Echo({ user }: { user: User }) {
       <WhatsNewModal 
         isOpen={showWhatsNewModal} 
         onClose={() => setShowWhatsNewModal(false)} 
+      />
+
+      {/* Mensagens Salvas com Estrela Modal */}
+      <SavedMessagesModal 
+        isOpen={showSavedMessagesModal}
+        onClose={() => setShowSavedMessagesModal(false)}
+        savedMessages={savedMessages}
+        onUnstar={(msgId) => {
+          setSavedMessages(prev => prev.filter(m => m.id !== msgId))
+          showToast('Estrela removida', 'Mensagem removida dos seus itens salvos.', 'info')
+        }}
+        onJumpToMessage={handleJumpToSavedMessage}
       />
 
       {/* ── AFK Inactivity Check Modal ("Você ainda está aí?") ── */}
@@ -12349,7 +14229,21 @@ function FriendsView({
   knownProfiles = {},
   recentDMUserIds = [],
   onRemoveRecentDM,
-  onAddFriend
+  onAddFriend,
+  onStartVoiceNote,
+  onStopVoiceNote,
+  onCancelVoiceNote,
+  isVoiceNoteRecording = false,
+  voiceNoteDuration = 0,
+  voiceNoteTarget = 'channel',
+  activePlayingVoiceNote = null,
+  voiceNotePlaySpeed = 1,
+  voiceNoteAudioRef,
+  handleToggleVoicePlay,
+  handleChangeVoiceSpeed,
+  onDeleteDM,
+  onToggleSaveDM,
+  isMessageSaved
 }: {
   friendships: FriendshipRequest[]
   friendTab: 'online' | 'all' | 'pending' | 'add'
@@ -12400,6 +14294,20 @@ function FriendsView({
   recentDMUserIds?: string[]
   onRemoveRecentDM?: (userId: string) => void
   onAddFriend?: (targetUserId: string, targetName: string) => Promise<void> | void
+  onStartVoiceNote?: () => void
+  onStopVoiceNote?: () => void
+  onCancelVoiceNote?: () => void
+  isVoiceNoteRecording?: boolean
+  voiceNoteDuration?: number
+  voiceNoteTarget?: 'channel' | 'dm'
+  activePlayingVoiceNote?: string | null
+  voiceNotePlaySpeed?: number
+  voiceNoteAudioRef?: React.MutableRefObject<HTMLAudioElement | null>
+  handleToggleVoicePlay?: (messageId: string, audioUrl: string) => void
+  handleChangeVoiceSpeed?: () => void
+  onDeleteDM?: (messageId: string) => void
+  onToggleSaveDM?: (msg: DirectMessage, targetUser: any) => void
+  isMessageSaved?: (msgId: string) => boolean
 }) {
   const dmFileRef = useRef<HTMLInputElement>(null)
   const dmMessagesEndRef = useRef<HTMLDivElement>(null)
@@ -12496,6 +14404,13 @@ function FriendsView({
   // Resolve active DM target user info across friendships, knownProfiles, and spaceMembers
   const dmUser = useMemo(() => {
     if (!selectedDMUserId) return null
+    const formatStatusWithGame = (pres: any) => {
+      if (pres?.current_game?.name) {
+        const dur = formatGameDuration(pres.current_game.startedAt || pres.game_presence?.startedAt)
+        return `Jogando ${pres.current_game.name}${dur ? ` • ${dur}` : ''}`
+      }
+      return pres?.custom_status || null
+    }
     const friend = friendships.find(f => f.user.id === selectedDMUserId)
     if (friend) {
       const pres = presenceData[friend.user.id]
@@ -12505,7 +14420,7 @@ function FriendsView({
         avatar_url: friend.user.avatar_url,
         avatar_decoration: pres?.avatar_decoration || (friend.user as any).avatar_decoration || null,
         isFriend: true,
-        status: pres?.custom_status || (pres?.current_game ? `Jogando ${pres.current_game.name}` : null)
+        status: formatStatusWithGame(pres)
       }
     }
     const known = knownProfiles[selectedDMUserId]
@@ -12517,7 +14432,7 @@ function FriendsView({
         avatar_url: known.avatar_url,
         avatar_decoration: pres?.avatar_decoration || known.avatar_decoration || null,
         isFriend: false,
-        status: pres?.custom_status || (pres?.current_game ? `Jogando ${pres.current_game.name}` : null)
+        status: formatStatusWithGame(pres)
       }
     }
     const member = spaceMembers.find(m => m.user?.id === selectedDMUserId)?.user
@@ -12529,7 +14444,7 @@ function FriendsView({
         avatar_url: member.avatar_url,
         avatar_decoration: pres?.avatar_decoration || (member as any).avatar_decoration || null,
         isFriend: false,
-        status: pres?.custom_status || (pres?.current_game ? `Jogando ${pres.current_game.name}` : null)
+        status: formatStatusWithGame(pres)
       }
     }
     return {
@@ -12643,8 +14558,10 @@ function FriendsView({
                 const unread = unreadDMs[pId] || 0
                 const isGaming = isFriendGaming(pId)
                 const gameName = pres?.current_game?.name || pres?.custom_status?.replace(/^jogando\s+/i, '') || ''
+                const gameStartedAt = pres?.current_game?.startedAt || pres?.game_presence?.startedAt
+                const gameDur = formatGameDuration(gameStartedAt)
                 const subText = isGaming 
-                  ? `Jogando ${gameName}` 
+                  ? `Jogando ${gameName}${gameDur ? ` • ${gameDur}` : ''}` 
                   : pres?.custom_status || (isOnline ? 'Online' : 'Offline')
 
                 return (
@@ -12656,7 +14573,7 @@ function FriendsView({
                     <div className="dm-item-avatar-wrapper">
                       <div className="friend-avatar" style={{ width: 32, height: 32, fontSize: 13 }}>
                         {info.avatar_url ? (
-                          <img src={info.avatar_url} alt={info.display_name} />
+                          <img src={info.avatar_url} alt={info.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
                         ) : (
                           info.display_name.slice(0, 1).toUpperCase()
                         )}
@@ -12730,6 +14647,8 @@ function FriendsView({
                 const isGaming = isFriendGaming(friend.user.id)
                 const gameName = pres?.current_game?.name || pres?.custom_status?.replace(/^jogando\s+/i, '') || 'Jogo'
                 const friendDeco = pres?.avatar_decoration || (friend.user as any).avatar_decoration || null
+                const gameStartedAt = pres?.current_game?.startedAt || pres?.game_presence?.startedAt
+                const gameDur = formatGameDuration(gameStartedAt)
                 return (
                   <div key={friend.id} className="sidebar-activity-card" onClick={() => onOpenDM(friend.user.id)}>
                     <div className="sidebar-activity-top">
@@ -12747,15 +14666,19 @@ function FriendsView({
                       <div className="sidebar-activity-user-info">
                         <span className="sidebar-activity-name">{friend.user.display_name}</span>
                         <span className="sidebar-activity-sub">
-                          {isGaming ? 'Jogando agora' : 'Status ativo'}
+                          {isGaming ? (gameDur ? `Jogando • ${gameDur}` : 'Jogando agora') : 'Status ativo'}
                         </span>
                       </div>
                     </div>
 
                     <div className="sidebar-activity-game-pill">
-                      <GamepadIcon style={{ width: '13px', height: '13px', color: isGaming ? '#22c55e' : '#00f2fe', flexShrink: 0 }} />
+                      {isGaming ? (
+                        <GameLogo gameName={gameName} size={14} style={{ flexShrink: 0 }} />
+                      ) : (
+                        <GamepadIcon style={{ width: '13px', height: '13px', color: '#00f2fe', flexShrink: 0 }} />
+                      )}
                       <span className="sidebar-activity-game-name" title={gameName}>
-                        {isGaming ? gameName : (pres?.custom_status || 'Em atividade')}
+                        {isGaming ? `${gameName}${gameDur ? ` (${gameDur})` : ''}` : (pres?.custom_status || 'Em atividade')}
                       </span>
                     </div>
                   </div>
@@ -12800,7 +14723,7 @@ function FriendsView({
               <div className="dm-header-avatar-wrap">
                 <div className="friend-avatar" style={{ width: 36, height: 36, fontSize: 15, position: 'relative' }}>
                   {dmUser.avatar_url ? (
-                    <img src={dmUser.avatar_url} alt={dmUser.display_name} />
+                    <img src={dmUser.avatar_url} alt={dmUser.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
                   ) : (
                     dmUser.display_name.slice(0, 1).toUpperCase()
                   )}
@@ -12904,7 +14827,7 @@ function FriendsView({
             <div className="dm-welcome-hero">
               <div className="friend-avatar" style={{ width: 72, height: 72, fontSize: 28, position: 'relative' }}>
                 {dmUser.avatar_url ? (
-                  <img src={dmUser.avatar_url} alt={dmUser.display_name} />
+                  <img src={dmUser.avatar_url} alt={dmUser.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
                 ) : (
                   dmUser.display_name.slice(0, 1).toUpperCase()
                 )}
@@ -12932,14 +14855,44 @@ function FriendsView({
 
             {directMessages.map(msg => (
               <div key={msg.id} className={`dm-message ${msg.sender_id === user.id ? 'dm-sent' : 'dm-received'}`}>
+                {onToggleSaveDM && (
+                  <button 
+                    type="button" 
+                    className={`dm-star-btn ${isMessageSaved?.(msg.id) ? 'active' : ''}`}
+                    onClick={() => onToggleSaveDM(msg, dmUser)}
+                    title={isMessageSaved?.(msg.id) ? "Remover dos salvos" : "Salvar mensagem ⭐"}
+                  >
+                    <StarIcon style={{ width: '12px', height: '12px' }} />
+                  </button>
+                )}
+                {onDeleteDM && msg.sender_id === user.id && (
+                  <button 
+                    type="button" 
+                    className="dm-delete-btn"
+                    onClick={() => onDeleteDM(msg.id)}
+                    title="Excluir mensagem"
+                  >
+                    <TrashIcon style={{ width: '12px', height: '12px' }} />
+                  </button>
+                )}
                 <div className="dm-bubble">
                   {msg.attachment_url && msg.attachment_type === 'image' && (
                     <img src={msg.attachment_url} alt="anexo" className="dm-attachment-img" onClick={() => window.open(msg.attachment_url, '_blank')} />
                   )}
-                  {msg.attachment_url && msg.attachment_type !== 'image' && (
+                  {msg.attachment_url && msg.attachment_type === 'audio' && handleToggleVoicePlay && voiceNoteAudioRef ? (
+                    <ModernVoiceNotePlayer
+                      audioUrl={msg.attachment_url}
+                      messageId={msg.id}
+                      activePlayingId={activePlayingVoiceNote ?? null}
+                      onTogglePlay={() => handleToggleVoicePlay(msg.id, msg.attachment_url!)}
+                      speed={voiceNotePlaySpeed ?? 1}
+                      onChangeSpeed={handleChangeVoiceSpeed ?? (() => {})}
+                      activeAudioRef={voiceNoteAudioRef}
+                    />
+                  ) : msg.attachment_url && msg.attachment_type !== 'image' ? (
                     <a href={msg.attachment_url} target="_blank" rel="noopener noreferrer" className="dm-attachment-file">📎 {msg.body}</a>
-                  )}
-                  {(!msg.attachment_url || msg.attachment_type === 'image') && <span>{msg.body}</span>}
+                  ) : null}
+                  {(!msg.attachment_url || (msg.attachment_type !== 'audio' && msg.attachment_type !== 'image')) && <span>{msg.body}</span>}
                   <span className="dm-time">{new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
               </div>
@@ -12948,21 +14901,76 @@ function FriendsView({
           </div>
 
           {/* Full Composer */}
-          <form className="dm-full-compose" onSubmit={onSendDM}>
-            <input type="file" ref={dmFileRef} style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadFile(f); e.target.value = '' }} />
-            <button type="button" className="dm-attach-btn" onClick={() => dmFileRef.current?.click()} disabled={isUploading} title="Anexar arquivo">
-              {isUploading ? <ClockIcon style={{ width: '16px', height: '16px' }} /> : <PaperclipIcon style={{ width: '16px', height: '16px' }} />}
-            </button>
-            <input 
-              value={dmDraft} 
-              onChange={(e) => setDmDraft(e.target.value)} 
-              placeholder={`Conversar com @${dmUser.display_name}…`}
-              autoFocus
-            />
-            <button type="submit" disabled={!dmDraft.trim() && !isUploading} className="dm-send-btn" title="Enviar mensagem">
-              <SendIcon style={{ width: '16px', height: '16px' }} />
-            </button>
-          </form>
+          {isVoiceNoteRecording && voiceNoteTarget === 'dm' ? (
+            <div style={{ padding: '0 16px 14px 16px', width: '100%', boxSizing: 'border-box' }}>
+              <div className="modern-voice-recorder-bar">
+                <div className="modern-recording-live-indicator">
+                  <div className="recording-dot-pulse" />
+                  <span className="recording-live-text">REC</span>
+                </div>
+                <div className="modern-recording-wave-preview">
+                  <div className="record-wave-bar b1" />
+                  <div className="record-wave-bar b2" />
+                  <div className="record-wave-bar b3" />
+                  <div className="record-wave-bar b4" />
+                  <div className="record-wave-bar b5" />
+                  <div className="record-wave-bar b6" />
+                  <div className="record-wave-bar b7" />
+                  <div className="record-wave-bar b8" />
+                </div>
+                <span className="modern-recording-timer">
+                  {Math.floor((voiceNoteDuration ?? 0) / 60)}:{String((voiceNoteDuration ?? 0) % 60).padStart(2, '0')}
+                </span>
+                <div className="modern-recording-actions">
+                  <button 
+                    type="button" 
+                    className="modern-record-cancel-btn" 
+                    onClick={onCancelVoiceNote}
+                    title="Cancelar gravação"
+                  >
+                    <TrashIcon style={{ width: '14px', height: '14px' }} />
+                    <span>Cancelar</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    className="modern-record-send-btn" 
+                    onClick={onStopVoiceNote}
+                    title="Enviar mensagem de voz"
+                  >
+                    <SendIcon style={{ width: '14px', height: '14px' }} />
+                    <span>Enviar</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <form className="dm-full-compose" onSubmit={onSendDM}>
+              <input type="file" ref={dmFileRef} style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadFile(f); e.target.value = '' }} />
+              <button type="button" className="dm-attach-btn" onClick={() => dmFileRef.current?.click()} disabled={isUploading} title="Anexar arquivo">
+                {isUploading ? <ClockIcon style={{ width: '16px', height: '16px' }} /> : <PaperclipIcon style={{ width: '16px', height: '16px' }} />}
+              </button>
+              {onStartVoiceNote && (
+                <button 
+                  type="button" 
+                  className="dm-attach-btn" 
+                  onClick={onStartVoiceNote} 
+                  title="Gravar mensagem de voz"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
+                >
+                  <VoiceMessageIcon style={{ width: '16px', height: '16px' }} />
+                </button>
+              )}
+              <input 
+                value={dmDraft} 
+                onChange={(e) => setDmDraft(e.target.value)} 
+                placeholder={`Conversar com @${dmUser.display_name}…`}
+                autoFocus
+              />
+              <button type="submit" disabled={!dmDraft.trim() && !isUploading} className="dm-send-btn" title="Enviar mensagem">
+                <SendIcon style={{ width: '16px', height: '16px' }} />
+              </button>
+            </form>
+          )}
         </section>
       ) : (
         <section className="friends-content">
@@ -13136,7 +15144,12 @@ function FriendsView({
                 {filterList(onlineFriends).map(friend => {
                   const pres = presenceData[friend.user.id]
                   const statusType = pres?.presence_status || 'online'
-                  const customText = pres?.custom_status || 'Disponível'
+                  const gameStartedAt = pres?.current_game?.startedAt || pres?.game_presence?.startedAt
+                  const gameDur = formatGameDuration(gameStartedAt)
+                  let customText = pres?.custom_status || (pres?.current_game ? `Jogando ${pres.current_game.name}` : 'Disponível')
+                  if ((pres?.current_game || customText.toLowerCase().includes('jogando')) && gameDur && !customText.includes('•')) {
+                    customText = `${customText} • ${gameDur}`
+                  }
                   const friendDeco = pres?.avatar_decoration || (friend.user as any).avatar_decoration || null
                   return (
                     <div key={friend.id} className="friend-card-modern" onClick={() => onOpenDM(friend.user.id)}>
@@ -13157,7 +15170,7 @@ function FriendsView({
                           <span className="friend-status-modern" title={customText}>
                             {customText.toLowerCase().includes('jogando') ? (
                               <span className="game-presence-badge" style={{ fontSize: '11px', padding: '2px 6px' }}>
-                                <GamepadIcon style={{ width: '12px', height: '12px', flexShrink: 0 }} />
+                                <GameLogo gameName={customText.replace(/^jogando\s+/i, '')} size={13} style={{ flexShrink: 0 }} />
                                 <span>{customText}</span>
                               </span>
                             ) : (
@@ -13255,7 +15268,12 @@ function FriendsView({
                   const isOnline = onlineUsers.has(friend.user.id)
                   const pres = presenceData[friend.user.id]
                   const statusType = isOnline ? (pres?.presence_status || 'online') : 'offline'
-                  const customText = isOnline ? (pres?.custom_status || 'Online') : 'Offline'
+                  const gameStartedAt = pres?.current_game?.startedAt || pres?.game_presence?.startedAt
+                  const gameDur = formatGameDuration(gameStartedAt)
+                  let customText = isOnline ? (pres?.custom_status || (pres?.current_game ? `Jogando ${pres.current_game.name}` : 'Online')) : 'Offline'
+                  if (isOnline && (pres?.current_game || customText.toLowerCase().includes('jogando')) && gameDur && !customText.includes('•')) {
+                    customText = `${customText} • ${gameDur}`
+                  }
                   const friendDeco = pres?.avatar_decoration || (friend.user as any).avatar_decoration || null
                   return (
                     <div key={friend.id} className="friend-card-modern" onClick={() => onOpenDM(friend.user.id)}>
@@ -13276,7 +15294,7 @@ function FriendsView({
                           <span className="friend-status-modern" title={customText}>
                             {customText.toLowerCase().includes('jogando') ? (
                               <span className="game-presence-badge" style={{ fontSize: '11px', padding: '2px 6px' }}>
-                                <GamepadIcon style={{ width: '12px', height: '12px', flexShrink: 0 }} />
+                                <GameLogo gameName={customText.replace(/^jogando\s+/i, '')} size={13} style={{ flexShrink: 0 }} />
                                 <span>{customText}</span>
                               </span>
                             ) : (
@@ -13580,7 +15598,8 @@ function SettingsView({
   pttModeSetting,
   onPttModeChange,
   pttKey,
-  onPttKeyChange
+  onPttKeyChange,
+  onToggleOverlay
 }: {
   userId: string
   userCreatedAt?: string
@@ -13649,6 +15668,7 @@ function SettingsView({
   onPttModeChange?: (val: boolean) => void
   pttKey?: string
   onPttKeyChange?: (val: string) => void
+  onToggleOverlay?: () => void
 }) {
   const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog'>(initialTab || 'profile')
 
@@ -14100,7 +16120,7 @@ function SettingsView({
               onClick={() => setActiveSettingsTab('windows')}
             >
               <WindowsIcon className="menu-icon" style={{ width: '17px', height: '17px' }} />
-              <span>Inicialização & Windows</span>
+              <span>Windows & Overlay</span>
             </button>
             <button 
               className={`menu-item ${activeSettingsTab === 'changelog' ? 'active' : ''}`}
@@ -15117,6 +17137,67 @@ function SettingsView({
                   </span>
                 </div>
               )}
+
+              {/* Mini Overlay de Voz Gamer (Always-on-Top) */}
+              <div style={{
+                marginTop: '20px',
+                background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01))',
+                padding: '20px 22px',
+                borderRadius: '14px',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '16px',
+                flexWrap: 'wrap'
+              }}>
+                <div style={{ maxWidth: '540px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center' }}>
+                      <OverlayPipIcon style={{ width: '20px', height: '20px', color: 'var(--accent-color, #00f2fe)', marginRight: 8 }} />
+                      Mini Overlay de Voz Gamer (Always-on-Top)
+                    </h3>
+                    <span style={{
+                      background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(0, 198, 255, 0.1))',
+                      color: 'var(--accent-color, #00f2fe)',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '2px 9px',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(0, 242, 254, 0.3)',
+                      letterSpacing: '0.5px'
+                    }}>
+                      GAMER PIP
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                    Janela translúcida flutuante que fica permanentemente sobreposta aos seus jogos (inclusive em tela cheia sem bordas / borderless). Mostra quem está falando em tempo real com pulso neon e permite mutar, desmutar e sair sem Alt+Tab.
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={onToggleOverlay}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '9px 18px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      borderRadius: '8px',
+                      cursor: 'pointer'
+                    }}
+                    title="Alternar visibilidade do Mini Overlay"
+                  >
+                    <OverlayPipIcon style={{ width: '16px', height: '16px' }} />
+                    <span>Abrir / Fechar Mini Overlay</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -15647,6 +17728,67 @@ function SettingsView({
                   />
                   <span className="echo-slider"></span>
                 </label>
+              </div>
+            </div>
+
+            {/* Mini Overlay Gamer (Always-on-Top) */}
+            <div style={{
+              marginTop: '16px',
+              background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01))',
+              padding: '20px 22px',
+              borderRadius: '14px',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '16px',
+              flexWrap: 'wrap'
+            }}>
+              <div style={{ maxWidth: '540px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center' }}>
+                    <OverlayPipIcon style={{ width: '20px', height: '20px', color: 'var(--accent-color, #00f2fe)', marginRight: 8 }} />
+                    Mini Overlay Gamer (Always-on-Top)
+                  </h3>
+                  <span style={{
+                    background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(0, 198, 255, 0.1))',
+                    color: 'var(--accent-color, #00f2fe)',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '2px 9px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(0, 242, 254, 0.3)',
+                    letterSpacing: '0.5px'
+                  }}>
+                    GAMER PIP
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                  Janela translúcida flutuante que fica permanentemente sobreposta aos seus jogos (inclusive em tela cheia sem bordas / borderless). Mostra quem está falando em tempo real com pulso neon e permite mutar, desmutar e sair sem Alt+Tab.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={onToggleOverlay}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '9px 18px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    borderRadius: '8px',
+                    cursor: 'pointer'
+                  }}
+                  title="Alternar visibilidade do Mini Overlay"
+                >
+                  <OverlayPipIcon style={{ width: '16px', height: '16px' }} />
+                  <span>Abrir / Fechar Mini Overlay</span>
+                </button>
               </div>
             </div>
           </div>

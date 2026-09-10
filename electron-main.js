@@ -69,9 +69,9 @@ function ensureLocalLivekitServer() {
 // Rich Presence: Popular Games List
 const POPULAR_GAMES = [
   { match: ['valorant-win64-shipping', 'valorant'], name: 'VALORANT', icon: '🎮' },
-  { match: ['cs2'], name: 'Counter-Strike 2', icon: '🔫' },
+  { match: ['cs2', 'csgo'], name: 'Counter-Strike 2', icon: '🔫' },
   { match: ['fortniteclient-win64-shipping', 'fortnite'], name: 'Fortnite', icon: '🪂' },
-  { match: ['league of legends', 'leagueclientux'], name: 'League of Legends', icon: '⚔️' },
+  { match: ['league of legends', 'leagueclientux', 'leagueclient'], name: 'League of Legends', icon: '⚔️' },
   { match: ['gta5', 'fivem'], name: 'Grand Theft Auto V', icon: '🚗' },
   { match: ['javaw', 'minecraft.windows', 'minecraft'], name: 'Minecraft', icon: '⛏️' },
   { match: ['robloxplayerbeta', 'roblox'], name: 'Roblox', icon: '🧱' },
@@ -79,15 +79,20 @@ const POPULAR_GAMES = [
   { match: ['overwatch'], name: 'Overwatch 2', icon: '🛡️' },
   { match: ['rocketleague'], name: 'Rocket League', icon: '⚽' },
   { match: ['rainbowsix'], name: 'Rainbow Six Siege', icon: '🎯' },
-  { match: ['cod', 'bootstrapper'], name: 'Call of Duty', icon: '💥' },
+  { match: ['cod', 'bootstrapper', 'modernwarfare'], name: 'Call of Duty', icon: '💥' },
   { match: ['rustclient', 'rust'], name: 'Rust', icon: '🏕️' },
   { match: ['deadbydaylight-win64-shipping', 'deadbydaylight'], name: 'Dead by Daylight', icon: '🔪' },
   { match: ['genshinimpact'], name: 'Genshin Impact', icon: '✨' },
   { match: ['starrail'], name: 'Honkai: Star Rail', icon: '🌠' },
   { match: ['dota2'], name: 'Dota 2', icon: '👑' },
-  { match: ['fc24', 'fc25', 'fifa'], name: 'EA SPORTS FC', icon: '⚽' },
+  { match: ['fc24', 'fc25', 'fifa23', 'fifa'], name: 'EA SPORTS FC', icon: '⚽' },
   { match: ['palworld-win64-shipping', 'palworld'], name: 'Palworld', icon: '🐾' },
-  { match: ['cyberpunk2077'], name: 'Cyberpunk 2077', icon: '🌆' }
+  { match: ['cyberpunk2077'], name: 'Cyberpunk 2077', icon: '🌆' },
+  { match: ['helldivers2'], name: 'HELLDIVERS™ 2', icon: '🚀' },
+  { match: ['terraria'], name: 'Terraria', icon: '🌳' },
+  { match: ['brawlhalla'], name: 'Brawlhalla', icon: '🥊' },
+  { match: ['among us', 'amongus'], name: 'Among Us', icon: '🚀' },
+  { match: ['sea of thieves', 'sotgame'], name: 'Sea of Thieves', icon: '🏴‍☠️' }
 ]
 
 let activeGame = null
@@ -168,16 +173,42 @@ async function scanRunningGames() {
       }
     }
 
+    // 3. Fallback Nativo do Windows: tasklist.exe (0 dependências externas)
+    if (!foundGame && process.platform === 'win32') {
+      try {
+        const { stdout } = await execFileAsync('tasklist.exe', ['/fo', 'csv', '/nh'], { timeout: 2000, windowsHide: true })
+        if (stdout) {
+          const lines = stdout.split(/\r?\n/)
+          for (const line of lines) {
+            if (!line.trim()) continue
+            const match = line.match(/^"([^"]+)"/)
+            if (match && match[1]) {
+              const pName = match[1].replace(/\.exe$/i, '').toLowerCase().trim()
+              const matched = POPULAR_GAMES.find(g => g.match.some(m => {
+                const target = m.toLowerCase()
+                return pName === target || pName.startsWith(target + '-') || pName.startsWith(target + '_')
+              }))
+              if (matched) {
+                foundGame = { name: matched.name, icon: matched.icon, processName: match[1] }
+                break
+              }
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
     if (foundGame) {
-      if (!activeGame || activeGame.name !== foundGame.name) {
+      const isNewGame = !activeGame || activeGame.name !== foundGame.name
+      if (isNewGame) {
         activeGame = foundGame
         activeGameStartTime = Date.now()
-        mainWindow?.webContents.send('game-detected', {
-          name: foundGame.name,
-          icon: foundGame.icon,
-          startedAt: activeGameStartTime
-        })
       }
+      mainWindow?.webContents.send('game-detected', {
+        name: activeGame.name,
+        icon: activeGame.icon,
+        startedAt: activeGameStartTime
+      })
     } else {
       if (activeGame) {
         activeGame = null
@@ -207,8 +238,64 @@ app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
 
 
 let mainWindow = null
+let overlayWindow = null
 let tray = null
 let isQuitting = false
+
+function toggleOverlayWindow() {
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    if (overlayWindow.isVisible()) {
+      overlayWindow.hide()
+      return false
+    } else {
+      overlayWindow.show()
+      return true
+    }
+  }
+
+  const appIconPath = path.join(__dirname, 'assets', 'echo-icon.png')
+  overlayWindow = new BrowserWindow({
+    icon: appIconPath,
+    x: 24,
+    y: 24,
+    width: 230,
+    height: 320,
+    minWidth: 180,
+    minHeight: 120,
+    maxWidth: 480,
+    maxHeight: 750,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    hasShadow: false,
+    resizable: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'electron-preload.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      backgroundThrottling: false
+    }
+  })
+
+  overlayWindow.setMenu(null)
+  overlayWindow.setAlwaysOnTop(true, 'screen-saver', 1)
+  overlayWindow.setVisibleOnAllWorkspaces?.(true)
+
+  if (isDevelopment) {
+    overlayWindow.loadURL('http://localhost:5173/?mode=overlay').catch(() => {})
+  } else {
+    overlayWindow.loadFile(path.join(__dirname, 'dist', 'index.html'), { query: { mode: 'overlay' } }).catch(() => {
+      overlayWindow.loadFile('dist/index.html', { query: { mode: 'overlay' } }).catch(() => {})
+    })
+  }
+
+  overlayWindow.on('closed', () => {
+    overlayWindow = null
+  })
+
+  return true
+}
 let hasShownTrayBalloon = false
 let audioHelperProcess = null
 let audioTcpClient = null
@@ -313,6 +400,14 @@ function createWindow() {
   mainWindow.removeMenu()
   mainWindow.setMenu(null)
 
+  mainWindow.on('minimize', () => {
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.session.clearCache().catch(() => {})
+      }
+    } catch (e) {}
+  })
+
   mainWindow.on('close', (event) => {
     if (isDevelopment) {
       isQuitting = true
@@ -322,6 +417,11 @@ function createWindow() {
     if (!isQuitting) {
       event.preventDefault()
       mainWindow.hide()
+      try {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.session.clearCache().catch(() => {})
+        }
+      } catch (e) {}
       if (tray && !hasShownTrayBalloon) {
         hasShownTrayBalloon = true
         try {
@@ -356,6 +456,16 @@ function createWindow() {
       mainWindow.focus()
     }
   })
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (activeGame) {
+      mainWindow.webContents.send('game-detected', {
+        name: activeGame.name,
+        icon: activeGame.icon,
+        startedAt: activeGameStartTime
+      })
+    }
+  })
+
   // Permitir acesso ao microfone para canais de voz (WebRTC)
   mainWindow.webContents.session.setPermissionRequestHandler((_webContents, permission, callback) => {
     const allowed = ['media', 'microphone', 'audioCapture', 'display-capture'].includes(permission)
@@ -577,8 +687,35 @@ function createWindow() {
   })
 
   // Rich Presence: check active game manually
-  ipcMain.handle('check-active-game', () => {
+  ipcMain.handle('check-active-game', async () => {
+    if (!activeGame) {
+      await scanRunningGames()
+    }
     return activeGame ? { name: activeGame.name, icon: activeGame.icon, startedAt: activeGameStartTime } : null
+  })
+
+  // Mini Game Overlay Window Handlers
+  ipcMain.handle('toggle-overlay', () => {
+    return toggleOverlayWindow()
+  })
+
+  ipcMain.handle('open-overlay', () => {
+    if (!overlayWindow || overlayWindow.isDestroyed() || !overlayWindow.isVisible()) {
+      return toggleOverlayWindow()
+    }
+    return true
+  })
+
+  ipcMain.handle('close-overlay', () => {
+    if (overlayWindow && !overlayWindow.isDestroyed()) {
+      overlayWindow.close()
+      overlayWindow = null
+    }
+    return true
+  })
+
+  ipcMain.handle('is-overlay-open', () => {
+    return Boolean(overlayWindow && !overlayWindow.isDestroyed() && overlayWindow.isVisible())
   })
 
   // Push-to-Talk: Global shortcut registration
