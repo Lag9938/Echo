@@ -1,0 +1,158 @@
+/* ── Reset & Base ─────────────────────────────────── */
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: "gg sans", "Inter", "Segoe UI", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+button, input { font: inherit; }
+button { border: 0; cursor: pointer; background: transparent; color: inherit; }
+input { border: 0; outline: none; background: transparent; color: inherit; }
+
+/* ── Loading ──────────────────────────────────────── */
+.loading-screen {
+  height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+  color: var(--text-secondary); background: var(--bg-primary);
+}
+.loader {
+  width: 28px; height: 28px; border: 3px solid var(--border-color);
+  border-top-color: var(--accent-color); border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+
+/* ── Brand (Echo Atom Edition - Matches Windows Taskbar) ───────────── */
+.brand { 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+  color: var(--text-primary); 
+  font-size: 20px; 
+  font-weight: 600; 
+  letter-spacing: -0.6px;
+  user-select: none;
+}
+
+.brand-mark-atom {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #2a2f42 0%, #151824 100%);
+  border: 1px solid rgba(0, 242, 254, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 12px rgba(0, 242, 254, 0.25);
+  color: var(--accent-color, #00f2fe);
+  flex-shrink: 0;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.brand:hover .brand-mark-atom {
+  transform: rotate(35deg) scale(1.08);
+  border-color: rgba(0, 242, 254, 0.7);
+  box-shadow: 0 4px 20px rgba(0, 242, 254, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.brand-name {
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: -0.6px;
+  background: linear-gradient(135deg, #ffffff 40%, var(--accent-color, #00f2fe) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── App Layout ───────────────────────────────────── */
+.echo-app { 
+  height: 100vh; 
+  width: 100vw;
+  max-height: 100vh;
+  max-width: 100vw;
+  display: flex; 
+  flex-direction: column; 
+  background: var(--bg-primary); 
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Main Content ─────────────────────────────────── */
+.main-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse 70% 45% at 90% 10%, rgba(99, 102, 241, 0.04) 0%, transparent 65%),
+              radial-gradient(ellipse 60% 40% at 10% 90%, rgba(16, 185, 129, 0.025) 0%, transparent 60%),
+              var(--bg-secondary);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* ── Content Header ───────────────────────────────── */
+.content-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+  backdrop-filter: blur(12px);
+  background: rgba(20, 22, 27, 0.35);
+}
+.header-info { display: flex; flex-direction: column; gap: 2px; }
+.header-space { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+.content-header h1 { font-size: 18px; font-weight: 600; letter-spacing: -.3px; display: flex; align-items: center; gap: 6px; }
+.header-icon { font-size: 16px; }
+.live-badge { font-size: 11px; font-weight: 700; color: #5daa7e; letter-spacing: .3px; }
+
+/* ── Empty States ─────────────────────────────────── */
+.empty-main {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px;
+  text-align: center; color: var(--text-muted);
+}
+.empty-icon {
+  display: grid; place-items: center; width: 56px; height: 56px;
+  color: var(--accent-color); background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 18px;
+  font-size: 24px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02); margin-bottom: 8px;
+}
+.empty-main h2 { font-size: 18px; font-weight: 600; color: var(--text-primary); }
+.empty-main p { font-size: 14px; max-width: 280px; line-height: 1.5; }
+
+.empty-page {
+  height: 100%;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+  box-sizing: border-box;
+}
+.empty-symbol {
+  display: grid; place-items: center; width: 60px; height: 60px;
+  color: var(--accent-color); background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 20px;
+  font-size: 26px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+}
+.empty-page h1 { margin: 12px 0 0; font-size: 22px; }
+.empty-page p { color: var(--text-muted); font-size: 14px; }
+
+/* ── Error ────────────────────────────────────────── */
+.app-error {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; margin: 12px 20px 0;
+  color: #a84f45; border-radius: 10px; background: #fff0ee; font-size: 13px;
+}
+.dismiss-error { color: #c47a73; font-size: 14px; font-weight: 700; }
+

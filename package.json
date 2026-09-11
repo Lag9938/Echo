@@ -3,7 +3,7 @@
   "description": "Comunidades e conversas em tempo real.",
   "author": "Echo Lobby",
   "private": true,
-  "version": "0.32.8",
+  "version": "0.32.9",
   "main": "electron-main.js",
   "type": "module",
   "scripts": {
@@ -19,12 +19,14 @@
   "dependencies": {
     "@sapphi-red/web-noise-suppressor": "^0.4.0",
     "@supabase/supabase-js": "^2.112.4",
+    "@tanstack/react-virtual": "^3.14.11",
     "electron-updater": "^6.8.9",
     "livekit-client": "^2.22.2",
     "livekit-server-sdk": "^2.18.0",
     "lottie-web": "^5.13.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

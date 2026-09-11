@@ -76,7 +76,19 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
         startLoop()
       }
     }
+    const handleBlur = () => {
+      isVisible = false
+      stopLoop()
+    }
+    const handleFocus = () => {
+      if (!document.hidden) {
+        isVisible = true
+        startLoop()
+      }
+    }
     document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('blur', handleBlur)
+    window.addEventListener('focus', handleFocus)
 
     // Pre-allocated Particle Pool
     interface Particle {
@@ -1090,6 +1102,8 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
       observer.disconnect()
       resizeObserver.disconnect()
       document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('blur', handleBlur)
+      window.removeEventListener('focus', handleFocus)
     }
   }, [decorationId])
 

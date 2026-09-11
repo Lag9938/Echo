@@ -14,15 +14,47 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.32.8'
+export const APP_CURRENT_VERSION = '0.32.9'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.32.9',
+    title: 'Echo v0.32.9 - Novo Hub de Amigos: Minimalista, Ágil e com Micro-Animações',
+    date: '11 de Setembro de 2026',
+    tagline: 'Interface de amigos completamente redesenhada: eliminação da poluição visual, alertas estilo WhatsApp, navegação em 2 colunas, modularização de CSS e novas micro-animações táteis.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎨',
+        badge: 'DESIGN MINIMALISTA',
+        title: 'Layout em 2 Colunas e Foco no Essencial',
+        description: 'Barra lateral consolidada com atividades ao vivo (Ativo Agora), eliminando a coluna duplicada e o botão redundante para uma interface limpa e focada.'
+      },
+      {
+        icon: '💬',
+        badge: 'ALERTAS ESTILO WHATSAPP',
+        title: 'Indicador Visual de Mensagens Não Lidas',
+        description: 'Badge circular verde vibrante diretamente no card do amigo com animação sutil de pulsação, destacando conversas pendentes sem poluir.'
+      },
+      {
+        icon: '✨',
+        badge: 'MICRO-ANIMAÇÕES & TÁTIL',
+        title: 'Ações Rápidas Escalonadas e Status Vivos',
+        description: 'Botões de ação com delay progressivo ao passar o mouse, compressão elástica ao clique, halo respiratório no status online e shimmer na tag de jogos.'
+      },
+      {
+        icon: '🔍',
+        badge: 'BUSCA INTERATIVA',
+        title: 'Barra de Pesquisa com Expansão Neon',
+        description: 'Expansão suave com foco em ciano neon, tecla Ctrl K com relevo 3D de tecla mecânica e botão rápido para limpar pesquisa.'
+      }
+    ]
+  },
   {
     version: '0.32.8',
     title: 'Echo v0.32.8 - Áudio de Tela em Tempo Real (Estilo Discord & Zero Atraso)',
     date: '10 de Setembro de 2026',
     tagline: 'Eliminação definitiva de buffers artificiais na captura de áudio: voz e lábios 100% em sincronia automática, player minimalista limpo e atalhos rápidos.',
-    isLatest: true,
     highlights: [
       {
         icon: '⚡',

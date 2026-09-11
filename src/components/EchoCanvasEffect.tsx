@@ -73,7 +73,19 @@ export function EchoCanvasEffect({ effectId, className = '' }: EchoCanvasEffectP
         startLoop()
       }
     }
+    const handleBlur = () => {
+      isVisible = false
+      stopLoop()
+    }
+    const handleFocus = () => {
+      if (!document.hidden) {
+        isVisible = true
+        startLoop()
+      }
+    }
     document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('blur', handleBlur)
+    window.addEventListener('focus', handleFocus)
 
 
     // Particle pool definition
@@ -650,6 +662,8 @@ export function EchoCanvasEffect({ effectId, className = '' }: EchoCanvasEffectP
       observer.disconnect()
       resizeObserver.disconnect()
       document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('blur', handleBlur)
+      window.removeEventListener('focus', handleFocus)
     }
 
   }, [effectId])

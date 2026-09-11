@@ -147,22 +147,41 @@ export const EchoLottieDecoration = memo(function EchoLottieDecoration({
       console.error('Failed to load Lottie animation:', config.name, err)
     }
 
+    let isIntersecting = false
+
+    const updatePlayState = () => {
+      if (!animRef.current) return
+      const shouldPlay = isIntersecting && !document.hidden && document.hasFocus()
+      if (shouldPlay) {
+        animRef.current.play()
+      } else {
+        animRef.current.pause()
+      }
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
-        const entry = entries[0]
-        if (entry.isIntersecting) {
-          animRef.current?.play()
-        } else {
-          animRef.current?.pause()
-        }
+        isIntersecting = entries[0]?.isIntersecting ?? false
+        updatePlayState()
       },
       { threshold: 0.05 }
     )
 
     observer.observe(container)
 
+    const handleVisibility = () => updatePlayState()
+    const handleFocus = () => updatePlayState()
+    const handleBlur = () => updatePlayState()
+
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', handleFocus)
+    window.addEventListener('blur', handleBlur)
+
     return () => {
       observer.disconnect()
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('blur', handleBlur)
       if (animRef.current) {
         animRef.current.destroy()
         animRef.current = null

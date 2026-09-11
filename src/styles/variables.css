@@ -1,0 +1,237 @@
+/* ── Variables & Themes ───────────────────────────── */
+:root {
+  /* Echo Soft Paper Light Palette (Anti-Glave & Eye-Friendly) */
+  --bg-primary: #f0f2f3;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e6e9ea;
+  --border-color: #dbe0e2;
+  --text-primary: #24292e;
+  --text-secondary: #535d64;
+  --text-muted: #828e94;
+  
+  /* Echo Signature Brand */
+  --accent-color: #df6d5d;
+  --accent-hover: #d4564e;
+  --accent-light: rgba(223, 109, 93, 0.12);
+  
+  --speaking-color: #3b82f6; /* Azul brilhante Echo */
+  --speaking-glow: 0 0 14px rgba(59, 130, 246, 0.6);
+  
+  /* Modern Animation Physics & Easing */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  --transition-spring: all 0.25s var(--ease-spring);
+  --transition-snappy: all 0.18s var(--ease-smooth);
+  --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.14);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.22);
+  --shadow-glow: 0 0 16px rgba(223, 109, 93, 0.3);
+
+  --scrollbar-thumb: rgba(0, 0, 0, 0.14);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.24);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+button, input, textarea, select {
+  font-family: inherit;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Living Micro-Animations & Pulses ────────────────── */
+@keyframes presenceBreathing {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes presenceIdlePulse {
+  0%, 100% { transform: scale(1); opacity: 0.88; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+@keyframes voiceSpeakerPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(35, 165, 90, 0.7), 0 0 12px rgba(35, 165, 90, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(35, 165, 90, 0), 0 0 18px rgba(35, 165, 90, 0.2);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(35, 165, 90, 0), 0 0 12px rgba(35, 165, 90, 0.5);
+  }
+}
+
+@keyframes popInBounce {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes modalSpringIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.93) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.dark-theme {
+  /* Echo Slate Obsidian Dark Palette (Restful, Deep & Elegant) */
+  --bg-primary: #181a1d;
+  --bg-secondary: #212428;
+  --bg-tertiary: #2a2e33;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --text-primary: #e6e9eb;
+  --text-secondary: #9da6aa;
+  --text-muted: #6b7579;
+  --accent-light: rgba(223, 109, 93, 0.16);
+  
+  --speaking-color: #52a3ff; /* Azul mais brilhante para tema escuro */
+  --speaking-glow: 0 0 18px rgba(82, 163, 255, 0.7);
+  
+  --scrollbar-thumb: rgba(255, 255, 255, 0.14);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.24);
+}
+
+/* ── Dracula Theme ────────────────────────────────── */
+.theme-dracula {
+  --bg-primary: #282a36;
+  --bg-secondary: #21222c;
+  --bg-tertiary: #191a21;
+  --border-color: #44475a;
+  --text-primary: #f8f8f2;
+  --text-secondary: #6272a4;
+  --text-muted: #44475a;
+  --accent-color: #ff79c6;
+  --accent-hover: #ff92df;
+  --accent-light: rgba(255, 121, 198, 0.15);
+  
+  --speaking-color: #50fa7b;
+  --speaking-glow: 0 0 18px rgba(80, 250, 123, 0.7);
+  
+  --scrollbar-thumb: rgba(255, 121, 198, 0.2);
+  --scrollbar-thumb-hover: rgba(255, 121, 198, 0.4);
+}
+.theme-dracula .topbar { background: rgba(33, 34, 44, 0.8); }
+.theme-dracula .screen-picker-modal { background: rgba(33, 34, 44, 0.9); border: 1px solid rgba(255, 121, 198, 0.1); }
+.theme-dracula .confirm-modal-title { color: #ff79c6 !important; }
+
+/* ── Code Matrix Theme ────────────────────────────── */
+.theme-matrix {
+  --bg-primary: #0d0e0d;
+  --bg-secondary: #141614;
+  --bg-tertiary: #070807;
+  --border-color: #003300;
+  --text-primary: #00ff66;
+  --text-secondary: #009933;
+  --text-muted: #004d1a;
+  --accent-color: #00ff66;
+  --accent-hover: #33ff99;
+  --accent-light: rgba(0, 255, 102, 0.1);
+  
+  --speaking-color: #00ff66;
+  --speaking-glow: 0 0 18px rgba(0, 255, 102, 0.8);
+  
+  --scrollbar-thumb: rgba(0, 255, 102, 0.2);
+  --scrollbar-thumb-hover: rgba(0, 255, 102, 0.4);
+}
+.theme-matrix .topbar { background: rgba(20, 22, 20, 0.8); }
+.theme-matrix .screen-picker-modal { background: rgba(20, 22, 20, 0.9); border: 1px solid rgba(0, 255, 102, 0.1); }
+.theme-matrix .confirm-modal-title { color: #00ff66 !important; }
+
+/* ── Cyberpunk Theme ──────────────────────────────── */
+.theme-cyberpunk {
+  --bg-primary: #14051c;
+  --bg-secondary: #220b30;
+  --bg-tertiary: #0c0211;
+  --border-color: #3d1459;
+  --text-primary: #00f6ff;
+  --text-secondary: #d100ff;
+  --text-muted: #5e1173;
+  --accent-color: #fffe00;
+  --accent-hover: #ffff66;
+  --accent-light: rgba(255, 254, 0, 0.15);
+  
+  --speaking-color: #ff0055;
+  --speaking-glow: 0 0 18px rgba(255, 0, 85, 0.8);
+  
+  --scrollbar-thumb: rgba(0, 246, 255, 0.2);
+  --scrollbar-thumb-hover: rgba(0, 246, 255, 0.4);
+}
+.theme-cyberpunk .topbar { background: rgba(34, 11, 48, 0.8); }
+.theme-cyberpunk .screen-picker-modal { background: rgba(34, 11, 48, 0.9); border: 1px solid rgba(13, 246, 255, 0.1); }
+.theme-cyberpunk .confirm-modal-title { color: #fffe00 !important; }
+
+/* ── Nordic Frost Theme ───────────────────────────── */
+.theme-nord {
+  --bg-primary: #2e3440;
+  --bg-secondary: #3b4252;
+  --bg-tertiary: #242933;
+  --border-color: #434c5e;
+  --text-primary: #eceff4;
+  --text-secondary: #d8dee9;
+  --text-muted: #4c566a;
+  --accent-color: #88c0d0;
+  --accent-hover: #8fbcbb;
+  --accent-light: rgba(136, 192, 208, 0.15);
+  
+  --speaking-color: #a3be8c;
+  --speaking-glow: 0 0 18px rgba(163, 190, 140, 0.7);
+  
+  --scrollbar-thumb: rgba(136, 192, 208, 0.2);
+  --scrollbar-thumb-hover: rgba(136, 192, 208, 0.4);
+}
+.theme-nord .topbar { background: rgba(59, 66, 82, 0.8); }
+.theme-nord .screen-picker-modal { background: rgba(59, 66, 82, 0.9); border: 1px solid rgba(136, 192, 208, 0.1); }
+.theme-nord .confirm-modal-title { color: #88c0d0 !important; }
+
+/* Custom Modern Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.2s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}

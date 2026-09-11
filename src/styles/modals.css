@@ -1,0 +1,402 @@
+/* ── Modal Backdrop & Fullscreen Overlay System ──── */
+.modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 99999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(0, 0, 0, 0.76) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  animation: modalBackdropFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-app-region: no-drag !important;
+}
+
+@keyframes modalBackdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.afk-prompt-modal,
+.afk-disconnected-modal {
+  animation: modalScaleSpring 0.26s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalScaleSpring {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+
+/* ── Additional Modals ── */
+/* ── Custom Confirmation Modal ───────────────────── */
+.confirm-modal-overlay {
+  z-index: 20000 !important;
+  -webkit-app-region: no-drag;
+}
+.confirm-modal-title {
+  color: #df6d5d !important;
+}
+.dark-theme .confirm-modal-title {
+  color: #ef7d6d !important;
+}
+
+
+/* ── Auto-Update Banner ────────────────────────────── */
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 9999;
+  flex-shrink: 0;
+}
+
+.update-banner span {
+  white-space: nowrap;
+}
+
+.update-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  overflow: hidden;
+  min-width: 100px;
+}
+
+.update-progress-fill {
+  height: 100%;
+  background: #fff;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.update-restart-btn {
+  padding: 4px 14px;
+  background: #fff;
+  color: var(--accent-color);
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+
+.update-restart-btn:hover {
+  opacity: 0.9;
+}
+
+
+/* ── WHATS NEW & CHANGELOG MODAL ───────────────────────── */
+.whats-new-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.whats-new-modal {
+  width: 100%;
+  max-width: 680px;
+  max-height: 85vh;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.whats-new-container {
+  display: flex;
+  flex-direction: column;
+  padding: 24px 28px;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.whats-new-container.embedded {
+  padding: 0;
+  max-height: none;
+}
+
+.whats-new-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.whats-new-header-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.whats-new-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 6px 18px rgba(168, 85, 247, 0.35);
+}
+
+.whats-new-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.whats-new-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 2px 0 0 0;
+}
+
+.whats-new-close-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.whats-new-close-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.whats-new-version-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 10px;
+  overflow-x: auto;
+}
+
+.whats-new-version-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.whats-new-version-tab:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--accent-color);
+}
+
+.whats-new-version-tab.active {
+  background: var(--accent-color);
+  color: #fff;
+  border-color: var(--accent-color);
+  box-shadow: 0 4px 12px rgba(88, 101, 242, 0.3);
+}
+
+.version-badge-latest {
+  background: #10b981;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.whats-new-banner {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(168, 85, 247, 0.08));
+  border: 1.5px solid rgba(168, 85, 247, 0.3);
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.whats-new-banner-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.whats-new-version-tag {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #a855f7;
+  letter-spacing: 0.5px;
+}
+
+.whats-new-date {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.whats-new-banner-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 2px 0 0 0;
+  color: var(--text-primary);
+}
+
+.whats-new-banner-tagline {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.whats-new-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.whats-new-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.whats-new-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-color);
+  background: var(--bg-tertiary);
+}
+
+.whats-new-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.whats-new-card-icon {
+  font-size: 16px;
+}
+
+.whats-new-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.whats-new-card-badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.badge-novo {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-estabilidade {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.badge-design {
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.badge-audio {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-privacidade {
+  background: rgba(236, 72, 153, 0.15);
+  color: #ec4899;
+  border: 1px solid rgba(236, 72, 153, 0.3);
+}
+
+.whats-new-card-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.whats-new-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+
+.whats-new-confirm-btn {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
+}
+
+.whats-new-confirm-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+}
+
