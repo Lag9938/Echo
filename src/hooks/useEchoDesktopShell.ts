@@ -95,17 +95,19 @@ export function useEchoDesktopShell({
   const [isWatchingStreams, setIsWatchingStreams] = useState(true)
   const [isPiPActive, setIsPiPActive] = useState(false)
 
-  // Filter participants who have an active screenshare stream with live video track
-  const activeScreenSharers = participants.filter(p => p.screenStream && p.screenStream.getVideoTracks().length > 0)
+  // Filter participants who have an active screenshare stream or are actively sharing their screen
+  const activeScreenSharers = participants.filter(p => p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0))
   const activeScreenSharer = (selectedScreenSharerUserId && activeScreenSharers.find(p => p.userId === selectedScreenSharerUserId)) || activeScreenSharers[0] || null
   const [isScreenFullScreen, setIsScreenFullScreen] = useState(false)
 
-  // Auto-switch to watching streams when a stream becomes available
+  // Auto-switch to watching streams only when a new stream starts
+  const prevSharersCountRef = useRef(0)
   useEffect(() => {
-    if (activeScreenSharers.length > 0 && !isWatchingStreams) {
+    if (activeScreenSharers.length > prevSharersCountRef.current && activeScreenSharers.length > 0) {
       setIsWatchingStreams(true)
     }
-  }, [activeScreenSharers.length, isWatchingStreams])
+    prevSharersCountRef.current = activeScreenSharers.length
+  }, [activeScreenSharers.length])
 
   // Native Fullscreen Controller for Streams (Hides Windows Taskbar)
   const toggleScreenFullScreen = useCallback((targetVal?: boolean) => {

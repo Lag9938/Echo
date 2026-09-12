@@ -297,6 +297,13 @@ export function ChannelsSidebar({
 
           const filteredChannels = visibleChannels.filter(ch => !channelSearchQuery.trim() || ch.name.toLowerCase().includes(channelSearchQuery.toLowerCase()))
 
+          const isViewingActiveVoiceChannel = Boolean(
+            activeVoiceChannelId &&
+            selectedChannel &&
+            selectedChannel.id === activeVoiceChannelId &&
+            selectedChannel.type === 'voice'
+          )
+
           // Grouping channels
           const categoriesMap: Record<string, Channel[]> = {}
           const uncategorizedText: Channel[] = []
@@ -390,7 +397,7 @@ export function ChannelsSidebar({
                     )}
                   </span>
                   <span className="channel-item-name">{ch.name}</span>
-                  {channelVoiceUsers.some(p => p.screenStream && p.screenStream.getVideoTracks().length > 0) && (
+                  {channelVoiceUsers.some(p => p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0)) && (
                     <span className="channel-live-badge" title="Transmissão ao vivo em andamento">
                       ● AO VIVO
                     </span>
@@ -438,7 +445,7 @@ export function ChannelsSidebar({
                         </div>
                         <span className="sidebar-voice-name">{p.displayName}</span>
                         <div className="sidebar-voice-user-icons">
-                          {p.screenStream && p.screenStream.getVideoTracks().length > 0 && (
+                          {(p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0)) && (
                             <span title="Transmitindo tela" style={{ color: '#ef4444', display: 'inline-flex' }}>
                               <ScreenIcon style={{ width: '13px', height: '13px' }} />
                             </span>
@@ -908,9 +915,9 @@ export function ChannelsSidebar({
                 )}
               </div>
 
-              {/* Docked Voice Status Panel (Ergonomic 2-row layout) */}
+              {/* Docked Voice Status Panel (Ergonomic layout - compact inside call, full outside) */}
               {activeVoiceChannelId && (
-                  <div className="voice-status-panel">
+                  <div className={`voice-status-panel ${isViewingActiveVoiceChannel ? 'compact' : ''}`}>
                     <div className="voice-status-header-row">
                       <div className="voice-status-info">
                         <div className="connection-quality-indicator" style={{ position: 'relative', cursor: 'pointer' }}>
@@ -926,7 +933,16 @@ export function ChannelsSidebar({
                             <div className="stat-row"><span>Perda de Pacotes:</span> <strong>{rtcStats ? `${rtcStats.packetLoss} %` : '0 %'}</strong></div>
                           </div>
                         </div>
-                        <div className="voice-status-text">
+                        <div 
+                          className={`voice-status-text ${!isViewingActiveVoiceChannel ? 'clickable' : ''}`}
+                          onClick={() => {
+                            if (!isViewingActiveVoiceChannel && activeVoiceChannel) {
+                              setSelectedChannel(activeVoiceChannel)
+                            }
+                          }}
+                          style={{ cursor: !isViewingActiveVoiceChannel ? 'pointer' : 'default' }}
+                          title={!isViewingActiveVoiceChannel ? "Clique para voltar à chamada" : undefined}
+                        >
                           <span className="voice-status-label" style={isVoiceReconnecting ? { color: '#f59e0b', fontWeight: 600 } : undefined}>
                             {isVoiceReconnecting ? 'Reconectando...' : 'Voz conectada'}
                           </span>
@@ -956,20 +972,22 @@ export function ChannelsSidebar({
                       </div>
                     )}
 
-                    <div className="voice-status-actions-grid">
-                      <button className={`voice-action-btn ${isMuted ? 'muted' : ''}`} onClick={handleToggleMute} title={isMuted ? "Desmutar microfone" : "Mutar microfone"}>
-                        {isMuted ? <MicOffIcon /> : <MicIcon />}
-                      </button>
-                      <button className={`voice-action-btn ${isDeafened ? 'muted' : ''}`} onClick={handleToggleDeafen} title={isDeafened ? "Desensurdecer" : "Ensurdecer (Mutar todos)"}>
-                        {isDeafened ? <HeadphonesOffIcon /> : <HeadphonesIcon />}
-                      </button>
-                      <button className="voice-action-btn" onClick={() => setShowSoundboardModal(true)} title="Soundboard Gamer">
-                        <SoundboardIcon />
-                      </button>
-                      <button className={`voice-action-btn ${isRecordingCall ? 'recording' : ''}`} onClick={isRecordingCall ? stopCallRecording : startCallRecording} title={isRecordingCall ? `Gravando chamada (${recordingDuration}s)` : "Gravar chamada"}>
-                        <RecordCallIcon isRecording={isRecordingCall} />
-                      </button>
-                    </div>
+                    {!isViewingActiveVoiceChannel && (
+                      <div className="voice-status-actions-grid">
+                        <button className={`voice-action-btn ${isMuted ? 'muted' : ''}`} onClick={handleToggleMute} title={isMuted ? "Desmutar microfone" : "Mutar microfone"}>
+                          {isMuted ? <MicOffIcon /> : <MicIcon />}
+                        </button>
+                        <button className={`voice-action-btn ${isDeafened ? 'muted' : ''}`} onClick={handleToggleDeafen} title={isDeafened ? "Desensurdecer" : "Ensurdecer (Mutar todos)"}>
+                          {isDeafened ? <HeadphonesOffIcon /> : <HeadphonesIcon />}
+                        </button>
+                        <button className="voice-action-btn" onClick={() => setShowSoundboardModal(true)} title="Soundboard Gamer">
+                          <SoundboardIcon />
+                        </button>
+                        <button className={`voice-action-btn ${isRecordingCall ? 'recording' : ''}`} onClick={isRecordingCall ? stopCallRecording : startCallRecording} title={isRecordingCall ? `Gravando chamada (${recordingDuration}s)` : "Gravar chamada"}>
+                          <RecordCallIcon isRecording={isRecordingCall} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 

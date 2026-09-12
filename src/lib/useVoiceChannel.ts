@@ -26,6 +26,7 @@ export type VoiceParticipant = {
   isSpeaking: boolean
   avatarUrl?: string
   screenStream?: MediaStream
+  isScreenSharing?: boolean
   isMuted?: boolean
   isDeafened?: boolean
 }
@@ -415,7 +416,8 @@ export function useVoiceChannel(options?: {
         isSpeaking,
         isMuted: isMutedRef.current,
         isDeafened: isDeafenedRef.current,
-        screenStream: localScreenStreamRef.current || undefined
+        screenStream: localScreenStreamRef.current || undefined,
+        isScreenSharing: !!(localScreenStreamRef.current && localScreenStreamRef.current.getVideoTracks().length > 0)
       })
     }
 
@@ -454,6 +456,7 @@ export function useVoiceChannel(options?: {
           remoteScreenStreamsRef.current.delete(rp.identity)
         }
 
+        const isScreenSharing = Boolean((screenPub && !screenPub.isMuted) || (screenStream && screenStream.getVideoTracks().length > 0))
         const isMuted = !rp.isMicrophoneEnabled
         const isSpeaking = activeSpeakersRef.current.has(rp.identity)
 
@@ -476,7 +479,8 @@ export function useVoiceChannel(options?: {
           isSpeaking,
           isMuted,
           isDeafened: false,
-          screenStream
+          screenStream,
+          isScreenSharing
         })
       })
     }
@@ -512,10 +516,10 @@ export function useVoiceChannel(options?: {
 
     room.remoteParticipants.forEach((rp) => {
       const screenPub = rp.getTrackPublication(Track.Source.ScreenShare) || rp.getTrackPublication(Track.Source.Camera)
+      const shouldSubscribe = isWatching && (viewMode === 'grid' || !activeSharerId || activeSharerId === rp.identity)
       if (screenPub) {
         // Se o espectador não estiver visualizando a tela, corta a transmissão de vídeo (0 Kbps)
         // No modo foco, assina apenas a tela selecionada. No modo grade, assina todas em baixa resolução.
-        const shouldSubscribe = isWatching && (viewMode === 'grid' || !activeSharerId || activeSharerId === rp.identity)
         if (screenPub.isSubscribed !== shouldSubscribe) {
           screenPub.setSubscribed(shouldSubscribe)
         }
@@ -523,7 +527,19 @@ export function useVoiceChannel(options?: {
           screenPub.setVideoQuality(viewMode === 'grid' ? VideoQuality.LOW : VideoQuality.HIGH)
         }
       }
-      // Nota: ScreenShareAudio continua intocado para tocar em segundo plano mesmo sem vídeo!
+
+      // Se o usuário não estiver assistindo à transmissão (fechou/ocultou o vídeo), corta o áudio da tela (0 Kbps)
+      const screenAudioPub = rp.getTrackPublication(Track.Source.ScreenShareAudio)
+      if (screenAudioPub) {
+        if (screenAudioPub.isSubscribed !== shouldSubscribe) {
+          screenAudioPub.setSubscribed(shouldSubscribe)
+        }
+      }
+
+      const screenAudio = audioElementsRef.current.get(`${rp.identity}-screen`)
+      if (screenAudio) {
+        screenAudio.muted = isDeafenedRef.current || !shouldSubscribe || activeStreamTilesRef.current.has(rp.identity)
+      }
     })
   }, [])
 
@@ -999,7 +1015,9 @@ export function useVoiceChannel(options?: {
 
           // Se for áudio de tela e a StreamTile estiver ativa na tela, o áudio de fundo fica mudo
           // para dar lugar ao som unificado com Lip-Sync nativo do WebRTC via C++ no <video>!
-          audio.muted = isDeafenedRef.current || (isScreen && activeStreamTilesRef.current.has(participant.identity))
+          // Se o usuário não estiver assistindo à transmissão, o áudio de tela também é silenciado.
+          const isWatching = subscriptionOptionsRef.current.isWatching ?? true
+          audio.muted = isDeafenedRef.current || (isScreen && (!isWatching || activeStreamTilesRef.current.has(participant.identity)))
 
           if (isScreen) {
             applyScreenAudioDelayToTrack(track, screenAudioSyncDelayMsRef.current)
@@ -1341,7 +1359,8 @@ export function useVoiceChannel(options?: {
     audioElementsRef.current.forEach((audio, key) => {
       if (key.endsWith('-screen')) {
         const participantId = key.replace(/-screen$/, '')
-        audio.muted = next || activeStreamTilesRef.current.has(participantId)
+        const isWatching = subscriptionOptionsRef.current.isWatching ?? true
+        audio.muted = next || !isWatching || activeStreamTilesRef.current.has(participantId)
       } else {
         audio.muted = next
       }
@@ -1828,7 +1847,8 @@ export function useVoiceChannel(options?: {
       }
       const bgAudio = audioElementsRef.current.get(`${userId}-screen`)
       if (bgAudio) {
-        bgAudio.muted = isDeafenedRef.current || activeStreamTilesRef.current.has(userId)
+        const isWatching = subscriptionOptionsRef.current.isWatching ?? true
+        bgAudio.muted = isDeafenedRef.current || !isWatching || activeStreamTilesRef.current.has(userId)
       }
     }
     window.addEventListener('echo-stream-tile-active', handleTileActive as EventListener)

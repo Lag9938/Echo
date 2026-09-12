@@ -418,7 +418,7 @@ export function TextChannelView({
                         style={{ cursor: 'pointer', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                         title="Transmissão de tela em andamento (clique para alternar visualização)"
                       >
-                        ● {isWatchingStreams ? 'Ocultar Transmissão' : 'Assistir Transmissão'}
+                        ● {isWatchingStreams ? 'Fechar Vídeo' : 'Assistir Transmissão'}
                       </button>
                     )}
 

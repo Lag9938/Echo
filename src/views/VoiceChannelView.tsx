@@ -10,8 +10,6 @@ import { ModernVoiceNotePlayer } from '../components/chat/ModernVoiceNotePlayer'
 import { formatMessageText } from '../lib/messageFormatter'
 import {
   BrainIcon,
-  EyeOffIcon,
-  FocusIcon,
   GridIcon,
   HeadphonesIcon,
   HeadphonesOffIcon,
@@ -425,7 +423,8 @@ export function VoiceChannelView({
                                   isSpeaking: false,
                                   isMuted,
                                   isDeafened,
-                                  screenStream: localScreenStream || undefined
+                                  screenStream: localScreenStream || undefined,
+                                  isScreenSharing: !!(localScreenStream && localScreenStream.getVideoTracks().length > 0)
                                 })
                               }
                               const callMembersList = Array.from(callMembersMap.values())
@@ -434,98 +433,6 @@ export function VoiceChannelView({
                                 <>
                                   {activeScreenSharers.length > 0 && isWatchingStreams ? (
                                     <div className="voice-streams-container">
-                                <div className="streams-switcher-bar">
-                                  <div className="streams-switcher-tabs">
-                                    {activeScreenSharers.map(sharer => {
-                                      const isSelected = activeScreenSharer?.userId === sharer.userId
-                                      return (
-                                        <button
-                                          key={sharer.userId}
-                                          type="button"
-                                          className={`stream-tab-btn ${isSelected && screenShareViewMode === 'focus' ? 'active' : ''}`}
-                                          onClick={() => {
-                                            setSelectedScreenSharerUserId(sharer.userId)
-                                            setScreenShareViewMode('focus')
-                                          }}
-                                          title={`Alternar para transmissão de ${sharer.displayName}`}
-                                        >
-                                          <div className="stream-tab-avatar">
-                                            {sharer.avatarUrl ? (
-                                              <img src={sharer.avatarUrl} alt={sharer.displayName} />
-                                            ) : (
-                                              <span>{sharer.displayName.slice(0, 1).toUpperCase()}</span>
-                                            )}
-                                          </div>
-                                          <span className="stream-tab-name">{sharer.displayName}</span>
-                                          <span className="stream-tab-live-badge">
-                                            <span className="stream-tab-live-dot" />
-                                            AO VIVO
-                                          </span>
-                                        </button>
-                                      )
-                                    })}
-                                  </div>
-
-                                  <div className="streams-view-mode-toggles">
-                                    {activeScreenSharers.length > 1 && (
-                                      <div className="stream-segmented-group">
-                                        <button
-                                          type="button"
-                                          className={`stream-view-toggle-btn ${screenShareViewMode === 'focus' ? 'active' : ''}`}
-                                          onClick={() => setScreenShareViewMode('focus')}
-                                          title="Modo Foco (Uma tela em destaque)"
-                                        >
-                                          <FocusIcon />
-                                          <span>Foco</span>
-                                        </button>
-                                        <button
-                                          type="button"
-                                          className={`stream-view-toggle-btn ${screenShareViewMode === 'grid' ? 'active' : ''}`}
-                                          onClick={() => setScreenShareViewMode('grid')}
-                                          title="Modo Grade (Ver todas as telas divididas)"
-                                        >
-                                          <GridIcon />
-                                          <span>Grade ({activeScreenSharers.length})</span>
-                                        </button>
-                                      </div>
-                                    )}
-
-                                    {/* Mini Player (Picture-in-Picture) Toggle Button */}
-                                    <button
-                                      type="button"
-                                      className={`stream-control-btn ${isPiPActive ? 'pip-active' : ''}`}
-                                      onClick={() => setIsPiPActive(!isPiPActive)}
-                                      title={isPiPActive ? "Fechar Mini Player Flutuante" : "Ativar Mini Player Flutuante (Always-on-Top)"}
-                                    >
-                                      <PipIcon />
-                                      <span>{isPiPActive ? 'Mini Player ON' : 'Mini Player'}</span>
-                                    </button>
-
-                                    {/* Hide / Close Stream View Button */}
-                                    <button
-                                      type="button"
-                                      className="stream-control-btn"
-                                      onClick={() => setIsWatchingStreams(false)}
-                                      title="Ocultar vídeo (Ver apenas os avatares de voz)"
-                                    >
-                                      <EyeOffIcon />
-                                      <span>Ocultar Vídeo</span>
-                                    </button>
-
-                                    {/* Quick Stop Stream for the streamer */}
-                                    {localScreenStream && (
-                                      <button
-                                        type="button"
-                                        className="stream-control-btn stop-btn"
-                                        onClick={handleStopScreenShare}
-                                        title="Parar de transmitir minha tela"
-                                      >
-                                        <StopSquareIcon />
-                                        <span>Parar Transmissão</span>
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
 
                                 {screenShareViewMode === 'grid' && activeScreenSharers.length > 1 ? (
                                   <div className="streams-multi-grid" style={{ gridTemplateColumns: `repeat(${Math.min(activeScreenSharers.length, 2)}, 1fr)` }}>
@@ -572,17 +479,19 @@ export function VoiceChannelView({
                                   </div>
                                 ) : null}
 
-                                {/* Strip horizontal de participantes durante transmissão ao vivo */}
-                                {callMembersList.length > 0 && (
+                                {/* Dock flutuante centralizado de participantes & controles na transmissão */}
+                                <div className="stream-participants-strip-wrap">
                                   <div className="stream-participants-strip">
+                                    {/* Membros na chamada */}
                                     {callMembersList.map(p => {
-                                      const isSharer = !!(p.screenStream && p.screenStream.getVideoTracks().length > 0)
+                                      const isSharer = Boolean(p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0))
+                                      const isCurrentStreamer = activeScreenSharer?.userId === p.userId
                                       return (
                                         <div
                                           key={p.userId}
-                                          className={`stream-strip-card ${p.isSpeaking ? 'speaking' : ''} ${isSharer ? 'is-sharer' : ''}`}
+                                          className={`stream-strip-card ${p.isSpeaking ? 'speaking' : ''} ${isSharer ? 'is-sharer' : ''} ${isCurrentStreamer ? 'active-streamer' : ''}`}
                                           onClick={() => {
-                                            if (isSharer) {
+                                            if (isSharer && !isCurrentStreamer) {
                                               setSelectedScreenSharerUserId(p.userId)
                                               setIsWatchingStreams(true)
                                               setScreenShareViewMode('focus')
@@ -590,7 +499,7 @@ export function VoiceChannelView({
                                               setVolumeControlUser(p)
                                             }
                                           }}
-                                          title={isSharer ? `Clique para alternar para a transmissão de ${p.displayName}` : (p.userId !== user.id ? `Ajustar volume de áudio` : p.displayName)}
+                                          title={isSharer ? (isCurrentStreamer ? `Transmissão de ${p.displayName} na tela` : `Clique para assistir à transmissão de ${p.displayName}`) : (p.userId !== user.id ? `Ajustar volume de áudio` : p.displayName)}
                                         >
                                           <div className="stream-strip-avatar">
                                             {p.avatarUrl ? (
@@ -606,63 +515,56 @@ export function VoiceChannelView({
                                           </div>
                                           <span className="stream-strip-name">{p.displayName}{p.userId === user.id ? ' (Você)' : ''}</span>
                                           {isSharer && (
-                                            <span className="stream-strip-live-dot" title="Transmitindo tela" />
+                                            <span className={`stream-strip-live-dot ${isCurrentStreamer ? 'active-live' : ''}`} title={isCurrentStreamer ? "Ao Vivo (Na Tela)" : "Transmitindo tela"} />
                                           )}
                                         </div>
                                       )
                                     })}
+
+                                    {/* Divisor elegante */}
+                                    <div className="stream-dock-divider" />
+
+                                    {/* Ações Rápidas: Modo Grade/Foco, Mini Player & Ocultar Vídeo */}
+                                    <div className="stream-dock-actions">
+                                      {activeScreenSharers.length > 1 && (
+                                        <button
+                                          type="button"
+                                          className={`stream-dock-btn ${screenShareViewMode === 'grid' ? 'active' : ''}`}
+                                          onClick={() => setScreenShareViewMode(screenShareViewMode === 'grid' ? 'focus' : 'grid')}
+                                          title={screenShareViewMode === 'grid' ? "Modo Foco (Uma tela)" : "Modo Grade (Ver todas as telas)"}
+                                        >
+                                          <GridIcon style={{ width: '13px', height: '13px' }} />
+                                          <span>{screenShareViewMode === 'grid' ? 'Foco' : 'Grade'}</span>
+                                        </button>
+                                      )}
+
+                                      <button
+                                        type="button"
+                                        className={`stream-dock-btn ${isPiPActive ? 'active' : ''}`}
+                                        onClick={() => setIsPiPActive(!isPiPActive)}
+                                        title={isPiPActive ? "Fechar Mini Player Flutuante" : "Ativar Mini Player Flutuante (Always-on-Top)"}
+                                      >
+                                        <PipIcon style={{ width: '13px', height: '13px' }} />
+                                        <span>{isPiPActive ? 'Mini Player ON' : 'Mini Player'}</span>
+                                      </button>
+
+                                      {localScreenStream && (
+                                        <button
+                                          type="button"
+                                          className="stream-dock-btn stop-btn"
+                                          onClick={handleStopScreenShare}
+                                          title="Parar de transmitir minha tela"
+                                        >
+                                          <StopSquareIcon style={{ width: '13px', height: '13px' }} />
+                                          <span>Parar</span>
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
-                                )}
+                                </div>
                               </div>
                             ) : (
                               <div className="participants-grid">
-                                {activeScreenSharers.length > 0 && !isWatchingStreams && (
-                                  <div 
-                                    className="streams-hidden-banner" 
-                                    onClick={() => setIsWatchingStreams(true)}
-                                    style={{
-                                      gridColumn: '1 / -1',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'space-between',
-                                      padding: '12px 18px',
-                                      background: 'rgba(88, 101, 242, 0.12)',
-                                      border: '1.5px solid rgba(88, 101, 242, 0.3)',
-                                      borderRadius: '12px',
-                                      cursor: 'pointer',
-                                      color: 'var(--text-primary)',
-                                      fontSize: '13px',
-                                      fontWeight: 600,
-                                      marginBottom: '12px'
-                                    }}
-                                  >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                      <ScreenIcon style={{ width: "18px", height: "18px", color: "var(--accent-color)" }} />
-                                      <span>Há <strong>{activeScreenSharers.length} {activeScreenSharers.length === 1 ? 'transmissão ao vivo' : 'transmissões ao vivo'}</strong> acontecendo neste canal.</span>
-                                    </div>
-                                    <button 
-                                      type="button" 
-                                      className="streams-resume-watch-btn"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        setIsWatchingStreams(true)
-                                      }}
-                                      style={{
-                                        background: 'var(--accent-color)',
-                                        color: '#fff',
-                                        border: 'none',
-                                        padding: '6px 14px',
-                                        borderRadius: '8px',
-                                        fontSize: '12px',
-                                        fontWeight: 800,
-                                        cursor: 'pointer'
-                                      }}
-                                    >
-                                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><PlayIcon style={{ width: "12px", height: "12px" }} /> Assistir Transmissão</span>
-                                    </button>
-                                  </div>
-                                )}
-
                                 {(() => {
                                   const displayList = callMembersList
 
@@ -724,7 +626,7 @@ export function VoiceChannelView({
                                   }
 
                                   return displayList.map(p => {
-                                  const isSharer = !!(p.screenStream && p.screenStream.getVideoTracks().length > 0)
+                                  const isSharer = Boolean(p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0))
                                   return (
                                     <div 
                                       key={p.userId} 
@@ -742,22 +644,8 @@ export function VoiceChannelView({
                                       title={isSharer ? `Clique para assistir a tela de ${p.displayName}` : (p.userId !== user.id ? "Ajustar volume de áudio" : "")}
                                     >
                                       {isSharer && (
-                                        <div style={{
-                                          position: 'absolute',
-                                          top: '10px',
-                                          right: '10px',
-                                          background: '#eb3b5a',
-                                          color: '#fff',
-                                          fontSize: '10px',
-                                          fontWeight: 800,
-                                          padding: '3px 8px',
-                                          borderRadius: '20px',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: '4px',
-                                          boxShadow: '0 2px 8px rgba(235, 59, 90, 0.4)'
-                                        }}>
-                                          <span className="stream-tab-live-dot" /> AO VIVO
+                                        <div className="participant-live-badge">
+                                          <span className="live-dot-pulse" /> AO VIVO
                                         </div>
                                       )}
                                       <div className="participant-avatar-large" style={{ position: 'relative' }}>
@@ -795,7 +683,7 @@ export function VoiceChannelView({
                                           </div>
                                         )}
                                       </div>
-                                      <div className="participant-card-bottom-info" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', width: '100%' }}>
+                                      <div className="participant-card-bottom-info" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', width: '100%' }}>
                                         <span className="participant-name">
                                           {p.displayName}
                                           {p.userId === user.id && " (Você)"}
@@ -810,22 +698,10 @@ export function VoiceChannelView({
                                               setIsWatchingStreams(true)
                                               setScreenShareViewMode('focus')
                                             }}
-                                            style={{
-                                              background: 'rgba(235, 59, 90, 0.18)',
-                                              border: '1px solid #eb3b5a',
-                                              color: '#eb3b5a',
-                                              borderRadius: '12px',
-                                              padding: '4px 10px',
-                                              fontSize: '11px',
-                                              fontWeight: 800,
-                                              cursor: 'pointer',
-                                              display: 'flex',
-                                              alignItems: 'center',
-                                              gap: '4px',
-                                              marginTop: '4px'
-                                            }}
+                                            title={`Assistir transmissão de ${p.displayName}`}
                                           >
-                                            <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}><PlayIcon style={{ width: "11px", height: "11px" }} /> Assistir Tela</span>
+                                            <PlayIcon style={{ width: "11px", height: "11px" }} />
+                                            <span>Assistir Transmissão</span>
                                           </button>
                                         )}
                                       </div>

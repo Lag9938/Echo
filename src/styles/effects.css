@@ -1032,9 +1032,27 @@
 
 .status-dot-bullet.idle,
 .topbar-status-dot.idle,
-.status-dot.idle {
+.status-dot.idle,
+.member-status-dot.idle,
+.online-indicator.idle,
+.my-status-dot.idle,
+.profile-status-indicator.idle {
   background-color: #f59e0b !important;
+  mask: radial-gradient(circle at 28% 28%, transparent 46%, #000 47%) !important;
+  -webkit-mask: radial-gradient(circle at 28% 28%, transparent 46%, #000 47%) !important;
+  border-radius: 50% !important;
+  border: none !important;
   animation: presenceIdlePulse 4s infinite ease-in-out;
+}
+
+.status-dot-bullet.idle::after,
+.topbar-status-dot.idle::after,
+.status-dot.idle::after,
+.member-status-dot.idle::after,
+.online-indicator.idle::after,
+.my-status-dot.idle::after,
+.profile-status-indicator.idle::after {
+  display: none !important;
 }
 
 /* 2. Frosted Glass Modern Modals & Overlays */

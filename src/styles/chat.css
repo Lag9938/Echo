@@ -35,8 +35,16 @@
 }
 .msg-meta { display: flex; align-items: baseline; gap: 8px; }
 .msg-meta strong { font-size: 13px; font-weight: 700; color: var(--text-primary); }
-.msg-meta time { font-size: 11px; color: var(--text-muted); }
-.msg-body p { margin: 2px 0 0; font-size: 14px; line-height: 1.5; color: var(--text-secondary); word-break: break-word; }
+.msg-body p { 
+  margin: 2px 0 0; 
+  font-size: 14.5px; 
+  line-height: 1.48; 
+  color: var(--text-primary, #e2e8f0); 
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  word-break: break-word; 
+  -webkit-font-smoothing: antialiased;
+}
 
 .no-messages {
   margin: auto; text-align: center; color: var(--text-muted);

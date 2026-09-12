@@ -154,7 +154,7 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
   const renderCard = (member: any) => {
     const isMe = member.user.id === user.id
     const isCreator = currentSpace.creator_id === member.user.id
-    const isVoiceUser = (isCurrentCallInThisSpace && participants.some(p => p.userId === member.user.id)) || currentSpaceVoiceUsers.some(p => p.userId === member.user.id)
+    const isVoiceUserRaw = (isCurrentCallInThisSpace && participants.some(p => p.userId === member.user.id)) || currentSpaceVoiceUsers.some(p => p.userId === member.user.id)
     
     // Status efetivo considerando Invisível
     let effectiveStatus: 'online' | 'idle' | 'dnd' | 'offline' | 'invisible' = 'offline'
@@ -164,8 +164,10 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
       effectiveStatus = presenceData[member.user.id]?.presence_status || (onlineUsers.has(member.user.id) ? 'online' : 'offline')
     }
 
-    const isOnline = effectiveStatus !== 'invisible' && effectiveStatus !== 'offline' && (onlineUsers.has(member.user.id) || isVoiceUser || isMe)
+    const isOnline = effectiveStatus !== 'invisible' && effectiveStatus !== 'offline' && (onlineUsers.has(member.user.id) || isVoiceUserRaw || isMe)
     const userPresenceStatus = isOnline ? effectiveStatus : 'offline'
+    // Membros offline ou invisíveis NUNCA devem exibir o badge de voz "Em chamada" na barra de membros
+    const isVoiceUser = isOnline && isVoiceUserRaw
     const memberRole = getUserHighestRole(currentSpace.id, member.user.id)
     const memberDeco = member.user.id === user.id ? (avatarDecoration || null) : (presenceData[member.user.id]?.avatar_decoration || member.user?.avatar_decoration || null)
     const memberNameEffect = member.user.id === user.id ? (nameEffect || 'resonance_cyan') : (presenceData[member.user.id]?.name_effect || localStorage.getItem(`echo-name-effect-${member.user.id}`) || 'none')

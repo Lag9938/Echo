@@ -149,14 +149,14 @@ export function AppearanceTab({
         {/* Accent Color Presets & Custom Picker */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           {[
-            { name: 'Ciano Echo', hex: '#00f2fe' },
-            { name: 'Roxo Neon', hex: '#a855f7' },
-            { name: 'Rosa Choque', hex: '#ec4899' },
+            { name: 'Índigo Blurple', hex: '#5865f2' },
+            { name: 'Ciano Oceânico', hex: '#0ea5e9' },
             { name: 'Esmeralda', hex: '#10b981' },
             { name: 'Âmbar Solar', hex: '#f59e0b' },
-            { name: 'Rubi Gamer', hex: '#ef4444' },
-            { name: 'Índigo Real', hex: '#6366f1' },
-            { name: 'Menta Pastel', hex: '#2dd4bf' }
+            { name: 'Coral Radiante', hex: '#f43f5e' },
+            { name: 'Roxo Lavanda', hex: '#8b5cf6' },
+            { name: 'Menta Suave', hex: '#14b8a6' },
+            { name: 'Rosa Choque', hex: '#ec4899' }
           ].map(preset => {
             const isCur = (customAccentColor || '').toLowerCase() === preset.hex.toLowerCase()
             return (

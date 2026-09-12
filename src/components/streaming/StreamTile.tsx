@@ -385,7 +385,7 @@ export function StreamTile({
             type="button"
             className="stream-action-btn danger"
             onClick={onCloseStream}
-            title="Parar de Assistir (Ocultar transmissão e voltar aos avatares de voz)"
+            title="Fechar vídeo e voltar aos avatares de voz"
             style={{
               background: 'rgba(235, 59, 90, 0.18)',
               border: '1px solid rgba(235, 59, 90, 0.35)',

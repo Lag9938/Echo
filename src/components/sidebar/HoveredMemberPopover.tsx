@@ -143,7 +143,7 @@ export function HoveredMemberPopover({
           </div>
         )}
 
-        {hoveredMemberPopover.isVoiceUser && !hoveredMemberPopover.activeGame && (
+        {hoveredMemberPopover.isOnline && hoveredMemberPopover.isVoiceUser && !hoveredMemberPopover.activeGame && (
           <div className="hover-popover-activity voice" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <VolumeIcon style={{ width: '14px', height: '14px', color: '#22c55e', flexShrink: 0 }} />
             <span>Conectado na chamada de voz</span>

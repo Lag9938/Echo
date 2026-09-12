@@ -488,9 +488,12 @@
   box-sizing: border-box;
 }
 .dm-sent .dm-bubble {
-  background: var(--accent-color, #ff0055);
-  color: #ffffff;
+  background: #232a3b;
+  background: color-mix(in srgb, var(--accent-color, #5865f2) 26%, #141824);
+  border: 1px solid color-mix(in srgb, var(--accent-color, #5865f2) 42%, transparent);
+  color: #f8fafc;
   border-bottom-right-radius: 4px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);
 }
 .dm-received .dm-bubble {
   background: var(--bg-tertiary, #1a1e29);
@@ -743,8 +746,8 @@
   position: absolute;
   bottom: -1px;
   right: -1px;
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   border: 2px solid var(--bg-tertiary, #111827);
   z-index: 5;
@@ -756,9 +759,28 @@
 }
 .profile-status-indicator.idle {
   background: #f59e0b;
+  border: none;
+  width: 10px;
+  height: 10px;
+  bottom: 0px;
+  right: 0px;
+  mask: radial-gradient(circle at 28% 28%, transparent 46%, #000 47%);
+  -webkit-mask: radial-gradient(circle at 28% 28%, transparent 46%, #000 47%);
 }
 .profile-status-indicator.dnd {
   background: #ef4444;
+  position: relative;
+}
+.profile-status-indicator.dnd::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 5px;
+  height: 1.5px;
+  background-color: var(--bg-tertiary, #111827);
+  border-radius: 1px;
 }
 .profile-status-indicator.invisible {
   background: #64748b;
@@ -3848,10 +3870,10 @@ body.theme-midnight, .app-container.theme-midnight {
   --bg-secondary: #121e3d;
   --bg-tertiary: #1a2a54;
   --border-color: #253b73;
-  --text-primary: #e6eef8;
-  --text-secondary: #8faad4;
-  --text-muted: #57739e;
-  --accent-color: #00b4d8;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-color: #0284c7;
 }
 body.theme-midnight .topbar {
   background: rgba(11, 19, 43, 0.96);

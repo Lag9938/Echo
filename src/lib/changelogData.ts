@@ -14,15 +14,93 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.33.0'
+export const APP_CURRENT_VERSION = '0.33.2'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.33.2',
+    title: 'Echo v0.33.2 - Dock Flutuante de Transmissão e Fim de Informações Duplicadas',
+    date: '12 de Setembro de 2026',
+    tagline: 'Novo dock flutuante centralizado estilo Dynamic Island para ouvintes, fim de barras vazias de ponta a ponta e eliminação de duplicidades ao assistir transmissões.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🏝️',
+        badge: 'DYNAMIC DOCK',
+        title: 'Dock Flutuante de Participantes',
+        description: 'A barra inferior esticada foi substituída por um dock centralizado compacto em formato de cápsula com vidro translúcido que abraça exatamente quem está na chamada.'
+      },
+      {
+        icon: '🎯',
+        badge: 'ZERO REDUNDÂNCIA',
+        title: 'Fim do Streamer Duplicado',
+        description: 'Ao focar em uma transmissão, quem está apresentando permanece em destaque no topo e no player, enquanto o dock inferior foca nos ouvintes da chamada sem repetições.'
+      },
+      {
+        icon: '🗣️',
+        badge: 'INDICADOR DE VOZ',
+        title: 'Halo Ativo no Apresentador',
+        description: 'A aba superior do streamer ao vivo agora se ilumina com o anel verde de voz sempre que ele falar durante a transmissão.'
+      },
+      {
+        icon: '🎛️',
+        badge: 'CONTROLE INTELIGENTE',
+        title: 'Barra Lateral Contextual na Chamada',
+        description: 'Ao estar dentro da sala de voz, o card lateral se torna ultracompacto e oculta botões duplicados, mantendo todo o foco no centro da tela e reaparecendo automaticamente se você navegar para chats de texto ou DMs.'
+      },
+      {
+        icon: '🔇',
+        badge: 'TRANSMISSÃO PRECISA',
+        title: 'Fechar Vídeo e Silenciar Transmissão',
+        description: 'Ao clicar em "Fechar Vídeo", a transmissão fecha de verdade sem reaberturas indesejadas e o áudio do jogo/tela é silenciado imediatamente, mantendo apenas a voz dos amigos na chamada.'
+      },
+      {
+        icon: '👥',
+        badge: 'GRADE MINIMALISTA',
+        title: 'Grade de Voz Centralizada e Elegante',
+        description: 'Eliminamos banners gigantes e vazios. Ao fechar o vídeo, os participantes ficam centralizados na tela em cards proporcionais e harmoniosos, com acesso direto à transmissão pelo card do streamer.'
+      }
+    ]
+  },
+  {
+    version: '0.33.1',
+    title: 'Echo v0.33.1 - Conforto Visual, Tipografia Nítida, Minilua de Ausente e Correção de Status',
+    date: '11 de Setembro de 2026',
+    tagline: 'Fontes do chat com leitura descansada e alto contraste, balões de mensagem sem clarão, autêntica minilua crescente para Ausente e trava de status de chamada para membros offline.',
+    isLatest: false,
+    highlights: [
+      {
+        icon: '🌙',
+        badge: 'STATUS DISCORD-GRADE',
+        title: 'Minilua Crescente para Status Ausente',
+        description: 'O status Ausente agora exibe a icônica minilua crescente recortada via máscara vetorial em todos os avatares, rodapé do perfil e seletores de status.'
+      },
+      {
+        icon: '👁️',
+        badge: 'LEITURA DESFADIGADA',
+        title: 'Tipografia Nítida & Texto Primário no Chat',
+        description: 'O corpo das mensagens agora utiliza cor primária de alto contraste (#f1f5f9) com suavização subpixel otimizada, eliminando textos apagados e cansaço visual.'
+      },
+      {
+        icon: '🎨',
+        badge: 'ANTI-OFUSCAMENTO',
+        title: 'Balões de Mensagem & Cores de Destaque Suaves',
+        description: 'Mensagens enviadas ganharam superfície escura translúcida com matiz suave da cor de destaque, eliminando o clarão neon ofuscante sem perder o estilo.'
+      },
+      {
+        icon: '🔊',
+        badge: 'CORREÇÃO DE STATUS',
+        title: 'Trava de Chamada para Membros Offline',
+        description: 'Membros com status offline ou invisível nunca mais exibirão a tag "Em chamada" na barra lateral de servidores.'
+      }
+    ]
+  },
   {
     version: '0.33.0',
     title: 'Echo v0.33.0 - Chat Refatorado, Links Universais, YouTube Music e Mídias com Zoom',
     date: '11 de Setembro de 2026',
     tagline: 'Envio de imagens com Ctrl+V, links clicáveis com abertura no navegador padrão, card integrado do YouTube Music, visualizador de imagens com zoom 100% e fim de mensagens sobrepostas.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🔗',

@@ -182,7 +182,8 @@ export function useEchoVoiceSession({
                   isSpeaking: !!pres.is_speaking,
                   isMuted: !!pres.is_muted,
                   isDeafened: !!pres.is_deafened,
-                  screenStream: pres.has_screen ? (new MediaStream()) : undefined
+                  screenStream: pres.has_screen ? (new MediaStream()) : undefined,
+                  isScreenSharing: !!pres.has_screen
                 })
               }
             }
@@ -310,7 +311,7 @@ export function useEchoVoiceSession({
         isSpeaking: Boolean(p.isSpeaking),
         isMuted: Boolean(p.isMuted),
         isDeafened: Boolean(p.isDeafened),
-        hasScreen: Boolean(p.screenStream)
+        hasScreen: Boolean(p.isScreenSharing || p.screenStream)
       }))
 
       if (activeVoiceChannelId && user?.id && !parts.some(p => p.userId === user.id)) {
