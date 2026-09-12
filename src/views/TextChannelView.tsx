@@ -640,7 +640,9 @@ export function TextChannelView({
                                   <div className="chat-date-divider">
                                     <div className="chat-date-line" />
                                     <span className="chat-date-pill">
-                                      {formatChatDateDivider(msgDate)}
+                                      <span className="chat-date-wave">∿∿</span>
+                                      <span>{formatChatDateDivider(msgDate)}</span>
+                                      <span className="chat-date-wave">∿∿</span>
                                     </span>
                                     <div className="chat-date-line" />
                                   </div>
@@ -825,6 +827,12 @@ export function TextChannelView({
                                                   }}
                                                 >
                                                   {msgRole.name}
+                                                </span>
+                                              )}
+
+                                              {isSelf && (
+                                                <span className="msg-self-badge">
+                                                  Você
                                                 </span>
                                               )}
 
@@ -1054,28 +1062,27 @@ export function TextChannelView({
                               )}
                               <form className="composer" onSubmit={handleComposerSubmit} style={{ position: 'relative' }}>
                                 <input type="file" id="chat-file-input" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleChatFileUpload(f); e.target.value = '' }} />
-                                <button type="button" className="dm-attach-btn" onClick={() => document.getElementById('chat-file-input')?.click()} disabled={isUploading} title="Anexar arquivo ou imagem" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 8px 0 0', display: 'flex', alignItems: 'center' }}>
-                                  <PaperclipIcon />
+                                <button type="button" className="composer-action-btn" onClick={() => document.getElementById('chat-file-input')?.click()} disabled={isUploading} title="Anexar arquivo ou imagem">
+                                  <PaperclipIcon style={{ width: '15px', height: '15px' }} />
                                 </button>
 
                                 {/* Voice Note Button */}
                                 <button 
                                   type="button" 
-                                  className="dm-attach-btn" 
+                                  className="composer-action-btn" 
                                   onClick={() => startVoiceNoteRecording('channel')} 
                                   title="Gravar Mensagem de Voz"
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 6px 0 0', display: 'flex', alignItems: 'center' }}
                                 >
-                                  <VoiceMessageIcon />
+                                  <VoiceMessageIcon style={{ width: '15px', height: '15px' }} />
                                 </button>
 
                                 {/* GIF Picker Button */}
                                 <button 
                                   type="button" 
-                                  className="dm-attach-btn" 
+                                  className={`composer-action-btn ${showGifPicker ? 'active' : ''}`} 
                                   onClick={() => setShowGifPicker(!showGifPicker)} 
                                   title="Escolher GIF Gamer"
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: showGifPicker ? 'var(--accent-color)' : 'var(--text-muted)', padding: '0 6px 0 0', display: 'flex', alignItems: 'center', fontWeight: 700, fontSize: '11px', letterSpacing: '0.5px' }}
+                                  style={{ fontWeight: 800, fontSize: '11px', letterSpacing: '0.5px' }}
                                 >
                                   GIF
                                 </button>
@@ -1083,12 +1090,11 @@ export function TextChannelView({
                                 {/* Emoji Picker Button */}
                                 <button 
                                   type="button" 
-                                  className="dm-attach-btn" 
+                                  className={`composer-action-btn ${showEmojiPicker ? 'active' : ''}`} 
                                   onClick={() => setShowEmojiPicker(!showEmojiPicker)} 
                                   title="Escolher Emoji"
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: showEmojiPicker ? 'var(--accent-color)' : 'var(--text-muted)', padding: '0 6px 0 0', display: 'flex', alignItems: 'center' }}
                                 >
-                                  <SmileIcon />
+                                  <SmileIcon style={{ width: '15px', height: '15px' }} />
                                 </button>
 
                                 <input 
@@ -1109,8 +1115,8 @@ export function TextChannelView({
                                   <span>{slowmodeCooldown}s</span>
                                 </div>
                               ) : (
-                                <button type="submit" className="send-btn" disabled={(!draft.trim() && !pendingPastedFile) || isUploading}>
-                                  <span>↑</span>
+                                <button type="submit" className="send-btn" disabled={(!draft.trim() && !pendingPastedFile) || isUploading} title="Enviar Mensagem">
+                                  <SendIcon style={{ width: '15px', height: '15px' }} />
                                 </button>
                               )}
 
