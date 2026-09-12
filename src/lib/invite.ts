@@ -14,6 +14,7 @@ export function getPublicInviteUrl(spaceId: string, channelId?: string): string 
   if (channelId) {
     params.set('channel', channelId)
   }
+  params.set('v', '2')
   return `${ECHO_INVITE_WEB_BASE}?${params.toString()}`
 }
 
