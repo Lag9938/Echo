@@ -108,21 +108,59 @@ export function DecoratedAvatar({
             position: 'absolute',
             bottom: '-1px',
             right: '-1px',
-            width: `${Math.max(8, Math.round(size * 0.28))}px`,
-            height: `${Math.max(8, Math.round(size * 0.28))}px`,
+            width: `${Math.max(10, Math.round(size * 0.28))}px`,
+            height: `${Math.max(10, Math.round(size * 0.28))}px`,
             borderRadius: '50%',
             border: '2px solid #111214',
             backgroundColor:
               status === 'online'
-                ? '#22c55e'
+                ? '#23a55a'
                 : status === 'idle'
-                ? '#f59e0b'
+                ? '#f0b232'
                 : status === 'dnd'
-                ? '#ef4444'
-                : '#64748b',
-            zIndex: 3
+                ? '#f23f43'
+                : '#80848e',
+            zIndex: 3,
+            overflow: 'hidden',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}
-        />
+        >
+          {status === 'idle' && (
+            <span
+              style={{
+                position: 'absolute',
+                top: '-20%',
+                left: '-20%',
+                width: '75%',
+                height: '75%',
+                borderRadius: '50%',
+                backgroundColor: '#111214'
+              }}
+            />
+          )}
+          {status === 'dnd' && (
+            <span
+              style={{
+                width: '60%',
+                height: '2px',
+                borderRadius: '1px',
+                backgroundColor: '#ffffff'
+              }}
+            />
+          )}
+          {status === 'offline' && (
+            <span
+              style={{
+                width: '45%',
+                height: '45%',
+                borderRadius: '50%',
+                backgroundColor: '#111214'
+              }}
+            />
+          )}
+        </span>
       )}
     </div>
   )

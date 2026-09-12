@@ -25,12 +25,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   checkActiveGame: () => ipcRenderer.invoke('check-active-game'),
 
-  // Push-to-Talk Global Shortcut API
+  // Global Voice Shortcuts API (PTT, Mute, Deafen)
   registerGlobalPTT: (shortcut) => ipcRenderer.invoke('register-global-ptt', shortcut),
   unregisterGlobalPTT: () => ipcRenderer.invoke('unregister-global-ptt'),
   onPTTStateChange: (callback) => {
     ipcRenderer.removeAllListeners('ptt-state')
     ipcRenderer.on('ptt-state', (_event, isPressed) => callback(isPressed))
+  },
+  registerGlobalVoiceShortcut: (action, shortcutKey) => ipcRenderer.invoke('register-global-voice-shortcut', { action, shortcutKey }),
+  unregisterGlobalVoiceShortcut: (action) => ipcRenderer.invoke('unregister-global-voice-shortcut', action),
+  onGlobalVoiceToggle: (callback) => {
+    ipcRenderer.removeAllListeners('global-voice-toggle')
+    ipcRenderer.on('global-voice-toggle', (_event, action) => callback(action))
   },
 
   // Windows Native Notifications API
@@ -47,6 +53,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimizeWindow: () => ipcRenderer.invoke('window-minimize'),
   maximizeWindow: () => ipcRenderer.invoke('window-maximize'),
   closeWindow: () => ipcRenderer.invoke('window-close'),
+  quitApp: () => ipcRenderer.invoke('app-quit'),
   isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
   setFullScreen: (flag) => ipcRenderer.invoke('window-set-fullscreen', flag),
   isFullScreen: () => ipcRenderer.invoke('window-is-fullscreen'),
@@ -62,5 +69,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   toggleOverlay: () => ipcRenderer.invoke('toggle-overlay'),
   openOverlay: () => ipcRenderer.invoke('open-overlay'),
   closeOverlay: () => ipcRenderer.invoke('close-overlay'),
-  isOverlayOpen: () => ipcRenderer.invoke('is-overlay-open')
+  isOverlayOpen: () => ipcRenderer.invoke('is-overlay-open'),
+
+  // Open External URL in default browser
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
 })

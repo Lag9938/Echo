@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { VoiceParticipant } from '../lib/useVoiceChannel'
 import type { Space, Channel, Message, PinnedMessage, ServerEmoji, RolePermissions, ServerRole } from '../types'
@@ -34,6 +34,8 @@ import {
   UsersIcon,
   VolumeIcon
 } from '../components/icons'
+import { openExternalUrl } from '../lib/openExternal'
+import { useUIStore } from '../stores/useUIStore'
 
 export interface VoiceChannelViewProps {
   currentSpace: Space | null
@@ -110,7 +112,7 @@ export interface VoiceChannelViewProps {
   send: (e: React.FormEvent) => void
   draft: string
   setDraft: (val: string) => void
-  handleChatFileUpload: (file: File) => void
+  handleChatFileUpload: (file: File, caption?: string) => void
   isUploading: boolean
   canUserDo: (spaceId: string, userId: string, perm: keyof RolePermissions) => boolean
   isMessageSaved: (msgId: string) => boolean
@@ -238,6 +240,85 @@ export function VoiceChannelView({
   showScreenMenu,
   setShowScreenMenu
 }: VoiceChannelViewProps) {
+  const openLightbox = useUIStore((s) => s.openLightbox)
+  const [pendingVoicePastedFile, setPendingVoicePastedFile] = useState<File | null>(null)
+  const [pendingVoiceImagePreview, setPendingVoiceImagePreview] = useState<string | null>(null)
+
+  const removePendingVoiceImage = useCallback(() => {
+    setPendingVoicePastedFile(null)
+    setPendingVoiceImagePreview(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+  }, [])
+
+  const handleVoicePaste = useCallback((e: React.ClipboardEvent | ClipboardEvent) => {
+    const clipboardData = ('clipboardData' in e ? e.clipboardData : null)
+    const items = clipboardData?.items
+    if (!items) return
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (file) {
+          e.preventDefault()
+          const rawExt = file.type.split('/')[1] || 'png'
+          const ext = rawExt.replace(/[^a-zA-Z0-9]/g, '')
+          const renamedFile = new File([file], `screenshot_${Date.now()}.${ext}`, { type: file.type })
+
+          setPendingVoiceImagePreview(prev => {
+            if (prev) URL.revokeObjectURL(prev)
+            return URL.createObjectURL(renamedFile)
+          })
+          setPendingVoicePastedFile(renamedFile)
+          return
+        }
+      }
+    }
+  }, [])
+
+  // Window paste listener when voice chat drawer is visible
+  useEffect(() => {
+    if (!showVoiceChat) return
+    const onWindowPaste = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement | null
+      if (target && target.tagName === 'INPUT' && target.id !== 'voice-chat-input') {
+        return
+      }
+      if (target && target.tagName === 'TEXTAREA') {
+        return
+      }
+      handleVoicePaste(e)
+    }
+    window.addEventListener('paste', onWindowPaste)
+    return () => window.removeEventListener('paste', onWindowPaste)
+  }, [showVoiceChat, handleVoicePaste])
+
+  // Esc key cancels pending voice chat image
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && pendingVoicePastedFile) {
+        removePendingVoiceImage()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [pendingVoicePastedFile, removePendingVoiceImage])
+
+  const handleVoiceComposerSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (pendingVoicePastedFile) {
+      const file = pendingVoicePastedFile
+      const caption = draft.trim()
+      removePendingVoiceImage()
+      setDraft('')
+      await handleChatFileUpload(file, caption)
+      return
+    }
+    send(e)
+  }
+
   return (
                 <div className="voice-room">
                   <header className="content-header">
@@ -972,7 +1053,18 @@ export function VoiceChannelView({
                                         <time>{new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
                                       </div>
                                       {message.attachment_url && message.attachment_type === 'image' ? (
-                                        <img src={message.attachment_url} alt="anexo" className="msg-attachment-img" onClick={() => window.open(message.attachment_url, '_blank')} />
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                          <img
+                                            src={message.attachment_url}
+                                            alt="anexo"
+                                            className="msg-attachment-img"
+                                            onClick={() => openLightbox(message.attachment_url!)}
+                                            title="Clique para ampliar"
+                                          />
+                                          {message.body && message.body !== 'Imagem' && !message.body.startsWith('http') && (
+                                            <p>{formatMessageText(message.body, profileDisplayName)}</p>
+                                          )}
+                                        </div>
                                       ) : message.attachment_url && message.attachment_type === 'audio' ? (
                                         <ModernVoiceNotePlayer
                                           audioUrl={message.attachment_url}
@@ -984,7 +1076,18 @@ export function VoiceChannelView({
                                           activeAudioRef={voiceNoteAudioRef}
                                         />
                                       ) : message.attachment_url && message.attachment_type !== 'image' ? (
-                                        <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-file">{message.body}</a>
+                                        <a
+                                          href={message.attachment_url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="msg-attachment-file"
+                                          onClick={(e) => {
+                                            e.preventDefault()
+                                            openExternalUrl(message.attachment_url)
+                                          }}
+                                        >
+                                          📎 {message.body}
+                                        </a>
                                       ) : (
                                         <p>{formatMessageText(message.body, profileDisplayName)}</p>
                                       )}
@@ -994,13 +1097,43 @@ export function VoiceChannelView({
                               })}
                               <div ref={messagesEndRef} />
                             </div>
-                            <form className="voice-chat-composer" onSubmit={send}>
+                            {pendingVoicePastedFile && pendingVoiceImagePreview && (
+                              <div className="composer-image-staging voice-chat-image-staging">
+                                <div className="staging-thumb-wrap">
+                                  <img src={pendingVoiceImagePreview} alt="Screenshot colado" />
+                                </div>
+                                <div className="staging-info">
+                                  <div className="staging-title-row">
+                                    <span className="staging-badge">Print / Clipboard</span>
+                                    <span className="staging-name">{pendingVoicePastedFile.name}</span>
+                                  </div>
+                                  <span className="staging-subtext">
+                                    {(pendingVoicePastedFile.size / 1024).toFixed(1)} KB • Enter para enviar
+                                  </span>
+                                </div>
+                                <button 
+                                  type="button" 
+                                  className="staging-remove-btn" 
+                                  onClick={removePendingVoiceImage}
+                                  title="Descartar print (Esc)"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            )}
+                            <form className="voice-chat-composer" onSubmit={handleVoiceComposerSubmit}>
                               <input type="file" id="voice-chat-file-input" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleChatFileUpload(f); e.target.value = '' }} />
                               <button type="button" className="dm-attach-btn" onClick={() => document.getElementById('voice-chat-file-input')?.click()} disabled={isUploading} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 8px 0 0' }}>
                                 {isUploading ? <span style={{ fontSize: '12px' }}>...</span> : <PaperclipIcon style={{ width: '15px', height: '15px' }} />}
                               </button>
-                              <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Conversar por texto com a call…" />
-                              <button type="submit" className="send-btn" disabled={!draft.trim() && !isUploading}>
+                              <input 
+                                id="voice-chat-input"
+                                value={draft} 
+                                onChange={(e) => setDraft(e.target.value)} 
+                                onPaste={handleVoicePaste}
+                                placeholder="Conversar por texto com a call…" 
+                              />
+                              <button type="submit" className="send-btn" disabled={(!draft.trim() && !pendingVoicePastedFile) || isUploading}>
                                 <SendIcon style={{ width: "14px", height: "14px" }} />
                               </button>
                             </form>

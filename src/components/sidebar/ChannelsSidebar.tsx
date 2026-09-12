@@ -2,7 +2,7 @@ import React from 'react'
 import type { FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { VoiceParticipant } from '../../lib/useVoiceChannel'
-import type { Space, Channel, Page, RolePermissions } from '../../types'
+import type { Space, Channel, Page, RolePermissions, ServerRole } from '../../types'
 import { UnifiedUserProfileFooter } from './UnifiedUserProfileFooter'
 import { copyToClipboard } from '../../lib/clipboard'
 import {
@@ -10,6 +10,7 @@ import {
   BellOffIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  CrownIcon,
   HashtagIcon,
   HeadphonesIcon,
   HeadphonesOffIcon,
@@ -101,6 +102,12 @@ export interface ChannelsSidebarProps {
   spaceMembers: any[]
   isConnected: boolean
   showToast: (title: string, message: string, type?: any) => void
+  newChannelIsPrivate?: boolean
+  setNewChannelIsPrivate?: (isPrivate: boolean) => void
+  newChannelAllowedRoles?: string[]
+  setNewChannelAllowedRoles?: React.Dispatch<React.SetStateAction<string[]>>
+  serverRoles?: ServerRole[]
+  memberRoleMap?: Record<string, string[]>
 }
 
 export function ChannelsSidebar({
@@ -158,7 +165,7 @@ export function ChannelsSidebar({
   isPttActive,
   isVoiceReconnecting,
   activeVoiceChannel,
-  currentSpace,
+  currentSpace: _currentSpace,
   rtcStats,
   isMuted,
   handleToggleMute,
@@ -173,13 +180,70 @@ export function ChannelsSidebar({
   setVolumeControlUser,
   spaceMembers,
   isConnected,
-  showToast
+  showToast,
+  newChannelIsPrivate,
+  setNewChannelIsPrivate,
+  newChannelAllowedRoles,
+  setNewChannelAllowedRoles,
+  serverRoles,
+  memberRoleMap
 }: ChannelsSidebarProps) {
-const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || null
+  const [sidebarWidth, setSidebarWidth] = React.useState<number>(() => {
+    const saved = localStorage.getItem('echo-channels-sidebar-width')
+    if (saved) {
+      const parsed = parseInt(saved, 10)
+      if (!isNaN(parsed) && parsed >= 190 && parsed <= 400) {
+        return parsed
+      }
+    }
+    return 240
+  })
 
-          if (!activeSpace) {
-            return (
-              <aside className="sidebar channels-sidebar channels-sidebar-empty">
+  const [isResizing, setIsResizing] = React.useState(false)
+
+  const handleMouseDownResize = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+    const startX = e.clientX
+    const startWidth = sidebarWidth
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startX
+      const newWidth = Math.max(190, Math.min(400, startWidth + delta))
+      setSidebarWidth(newWidth)
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+    }
+
+    const onMouseUp = (upEvent: MouseEvent) => {
+      const delta = upEvent.clientX - startX
+      const finalWidth = Math.max(190, Math.min(400, startWidth + delta))
+      setSidebarWidth(finalWidth)
+      localStorage.setItem('echo-channels-sidebar-width', String(finalWidth))
+      setIsResizing(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+  }, [sidebarWidth])
+
+  const handleDoubleClickReset = React.useCallback(() => {
+    setSidebarWidth(240)
+    localStorage.setItem('echo-channels-sidebar-width', '240')
+  }, [])
+
+  const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || null
+
+  if (!activeSpace) {
+    return (
+      <aside 
+        className={`sidebar channels-sidebar channels-sidebar-empty ${isResizing ? 'is-resizing' : ''}`}
+        style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, maxWidth: `${sidebarWidth}px` }}
+      >
                 <div className="empty-servers-prompt">
                   <div className="empty-servers-icon">
                     <UsersIcon style={{ width: '40px', height: '40px', color: 'var(--text-muted)', opacity: 0.6 }} />
@@ -209,12 +273,29 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                   myGamePresence={myGamePresence}
                   avatarDecoration={avatarDecoration}
                 />
+                <div
+                  className={`channels-sidebar-resizer ${isResizing ? 'active' : ''}`}
+                  onMouseDown={handleMouseDownResize}
+                  onDoubleClick={handleDoubleClickReset}
+                  title="Arraste para redimensionar a barra lateral (Duplo clique para redefinir)"
+                />
               </aside>
             )
           }
 
           const channels = spaceChannels[activeSpace.id] ?? []
-          const filteredChannels = channels.filter(ch => !channelSearchQuery.trim() || ch.name.toLowerCase().includes(channelSearchQuery.toLowerCase()))
+          const userRoleIds = memberRoleMap?.[user.id] || []
+          const isOwner = activeSpace.creator_id === user.id
+          const isAdmin = canUserDo(activeSpace.id, user.id, 'administrator')
+
+          const visibleChannels = channels.filter(ch => {
+            if (!ch.is_private) return true
+            if (isOwner || isAdmin) return true
+            const allowed = ch.allowed_role_ids || []
+            return userRoleIds.some(roleId => allowed.includes(roleId))
+          })
+
+          const filteredChannels = visibleChannels.filter(ch => !channelSearchQuery.trim() || ch.name.toLowerCase().includes(channelSearchQuery.toLowerCase()))
 
           // Grouping channels
           const categoriesMap: Record<string, Channel[]> = {}
@@ -244,7 +325,18 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                   className={`channel-item ${selectedChannel?.id === ch.id ? 'active' : ''} ${unreadChannels.has(ch.id) ? 'unread' : ''}`} 
                   onClick={() => setSelectedChannel(ch)}
                 >
-                  <span className="ch-icon">{ch.is_announcement ? <MegaphoneIcon style={{ color: 'var(--accent-color)' }} /> : <HashtagIcon />}</span>
+                  <span className="ch-icon" title={ch.is_private ? "Canal Privado" : undefined}>
+                    {ch.is_private ? (
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                      </svg>
+                    ) : ch.is_announcement ? (
+                      <MegaphoneIcon style={{ color: 'var(--accent-color)' }} />
+                    ) : (
+                      <HashtagIcon />
+                    )}
+                  </span>
                   <span className="channel-item-name">{ch.name}</span>
                   {ch.is_announcement && <span className="channel-badge-pill">Avisos</span>}
                   {unreadChannels.has(ch.id) && <span className="channel-unread-dot" />}
@@ -288,7 +380,15 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                     }
                   }}
                 >
-                  <span className="ch-icon"><VolumeIcon /></span>
+                  <span className="ch-icon" style={{ display: 'flex', alignItems: 'center', gap: '3px' }} title={ch.is_private ? "Canal de Voz Privado" : undefined}>
+                    <VolumeIcon />
+                    {ch.is_private && (
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8 }}>
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                      </svg>
+                    )}
+                  </span>
                   <span className="channel-item-name">{ch.name}</span>
                   {channelVoiceUsers.some(p => p.screenStream && p.screenStream.getVideoTracks().length > 0) && (
                     <span className="channel-live-badge" title="Transmissão ao vivo em andamento">
@@ -363,13 +463,16 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
           }
 
           return (
-            <aside className="sidebar channels-sidebar">
+            <aside 
+              className={`sidebar channels-sidebar ${isResizing ? 'is-resizing' : ''}`}
+              style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, maxWidth: `${sidebarWidth}px` }}
+            >
               {/* Server Header Card with Dropdown Menu */}
               <div 
-                className="server-header-card" 
+                className={`server-header-card ${activeSpace.banner_url ? 'has-banner' : ''}`} 
                 onClick={() => setShowServerDropdown(prev => !prev)}
                 style={{
-                  background: activeSpace.banner_url ? `url(${activeSpace.banner_url}) center/cover` : undefined
+                  backgroundImage: activeSpace.banner_url ? `url(${activeSpace.banner_url})` : undefined
                 }}
               >
                 <div className="server-header-card-content" style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
@@ -381,10 +484,12 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                       {activeSpace.name}
                     </h3>
                     {activeSpace.creator_id === user.id && (
-                      <span className="server-crown-badge" title="Você é o Dono do Espaço" style={{ flexShrink: 0 }}>👑</span>
+                      <span className="server-crown-badge" title="Você é o Dono do Espaço" style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>
+                        <CrownIcon style={{ width: '13px', height: '13px', color: '#f59e0b' }} />
+                      </span>
                     )}
                   </div>
-                  <span className={`server-dropdown-chevron ${showServerDropdown ? 'open' : ''}`} style={{ transition: 'transform 0.2s ease', transform: showServerDropdown ? 'rotate(180deg)' : 'none', color: 'var(--text-muted)' }}>▾</span>
+                  <ChevronDownIcon className={`server-dropdown-chevron ${showServerDropdown ? 'open' : ''}`} style={{ width: '13px', height: '13px', transition: 'transform 0.2s ease', transform: showServerDropdown ? 'rotate(180deg)' : 'none', color: 'var(--text-muted)', flexShrink: 0 }} />
                 </div>
 
                 {/* Echo Server Command Hub */}
@@ -394,7 +499,9 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                       <div className="server-hub-title-row">
                         <span className="server-hub-title">{activeSpace.name}</span>
                         {activeSpace.creator_id === user.id && (
-                          <span className="server-owner-chip">👑 Dono</span>
+                          <span className="server-owner-chip" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <CrownIcon style={{ width: '11px', height: '11px', color: '#f59e0b' }} /> Dono
+                          </span>
                         )}
                       </div>
                       <div className="server-hub-meta-stats">
@@ -409,16 +516,18 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                       </div>
                     </div>
 
+                    {(activeSpace.creator_id === user.id || canUserDo(activeSpace.id, user.id, 'administrator')) && (
+                      <button 
+                        type="button" 
+                        className="server-dropdown-item" 
+                        onClick={() => { setShowServerDropdown(false); openSpaceSettings(activeSpace); }}
+                      >
+                        <SettingsIcon style={{ width: '15px', height: '15px', color: '#94a3b8' }} />
+                        <span>Configurações do Espaço</span>
+                      </button>
+                    )}
                     <button 
-                      type="button"
-                      className="server-dropdown-item" 
-                      onClick={() => { setShowServerDropdown(false); openSpaceSettings(activeSpace); }}
-                    >
-                      <SettingsIcon style={{ width: '15px', height: '15px', color: '#94a3b8' }} />
-                      <span>Configurações do Espaço</span>
-                    </button>
-                    <button 
-                      type="button"
+                      type="button" 
                       className="server-dropdown-item" 
                       onClick={() => {
                         setShowServerDropdown(false)
@@ -429,16 +538,18 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                       <UserPlusIcon style={{ width: '15px', height: '15px', color: 'var(--accent-color, #00f2fe)' }} />
                       <span>Convidar Amigos / Adicionar Membros</span>
                     </button>
+                    {(activeSpace.creator_id === user.id || canUserDo(activeSpace.id, user.id, 'manageChannels')) && (
+                      <button 
+                        type="button" 
+                        className="server-dropdown-item" 
+                        onClick={() => { setShowServerDropdown(false); setShowNewChannel(activeSpace.id); setNewChannelCategory(''); }}
+                      >
+                        <PlusIcon style={{ width: '15px', height: '15px', color: '#38bdf8' }} />
+                        <span>Novo Canal</span>
+                      </button>
+                    )}
                     <button 
-                      type="button"
-                      className="server-dropdown-item" 
-                      onClick={() => { setShowServerDropdown(false); setShowNewChannel(activeSpace.id); setNewChannelCategory(''); }}
-                    >
-                      <PlusIcon style={{ width: '15px', height: '15px', color: '#38bdf8' }} />
-                      <span>Novo Canal</span>
-                    </button>
-                    <button 
-                      type="button"
+                      type="button" 
                       className="server-dropdown-item" 
                       onClick={() => {
                         setShowServerDropdown(false)
@@ -452,7 +563,7 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                     </button>
                     <div className="server-dropdown-divider" />
                     <button 
-                      type="button"
+                      type="button" 
                       className="server-dropdown-item" 
                       onClick={() => { setShowServerDropdown(false); toggleMuteSpace(activeSpace.id); }}
                     >
@@ -461,7 +572,7 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                     </button>
                     {activeSpace.creator_id !== user.id && (
                       <button 
-                        type="button"
+                        type="button" 
                         className="server-dropdown-item danger" 
                         onClick={() => { setShowServerDropdown(false); handleLeaveSpace(activeSpace); }}
                       >
@@ -476,20 +587,21 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
               {/* Quick Channel Search Input */}
               <div className="channels-search-wrap">
                 <div className="channels-search-box" onClick={() => channelSearchInputRef?.current?.focus()}>
-                  <span className="channels-search-icon"><SearchIcon style={{ width: '13px', height: '13px' }} /></span>
-                  <input
+                  <SearchIcon className="channels-search-icon" style={{ width: '12px', height: '12px' }} />
+                  <input 
                     ref={channelSearchInputRef}
-                    type="text"
-                    placeholder="Buscar canais... (Ctrl+K)"
-                    value={channelSearchQuery}
-                    onChange={e => setChannelSearchQuery(e.target.value)}
-                    className="channels-search-input"
+                    type="text" 
+                    className="channels-search-input" 
+                    placeholder="Filtrar canais..." 
+                    value={channelSearchQuery} 
+                    onChange={e => setChannelSearchQuery(e.target.value)} 
                   />
                   {channelSearchQuery && (
                     <button 
                       type="button"
                       className="channels-search-clear" 
-                      onClick={() => setChannelSearchQuery('')}
+                      onClick={(e) => { e.stopPropagation(); setChannelSearchQuery(''); }}
+                      title="Limpar busca"
                     >
                       ✕
                     </button>
@@ -497,47 +609,82 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                 </div>
               </div>
 
-              <div className="sidebar-scrollable">
+              {/* Scrollable Channels Area */}
+              <div className="sidebar-scrollable custom-scrollbar">
                 <div className="channels-tree">
                   {uncategorizedText.length > 0 && (
                     <div className="channel-group">
-                      <div className="channel-category-header-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px 4px 10px' }}>
-                        <span className="channel-group-label" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.6px' }}>CANAIS DE TEXTO</span>
-                        {currentSpace && (canUserDo(currentSpace.id, user.id, 'manageChannels') || currentSpace.creator_id === user.id) && (
+                      <div className="channel-category-header-wrap">
+                        <button
+                          type="button"
+                          className="channel-category-header"
+                          onClick={() => toggleCategoryCollapse(activeSpace.id, '__text__')}
+                        >
+                          <span className="category-chevron">
+                            {collapsedCategories.has(`${activeSpace.id}::__text__`) ? (
+                              <ChevronRightIcon style={{ width: '10px', height: '10px' }} />
+                            ) : (
+                              <ChevronDownIcon style={{ width: '10px', height: '10px' }} />
+                            )}
+                          </span>
+                          <span className="category-name">CANAIS DE TEXTO</span>
+                        </button>
+                        {(canUserDo(activeSpace.id, user.id, 'manageChannels') || activeSpace.creator_id === user.id) && (
                           <button 
                             type="button" 
-                            onClick={() => { setShowNewChannel(activeSpace.id); setNewChannelCategory(''); }} 
+                            onClick={() => { setShowNewChannel(activeSpace.id); setNewChannelCategory(''); setNewChannelType('text'); }} 
                             title="Criar canal de texto" 
                             className="category-add-channel-btn"
                           >
-                            ＋
+                            <PlusIcon style={{ width: '12px', height: '12px' }} />
                           </button>
                         )}
                       </div>
-                      {uncategorizedText.map(renderChannelNode)}
+                      {!collapsedCategories.has(`${activeSpace.id}::__text__`) && (
+                        <div className="category-channels-list">
+                          {uncategorizedText.map(renderChannelNode)}
+                        </div>
+                      )}
                     </div>
                   )}
 
                   {uncategorizedVoice.length > 0 && (
                     <div className="channel-group">
-                      <div className="channel-category-header-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px 4px 10px' }}>
-                        <span className="channel-group-label" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.6px' }}>CANAIS DE VOZ</span>
-                        {currentSpace && (canUserDo(currentSpace.id, user.id, 'manageChannels') || currentSpace.creator_id === user.id) && (
+                      <div className="channel-category-header-wrap">
+                        <button
+                          type="button"
+                          className="channel-category-header"
+                          onClick={() => toggleCategoryCollapse(activeSpace.id, '__voice__')}
+                        >
+                          <span className="category-chevron">
+                            {collapsedCategories.has(`${activeSpace.id}::__voice__`) ? (
+                              <ChevronRightIcon style={{ width: '10px', height: '10px' }} />
+                            ) : (
+                              <ChevronDownIcon style={{ width: '10px', height: '10px' }} />
+                            )}
+                          </span>
+                          <span className="category-name">CANAIS DE VOZ</span>
+                        </button>
+                        {(canUserDo(activeSpace.id, user.id, 'manageChannels') || activeSpace.creator_id === user.id) && (
                           <button 
                             type="button" 
-                            onClick={() => { setShowNewChannel(activeSpace.id); setNewChannelCategory(''); }} 
+                            onClick={() => { setShowNewChannel(activeSpace.id); setNewChannelCategory(''); setNewChannelType('voice'); }} 
                             title="Criar canal de voz" 
                             className="category-add-channel-btn"
                           >
-                            ＋
+                            <PlusIcon style={{ width: '12px', height: '12px' }} />
                           </button>
                         )}
                       </div>
-                      {uncategorizedVoice.map(renderChannelNode)}
+                      {!collapsedCategories.has(`${activeSpace.id}::__voice__`) && (
+                        <div className="category-channels-list">
+                          {uncategorizedVoice.map(renderChannelNode)}
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {/* Categorias com botão + integrado */}
+                  {/* Custom Categories */}
                   {categoryEntries.map(([catName, catChannels]) => {
                     const isCatCollapsed = collapsedCategories.has(`${activeSpace.id}::${catName}`)
                     return (
@@ -549,21 +696,23 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                             onClick={() => toggleCategoryCollapse(activeSpace.id, catName)}
                           >
                             <span className="category-chevron">
-                              {isCatCollapsed ? <ChevronRightIcon style={{ width: '11px', height: '11px' }} /> : <ChevronDownIcon style={{ width: '11px', height: '11px' }} />}
+                              {isCatCollapsed ? <ChevronRightIcon style={{ width: '10px', height: '10px' }} /> : <ChevronDownIcon style={{ width: '10px', height: '10px' }} />}
                             </span>
                             <span className="category-name">{catName.toUpperCase()}</span>
                           </button>
-                          <button
-                            type="button"
-                            className="category-add-channel-btn"
-                            title={`Criar canal em ${catName}`}
-                            onClick={() => {
-                              setShowNewChannel(activeSpace.id)
-                              setNewChannelCategory(catName)
-                            }}
-                          >
-                            ＋
-                          </button>
+                          {(canUserDo(activeSpace.id, user.id, 'manageChannels') || activeSpace.creator_id === user.id) && (
+                            <button
+                              type="button"
+                              className="category-add-channel-btn"
+                              title={`Criar canal em ${catName}`}
+                              onClick={() => {
+                                setShowNewChannel(activeSpace.id)
+                                setNewChannelCategory(catName)
+                              }}
+                            >
+                              <PlusIcon style={{ width: '12px', height: '12px' }} />
+                            </button>
+                          )}
                         </div>
                         {!isCatCollapsed && (
                           <div className="category-channels-list">
@@ -579,11 +728,6 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                       Nenhum canal encontrado para "{channelSearchQuery}"
                     </div>
                   )}
-
-                  <button className="add-channel-btn" onClick={() => { setShowNewChannel(activeSpace.id); setNewChannelCategory(''); }}>
-                    <PlusIcon />
-                    <span>Novo Canal</span>
-                  </button>
                 </div>
 
                 {/* Echo Channel Studio Modal */}
@@ -641,7 +785,7 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                             <div className="echo-ch-section-label">Nome do Canal</div>
                             <div className="echo-ch-input-wrapper">
                               <span className="echo-ch-input-prefix">
-                                {newChannelType === 'text' ? '#' : '🔊'}
+                                {newChannelType === 'text' ? '#' : <VolumeIcon style={{ width: '13px', height: '13px' }} />}
                               </span>
                               <input 
                                 className="echo-ch-input"
@@ -668,6 +812,75 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                                 </button>
                               ))}
                             </div>
+
+                            {/* Canal Privado Switch */}
+                            <div style={{ marginTop: '16px', padding: '14px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                    <span>🔒 Canal Privado</span>
+                                  </div>
+                                  <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                    Apenas membros e cargos selecionados poderão visualizar este canal.
+                                  </div>
+                                </div>
+                                <label className="echo-switch">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!newChannelIsPrivate}
+                                    onChange={e => setNewChannelIsPrivate?.(e.target.checked)}
+                                  />
+                                  <span className="echo-switch-slider"></span>
+                                </label>
+                              </div>
+
+                              {newChannelIsPrivate && (
+                                <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                                  <div style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                                    Quem pode acessar este canal?
+                                  </div>
+                                  {(!serverRoles || serverRoles.length === 0) ? (
+                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                      Nenhum cargo disponível. O dono e administradores terão acesso automático.
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                      {serverRoles.map(role => {
+                                        const isSelected = (newChannelAllowedRoles || []).includes(role.id)
+                                        return (
+                                          <button
+                                            key={role.id}
+                                            type="button"
+                                            onClick={() => {
+                                              setNewChannelAllowedRoles?.(prev => 
+                                                isSelected ? prev.filter(id => id !== role.id) : [...prev, role.id]
+                                              )
+                                            }}
+                                            style={{
+                                              background: isSelected ? 'rgba(88, 101, 242, 0.25)' : 'rgba(255,255,255,0.04)',
+                                              border: `1px solid ${isSelected ? 'var(--accent-color)' : 'rgba(255,255,255,0.1)'}`,
+                                              color: isSelected ? '#ffffff' : 'var(--text-secondary)',
+                                              padding: '4px 10px',
+                                              borderRadius: '6px',
+                                              fontSize: '11.5px',
+                                              fontWeight: isSelected ? 600 : 400,
+                                              cursor: 'pointer',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '5px'
+                                            }}
+                                          >
+                                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: role.color || '#99aab5' }} />
+                                            <span>{role.name}</span>
+                                            {isSelected && <span>✓</span>}
+                                          </button>
+                                        )
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
 
@@ -675,7 +888,13 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                           <button 
                             type="button" 
                             className="echo-ch-modal-btn cancel"
-                            onClick={() => { setShowNewChannel(null); setNewChannelName(''); setNewChannelCategory(''); }}
+                            onClick={() => { 
+                              setShowNewChannel(null); 
+                              setNewChannelName(''); 
+                              setNewChannelCategory('');
+                              setNewChannelIsPrivate?.(false);
+                              setNewChannelAllowedRoles?.([]);
+                            }}
                           >
                             Cancelar
                           </button>
@@ -687,9 +906,10 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                     </div>
                   </div>
                 )}
+              </div>
 
-                {/* Docked Voice Status Panel (Ergonomic 2-row layout) */}
-                {activeVoiceChannelId && (
+              {/* Docked Voice Status Panel (Ergonomic 2-row layout) */}
+              {activeVoiceChannelId && (
                   <div className="voice-status-panel">
                     <div className="voice-status-header-row">
                       <div className="voice-status-info">
@@ -727,7 +947,12 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
 
                     {isPttMode && (
                       <div style={{ textAlign: 'center', padding: '4px 8px', background: isPttActive ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.05)', borderRadius: '6px', margin: '4px 0 6px', border: isPttActive ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.1)', fontSize: '11px', fontWeight: 600, color: isPttActive ? '#10b981' : 'var(--text-secondary)' }}>
-                        {isPttActive ? '🟢 Transmitindo Voz' : `PTT: [${pttKey.replace('Key', '')}]`}
+                        {isPttActive ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', justifyContent: 'center' }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+                            Transmitindo Voz
+                          </span>
+                        ) : `PTT: [${pttKey.replace('Key', '')}]`}
                       </div>
                     )}
 
@@ -747,7 +972,6 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                     </div>
                   </div>
                 )}
-              </div>
 
               {/* User Profile Footer */}
               <UnifiedUserProfileFooter
@@ -764,6 +988,12 @@ const activeSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || nul
                 onSignOut={onSignOut}
                 myGamePresence={myGamePresence}
                 avatarDecoration={avatarDecoration}
+              />
+              <div
+                className={`channels-sidebar-resizer ${isResizing ? 'active' : ''}`}
+                onMouseDown={handleMouseDownResize}
+                onDoubleClick={handleDoubleClickReset}
+                title="Arraste para redimensionar a barra lateral (Duplo clique para redefinir)"
               />
             </aside>
           )

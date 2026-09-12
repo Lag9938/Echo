@@ -30,66 +30,81 @@ export function AppearanceTab({
       <p>Personalize o visual do Echo com temas exclusivos. Assinantes premium têm acesso a temas personalizados.</p>
 
       {/* Grade de Temas */}
-      <div className="themes-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginTop: '24px' }}>
+      <div className="themes-grid-showcase">
         {THEMES.map(t => {
           const isSelected = theme === t.id
           return (
             <div 
               key={t.id}
               onClick={() => selectTheme(t.id)}
-              className={`theme-card ${isSelected ? 'selected' : ''}`}
+              className={`theme-showcase-card ${isSelected ? 'selected' : ''}`}
               style={{
-                padding: '16px',
-                borderRadius: '12px',
-                background: 'var(--bg-secondary)',
-                border: isSelected ? '2px solid var(--accent-color)' : '2px solid var(--border-color)',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-                position: 'relative',
-                transition: 'all 0.2s',
-                boxShadow: isSelected ? '0 4px 12px rgba(0,0,0,0.08)' : 'none'
-              }}
+                '--card-accent': t.accentColor
+              } as React.CSSProperties}
             >
-              <div style={{ display: 'flex', gap: '6px' }}>
-                {t.previewColors.map((color, i) => (
-                  <span 
-                    key={i} 
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      background: color,
-                      border: '1px solid rgba(0,0,0,0.1)'
-                    }} 
-                  />
-                ))}
+              {/* Mini UI Mockup */}
+              <div className="theme-mini-mockup" style={{ background: t.bgPrimary }}>
+                <div className="theme-mockup-topbar" style={{ background: t.bgSecondary }}>
+                  <span className="mockup-dot" style={{ background: t.accentColor }} />
+                  <span className="mockup-dot" style={{ background: t.textColor, opacity: 0.3 }} />
+                  <span className="mockup-dot" style={{ background: t.textColor, opacity: 0.2 }} />
+                  <span className="mockup-bar-title" style={{ background: t.textColor }} />
+                </div>
+                <div className="theme-mockup-body">
+                  <div className="theme-mockup-sidebar" style={{ background: t.bgSecondary }}>
+                    <div className="mockup-channel-item active" style={{ background: t.accentColor }} />
+                    <div className="mockup-channel-item" style={{ background: t.textColor }} />
+                    <div className="mockup-channel-item" style={{ background: t.textColor }} />
+                  </div>
+                  <div className="theme-mockup-chat" style={{ background: t.bgPrimary }}>
+                    <div className="mockup-msg-group">
+                      <div className="mockup-avatar" style={{ background: t.accentColor }} />
+                      <div className="mockup-lines">
+                        <div className="mockup-line-author" style={{ background: t.accentColor }} />
+                        <div className="mockup-line-text" style={{ background: t.textColor, width: '85%' }} />
+                        <div className="mockup-line-text" style={{ background: t.textColor, width: '55%', opacity: 0.4 }} />
+                      </div>
+                    </div>
+                    <div className="mockup-input-box" style={{ background: t.bgSecondary, borderColor: `${t.accentColor}40` }} />
+                  </div>
+                </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontWeight: 'bold', fontSize: '14px', color: 'var(--text-primary)' }}>{t.name}</span>
-                <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+              {/* Theme Info */}
+              <div className="theme-card-content">
+                <div className="theme-card-header">
+                  <span className="theme-card-title">{t.name}</span>
+                  <span 
+                    className="theme-card-tag" 
+                    style={{ 
+                      color: t.accentColor, 
+                      borderColor: `${t.accentColor}30`, 
+                      background: `${t.accentColor}15` 
+                    }}
+                  >
+                    {t.tag}
+                  </span>
+                </div>
+                <p className="theme-card-desc">{t.description}</p>
+              </div>
+
+              <div className="theme-card-footer">
+                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                   {t.isPremium ? (isPremiumUser ? 'Premium 👑 (Ativo)' : 'Premium 👑') : 'Gratuito'}
                 </span>
+                <div className="theme-swatches">
+                  {t.previewColors.map((color, i) => (
+                    <span 
+                      key={i} 
+                      className="theme-swatch-dot" 
+                      style={{ background: color }} 
+                    />
+                  ))}
+                </div>
               </div>
 
               {isSelected && (
-                <span style={{
-                  position: 'absolute',
-                  top: '12px',
-                  right: '12px',
-                  background: 'var(--accent-color)',
-                  color: '#fff',
-                  borderRadius: '50%',
-                  width: '18px',
-                  height: '18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '10px',
-                  fontWeight: 'bold'
-                }}>
+                <span className="theme-check-badge">
                   ✓
                 </span>
               )}

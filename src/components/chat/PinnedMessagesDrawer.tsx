@@ -1,6 +1,7 @@
 import type { Space, Message, PinnedMessage, ServerEmoji, RolePermissions } from '../../types'
 import { PinIcon } from '../icons'
 import { formatMessageText } from '../../lib/messageFormatter'
+import { useUIStore } from '../../stores/useUIStore'
 
 export interface PinnedMessagesDrawerProps {
   isOpen: boolean
@@ -29,6 +30,7 @@ export function PinnedMessagesDrawer({
   profileDisplayName,
   serverEmojis = []
 }: PinnedMessagesDrawerProps) {
+  const openLightbox = useUIStore((s) => s.openLightbox)
   if (!isOpen) return null
 
   const channelPinned = pinnedMessages[channelId] || []
@@ -77,7 +79,13 @@ export function PinnedMessagesDrawer({
               </div>
               <div className="pinned-msg-content">
                 {pin.attachment_url && pin.attachment_type === 'image' ? (
-                  <img src={pin.attachment_url} alt="anexo fixado" style={{ maxWidth: '100%', maxHeight: '120px', borderRadius: '6px', objectFit: 'cover' }} />
+                  <img
+                    src={pin.attachment_url}
+                    alt="anexo fixado"
+                    onClick={() => openLightbox(pin.attachment_url!)}
+                    title="Clique para ampliar"
+                    style={{ maxWidth: '100%', maxHeight: '120px', borderRadius: '6px', objectFit: 'contain', cursor: 'pointer', background: 'rgba(0,0,0,0.3)' }}
+                  />
                 ) : null}
                 <p>{formatMessageText(pin.body, profileDisplayName, serverEmojis)}</p>
               </div>

@@ -1,6 +1,31 @@
+import { useState } from 'react'
+import type { Channel, RolePermissions } from '../../types'
+
 export interface VolumeControlUser {
   userId: string
   displayName: string
+}
+
+export interface VolumeControlModalProps {
+  volumeControlUser: VolumeControlUser | null
+  onClose: () => void
+  userVolumes: Record<string, number>
+  setUserVolumes: (v: Record<string, number>) => void
+  userStereoPans: Record<string, number>
+  setUserStereoPans: (p: Record<string, number>) => void
+  changePeerPan: (peerId: string, panVal: number) => void
+  spatialAudioEnabled: boolean
+  setSpatialAudioEnabledState: (enabled: boolean) => void
+  participants: { userId: string }[]
+  currentUserId: string
+  // Moderation props
+  spaceId?: string
+  isSpaceOwner?: boolean
+  canUserDo?: (spaceId: string, userId: string, perm: keyof RolePermissions) => boolean
+  availableVoiceChannels?: Channel[]
+  serverMuteParticipant?: (userId: string) => void
+  disconnectParticipant?: (userId: string) => void
+  moveParticipant?: (userId: string, targetChannelId: string, targetChannelName?: string) => void
 }
 
 export function VolumeControlModal({
@@ -14,20 +39,18 @@ export function VolumeControlModal({
   spatialAudioEnabled,
   setSpatialAudioEnabledState,
   participants,
-  currentUserId
-}: {
-  volumeControlUser: VolumeControlUser | null
-  onClose: () => void
-  userVolumes: Record<string, number>
-  setUserVolumes: (v: Record<string, number>) => void
-  userStereoPans: Record<string, number>
-  setUserStereoPans: (p: Record<string, number>) => void
-  changePeerPan: (peerId: string, panVal: number) => void
-  spatialAudioEnabled: boolean
-  setSpatialAudioEnabledState: (enabled: boolean) => void
-  participants: { userId: string }[]
-  currentUserId: string
-}) {
+  currentUserId,
+  spaceId,
+  isSpaceOwner,
+  canUserDo,
+  availableVoiceChannels,
+  serverMuteParticipant,
+  disconnectParticipant,
+  moveParticipant
+}: VolumeControlModalProps) {
+  const [mutedFeedback, setMutedFeedback] = useState(false)
+  const [selectedMoveChannelId, setSelectedMoveChannelId] = useState('')
+
   if (!volumeControlUser) return null
 
   return (
@@ -165,6 +188,141 @@ export function VolumeControlModal({
             )}
           </div>
         </div>
+
+        {/* Section 3: Voice Moderation (Moderação da Chamada) */}
+        {(() => {
+          const isOwnerOrAdmin = isSpaceOwner || (canUserDo && spaceId && currentUserId ? canUserDo(spaceId, currentUserId, 'administrator') : false)
+          const canMute = isOwnerOrAdmin || (canUserDo && spaceId && currentUserId ? canUserDo(spaceId, currentUserId, 'muteMembers') : false)
+          const canDisconnect = isOwnerOrAdmin || (canUserDo && spaceId && currentUserId ? canUserDo(spaceId, currentUserId, 'disconnectMembers') : false)
+          const canMove = isOwnerOrAdmin || (canUserDo && spaceId && currentUserId ? canUserDo(spaceId, currentUserId, 'moveMembers') : false)
+          const canModerateAny = volumeControlUser.userId !== currentUserId && (canMute || canDisconnect || canMove)
+
+          if (!canModerateAny) return null
+
+          return (
+            <div className="volume-moderation-container" style={{ margin: '14px 0', padding: '14px', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', fontSize: '13px', fontWeight: 700, color: '#f87171' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                <span>Moderação da Chamada</span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {canMute && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        serverMuteParticipant?.(volumeControlUser.userId)
+                        setMutedFeedback(true)
+                        setTimeout(() => setMutedFeedback(false), 2500)
+                      }}
+                      style={{
+                        flex: 1,
+                        background: mutedFeedback ? '#10b981' : 'rgba(239, 68, 68, 0.15)',
+                        border: '1px solid rgba(239, 68, 68, 0.35)',
+                        color: mutedFeedback ? '#ffffff' : '#fca5a5',
+                        padding: '7px 10px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <span>🔇</span>
+                      <span>{mutedFeedback ? 'Silenciado!' : 'Mutar no Servidor'}</span>
+                    </button>
+                  )}
+
+                  {canDisconnect && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        disconnectParticipant?.(volumeControlUser.userId)
+                        onClose()
+                      }}
+                      style={{
+                        flex: 1,
+                        background: 'rgba(239, 68, 68, 0.15)',
+                        border: '1px solid rgba(239, 68, 68, 0.35)',
+                        color: '#fca5a5',
+                        padding: '7px 10px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <span>🚪</span>
+                      <span>Expulsar da Chamada</span>
+                    </button>
+                  )}
+                </div>
+
+                {canMove && availableVoiceChannels && availableVoiceChannels.length > 0 && (
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
+                    <select
+                      value={selectedMoveChannelId}
+                      onChange={(e) => setSelectedMoveChannelId(e.target.value)}
+                      style={{
+                        flex: 1,
+                        background: 'var(--bg-secondary, #1e1f22)',
+                        border: '1px solid var(--border-color, rgba(255,255,255,0.12))',
+                        color: 'var(--text-primary, #ffffff)',
+                        padding: '7px 10px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        outline: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="">Mover para canal de voz...</option>
+                      {availableVoiceChannels.map(ch => (
+                        <option key={ch.id} value={ch.id}>🔊 {ch.name}</option>
+                      ))}
+                    </select>
+
+                    <button
+                      type="button"
+                      disabled={!selectedMoveChannelId}
+                      onClick={() => {
+                        const targetCh = availableVoiceChannels.find(c => c.id === selectedMoveChannelId)
+                        if (targetCh) {
+                          moveParticipant?.(volumeControlUser.userId, targetCh.id, targetCh.name)
+                          onClose()
+                        }
+                      }}
+                      style={{
+                        background: selectedMoveChannelId ? 'var(--accent-color, #5865f2)' : 'rgba(255,255,255,0.05)',
+                        border: 'none',
+                        color: selectedMoveChannelId ? '#ffffff' : 'var(--text-muted, #72767d)',
+                        padding: '7px 14px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: selectedMoveChannelId ? 'pointer' : 'not-allowed',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      Mover
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })()}
 
         <button className="picker-close-btn" style={{ width: '100%', margin: '6px 0 0 0' }} onClick={onClose}>
           Pronto

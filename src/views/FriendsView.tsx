@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, useMemo, type FormEvent } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, type FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { DirectMessage, FriendshipRequest, Page } from '../types'
 import { formatGameDuration } from '../lib/formatters'
 import { AvatarDecoration } from '../components/AvatarDecoration'
 import { GameLogo } from '../components/GameLogos'
 import { ModernVoiceNotePlayer } from '../components/chat/ModernVoiceNotePlayer'
+import { ChatLinkEmbed } from '../components/chat/ChatLinkEmbed'
 import { UnifiedUserProfileFooter } from '../components/sidebar/UnifiedUserProfileFooter'
 import {
   ActivityIcon,
@@ -31,8 +32,13 @@ import {
   UserIcon,
   UserPlusIcon,
   UsersIcon,
-  VoiceMessageIcon
+  VoiceMessageIcon,
+  ZoomInIcon
 } from '../components/icons'
+import { openExternalUrl } from '../lib/openExternal'
+import { useUIStore } from '../stores/useUIStore'
+import { formatMessageText } from '../lib/messageFormatter'
+
 export function FriendsView({
   friendships,
   friendTab,
@@ -96,7 +102,9 @@ export function FriendsView({
   handleChangeVoiceSpeed,
   onDeleteDM,
   onToggleSaveDM,
-  isMessageSaved
+  isMessageSaved,
+  isFriendTyping = false,
+  notifyDMTyping
 }: {
   friendships: FriendshipRequest[]
   friendTab: 'online' | 'all' | 'pending' | 'add'
@@ -119,7 +127,7 @@ export function FriendsView({
   onSendDM: (event: FormEvent) => void
   onCloseDM: () => void
   isUploading: boolean
-  onUploadFile: (file: File) => void
+  onUploadFile: (file: File, caption?: string) => void
   profileDisplayName: string
   profileAvatarUrl: string
   myGamePresence?: { name: string; icon: string; startedAt: number } | null
@@ -161,14 +169,115 @@ export function FriendsView({
   onDeleteDM?: (messageId: string) => void
   onToggleSaveDM?: (msg: DirectMessage, targetUser: any) => void
   isMessageSaved?: (msgId: string) => boolean
+  isFriendTyping?: boolean
+  notifyDMTyping?: (targetFriendId: string) => void
 }) {
+  const openLightbox = useUIStore((s) => s.openLightbox)
   const dmFileRef = useRef<HTMLInputElement>(null)
   const dmMessagesEndRef = useRef<HTMLDivElement>(null)
+  const dmMessagesContainerRef = useRef<HTMLDivElement>(null)
   const friendsSearchRef = useRef<HTMLInputElement>(null)
   const [localSearch, setLocalSearch] = useState('')
   const [showSidebar, setShowSidebar] = useState<boolean>(() => {
     return localStorage.getItem('echo-friends-sidebar-open') !== 'false'
   })
+
+  // Staged clipboard paste image for DMs
+  const [pendingDMPastedFile, setPendingDMPastedFile] = useState<File | null>(null)
+  const [pendingDMImagePreview, setPendingDMImagePreview] = useState<string | null>(null)
+
+  const removePendingDMImage = useCallback(() => {
+    setPendingDMPastedFile(null)
+    setPendingDMImagePreview(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+  }, [])
+
+  const handleDMPaste = useCallback((e: React.ClipboardEvent | ClipboardEvent) => {
+    const clipboardData = ('clipboardData' in e ? e.clipboardData : null)
+    const items = clipboardData?.items
+    if (!items) return
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (file) {
+          e.preventDefault()
+          const rawExt = file.type.split('/')[1] || 'png'
+          const ext = rawExt.replace(/[^a-zA-Z0-9]/g, '')
+          const renamedFile = new File([file], `screenshot_${Date.now()}.${ext}`, { type: file.type })
+
+          setPendingDMImagePreview(prev => {
+            if (prev) URL.revokeObjectURL(prev)
+            return URL.createObjectURL(renamedFile)
+          })
+          setPendingDMPastedFile(renamedFile)
+          return
+        }
+      }
+    }
+  }, [])
+
+  // Window paste listener when DM is open
+  useEffect(() => {
+    if (!selectedDMUserId) return
+    const onWindowPaste = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement | null
+      if (target && target.tagName === 'INPUT' && target.id !== 'dm-message-input') {
+        return
+      }
+      if (target && target.tagName === 'TEXTAREA') {
+        return
+      }
+      handleDMPaste(e)
+    }
+    window.addEventListener('paste', onWindowPaste)
+    return () => window.removeEventListener('paste', onWindowPaste)
+  }, [selectedDMUserId, handleDMPaste])
+
+  // Esc key cancels pending DM image
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && pendingDMPastedFile) {
+        removePendingDMImage()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [pendingDMPastedFile, removePendingDMImage])
+
+  const handleDMComposeSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (pendingDMPastedFile) {
+      const file = pendingDMPastedFile
+      const caption = dmDraft.trim()
+      removePendingDMImage()
+      setDmDraft('')
+      await onUploadFile(file, caption)
+      return
+    }
+    onSendDM(e)
+  }
+
+  // Garante que o chat de DMs role até o final com a mensagem perfeitamente acima da caixa de digitação
+  useEffect(() => {
+    if (directMessages.length > 0) {
+      const scrollToBottom = () => {
+        if (dmMessagesContainerRef.current) {
+          dmMessagesContainerRef.current.scrollTop = dmMessagesContainerRef.current.scrollHeight
+        }
+      }
+      scrollToBottom()
+      const t1 = setTimeout(scrollToBottom, 50)
+      const t2 = setTimeout(scrollToBottom, 160)
+      return () => {
+        clearTimeout(t1)
+        clearTimeout(t2)
+      }
+    }
+  }, [directMessages.length])
 
   useEffect(() => {
     localStorage.setItem('echo-friends-sidebar-open', String(showSidebar))
@@ -544,7 +653,7 @@ export function FriendsView({
           )}
 
           {/* Messages Feed */}
-          <div className="dm-full-messages-list">
+          <div className="dm-full-messages-list" ref={dmMessagesContainerRef}>
             <div className="dm-welcome-hero">
               <div className="friend-avatar" style={{ width: 72, height: 72, fontSize: 28, position: 'relative' }}>
                 {dmUser.avatar_url ? (
@@ -574,53 +683,141 @@ export function FriendsView({
               )}
             </div>
 
-            {directMessages.map(msg => (
-              <div key={msg.id} className={`dm-message ${msg.sender_id === user.id ? 'dm-sent' : 'dm-received'}`}>
-                {onToggleSaveDM && (
-                  <button 
-                    type="button" 
-                    className={`dm-star-btn ${isMessageSaved?.(msg.id) ? 'active' : ''}`}
-                    onClick={() => onToggleSaveDM(msg, dmUser)}
-                    title={isMessageSaved?.(msg.id) ? "Remover dos salvos" : "Salvar mensagem ⭐"}
+            {/* Direct Messages Stream */}
+            <div
+              className="dm-messages-stream"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                width: '100%',
+                padding: '0 4px 16px 4px',
+                boxSizing: 'border-box'
+              }}
+            >
+              {directMessages.map((msg) => {
+                const isSent = msg.sender_id === user.id
+                const isImage = Boolean(msg.attachment_url && msg.attachment_type === 'image')
+                const isAudio = Boolean(msg.attachment_url && msg.attachment_type === 'audio')
+                const isOtherFile = Boolean(msg.attachment_url && !isImage && !isAudio)
+                const hasLink = Boolean(!isAudio && !isOtherFile && msg.body && /(https?:\/\/[^\s]+)/i.test(msg.body))
+                const hasText = Boolean(
+                  msg.body &&
+                  (!isImage || (
+                    msg.body !== 'Imagem' &&
+                    !/^screenshot_\d+\./i.test(msg.body) &&
+                    !/^image_\d+\./i.test(msg.body) &&
+                    !msg.body.startsWith('http')
+                  ))
+                )
+
+                return (
+                  <div
+                    key={msg.id}
+                    className={`dm-message-row ${isSent ? 'dm-sent' : 'dm-received'}`}
                   >
-                    <StarIcon style={{ width: '12px', height: '12px' }} />
-                  </button>
-                )}
-                {onDeleteDM && msg.sender_id === user.id && (
-                  <button 
-                    type="button" 
-                    className="dm-delete-btn"
-                    onClick={() => onDeleteDM(msg.id)}
-                    title="Excluir mensagem"
-                  >
-                    <TrashIcon style={{ width: '12px', height: '12px' }} />
-                  </button>
-                )}
-                <div className="dm-bubble">
-                  {msg.attachment_url && msg.attachment_type === 'image' && (
-                    <img src={msg.attachment_url} alt="anexo" className="dm-attachment-img" onClick={() => window.open(msg.attachment_url, '_blank')} />
-                  )}
-                  {msg.attachment_url && msg.attachment_type === 'audio' && handleToggleVoicePlay && voiceNoteAudioRef ? (
-                    <ModernVoiceNotePlayer
-                      audioUrl={msg.attachment_url}
-                      messageId={msg.id}
-                      activePlayingId={activePlayingVoiceNote ?? null}
-                      onTogglePlay={() => handleToggleVoicePlay(msg.id, msg.attachment_url!)}
-                      speed={voiceNotePlaySpeed ?? 1}
-                      onChangeSpeed={handleChangeVoiceSpeed ?? (() => {})}
-                      activeAudioRef={voiceNoteAudioRef}
-                    />
-                  ) : msg.attachment_url && msg.attachment_type !== 'image' ? (
-                    <a href={msg.attachment_url} target="_blank" rel="noopener noreferrer" className="dm-attachment-file">
-                      <PaperclipIcon style={{ width: '12px', height: '12px', display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }} />
-                      <span>{msg.body}</span>
-                    </a>
-                  ) : null}
-                  {(!msg.attachment_url || (msg.attachment_type !== 'audio' && msg.attachment_type !== 'image')) && <span>{msg.body}</span>}
-                  <span className="dm-time">{new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-              </div>
-            ))}
+                    <div className="dm-message-container">
+                      {/* Action buttons (Star / Delete) */}
+                      <div className="dm-actions-toolbar">
+                        {onToggleSaveDM && (
+                          <button 
+                            type="button" 
+                            className={`dm-star-btn ${isMessageSaved?.(msg.id) ? 'active' : ''}`}
+                            onClick={() => onToggleSaveDM(msg, dmUser)}
+                          >
+                            <StarIcon style={{ width: '12px', height: '12px' }} />
+                          </button>
+                        )}
+                        {onDeleteDM && isSent && (
+                          <button 
+                            type="button" 
+                            className="dm-delete-btn"
+                            onClick={() => onDeleteDM(msg.id)}
+                          >
+                            <TrashIcon style={{ width: '12px', height: '12px' }} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Content Column (Stacked vertically) */}
+                      <div className="dm-message-content">
+                        {/* 1. Image Media Card */}
+                        {isImage && (
+                          <div
+                            className="dm-media-card"
+                            onClick={() => openLightbox(msg.attachment_url!)}
+                          >
+                            <div className="dm-media-viewport">
+                              <img
+                                src={msg.attachment_url}
+                                alt="anexo"
+                                className="dm-media-img"
+                                loading="lazy"
+                              />
+                              <div className="dm-media-hover-overlay">
+                                <div className="dm-media-zoom-pill">
+                                  <ZoomInIcon style={{ width: '14px', height: '14px' }} />
+                                  <span>Ampliar Imagem</span>
+                                </div>
+                              </div>
+                              <span className="dm-media-time">
+                                {new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 2. Text / Audio / File Bubble */}
+                        {(hasText || isAudio || isOtherFile) && (
+                          <div className="dm-bubble">
+                            {isAudio && handleToggleVoicePlay && voiceNoteAudioRef ? (
+                              <ModernVoiceNotePlayer
+                                audioUrl={msg.attachment_url!}
+                                messageId={msg.id}
+                                activePlayingId={activePlayingVoiceNote ?? null}
+                                onTogglePlay={() => handleToggleVoicePlay(msg.id, msg.attachment_url!)}
+                                speed={voiceNotePlaySpeed ?? 1}
+                                onChangeSpeed={handleChangeVoiceSpeed ?? (() => {})}
+                                activeAudioRef={voiceNoteAudioRef}
+                              />
+                            ) : isOtherFile ? (
+                              <a
+                                href={msg.attachment_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="dm-attachment-file"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  openExternalUrl(msg.attachment_url)
+                                }}
+                              >
+                                <PaperclipIcon style={{ width: '12px', height: '12px', display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }} />
+                                <span>{msg.body}</span>
+                              </a>
+                            ) : (
+                              <div className="dm-text-body" style={{ wordBreak: 'break-word', lineHeight: 1.45 }}>
+                                {formatMessageText(msg.body, profileDisplayName)}
+                              </div>
+                            )}
+                            <span className="dm-time">
+                              {new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* 3. Embed Card (Stacked neatly underneath) */}
+                        {hasLink && (
+                          <div className="dm-embed-wrapper">
+                            <ChatLinkEmbed content={msg.body} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div style={{ height: '24px', flexShrink: 0 }} />
             <div ref={dmMessagesEndRef} />
           </div>
 
@@ -668,32 +865,82 @@ export function FriendsView({
               </div>
             </div>
           ) : (
-            <form className="dm-full-compose" onSubmit={onSendDM}>
-              <input type="file" ref={dmFileRef} style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadFile(f); e.target.value = '' }} />
-              <button type="button" className="dm-attach-btn" onClick={() => dmFileRef.current?.click()} disabled={isUploading} title="Anexar arquivo">
-                {isUploading ? <ClockIcon style={{ width: '16px', height: '16px' }} /> : <PaperclipIcon style={{ width: '16px', height: '16px' }} />}
-              </button>
-              {onStartVoiceNote && (
-                <button 
-                  type="button" 
-                  className="dm-attach-btn" 
-                  onClick={onStartVoiceNote} 
-                  title="Gravar mensagem de voz"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
-                >
-                  <VoiceMessageIcon style={{ width: '16px', height: '16px' }} />
-                </button>
+            <>
+              {isFriendTyping && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 20px',
+                  fontSize: '12px',
+                  color: '#38bdf8'
+                }}>
+                  <span style={{ display: 'inline-flex', gap: '3px', alignItems: 'center' }}>
+                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#38bdf8' }} />
+                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#38bdf8' }} />
+                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#38bdf8' }} />
+                  </span>
+                  <span><strong>@{dmUser.display_name}</strong> está digitando...</span>
+                </div>
               )}
-              <input 
-                value={dmDraft} 
-                onChange={(e) => setDmDraft(e.target.value)} 
-                placeholder={`Conversar com @${dmUser.display_name}…`}
-                autoFocus
-              />
-              <button type="submit" disabled={!dmDraft.trim() && !isUploading} className="dm-send-btn" title="Enviar mensagem">
-                <SendIcon style={{ width: '16px', height: '16px' }} />
-              </button>
-            </form>
+              {pendingDMPastedFile && pendingDMImagePreview && (
+                <div className="composer-image-staging dm-image-staging">
+                  <div className="staging-thumb-wrap">
+                    <img src={pendingDMImagePreview} alt="Screenshot colado" />
+                  </div>
+                  <div className="staging-info">
+                    <div className="staging-title-row">
+                      <span className="staging-badge">Print / Clipboard</span>
+                      <span className="staging-name">{pendingDMPastedFile.name}</span>
+                    </div>
+                    <span className="staging-subtext">
+                      {(pendingDMPastedFile.size / 1024).toFixed(1)} KB • Pressione Enter para enviar na DM
+                    </span>
+                  </div>
+                  <button 
+                    type="button" 
+                    className="staging-remove-btn" 
+                    onClick={removePendingDMImage}
+                    title="Descartar print (Esc)"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+              <form className="dm-full-compose" onSubmit={handleDMComposeSubmit}>
+                <input type="file" ref={dmFileRef} style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadFile(f); e.target.value = '' }} />
+                <button type="button" className="dm-attach-btn" onClick={() => dmFileRef.current?.click()} disabled={isUploading} title="Anexar arquivo">
+                  {isUploading ? <ClockIcon style={{ width: '16px', height: '16px' }} /> : <PaperclipIcon style={{ width: '16px', height: '16px' }} />}
+                </button>
+                {onStartVoiceNote && (
+                  <button 
+                    type="button" 
+                    className="dm-attach-btn" 
+                    onClick={onStartVoiceNote} 
+                    title="Gravar mensagem de voz"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
+                  >
+                    <VoiceMessageIcon style={{ width: '16px', height: '16px' }} />
+                  </button>
+                )}
+                <input 
+                  id="dm-message-input"
+                  value={dmDraft} 
+                  onChange={(e) => {
+                    setDmDraft(e.target.value)
+                    if (notifyDMTyping && dmUser) {
+                      notifyDMTyping(dmUser.id)
+                    }
+                  }} 
+                  onPaste={handleDMPaste}
+                  placeholder={`Conversar com @${dmUser.display_name}…`}
+                  autoFocus
+                />
+                <button type="submit" disabled={(!dmDraft.trim() && !pendingDMPastedFile) || isUploading} className="dm-send-btn" title="Enviar mensagem">
+                  <SendIcon style={{ width: '16px', height: '16px' }} />
+                </button>
+              </form>
+            </>
           )}
         </section>
       ) : (

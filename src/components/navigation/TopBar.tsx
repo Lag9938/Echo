@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
 import type { Space, Channel, Page, SavedMessageItem } from '../../types'
 import { Brand } from './Brand'
+import { WindowControls } from './WindowControls'
 import {
   getServerGradient,
   getServerInitials
@@ -157,15 +158,18 @@ export function TopBar({
                 <button
                   type="button"
                   className={`topbar-server-btn ${isSelected ? 'selected' : ''}`}
-                  onClick={() => {
+                  onClick={async () => {
                     setPage('Servidores')
                     setExpandedSpace(space.id)
-                    loadChannelsForSpace(space.id)
                     const chs = spaceChannels[space.id] || []
                     const firstCh = chs.find(c => c.type === 'text') || chs[0]
-                    if (firstCh && selectedChannel?.space_id !== space.id) {
+                    if (firstCh) {
                       setSelectedChannel(firstCh)
+                    } else if (selectedChannel && selectedChannel.space_id !== space.id) {
+                      // Se os canais ainda não estão no estado local, não deixe o canal anterior ativo
+                      setSelectedChannel(null)
                     }
+                    await loadChannelsForSpace(space.id)
                     setHoveredSpaceCard(null)
                   }}
                   style={{ background: space.icon_url ? 'transparent' : getServerGradient(space.name) }}
@@ -242,15 +246,17 @@ export function TopBar({
               zIndex: 99999,
               cursor: 'pointer'
             }}
-            onClick={() => {
+            onClick={async () => {
               setPage('Servidores')
               setExpandedSpace(space.id)
-              loadChannelsForSpace(space.id)
               const chs = spaceChannels[space.id] || []
               const firstCh = chs.find(c => c.type === 'text') || chs[0]
-              if (firstCh && selectedChannel?.space_id !== space.id) {
+              if (firstCh) {
                 setSelectedChannel(firstCh)
+              } else if (selectedChannel && selectedChannel.space_id !== space.id) {
+                setSelectedChannel(null)
               }
+              await loadChannelsForSpace(space.id)
               setHoveredSpaceCard(null)
             }}
             onMouseEnter={() => {
@@ -432,35 +438,7 @@ export function TopBar({
         <div className="topbar-v-divider" />
 
         {/* Controles de Janela Dinâmicos (Minimizar, Maximizar, Fechar) */}
-        <div className="topbar-window-controls">
-          <button
-            type="button"
-            className="topbar-win-btn win-minimize"
-            onClick={() => window.electronAPI?.minimizeWindow?.()}
-            title="Minimizar"
-            aria-label="Minimizar"
-          >
-            <svg width="10" height="10" viewBox="0 0 12 12"><rect y="5.5" width="12" height="1.2" fill="currentColor"/></svg>
-          </button>
-          <button
-            type="button"
-            className="topbar-win-btn win-maximize"
-            onClick={() => window.electronAPI?.maximizeWindow?.()}
-            title="Maximizar / Restaurar"
-            aria-label="Maximizar"
-          >
-            <svg width="10" height="10" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" stroke="currentColor" strokeWidth="1.2" fill="none"/></svg>
-          </button>
-          <button
-            type="button"
-            className="topbar-win-btn win-close"
-            onClick={() => window.electronAPI?.closeWindow?.()}
-            title="Fechar"
-            aria-label="Fechar"
-          >
-            <svg width="10" height="10" viewBox="0 0 12 12"><path d="M1.5 1.5l9 9m0-9l-9 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
-          </button>
-        </div>
+        <WindowControls />
       </div>
     </header>
   )

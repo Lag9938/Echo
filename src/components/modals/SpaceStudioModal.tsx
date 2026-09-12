@@ -928,7 +928,7 @@ export function SpaceStudioModal({
                               <div className="role-perm-card">
                                 <div className="role-perm-card-info">
                                   <strong className="role-perm-card-title">Moderação de Voz</strong>
-                                  <span className="role-perm-card-desc">Permite silenciar e gerenciar outros membros em salas de voz.</span>
+                                  <span className="role-perm-card-desc">Permite silenciar microfones de outros membros no servidor.</span>
                                 </div>
                                 <label className="echo-switch">
                                   <input 
@@ -936,6 +936,38 @@ export function SpaceStudioModal({
                                     checked={!!currentRole.permissions?.muteMembers || !!currentRole.permissions?.administrator} 
                                     disabled={!!currentRole.permissions?.administrator || currentRole.id === 'role-owner'}
                                     onChange={(e) => handleUpdateRole(currentRole.id, { permissions: { ...currentRole.permissions, muteMembers: e.target.checked } })}
+                                  />
+                                  <span className="echo-switch-slider"></span>
+                                </label>
+                              </div>
+
+                              <div className="role-perm-card">
+                                <div className="role-perm-card-info">
+                                  <strong className="role-perm-card-title">Mover Membros da Chamada</strong>
+                                  <span className="role-perm-card-desc">Permite transferir participantes entre salas de voz conectadas.</span>
+                                </div>
+                                <label className="echo-switch">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={!!currentRole.permissions?.moveMembers || !!currentRole.permissions?.administrator} 
+                                    disabled={!!currentRole.permissions?.administrator || currentRole.id === 'role-owner'}
+                                    onChange={(e) => handleUpdateRole(currentRole.id, { permissions: { ...currentRole.permissions, moveMembers: e.target.checked } })}
+                                  />
+                                  <span className="echo-switch-slider"></span>
+                                </label>
+                              </div>
+
+                              <div className="role-perm-card">
+                                <div className="role-perm-card-info">
+                                  <strong className="role-perm-card-title">Expulsar da Chamada</strong>
+                                  <span className="role-perm-card-desc">Permite desconectar participantes de salas de voz ativas.</span>
+                                </div>
+                                <label className="echo-switch">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={!!currentRole.permissions?.disconnectMembers || !!currentRole.permissions?.administrator} 
+                                    disabled={!!currentRole.permissions?.administrator || currentRole.id === 'role-owner'}
+                                    onChange={(e) => handleUpdateRole(currentRole.id, { permissions: { ...currentRole.permissions, disconnectMembers: e.target.checked } })}
                                   />
                                   <span className="echo-switch-slider"></span>
                                 </label>
@@ -1147,6 +1179,9 @@ export function SpaceStudioModal({
                               {ch.is_announcement && (
                                 <span className="channel-compact-meta-chip">📢 Anúncios</span>
                               )}
+                              {ch.is_private && (
+                                <span className="channel-compact-meta-chip" style={{ color: '#f87171', background: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>🔒 Privado</span>
+                              )}
                               {ch.slowmode_seconds ? (
                                 <span className="channel-compact-meta-chip">⏱️ {ch.slowmode_seconds}s</span>
                               ) : null}
@@ -1291,6 +1326,73 @@ export function SpaceStudioModal({
                                     </select>
                                   </div>
                                 )}
+
+                                <div style={{ gridColumn: '1 / -1', marginTop: '8px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: ch.is_private ? '10px' : '0' }}>
+                                    <div>
+                                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span>🔒 Canal Privado</span>
+                                        {ch.is_private && <span style={{ fontSize: '10px', background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', padding: '2px 6px', borderRadius: '4px' }}>Restrito</span>}
+                                      </div>
+                                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                                        Apenas cargos selecionados, administradores e o criador do servidor poderão ver e acessar este canal.
+                                      </p>
+                                    </div>
+                                    <label className="echo-switch">
+                                      <input
+                                        type="checkbox"
+                                        checked={!!ch.is_private}
+                                        onChange={(e) => updateChannelSettings(ch.id, { is_private: e.target.checked })}
+                                      />
+                                      <span className="echo-switch-slider"></span>
+                                    </label>
+                                  </div>
+
+                                  {ch.is_private && (
+                                    <div style={{ marginTop: '8px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                      <span style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                                        Cargos com Permissão de Acesso:
+                                      </span>
+                                      {serverRoles.length === 0 ? (
+                                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>Nenhum cargo configurado no servidor. Crie cargos na aba "Cargos & Acessos".</p>
+                                      ) : (
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                          {serverRoles.map(role => {
+                                            const allowed = (ch.allowed_role_ids || []).includes(role.id)
+                                            return (
+                                              <button
+                                                key={role.id}
+                                                type="button"
+                                                onClick={() => {
+                                                  const current = ch.allowed_role_ids || []
+                                                  const next = allowed ? current.filter(id => id !== role.id) : [...current, role.id]
+                                                  updateChannelSettings(ch.id, { allowed_role_ids: next })
+                                                }}
+                                                style={{
+                                                  background: allowed ? 'rgba(88, 101, 242, 0.2)' : 'rgba(255,255,255,0.04)',
+                                                  border: `1px solid ${allowed ? 'var(--accent-color)' : 'rgba(255,255,255,0.1)'}`,
+                                                  color: allowed ? '#ffffff' : 'var(--text-secondary)',
+                                                  padding: '4px 10px',
+                                                  borderRadius: '6px',
+                                                  fontSize: '11.5px',
+                                                  fontWeight: allowed ? 600 : 400,
+                                                  cursor: 'pointer',
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  gap: '5px'
+                                                }}
+                                              >
+                                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: role.color || '#99aab5' }} />
+                                                <span>{role.name}</span>
+                                                {allowed && <span>✓</span>}
+                                              </button>
+                                            )
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           )}

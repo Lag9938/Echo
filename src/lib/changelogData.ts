@@ -14,15 +14,54 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.32.9'
+export const APP_CURRENT_VERSION = '0.33.0'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.33.0',
+    title: 'Echo v0.33.0 - Chat Refatorado, Links Universais, YouTube Music e Mídias com Zoom',
+    date: '11 de Setembro de 2026',
+    tagline: 'Envio de imagens com Ctrl+V, links clicáveis com abertura no navegador padrão, card integrado do YouTube Music, visualizador de imagens com zoom 100% e fim de mensagens sobrepostas.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🔗',
+        badge: 'LINKS & YOUTUBE MUSIC',
+        title: 'Navegação Direta no Navegador Padrão',
+        description: 'Links externos e do YouTube Music agora abrem diretamente no seu navegador padrão do Windows (Chrome/Edge), com card dedicado e banner em alta definição.'
+      },
+      {
+        icon: '📋',
+        badge: 'CLIPBOARD RÁPIDO',
+        title: 'Colar Imagens Direto com Ctrl + V',
+        description: 'Tire um print de qualquer tela e pressione Ctrl+V no chat de texto ou DM para carregar o preview instantâneo e enviar com um clique ou pressionando Enter.'
+      },
+      {
+        icon: '🖼️',
+        badge: 'LIGHTBOX DE IMAGENS',
+        title: 'Visualizador em Tela Cheia com Zoom 100%',
+        description: 'Novo modal de visualização de mídias com alternância de zoom, download rápido, cópia de link direto e ícones vetoriais SVG sem tooltips nativos do Windows.'
+      },
+      {
+        icon: '💬',
+        badge: 'DMS REESTRUTURADAS',
+        title: 'Fim de Mensagens Sobrepostas e Balão Ajustado',
+        description: 'Chat de amigos reconstruído em fluxo vertical contínuo, balões que abraçam exatamente o texto e cards de mídia empilhados de forma limpa.'
+      },
+      {
+        icon: '⚡',
+        badge: 'ATUALIZAÇÃO SUAVE',
+        title: 'Instalação Silenciosa e Reinicialização Rápida',
+        description: 'Overlay com desfoque profundo e logotipo animado ao aplicar atualizações, reiniciando o aplicativo sem janelas externas de instaladores.'
+      }
+    ]
+  },
   {
     version: '0.32.9',
     title: 'Echo v0.32.9 - Novo Hub de Amigos: Minimalista, Ágil e com Micro-Animações',
     date: '11 de Setembro de 2026',
     tagline: 'Interface de amigos completamente redesenhada: eliminação da poluição visual, alertas estilo WhatsApp, navegação em 2 colunas, modularização de CSS e novas micro-animações táteis.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🎨',

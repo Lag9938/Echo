@@ -110,6 +110,56 @@
   opacity: 0.9;
 }
 
+/* ── Applying Update Fullscreen Overlay ── */
+.update-applying-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(14, 17, 24, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.update-applying-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 36px 44px;
+  background: rgba(22, 26, 35, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  max-width: 400px;
+  gap: 12px;
+}
+
+.update-applying-modal h3 {
+  margin: 8px 0 0;
+  font-size: 19px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.update-applying-modal p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--text-secondary, #949ba4);
+}
+
+.update-applying-modal .loader {
+  margin: 8px 0;
+}
+
+.update-applying-modal span {
+  font-size: 12px;
+  color: var(--text-muted, #6b7280);
+}
+
 
 /* ── WHATS NEW & CHANGELOG MODAL ───────────────────────── */
 .whats-new-overlay {
@@ -398,5 +448,17 @@
 .whats-new-confirm-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+}
+
+/* ── Image Lightbox Animation & Styling ──────────── */
+@keyframes lightboxFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(16px);
+  }
 }
 

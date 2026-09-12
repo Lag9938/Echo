@@ -1343,6 +1343,7 @@
   pointer-events: none;
   max-width: 0;
   overflow: hidden;
+  padding: 4px 2px;
   transition: opacity 0.2s ease, max-width 0.26s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -1351,6 +1352,7 @@
   opacity: 1;
   pointer-events: auto;
   max-width: 260px;
+  overflow: visible;
 }
 
 .friend-quick-btn {
@@ -1411,7 +1413,7 @@
 }
 
 .friend-quick-btn:active {
-  transform: scale(0.88) !important;
+  transform: scale(0.92) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
   filter: brightness(0.92);
 }
@@ -1425,8 +1427,8 @@
   background: rgba(14, 165, 233, 0.18);
   border-color: #38bdf8;
   color: #38bdf8;
-  transform: translateY(-3px) scale(1.1);
-  box-shadow: 0 6px 18px rgba(56, 189, 248, 0.35);
+  transform: translateY(0);
+  box-shadow: 0 3px 12px rgba(56, 189, 248, 0.3);
 }
 .friend-quick-btn.msg:hover svg {
   transform: scale(1.12);
@@ -1438,11 +1440,11 @@
   background: rgba(16, 185, 129, 0.18);
   border-color: #10b981;
   color: #10b981;
-  transform: translateY(-3px) scale(1.1);
-  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.35);
+  transform: translateY(0);
+  box-shadow: 0 3px 12px rgba(16, 185, 129, 0.3);
 }
 .friend-quick-btn.call:hover svg {
-  transform: scale(1.12) rotate(-10deg);
+  transform: scale(1.12) rotate(-8deg);
   color: #10b981;
 }
 
@@ -1451,8 +1453,8 @@
   background: rgba(167, 139, 250, 0.18);
   border-color: #a78bfa;
   color: #a78bfa;
-  transform: translateY(-3px) scale(1.1);
-  box-shadow: 0 6px 18px rgba(167, 139, 250, 0.35);
+  transform: translateY(0);
+  box-shadow: 0 3px 12px rgba(167, 139, 250, 0.3);
 }
 .friend-quick-btn.profile:hover svg {
   transform: scale(1.12);
@@ -1473,8 +1475,8 @@
   background: rgba(239, 68, 68, 0.2);
   border-color: #ef4444;
   color: #f87171;
-  transform: translateY(-3px) scale(1.1);
-  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.38);
+  transform: translateY(0);
+  box-shadow: 0 3px 12px rgba(239, 68, 68, 0.32);
 }
 .friend-quick-btn.danger:hover .friend-btn-close-icon {
   transform: rotate(90deg) scale(1.15);

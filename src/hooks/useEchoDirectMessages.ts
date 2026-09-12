@@ -44,6 +44,9 @@ export function useEchoDirectMessages({
   const selectedDMUserIdRef = useRef<string | null>(null)
   const [unreadDMs, setUnreadDMs] = useState<Record<string, number>>({})
   const [dmDraft, setDmDraft] = useState('')
+  const [isFriendTyping, setIsFriendTyping] = useState(false)
+  const dmTypingTimeoutRef = useRef<any>(null)
+  const lastDMTypingSentRef = useRef<number>(0)
 
   const [recentDMUserIds, setRecentDMUserIds] = useState<string[]>(() => {
     try {
@@ -56,6 +59,10 @@ export function useEchoDirectMessages({
 
   useEffect(() => {
     selectedDMUserIdRef.current = selectedDMUserId
+    setIsFriendTyping(false)
+    if (dmTypingTimeoutRef.current) {
+      clearTimeout(dmTypingTimeoutRef.current)
+    }
   }, [selectedDMUserId])
 
   useEffect(() => {
@@ -220,6 +227,33 @@ export function useEchoDirectMessages({
     }
   }, [user.id])
 
+  const notifyDMTyping = useCallback((targetFriendId: string) => {
+    if (!socialChannelRef.current || !user || !targetFriendId) return
+    const now = Date.now()
+    if (now - lastDMTypingSentRef.current < 2000) return
+    lastDMTypingSentRef.current = now
+
+    socialChannelRef.current.send({
+      type: 'broadcast',
+      event: 'dm-typing',
+      payload: {
+        senderId: user.id,
+        receiverId: targetFriendId
+      }
+    })
+  }, [socialChannelRef, user])
+
+  const handleDMTypingBroadcast = useCallback((data: any) => {
+    if (!data) return
+    if (data.receiverId === user.id && selectedDMUserIdRef.current === data.senderId) {
+      setIsFriendTyping(true)
+      if (dmTypingTimeoutRef.current) clearTimeout(dmTypingTimeoutRef.current)
+      dmTypingTimeoutRef.current = setTimeout(() => {
+        setIsFriendTyping(false)
+      }, 3500)
+    }
+  }, [user.id])
+
   return {
     directMessages,
     setDirectMessages,
@@ -232,12 +266,15 @@ export function useEchoDirectMessages({
     setRecentDMUserIds,
     dmDraft,
     setDmDraft,
+    isFriendTyping,
+    notifyDMTyping,
     loadDirectMessages,
     sendDirectMessage,
     handleDeleteDM,
     handleOpenDirectChat,
     handleNewDMPostgresChanges,
     handleDMBroadcast,
-    handleDMDeleteBroadcast
+    handleDMDeleteBroadcast,
+    handleDMTypingBroadcast
   }
 }

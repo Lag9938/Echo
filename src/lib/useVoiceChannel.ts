@@ -213,7 +213,13 @@ function routeAiDenoise(nodes: StudioMicrophoneDSPNodes, enabled: boolean) {
   }
 }
 
-export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolume?: number }) {
+export function useVoiceChannel(options?: { 
+  onDisconnected?: () => void; 
+  sfxVolume?: number;
+  onServerMuted?: () => void;
+  onKickedFromVoice?: () => void;
+  onMovedToVoiceChannel?: (targetChannelId: string, targetChannelName?: string) => void;
+}) {
   const onDisconnectedRef = useRef(options?.onDisconnected)
   useEffect(() => {
     onDisconnectedRef.current = options?.onDisconnected
@@ -225,6 +231,21 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
       sfxVolumeRef.current = options.sfxVolume
     }
   }, [options?.sfxVolume])
+
+  const onServerMutedRef = useRef(options?.onServerMuted)
+  useEffect(() => {
+    onServerMutedRef.current = options?.onServerMuted
+  }, [options?.onServerMuted])
+
+  const onKickedFromVoiceRef = useRef(options?.onKickedFromVoice)
+  useEffect(() => {
+    onKickedFromVoiceRef.current = options?.onKickedFromVoice
+  }, [options?.onKickedFromVoice])
+
+  const onMovedToVoiceChannelRef = useRef(options?.onMovedToVoiceChannel)
+  useEffect(() => {
+    onMovedToVoiceChannelRef.current = options?.onMovedToVoiceChannel
+  }, [options?.onMovedToVoiceChannel])
 
   const [participants, setParticipants] = useState<VoiceParticipant[]>([])
   const [isMuted, setIsMuted] = useState(false)
@@ -402,7 +423,7 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
     if (room) {
       room.remoteParticipants.forEach((rp) => {
         let screenStream: MediaStream | undefined = undefined
-        const screenPub = rp.getTrackPublication(Track.Source.ScreenShare)
+        const screenPub = rp.getTrackPublication(Track.Source.ScreenShare) || rp.getTrackPublication(Track.Source.Camera)
         const screenAudioPub = rp.getTrackPublication(Track.Source.ScreenShareAudio)
 
         if (screenPub && screenPub.track && screenPub.track.mediaStreamTrack) {
@@ -490,7 +511,7 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
     const activeSharerId = currentOpts.activeSharerId
 
     room.remoteParticipants.forEach((rp) => {
-      const screenPub = rp.getTrackPublication(Track.Source.ScreenShare)
+      const screenPub = rp.getTrackPublication(Track.Source.ScreenShare) || rp.getTrackPublication(Track.Source.Camera)
       if (screenPub) {
         // Se o espectador não estiver visualizando a tela, corta a transmissão de vídeo (0 Kbps)
         // No modo foco, assina apenas a tela selecionada. No modo grade, assina todas em baixa resolução.
@@ -804,9 +825,6 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
 
       // Inicia medidor local de fala com 0ms de atraso
       startLocalVad(rawStream)
-
-      // Imediatamente marca conectado e exibe o participante local na grade
-      setIsConnected(true)
       syncParticipants()
 
       // Áudio profissional: sempre cria o pipeline DSP mono para permitir alternar IA instantaneamente
@@ -865,12 +883,16 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
         }
       }
 
+      if (!token) {
+        throw new Error('Não foi possível gerar credenciais seguras para conectar à sala de voz')
+      }
+
       const room = new Room({
-        adaptiveStream: true,
-        dynacast: true,
+        adaptiveStream: false,
+        dynacast: false,
         publishDefaults: {
           simulcast: false,
-          videoCodec: 'h264',
+          videoCodec: 'vp8',
           dtx: true,
         }
       })
@@ -1042,6 +1064,25 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
               })
               syncParticipants()
             }
+          } else if (data.type === 'server_mute') {
+            if (data.targetUserId === myInfoRef.current?.userId) {
+              if (localAudioTrackRef.current) {
+                localAudioTrackRef.current.mute().catch(() => {})
+              }
+              setIsMuted(true)
+              isMutedRef.current = true
+              onServerMutedRef.current?.()
+            }
+          } else if (data.type === 'disconnect_member') {
+            if (data.targetUserId === myInfoRef.current?.userId) {
+              leaveVoice()
+              onKickedFromVoiceRef.current?.()
+            }
+          } else if (data.type === 'move_member') {
+            if (data.targetUserId === myInfoRef.current?.userId && data.targetChannelId) {
+              leaveVoice()
+              onMovedToVoiceChannelRef.current?.(data.targetChannelId, data.targetChannelName)
+            }
           }
         } catch (e) {}
       })
@@ -1059,6 +1100,7 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
         try {
           await room.connect(connectionUrl, token)
           console.log('[LiveKit] Conectado com sucesso ao SFU!')
+          setIsConnected(true)
           syncParticipants()
         } catch (connErr) {
           console.error('[LiveKit] Erro ao conectar ao SFU:', connErr)
@@ -1933,6 +1975,35 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
     syncParticipants()
   }, [syncParticipants])
 
+  const sendVoiceModerationCommand = useCallback((command: {
+    type: 'server_mute' | 'disconnect_member' | 'move_member'
+    targetUserId: string
+    targetChannelId?: string
+    targetChannelName?: string
+  }) => {
+    const room = roomRef.current
+    if (!room || !room.localParticipant) return
+    try {
+      const payload = JSON.stringify(command)
+      const encoder = new TextEncoder()
+      room.localParticipant.publishData(encoder.encode(payload), { reliable: true }).catch((err) => {
+        console.warn('[LiveKit] Falha ao enviar comando de moderação:', err)
+      })
+    } catch (e) {}
+  }, [])
+
+  const serverMuteParticipant = useCallback((targetUserId: string) => {
+    sendVoiceModerationCommand({ type: 'server_mute', targetUserId })
+  }, [sendVoiceModerationCommand])
+
+  const disconnectParticipant = useCallback((targetUserId: string) => {
+    sendVoiceModerationCommand({ type: 'disconnect_member', targetUserId })
+  }, [sendVoiceModerationCommand])
+
+  const moveParticipant = useCallback((targetUserId: string, targetChannelId: string, targetChannelName?: string) => {
+    sendVoiceModerationCommand({ type: 'move_member', targetUserId, targetChannelId, targetChannelName })
+  }, [sendVoiceModerationCommand])
+
   // Auto leave on unmount (usando ref estável para NUNCA disparar em re-renderizações normais)
   const leaveVoiceRef = useRef(leaveVoice)
   useEffect(() => {
@@ -1985,6 +2056,9 @@ export function useVoiceChannel(options?: { onDisconnected?: () => void; sfxVolu
     reconnectCountdown,
     reconnectAttempt,
     retryVoiceReconnect,
-    cancelVoiceReconnect
+    cancelVoiceReconnect,
+    serverMuteParticipant,
+    disconnectParticipant,
+    moveParticipant
   }
 }

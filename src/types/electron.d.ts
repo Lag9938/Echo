@@ -40,6 +40,9 @@ export interface ElectronAPI {
   registerGlobalPTT: (shortcut: string) => Promise<{ success: boolean; error?: string }>
   unregisterGlobalPTT: () => Promise<{ success: boolean }>
   onPTTStateChange: (callback: (isPressed: boolean) => void) => void
+  registerGlobalVoiceShortcut: (action: 'toggle-mute' | 'toggle-deafen', shortcut: string) => Promise<{ success: boolean; error?: string }>
+  unregisterGlobalVoiceShortcut: (action: 'toggle-mute' | 'toggle-deafen') => Promise<{ success: boolean }>
+  onGlobalVoiceToggle: (callback: (action: 'toggle-mute' | 'toggle-deafen') => void) => void
 
   // Native Notifications
   showNotification: (options: { title: string; body?: string }) => Promise<{ success: boolean }>
@@ -55,6 +58,7 @@ export interface ElectronAPI {
   minimizeWindow: () => Promise<void>
   maximizeWindow: () => Promise<void>
   closeWindow: () => Promise<void>
+  quitApp?: () => Promise<void>
   isMaximized: () => Promise<boolean>
   setFullScreen: (flag: boolean) => Promise<void>
   isFullScreen: () => Promise<boolean>
@@ -68,6 +72,9 @@ export interface ElectronAPI {
   openOverlay: () => Promise<boolean>
   closeOverlay: () => Promise<boolean>
   isOverlayOpen: () => Promise<boolean>
+
+  // External Browser URL Opening
+  openExternal: (url: string) => Promise<boolean>
 }
 
 declare global {

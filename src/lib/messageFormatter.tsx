@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { ServerEmoji } from '../types'
+import { openExternalUrl } from './openExternal'
 
 export function formatChatDateDivider(date: Date): string {
   const today = new Date()
@@ -61,7 +62,12 @@ export function formatMessageText(text: string, userDisplayName?: string, server
                 href={part} 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                style={{ color: 'var(--accent-color)', textDecoration: 'underline' }}
+                className="chat-link"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  openExternalUrl(part)
+                }}
               >
                 {part}
               </a>

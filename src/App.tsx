@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, lazy, Suspense } from 'react'
 import type { FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
@@ -12,8 +12,8 @@ import {
   playFriendRequestSound, 
   playFriendAcceptSound, 
   playDmNotificationSound, 
-  playLeaveSound,
-  playScreenStartSound,
+  playLeaveSound, 
+  playScreenStartSound, 
   playScreenStopSound
 } from './lib/soundEffects'
 import { WhatsNewModal } from './components/WhatsNewModal'
@@ -23,6 +23,7 @@ import { EchoShop } from './components/EchoShop'
 import { ChannelInviteModal } from './components/modals/ChannelInviteModal'
 import { SpaceAddMembersModal } from './components/modals/SpaceAddMembersModal'
 import { SavedMessagesModal } from './components/modals/SavedMessagesModal'
+import { ImageLightboxModal } from './components/modals/ImageLightboxModal'
 import { useEchoAfkDetector } from './hooks/useEchoAfkDetector'
 import { useEchoToasts } from './hooks/useEchoToasts'
 import { useEchoSavedMessages } from './hooks/useEchoSavedMessages'
@@ -37,8 +38,6 @@ import { ConfirmModal } from './components/modals/ConfirmModal'
 import { VolumeControlModal } from './components/modals/VolumeControlModal'
 import { AddSpaceModal } from './components/modals/AddSpaceModal'
 import { ScreenPickerModal } from './components/modals/ScreenPickerModal'
-import { SpaceStudioModal } from './components/modals/SpaceStudioModal'
-import { SubscriptionModal } from './components/modals/SubscriptionModal'
 import { SoundboardModal, SoundboardToast } from './components/modals/SoundboardModal'
 import { AfkPromptModal, AfkDisconnectedModal } from './components/modals/AfkModals'
 import { IncomingCallModal } from './components/modals/IncomingCallModal'
@@ -46,13 +45,19 @@ import { HoveredMemberPopover } from './components/sidebar/HoveredMemberPopover'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
 
 import { TopBar } from './components/navigation/TopBar'
+import { WindowControls } from './components/navigation/WindowControls'
 import { ChannelsSidebar } from './components/sidebar/ChannelsSidebar'
 import { VoiceChannelView } from './views/VoiceChannelView'
 import { TextChannelView } from './views/TextChannelView'
 import { VoiceMiniOverlay } from './components/voice/VoiceMiniOverlay'
 import { FriendsView } from './views/FriendsView'
-import { SettingsView } from './views/SettingsView'
 import { EchoFloatingMiniPlayer } from './components/streaming/EchoFloatingMiniPlayer'
+
+// Lazy-loaded heavy views and modals for instant initial bundle loading
+const SettingsView = lazy(() => import('./views/SettingsView').then(m => ({ default: m.SettingsView })))
+const SpaceStudioModal = lazy(() => import('./components/modals/SpaceStudioModal').then(m => ({ default: m.SpaceStudioModal })))
+const SubscriptionModal = lazy(() => import('./components/modals/SubscriptionModal').then(m => ({ default: m.SubscriptionModal })))
+const CommandPaletteModal = lazy(() => import('./components/modals/CommandPaletteModal').then(m => ({ default: m.CommandPaletteModal })))
 import { useEchoDirectCalls } from './hooks/useEchoDirectCalls'
 import { useEchoScreenShare } from './hooks/useEchoScreenShare'
 import { useEchoVoiceNotes } from './hooks/useEchoVoiceNotes'
@@ -213,8 +218,29 @@ function MainApp() {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null))
     return () => listener.subscription.unsubscribe()
   }, [isMock])
-  if (loading) return <div className="loading-screen"><div className="loader" /><span>Abrindo o Echo…</span></div>
-  if (!isSupabaseConfigured && !isMock) return <div className="loading-screen">A conexão com o banco ainda não foi configurada.</div>
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <header className="auth-titlebar">
+          <div className="auth-titlebar-drag" />
+          <WindowControls isQuitOnClose />
+        </header>
+        <div className="loader" />
+        <span>Abrindo o Echo…</span>
+      </div>
+    )
+  }
+  if (!isSupabaseConfigured && !isMock) {
+    return (
+      <div className="loading-screen">
+        <header className="auth-titlebar">
+          <div className="auth-titlebar-drag" />
+          <WindowControls isQuitOnClose />
+        </header>
+        <span>A conexão com o banco ainda não foi configurada.</span>
+      </div>
+    )
+  }
   return user ? <Echo user={user} /> : <Auth />
 }
 
@@ -296,6 +322,10 @@ function Echo({ user }: { user: User }) {
     setNewChannelTopic,
     newChannelCategory,
     setNewChannelCategory,
+    newChannelIsPrivate,
+    setNewChannelIsPrivate,
+    newChannelAllowedRoles,
+    setNewChannelAllowedRoles,
     loadSpaces,
     loadChannelsForSpace,
     loadSpaceMembers,
@@ -609,6 +639,8 @@ function Echo({ user }: { user: User }) {
     togglePinMessage
   } = useEchoPinnedMessages({
     profileDisplayName,
+    profileId: user.id,
+    supabase,
     addAuditLog,
     showToast
   })
@@ -675,13 +707,16 @@ function Echo({ user }: { user: User }) {
     setRecentDMUserIds,
     dmDraft,
     setDmDraft,
+    isFriendTyping,
+    notifyDMTyping,
     loadDirectMessages,
     sendDirectMessage,
     handleDeleteDM,
     handleOpenDirectChat,
     handleNewDMPostgresChanges,
     handleDMBroadcast,
-    handleDMDeleteBroadcast
+    handleDMDeleteBroadcast,
+    handleDMTypingBroadcast
   } = useEchoDirectMessages({
     user,
     profileDisplayName,
@@ -722,7 +757,9 @@ function Echo({ user }: { user: User }) {
     postChannelMessage,
     retrySendMessage,
     handleDeleteMessage,
-    send
+    send,
+    typingUsers,
+    notifyTyping
   } = useEchoChannelMessages({
 
     user,
@@ -810,7 +847,10 @@ function Echo({ user }: { user: User }) {
     handleJoinVoice,
     handleLeaveVoice,
     handleToggleMute,
-    handleToggleDeafen
+    handleToggleDeafen,
+    serverMuteParticipant,
+    disconnectParticipant,
+    moveParticipant
   } = useEchoVoiceSession({ 
     user,
     profileDisplayName,
@@ -835,10 +875,31 @@ function Echo({ user }: { user: User }) {
     spaceChannelsRef,
     selectedChannel,
     spaceChannels,
+    showToast,
     supabase
   })
   handleJoinVoiceRef.current = handleJoinVoice
 
+  // Global Voice Shortcuts (Mute / Deafen) via Electron IPC
+  useEffect(() => {
+    const api = (window as any).electronAPI
+    if (!api?.onGlobalVoiceToggle) return
+
+    api.registerGlobalVoiceShortcut?.('toggle-mute', 'F8')
+    api.registerGlobalVoiceShortcut?.('toggle-deafen', 'F9')
+
+    const removeListener = api.onGlobalVoiceToggle((action: string) => {
+      if (action === 'toggle-mute') {
+        handleToggleMute()
+      } else if (action === 'toggle-deafen') {
+        handleToggleDeafen()
+      }
+    })
+
+    return () => {
+      if (typeof removeListener === 'function') removeListener()
+    }
+  }, [handleToggleMute, handleToggleDeafen])
 
   // Soundboard & WhatsNew Modals
   const [showSoundboardModal, setShowSoundboardModal] = useState(false)
@@ -913,6 +974,7 @@ function Echo({ user }: { user: User }) {
     userId: user.id,
     profileDisplayName,
     profileAvatarUrl,
+    supabase,
     showToast,
     spaceChannels,
     setExpandedSpace,
@@ -1265,13 +1327,16 @@ function Echo({ user }: { user: User }) {
       .on('broadcast', { event: 'call-event' }, (payload: any) => {
         handleCallEvent(payload?.payload)
       })
+      .on('broadcast', { event: 'dm-typing' }, (payload: any) => {
+        handleDMTypingBroadcast(payload?.payload)
+      })
       .subscribe()
 
     return () => {
       supabase?.removeChannel(liveFriendships)
       supabase?.removeChannel(socialChannel)
     }
-  }, [handleFriendshipPostgresChanges, handleFriendEvent, handleDMBroadcast, handleDMDeleteBroadcast, handleCallEvent, supabase, user])
+  }, [handleFriendshipPostgresChanges, handleFriendEvent, handleDMBroadcast, handleDMDeleteBroadcast, handleCallEvent, handleDMTypingBroadcast, supabase, user])
 
   // Resilient background sync interval (every 60 seconds)
   useEffect(() => {
@@ -1297,7 +1362,7 @@ function Echo({ user }: { user: User }) {
   }, [selectedChannel?.id])
 
 
-  const currentSpace = getSpaceForChannel(selectedChannel)
+  const currentSpace = spaces.find(s => s.id === expandedSpace) || getSpaceForChannel(selectedChannel) || spaces[0] || null
 
 
   return (
@@ -1309,11 +1374,13 @@ function Echo({ user }: { user: User }) {
         onRestart={() => (window as any).electronAPI?.installUpdate()}
       />
 
-      <SubscriptionModal
-        isOpen={showSubscriptionModal}
-        onClose={() => setShowSubscriptionModal(false)}
-        onSimulateSubscription={handleSimulateSubscription}
-      />
+      <Suspense fallback={null}>
+        <SubscriptionModal
+          isOpen={showSubscriptionModal}
+          onClose={() => setShowSubscriptionModal(false)}
+          onSimulateSubscription={handleSimulateSubscription}
+        />
+      </Suspense>
 
       {/* Sensor de proximidade no topo da tela para disparar a abertura suave da barra */}
       {!topbarPinned && !isTopbarVisible && !showSpaceSettingsModal && (
@@ -1360,7 +1427,11 @@ function Echo({ user }: { user: User }) {
         currentUserId={user.id}
       />
 
-      <section className="workspace" style={{ display: page === 'Servidores' ? undefined : 'none' }}>
+      <section 
+        key={expandedSpace || 'default'} 
+        className="workspace server-view-enter" 
+        style={{ display: page === 'Servidores' ? undefined : 'none' }}
+      >
         {/* 2. CHANNELS SIDEBAR FOR ACTIVE SERVER (240px) */}
         <ErrorBoundary name="Canais">
           <ChannelsSidebar
@@ -1434,6 +1505,12 @@ function Echo({ user }: { user: User }) {
             spaceMembers={spaceMembers}
             isConnected={isConnected}
             showToast={showToast}
+            newChannelIsPrivate={newChannelIsPrivate}
+            setNewChannelIsPrivate={setNewChannelIsPrivate}
+            newChannelAllowedRoles={newChannelAllowedRoles}
+            setNewChannelAllowedRoles={setNewChannelAllowedRoles}
+            serverRoles={serverRoles}
+            memberRoleMap={memberRoleMap}
           />
         </ErrorBoundary>
 
@@ -1514,6 +1591,8 @@ function Echo({ user }: { user: User }) {
                     isWatchingStreams={isWatchingStreams}
                     setIsWatchingStreams={setIsWatchingStreams}
                     voiceNoteTarget={voiceNoteTarget}
+                    typingUsers={typingUsers}
+                    notifyTyping={notifyTyping}
                   />
                 </ErrorBoundary>
               ) : (
@@ -1661,16 +1740,18 @@ function Echo({ user }: { user: User }) {
             }}
             onCloseDM={() => { setSelectedDMUserId(null); setDirectMessages([]) }}
             isUploading={isUploading}
-            onUploadFile={async (file: File) => {
+            onUploadFile={async (file: File, caption?: string) => {
               if (!supabase) return
               setIsUploading(true)
-              const ext = file.name.split('.').pop()
+              const rawExt = file.name && file.name.includes('.') ? file.name.split('.').pop() : (file.type.split('/')[1] || 'png')
+              const ext = (rawExt || 'png').replace(/[^a-zA-Z0-9]/g, '')
               const path = `dm/${user.id}/${Date.now()}.${ext}`
               const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file)
               if (uploadError) { setError(uploadError.message); setIsUploading(false); return }
               const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
               const fileType = file.type.startsWith('image/') ? 'image' : 'file'
-              await sendDirectMessage(dmDraft.trim() || file.name, urlData.publicUrl, fileType)
+              const messageText = caption && caption.trim() ? caption.trim() : (dmDraft.trim() || file.name || 'Imagem')
+              await sendDirectMessage(messageText, urlData.publicUrl, fileType)
               setIsUploading(false)
             }}
             profileDisplayName={profileDisplayName}
@@ -1724,14 +1805,17 @@ function Echo({ user }: { user: User }) {
               })
             }}
             isMessageSaved={isMessageSaved}
+            isFriendTyping={isFriendTyping}
+            notifyDMTyping={notifyDMTyping}
           />
         </ErrorBoundary>
       </div>
 
       <div style={{ display: page === 'Configurações' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}>
         <ErrorBoundary name="Configurações">
-          <SettingsView 
-            userId={user.id}
+          <Suspense fallback={null}>
+            <SettingsView 
+              userId={user.id}
             userCreatedAt={user.created_at}
             isServerOwner={spaces.some(s => s.creator_id === user.id)}
             currentDisplayName={profileDisplayName}
@@ -1757,7 +1841,7 @@ function Echo({ user }: { user: User }) {
               setProfileAvatarUrl(avatar)
               updateLocalProfile(name, avatar)
               if (user) {
-                setSpaceMembers(prev => prev.map(m => m.id === user.id ? { ...m, name, avatar_url: avatar } : m))
+                setSpaceMembers(prev => prev.map(m => (m?.user?.id === user.id || m?.id === user.id) ? { ...m, user: { ...(m.user || {}), display_name: name, avatar_url: avatar } } : m))
                 if (presenceChannelRef.current) {
                   const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
                   const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
@@ -1873,8 +1957,9 @@ function Echo({ user }: { user: User }) {
             onPttKeyChange={setPttKey}
             onToggleOverlay={handleToggleOverlay}
           />
-        </ErrorBoundary>
-      </div>
+        </Suspense>
+      </ErrorBoundary>
+    </div>
 
       <div style={{ display: page === 'Descobrir' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}>
         <Placeholder page={'Descobrir'} />
@@ -1940,93 +2025,113 @@ function Echo({ user }: { user: User }) {
       />
 
       {/* Echo Space Studio Deck (Modern Non-Discord Settings Architecture) */}
-      <SpaceStudioModal
-        isOpen={showSpaceSettingsModal}
-        onClose={() => setShowSpaceSettingsModal(false)}
-        editingSpace={editingSpace}
-        user={user}
-        profileDisplayName={profileDisplayName}
-        displayName={displayName}
-        serverRoles={serverRoles}
-        serverEmojis={serverEmojis}
-        serverAuditLogs={serverAuditLogs}
-        editingSpaceMembers={editingSpaceMembers}
-        loadingEditingMembers={loadingEditingMembers}
-        memberRoleMap={memberRoleMap}
-        spaceChannels={spaceChannels}
-        mutedSpaces={mutedSpaces}
-        toggleMuteSpace={toggleMuteSpace}
-        activeSpaceTab={activeSpaceTab}
-        setActiveSpaceTab={setActiveSpaceTab}
-        editingSpaceName={editingSpaceName}
-        setEditingSpaceName={setEditingSpaceName}
-        editingSpaceDescription={editingSpaceDescription}
-        setEditingSpaceDescription={setEditingSpaceDescription}
-        editingSpaceIconUrl={editingSpaceIconUrl}
-        setEditingSpaceIconUrl={setEditingSpaceIconUrl}
-        editingSpaceBannerUrl={editingSpaceBannerUrl}
-        setEditingSpaceBannerUrl={setEditingSpaceBannerUrl}
-        editingSpaceBannerTheme={editingSpaceBannerTheme}
-        setEditingSpaceBannerTheme={setEditingSpaceBannerTheme}
-        editingSpaceWelcomeChannelId={editingSpaceWelcomeChannelId}
-        setEditingSpaceWelcomeChannelId={setEditingSpaceWelcomeChannelId}
-        uploadingSpaceIcon={uploadingSpaceIcon}
-        uploadingSpaceBanner={uploadingSpaceBanner}
-        memberSearchQuery={memberSearchQuery}
-        setMemberSearchQuery={setMemberSearchQuery}
-        selectedRoleId={selectedRoleId}
-        setSelectedRoleId={setSelectedRoleId}
-        selectedMemberId={selectedMemberId}
-        setSelectedMemberId={setSelectedMemberId}
-        newEmojiName={newEmojiName}
-        setNewEmojiName={setNewEmojiName}
-        uploadingEmoji={uploadingEmoji}
-        editingChannelSettingsId={editingChannelSettingsId}
-        setEditingChannelSettingsId={setEditingChannelSettingsId}
-        setShowNewChannel={setShowNewChannel}
-        setNewChannelCategory={setNewChannelCategory}
-        setNewChannelName={setNewChannelName}
-        setNewChannelTopic={setNewChannelTopic}
-        handleSpaceIconUpload={handleSpaceIconUpload}
-        handleRemoveSpaceIcon={handleRemoveSpaceIcon}
-        handleSpaceBannerUpload={handleSpaceBannerUpload}
-        handleRemoveSpaceBanner={handleRemoveSpaceBanner}
-        handleSaveSpaceSettings={handleSaveSpaceSettings}
-        handleCreateRole={handleCreateRole}
-        handleUpdateRole={handleUpdateRole}
-        handleDeleteRole={handleDeleteRole}
-        moveRole={moveRole}
-        handleCreateEmoji={handleCreateEmoji}
-        handleDeleteEmoji={handleDeleteEmoji}
-        moveChannel={moveChannel}
-        updateChannelSettings={updateChannelSettings}
-        renameChannel={renameChannel}
-        deleteChannel={deleteChannel}
-        getUserHighestRole={getUserHighestRole}
-        canUserDo={canUserDo}
-        toggleMemberRole={toggleMemberRole}
-        handleRoleChange={handleRoleChange}
-        handleKickMember={handleKickMember}
-        handleDeleteSpace={handleDeleteSpace}
-        loadSpaceEmojis={loadSpaceEmojis}
-        loadEditingSpaceMembers={loadEditingSpaceMembers}
-        showToast={showToast}
-      />
+      <Suspense fallback={null}>
+        <SpaceStudioModal
+          isOpen={showSpaceSettingsModal}
+          onClose={() => setShowSpaceSettingsModal(false)}
+          editingSpace={editingSpace}
+          user={user}
+          profileDisplayName={profileDisplayName}
+          displayName={displayName}
+          serverRoles={serverRoles}
+          serverEmojis={serverEmojis}
+          serverAuditLogs={serverAuditLogs}
+          editingSpaceMembers={editingSpaceMembers}
+          loadingEditingMembers={loadingEditingMembers}
+          memberRoleMap={memberRoleMap}
+          spaceChannels={spaceChannels}
+          mutedSpaces={mutedSpaces}
+          toggleMuteSpace={toggleMuteSpace}
+          activeSpaceTab={activeSpaceTab}
+          setActiveSpaceTab={setActiveSpaceTab}
+          editingSpaceName={editingSpaceName}
+          setEditingSpaceName={setEditingSpaceName}
+          editingSpaceDescription={editingSpaceDescription}
+          setEditingSpaceDescription={setEditingSpaceDescription}
+          editingSpaceIconUrl={editingSpaceIconUrl}
+          setEditingSpaceIconUrl={setEditingSpaceIconUrl}
+          editingSpaceBannerUrl={editingSpaceBannerUrl}
+          setEditingSpaceBannerUrl={setEditingSpaceBannerUrl}
+          editingSpaceBannerTheme={editingSpaceBannerTheme}
+          setEditingSpaceBannerTheme={setEditingSpaceBannerTheme}
+          editingSpaceWelcomeChannelId={editingSpaceWelcomeChannelId}
+          setEditingSpaceWelcomeChannelId={setEditingSpaceWelcomeChannelId}
+          uploadingSpaceIcon={uploadingSpaceIcon}
+          uploadingSpaceBanner={uploadingSpaceBanner}
+          memberSearchQuery={memberSearchQuery}
+          setMemberSearchQuery={setMemberSearchQuery}
+          selectedRoleId={selectedRoleId}
+          setSelectedRoleId={setSelectedRoleId}
+          selectedMemberId={selectedMemberId}
+          setSelectedMemberId={setSelectedMemberId}
+          newEmojiName={newEmojiName}
+          setNewEmojiName={setNewEmojiName}
+          uploadingEmoji={uploadingEmoji}
+          editingChannelSettingsId={editingChannelSettingsId}
+          setEditingChannelSettingsId={setEditingChannelSettingsId}
+          setShowNewChannel={setShowNewChannel}
+          setNewChannelCategory={setNewChannelCategory}
+          setNewChannelName={setNewChannelName}
+          setNewChannelTopic={setNewChannelTopic}
+          handleSpaceIconUpload={handleSpaceIconUpload}
+          handleRemoveSpaceIcon={handleRemoveSpaceIcon}
+          handleSpaceBannerUpload={handleSpaceBannerUpload}
+          handleRemoveSpaceBanner={handleRemoveSpaceBanner}
+          handleSaveSpaceSettings={handleSaveSpaceSettings}
+          handleCreateRole={handleCreateRole}
+          handleUpdateRole={handleUpdateRole}
+          handleDeleteRole={handleDeleteRole}
+          moveRole={moveRole}
+          handleCreateEmoji={handleCreateEmoji}
+          handleDeleteEmoji={handleDeleteEmoji}
+          moveChannel={moveChannel}
+          updateChannelSettings={updateChannelSettings}
+          renameChannel={renameChannel}
+          deleteChannel={deleteChannel}
+          getUserHighestRole={getUserHighestRole}
+          canUserDo={canUserDo}
+          toggleMemberRole={toggleMemberRole}
+          handleRoleChange={handleRoleChange}
+          handleKickMember={handleKickMember}
+          handleDeleteSpace={handleDeleteSpace}
+          loadSpaceEmojis={loadSpaceEmojis}
+          loadEditingSpaceMembers={loadEditingSpaceMembers}
+          showToast={showToast}
+        />
+      </Suspense>
 
       {/* User Volume & 3D Spatial Audio Positioning Modal */}
-      <VolumeControlModal
-        volumeControlUser={volumeControlUser}
-        onClose={() => setVolumeControlUser(null)}
-        userVolumes={userVolumes}
-        setUserVolumes={setUserVolumes}
-        userStereoPans={userStereoPans}
-        setUserStereoPans={setUserStereoPans}
-        changePeerPan={changePeerPan}
-        spatialAudioEnabled={spatialAudioEnabled}
-        setSpatialAudioEnabledState={setSpatialAudioEnabledState}
-        participants={participants}
-        currentUserId={user.id}
-      />
+      {(() => {
+        const currentSpaceId = activeVoiceChannel?.space_id || selectedChannel?.space_id || expandedSpace || undefined
+        const currentSpace = spaces.find(s => s.id === currentSpaceId)
+        const isSpaceOwner = currentSpace ? currentSpace.creator_id === user.id : false
+        const availableVoiceChannels = currentSpaceId && spaceChannels[currentSpaceId]
+          ? spaceChannels[currentSpaceId].filter(c => c.type === 'voice' && c.id !== activeVoiceChannelId)
+          : []
+
+        return (
+          <VolumeControlModal
+            volumeControlUser={volumeControlUser}
+            onClose={() => setVolumeControlUser(null)}
+            userVolumes={userVolumes}
+            setUserVolumes={setUserVolumes}
+            userStereoPans={userStereoPans}
+            setUserStereoPans={setUserStereoPans}
+            changePeerPan={changePeerPan}
+            spatialAudioEnabled={spatialAudioEnabled}
+            setSpatialAudioEnabledState={setSpatialAudioEnabledState}
+            participants={participants}
+            currentUserId={user.id}
+            spaceId={currentSpaceId}
+            isSpaceOwner={isSpaceOwner}
+            canUserDo={canUserDo}
+            availableVoiceChannels={availableVoiceChannels}
+            serverMuteParticipant={serverMuteParticipant}
+            disconnectParticipant={disconnectParticipant}
+            moveParticipant={moveParticipant}
+          />
+        )
+      })()}
 
       {/* Custom Confirmation Modal */}
       <ConfirmModal
@@ -2139,6 +2244,9 @@ function Echo({ user }: { user: User }) {
         onJumpToMessage={handleJumpToSavedMessage}
       />
 
+      {/* Visualizador de Imagens em Tela Cheia (Lightbox) */}
+      <ImageLightboxModal />
+
       {/* AFK Modals */}
       <AfkPromptModal
         isOpen={showAfkPrompt}
@@ -2194,6 +2302,38 @@ function Echo({ user }: { user: User }) {
         onAccept={acceptIncomingCall}
         onReject={rejectIncomingCall}
       />
+
+      {/* Global Command Palette (Ctrl+K / Cmd+K Spotlight) */}
+      <Suspense fallback={null}>
+        <CommandPaletteModal
+          spaces={spaces}
+          channels={Object.values(spaceChannels).flat()}
+          friendships={friendships}
+          isMuted={isMuted}
+          isDeafened={isDeafened}
+          toggleMute={handleToggleMute}
+          toggleDeafen={handleToggleDeafen}
+          onSelectSpace={(spaceId) => {
+            setExpandedSpace(spaceId)
+            setPage('Servidores')
+          }}
+          onSelectChannel={(ch) => {
+            setSelectedChannel(ch)
+            setExpandedSpace(ch.space_id)
+            setPage('Servidores')
+            if (ch.type === 'voice') {
+              handleJoinVoice(ch.id, ch.space_id)
+            }
+          }}
+          onSelectFriend={(friendId) => {
+            handleOpenDirectChat(friendId)
+            setPage('Amigos')
+          }}
+          setPage={setPage}
+          setShowSpaceStudio={setShowSpaceSettingsModal}
+          setShowSoundboard={setShowSoundboardModal}
+        />
+      </Suspense>
     </main>
   )
 }

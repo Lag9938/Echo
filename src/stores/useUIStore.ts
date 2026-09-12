@@ -14,6 +14,8 @@ export interface UIState {
   showWhatsNewModal: boolean
   showSoundboardModal: boolean
   showSubscriptionModal: boolean
+  showCommandPalette: boolean
+  lightboxImageUrl: string | null
 
   // Toasts
   toasts: Toast[]
@@ -29,6 +31,9 @@ export interface UIState {
   setShowWhatsNewModal: (show: boolean) => void
   setShowSoundboardModal: (show: boolean) => void
   setShowSubscriptionModal: (show: boolean) => void
+  setShowCommandPalette: (show: boolean) => void
+  openLightbox: (url: string) => void
+  closeLightbox: () => void
   addToast: (toast: Toast) => void
   removeToast: (id: string) => void
 }
@@ -45,6 +50,8 @@ export const useUIStore = create<UIState>((set) => ({
   showWhatsNewModal: false,
   showSoundboardModal: false,
   showSubscriptionModal: false,
+  showCommandPalette: false,
+  lightboxImageUrl: null,
 
   toasts: [],
 
@@ -58,6 +65,9 @@ export const useUIStore = create<UIState>((set) => ({
   setShowWhatsNewModal: (showWhatsNewModal) => set({ showWhatsNewModal }),
   setShowSoundboardModal: (showSoundboardModal) => set({ showSoundboardModal }),
   setShowSubscriptionModal: (showSubscriptionModal) => set({ showSubscriptionModal }),
+  setShowCommandPalette: (showCommandPalette) => set({ showCommandPalette }),
+  openLightbox: (lightboxImageUrl) => set({ lightboxImageUrl }),
+  closeLightbox: () => set({ lightboxImageUrl: null }),
   addToast: (toast) => set((state) => ({ toasts: [...state.toasts, toast] })),
   removeToast: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
 }))

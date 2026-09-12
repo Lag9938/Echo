@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session, ipcMain, desktopCapturer, Notification, globalShortcut, Tray, Menu, nativeImage } from 'electron'
+import { app, BrowserWindow, session, ipcMain, desktopCapturer, Notification, globalShortcut, Tray, Menu, nativeImage, shell } from 'electron'
 import pkg from 'electron-updater'
 const { autoUpdater } = pkg
 import { fileURLToPath } from 'node:url'
@@ -282,6 +282,14 @@ function toggleOverlayWindow() {
   overlayWindow.setAlwaysOnTop(true, 'screen-saver', 1)
   overlayWindow.setVisibleOnAllWorkspaces?.(true)
 
+  overlayWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http:') || url.startsWith('https:') || url.startsWith('mailto:')) {
+      shell.openExternal(url).catch((err) => console.warn('[Shell] Falha ao abrir URL externa no overlay:', err))
+      return { action: 'deny' }
+    }
+    return { action: 'allow' }
+  })
+
   if (isDevelopment) {
     overlayWindow.loadURL('http://localhost:5173/?mode=overlay').catch(() => {})
   } else {
@@ -400,6 +408,15 @@ function createWindow() {
   mainWindow.removeMenu()
   mainWindow.setMenu(null)
 
+  // Redireciona qualquer clique em links externos para o navegador padrão do sistema
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http:') || url.startsWith('https:') || url.startsWith('mailto:')) {
+      shell.openExternal(url).catch((err) => console.warn('[Shell] Falha ao abrir URL externa no navegador:', err))
+      return { action: 'deny' }
+    }
+    return { action: 'allow' }
+  })
+
   mainWindow.on('minimize', () => {
     try {
       if (mainWindow && !mainWindow.isDestroyed()) {
@@ -502,6 +519,10 @@ function createWindow() {
   ipcMain.handle('window-close', () => {
     if (mainWindow) mainWindow.close()
   })
+  ipcMain.handle('app-quit', () => {
+    isQuitting = true
+    app.quit()
+  })
   ipcMain.handle('window-is-maximized', () => {
     return mainWindow ? mainWindow.isMaximized() : false
   })
@@ -513,6 +534,24 @@ function createWindow() {
   ipcMain.handle('window-is-fullscreen', () => {
     return mainWindow ? mainWindow.isFullScreen() : false
   })
+
+  // Handler para abrir links externos (YouTube, links do chat, etc.) no navegador padrão
+  ipcMain.handle('shell:openExternal', async (_event, url) => {
+    if (typeof url === 'string') {
+      const trimmed = url.trim()
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('mailto:')) {
+        try {
+          await shell.openExternal(trimmed)
+          return true
+        } catch (err) {
+          console.warn('[Shell] Falha ao abrir link externo no navegador:', err)
+          return false
+        }
+      }
+    }
+    return false
+  })
+
 
   // Handler para capturar telas e janelas do sistema operacional com WGC e alta definição
   ipcMain.handle('get-sources', async () => {
@@ -739,10 +778,15 @@ function createWindow() {
     return Boolean(overlayWindow && !overlayWindow.isDestroyed() && overlayWindow.isVisible())
   })
 
-  // Push-to-Talk: Global shortcut registration
+  // Global Shortcut Handlers (Push-to-Talk, Global Mute & Deafen Toggles)
+  const registeredShortcuts = new Map()
+
   ipcMain.handle('register-global-ptt', (_event, shortcutKey) => {
     try {
-      globalShortcut.unregisterAll()
+      if (registeredShortcuts.has('ptt')) {
+        globalShortcut.unregister(registeredShortcuts.get('ptt'))
+        registeredShortcuts.delete('ptt')
+      }
       if (!shortcutKey) return { success: true }
 
       const registered = globalShortcut.register(shortcutKey, () => {
@@ -751,6 +795,7 @@ function createWindow() {
           mainWindow?.webContents.send('ptt-state', false)
         }, 350)
       })
+      if (registered) registeredShortcuts.set('ptt', shortcutKey)
       return { success: registered }
     } catch (e) {
       console.warn('Global PTT shortcut error:', e)
@@ -759,22 +804,55 @@ function createWindow() {
   })
 
   ipcMain.handle('unregister-global-ptt', () => {
-    globalShortcut.unregisterAll()
+    if (registeredShortcuts.has('ptt')) {
+      globalShortcut.unregister(registeredShortcuts.get('ptt'))
+      registeredShortcuts.delete('ptt')
+    }
+    return { success: true }
+  })
+
+  ipcMain.handle('register-global-voice-shortcut', (_event, { action, shortcutKey }) => {
+    try {
+      if (registeredShortcuts.has(action)) {
+        globalShortcut.unregister(registeredShortcuts.get(action))
+        registeredShortcuts.delete(action)
+      }
+      if (!shortcutKey) return { success: true }
+
+      const registered = globalShortcut.register(shortcutKey, () => {
+        mainWindow?.webContents.send('global-voice-toggle', action)
+      })
+      if (registered) registeredShortcuts.set(action, shortcutKey)
+      return { success: registered }
+    } catch (e) {
+      console.warn(`Global shortcut error for ${action}:`, e)
+      return { success: false, error: e.message }
+    }
+  })
+
+  ipcMain.handle('unregister-global-voice-shortcut', (_event, action) => {
+    if (registeredShortcuts.has(action)) {
+      globalShortcut.unregister(registeredShortcuts.get(action))
+      registeredShortcuts.delete(action)
+    }
     return { success: true }
   })
 
   // Native Windows Notifications
   ipcMain.handle('show-notification', (_event, { title, body }) => {
     if (Notification.isSupported()) {
+      const appIconPath = path.join(__dirname, 'assets', 'echo-icon.png')
       const notif = new Notification({
         title: title || 'Echo',
         body: body || '',
+        icon: fs.existsSync(appIconPath) ? appIconPath : undefined,
         silent: false
       })
       notif.show()
       notif.on('click', () => {
         if (mainWindow) {
           if (mainWindow.isMinimized()) mainWindow.restore()
+          mainWindow.show()
           mainWindow.focus()
         }
       })
@@ -888,7 +966,11 @@ function createWindow() {
   // Handler para instalar atualização quando o usuário decidir
   ipcMain.on('install-update', () => {
     isQuitting = true
-    autoUpdater.quitAndInstall(false, true)
+    if (tray) {
+      try { tray.destroy() } catch (e) {}
+    }
+    // true, true => isSilent: true (sem tela de instalador externo), isForceRunAfter: true (reabre o app automaticamente)
+    autoUpdater.quitAndInstall(true, true)
   })
 
   // Handler para forçar verificação de atualizações sob demanda
@@ -972,6 +1054,45 @@ function createWindow() {
   }
 }
 app.whenReady().then(() => {
+  // Previne rejeição de WebSockets do LiveKit SFU em computadores Windows com certificados defasados
+  app.on('certificate-error', (event, _webContents, url, _error, _certificate, callback) => {
+    if (url.includes('sslip.io') || url.includes('137-131-144-255') || url.includes('localhost') || url.includes('127.0.0.1')) {
+      event.preventDefault()
+      callback(true)
+    } else {
+      callback(false)
+    }
+  })
+
+  // Intercepta e bloqueia abertura de qualquer janela interna secundária em todos os webContents,
+  // garantindo que links externos (YouTube, YouTube Music, etc.) abram 100% no navegador padrão do SO.
+  app.on('web-contents-created', (_event, contents) => {
+    contents.setWindowOpenHandler(({ url }) => {
+      if (url.startsWith('http:') || url.startsWith('https:') || url.startsWith('mailto:')) {
+        setImmediate(() => {
+          shell.openExternal(url).catch((err) => console.warn('[Shell] Falha ao abrir URL externa:', err))
+        })
+        return { action: 'deny' }
+      }
+      return { action: 'allow' }
+    })
+
+    contents.on('will-navigate', (event, url) => {
+      if (url.startsWith('http:') || url.startsWith('https:')) {
+        try {
+          const parsed = new URL(url)
+          if (!['localhost', '127.0.0.1'].includes(parsed.hostname)) {
+            event.preventDefault()
+            shell.openExternal(url).catch((err) => console.warn('[Shell] Falha ao abrir URL externa:', err))
+          }
+        } catch {
+          event.preventDefault()
+          shell.openExternal(url).catch(() => {})
+        }
+      }
+    })
+  })
+
   Menu.setApplicationMenu(null)
   ensureLocalLivekitServer()
   createWindow()

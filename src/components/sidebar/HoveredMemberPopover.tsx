@@ -2,6 +2,7 @@ import React from 'react'
 import { ProfileEffect } from '../ProfileEffect'
 import { AvatarDecoration } from '../AvatarDecoration'
 import { GameLogo } from '../GameLogos'
+import { VolumeIcon } from '../icons'
 import { formatGameDuration } from '../../lib/formatters'
 
 export interface HoveredMemberPopoverData {
@@ -143,14 +144,15 @@ export function HoveredMemberPopover({
         )}
 
         {hoveredMemberPopover.isVoiceUser && !hoveredMemberPopover.activeGame && (
-          <div className="hover-popover-activity voice">
-            <span>🔊 Conectado na chamada de voz</span>
+          <div className="hover-popover-activity voice" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <VolumeIcon style={{ width: '14px', height: '14px', color: '#22c55e', flexShrink: 0 }} />
+            <span>Conectado na chamada de voz</span>
           </div>
         )}
 
         {hoveredMemberPopover.customStatus && (
           <div className="hover-popover-quote">
-            <span>〰️ {hoveredMemberPopover.customStatus}</span>
+            <span>{hoveredMemberPopover.customStatus}</span>
           </div>
         )}
 

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { StarIcon } from '../icons'
 import type { SavedMessageItem } from '../../types'
+import { openExternalUrl } from '../../lib/openExternal'
+import { useUIStore } from '../../stores/useUIStore'
 
 export interface SavedMessagesModalProps {
   isOpen: boolean;
@@ -17,6 +19,7 @@ export function SavedMessagesModal({
   onUnstar,
   onJumpToMessage
 }: SavedMessagesModalProps) {
+  const openLightbox = useUIStore((s) => s.openLightbox)
   const [activeTab, setActiveTab] = useState<'all' | 'links' | 'media' | 'text'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -175,7 +178,17 @@ export function SavedMessagesModal({
                       {item.body.split(/(https?:\/\/[^\s]+)/g).map((part, idx) => {
                         if (part.match(/^https?:\/\//i)) {
                           return (
-                            <a key={idx} href={part} target="_blank" rel="noopener noreferrer" className="saved-link">
+                            <a
+                              key={idx}
+                              href={part}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="saved-link"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                openExternalUrl(part)
+                              }}
+                            >
                               {part}
                             </a>
                           )
@@ -190,8 +203,9 @@ export function SavedMessagesModal({
                       <img
                         src={item.attachmentUrl}
                         alt="Anexo salvo"
-                        onClick={() => window.open(item.attachmentUrl, '_blank')}
-                        title="Abrir imagem"
+                        onClick={() => openLightbox(item.attachmentUrl!)}
+                        title="Clique para ampliar"
+                        style={{ cursor: 'pointer' }}
                       />
                     </div>
                   )}
@@ -204,7 +218,15 @@ export function SavedMessagesModal({
 
                   {item.attachmentUrl && item.attachmentType !== 'image' && item.attachmentType !== 'audio' && (
                     <div className="saved-card-file">
-                      <a href={item.attachmentUrl} target="_blank" rel="noopener noreferrer">
+                      <a
+                        href={item.attachmentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          openExternalUrl(item.attachmentUrl)
+                        }}
+                      >
                         📎 Baixar arquivo anexo
                       </a>
                     </div>

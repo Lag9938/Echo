@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Brand } from '../navigation/Brand'
+import { WindowControls } from '../navigation/WindowControls'
+import { EchoAtomLogo } from '../icons'
 
 export function Auth() {
   const [mode, setMode] = useState<'login' | 'signup'>('login')
@@ -26,6 +28,16 @@ export function Auth() {
 
   return (
     <main className="auth-page">
+      <header className="auth-titlebar">
+        <div className="auth-titlebar-drag">
+          <div className="auth-titlebar-brand">
+            <EchoAtomLogo size={14} />
+            <span>Echo</span>
+          </div>
+        </div>
+        <WindowControls isQuitOnClose />
+      </header>
+
       <div className="auth-bg-blob auth-bg-blob-1"></div>
       <div className="auth-bg-blob auth-bg-blob-2"></div>
       <div className="auth-bg-blob auth-bg-blob-3"></div>

@@ -94,6 +94,8 @@ export function useEchoRolesAndPermissions({
                 manageMessages: true,
                 kickMembers: true,
                 muteMembers: true,
+                moveMembers: true,
+                disconnectMembers: true,
                 sendInAnnouncementChannels: true
               },
               is_default: false
@@ -108,6 +110,8 @@ export function useEchoRolesAndPermissions({
                 manageMessages: true,
                 kickMembers: true,
                 muteMembers: true,
+                moveMembers: true,
+                disconnectMembers: true,
                 sendInAnnouncementChannels: true
               },
               is_default: false
@@ -118,7 +122,10 @@ export function useEchoRolesAndPermissions({
               color: '#99aab5',
               position: 2,
               permissions: {
-                sendInAnnouncementChannels: false
+                sendInAnnouncementChannels: false,
+                muteMembers: false,
+                moveMembers: false,
+                disconnectMembers: false
               },
               is_default: true
             }
@@ -163,6 +170,8 @@ export function useEchoRolesAndPermissions({
             manageMessages: true,
             kickMembers: true,
             muteMembers: true,
+            moveMembers: true,
+            disconnectMembers: true,
             sendInAnnouncementChannels: true
           }
         },
@@ -176,6 +185,8 @@ export function useEchoRolesAndPermissions({
             manageMessages: true,
             kickMembers: true,
             muteMembers: true,
+            moveMembers: true,
+            disconnectMembers: true,
             sendInAnnouncementChannels: true
           }
         },
@@ -185,7 +196,10 @@ export function useEchoRolesAndPermissions({
           color: '#99aab5',
           position: 2,
           permissions: {
-            sendInAnnouncementChannels: false
+            sendInAnnouncementChannels: false,
+            muteMembers: false,
+            moveMembers: false,
+            disconnectMembers: false
           }
         }
       ]
@@ -239,6 +253,8 @@ export function useEchoRolesAndPermissions({
       manageMessages: false,
       kickMembers: false,
       muteMembers: false,
+      moveMembers: false,
+      disconnectMembers: false,
       sendInAnnouncementChannels: false
     }
 

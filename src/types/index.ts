@@ -7,6 +7,8 @@ export interface RolePermissions {
   manageMessages?: boolean;
   kickMembers?: boolean;
   muteMembers?: boolean;
+  moveMembers?: boolean;
+  disconnectMembers?: boolean;
   sendInAnnouncementChannels?: boolean;
 }
 
@@ -75,6 +77,8 @@ export interface Channel {
   user_limit?: number;
   slowmode_seconds?: number;
   category?: string;
+  is_private?: boolean;
+  allowed_role_ids?: string[];
 }
 
 export interface Message { 

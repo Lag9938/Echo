@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { useVoiceChannel, type VoiceParticipant } from '../lib/useVoiceChannel'
 import type { Space, Channel } from '../types'
@@ -36,6 +36,7 @@ export interface UseEchoVoiceSessionOptions {
   setShowAfkPrompt?: (show: boolean) => void
   setShowAfkDisconnectedModal?: (show: boolean) => void
   onBeforeJoinVoice?: () => void
+  showToast?: (title: string, message: string, type?: any) => void
   supabase: any
 }
 
@@ -64,10 +65,14 @@ export function useEchoVoiceSession({
   setShowAfkPrompt,
   setShowAfkDisconnectedModal,
   onBeforeJoinVoice,
+  showToast,
   supabase
 }: UseEchoVoiceSessionOptions) {
   const [activeVoiceChannelId, setActiveVoiceChannelId] = useState<string | null>(null)
   const [spaceVoiceUsers, setSpaceVoiceUsers] = useState<Record<string, VoiceParticipant[]>>({})
+
+  const handleJoinVoiceRef = useRef<(channelId: string, explicitSpaceId?: string) => Promise<void>>(async () => {})
+  const handleLeaveVoiceRef = useRef<() => void>(() => {})
 
   // Voice disconnect handler (chamado apenas quando a conexão for realmente perdida pelo SFU/rede)
   const handleVoiceDisconnected = useCallback(() => {
@@ -127,10 +132,24 @@ export function useEchoVoiceSession({
     reconnectCountdown: voiceReconnectCountdown,
     reconnectAttempt: voiceReconnectAttempt,
     retryVoiceReconnect,
-    cancelVoiceReconnect
+    cancelVoiceReconnect,
+    serverMuteParticipant,
+    disconnectParticipant,
+    moveParticipant
   } = useVoiceChannel({
     onDisconnected: handleVoiceDisconnected,
-    sfxVolume
+    sfxVolume,
+    onServerMuted: () => {
+      showToast?.('Silenciado no Servidor', 'Um moderador silenciou seu microfone.', 'info')
+    },
+    onKickedFromVoice: () => {
+      showToast?.('Desconectado da Chamada', 'Você foi desconectado da chamada por um moderador.', 'info')
+      handleLeaveVoiceRef.current?.()
+    },
+    onMovedToVoiceChannel: (targetChannelId, targetChannelName) => {
+      showToast?.('Movido de Canal', `Você foi movido para o canal ${targetChannelName || ''}.`, 'info')
+      handleJoinVoiceRef.current?.(targetChannelId)
+    }
   })
 
   // Voice Presence per space
@@ -208,13 +227,20 @@ export function useEchoVoiceSession({
     }
   }, [spaces, user.id])
 
+  handleJoinVoiceRef.current = handleJoinVoice
+  handleLeaveVoiceRef.current = handleLeaveVoice
+
   async function handleJoinVoice(channelId: string, explicitSpaceId?: string) {
     if (lastActivityRef) lastActivityRef.current = Date.now()
     if (setShowAfkPrompt) setShowAfkPrompt(false)
     if (setShowAfkDisconnectedModal) setShowAfkDisconnectedModal(false)
     if (onBeforeJoinVoice) onBeforeJoinVoice()
     setActiveVoiceChannelId(channelId)
-    const spaceId = explicitSpaceId || selectedChannel?.space_id || Object.keys(spaceChannels).find(sId => (spaceChannels[sId] || []).some(c => c.id === channelId))
+    const spaceId = explicitSpaceId 
+      || selectedChannel?.space_id 
+      || Object.keys(spaceChannels).find(sId => (spaceChannels[sId] || []).some(c => c.id === channelId))
+      || Object.keys(spaceChannelsRef.current).find(sId => (spaceChannelsRef.current[sId] || []).some(c => c.id === channelId))
+      || spaces.find(s => (spaceChannelsRef.current[s.id] || []).some(c => c.id === channelId))?.id
     try {
       playJoinSound(sfxVolume)
       const inputId = selectedInputId || (getSelectedInputId ? getSelectedInputId() : '')
@@ -394,6 +420,9 @@ export function useEchoVoiceSession({
     handleJoinVoice,
     handleLeaveVoice,
     handleToggleMute,
-    handleToggleDeafen
+    handleToggleDeafen,
+    serverMuteParticipant,
+    disconnectParticipant,
+    moveParticipant
   }
 }

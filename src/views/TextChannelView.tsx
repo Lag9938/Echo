@@ -1,10 +1,12 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import type { User } from '@supabase/supabase-js'
 import type { Space, Channel, Message, PinnedMessage, ServerEmoji, RolePermissions, ServerRole } from '../types'
 import { MembersSidebar } from '../components/sidebar/MembersSidebar'
 import { PinnedMessagesDrawer } from '../components/chat/PinnedMessagesDrawer'
 import { AvatarDecoration } from '../components/AvatarDecoration'
 import { ModernVoiceNotePlayer } from '../components/chat/ModernVoiceNotePlayer'
+import { ChatLinkEmbed } from '../components/chat/ChatLinkEmbed'
 import { formatChatDateDivider, formatMessageText } from '../lib/messageFormatter'
 import { NAME_EFFECTS } from '../lib/cosmeticsData'
 import {
@@ -21,6 +23,8 @@ import {
   UsersIcon,
   VoiceMessageIcon
 } from '../components/icons'
+import { openExternalUrl } from '../lib/openExternal'
+import { useUIStore } from '../stores/useUIStore'
 
 export const DEFAULT_EMOJIS = [
   '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
@@ -53,46 +57,7 @@ export const GAMING_GIFS = [
 ]
 
 function renderRichEmbed(body: string) {
-  const ytMatch = body.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/i)
-  if (ytMatch) {
-    const videoId = ytMatch[1]
-    return (
-      <div className="link-embed-card youtube-embed">
-        <div className="link-embed-header">
-          <span className="link-embed-brand-badge">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="#ff0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-            <span>YouTube Video</span>
-          </span>
-        </div>
-        <div className="link-embed-video-wrap">
-          <iframe 
-            src={`https://www.youtube-nocookie.com/embed/${videoId}`} 
-            title="YouTube video" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-            allowFullScreen 
-          />
-        </div>
-      </div>
-    )
-  }
-
-  const twitchMatch = body.match(/(?:https?:\/\/)?(?:www\.)?twitch\.tv\/([a-zA-Z0-9_]{3,25})/i)
-  if (twitchMatch) {
-    const channel = twitchMatch[1]
-    return (
-      <div className="link-embed-card" style={{ padding: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <span style={{ fontSize: '24px' }}>🟣</span>
-        <div>
-          <div style={{ fontWeight: 600, fontSize: '13.5px', color: '#a970ff' }}>Twitch Stream: {channel}</div>
-          <a href={`https://twitch.tv/${channel}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-            Assistir ao vivo na Twitch ↗
-          </a>
-        </div>
-      </div>
-    )
-  }
-
-  return null
+  return <ChatLinkEmbed content={body} />
 }
 
 export interface TextChannelViewProps {
@@ -136,7 +101,7 @@ export interface TextChannelViewProps {
   setDraft: React.Dispatch<React.SetStateAction<string>>
   send: (e: React.FormEvent) => void
   isUploading: boolean
-  handleChatFileUpload: (file: File) => void
+  handleChatFileUpload: (file: File, caption?: string) => void
   isVoiceNoteRecording: boolean
   voiceNoteDuration: number
   startVoiceNoteRecording: (target: 'channel' | 'dm') => void
@@ -166,6 +131,8 @@ export interface TextChannelViewProps {
   hoverTimeoutRef: React.MutableRefObject<any>
   postChannelMessage: (channelId: string, body: string, attachmentUrl?: string, attachmentType?: string, existingTempId?: string) => Promise<any> | void
   supabase: any
+  typingUsers?: string[]
+  notifyTyping?: () => void
 }
 
 export function TextChannelView({
@@ -238,12 +205,134 @@ export function TextChannelView({
   setHoveredMemberPopover,
   hoverTimeoutRef,
   postChannelMessage,
-  supabase
+  supabase,
+  typingUsers = [],
+  notifyTyping
 }: TextChannelViewProps) {
+  const openLightbox = useUIStore((s) => s.openLightbox)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [emojiPickerTab, setEmojiPickerTab] = useState<'default' | 'server'>('default')
   const [showGifPicker, setShowGifPicker] = useState(false)
   const [gifSearchQuery, setGifSearchQuery] = useState('')
+
+  // Staged clipboard paste image state
+  const [pendingPastedFile, setPendingPastedFile] = useState<File | null>(null)
+  const [pendingImagePreview, setPendingImagePreview] = useState<string | null>(null)
+
+  const removePendingImage = useCallback(() => {
+    setPendingPastedFile(null)
+    setPendingImagePreview(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+  }, [])
+
+  const handlePaste = useCallback((e: React.ClipboardEvent | ClipboardEvent) => {
+    const clipboardData = ('clipboardData' in e ? e.clipboardData : null)
+    const items = clipboardData?.items
+    if (!items) return
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (file) {
+          e.preventDefault()
+          const rawExt = file.type.split('/')[1] || 'png'
+          const ext = rawExt.replace(/[^a-zA-Z0-9]/g, '')
+          const renamedFile = new File([file], `screenshot_${Date.now()}.${ext}`, { type: file.type })
+
+          setPendingImagePreview(prev => {
+            if (prev) URL.revokeObjectURL(prev)
+            return URL.createObjectURL(renamedFile)
+          })
+          setPendingPastedFile(renamedFile)
+          return
+        }
+      }
+    }
+  }, [])
+
+  // Global window paste handler when channel is active
+  useEffect(() => {
+    const onWindowPaste = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement | null
+      if (target && target.tagName === 'INPUT' && target.id !== 'chat-input-field') {
+        return
+      }
+      if (target && target.tagName === 'TEXTAREA') {
+        return
+      }
+      handlePaste(e)
+    }
+    window.addEventListener('paste', onWindowPaste)
+    return () => window.removeEventListener('paste', onWindowPaste)
+  }, [handlePaste])
+
+  // Esc key cancels pending image
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && pendingPastedFile) {
+        removePendingImage()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [pendingPastedFile, removePendingImage])
+
+  const handleComposerSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (pendingPastedFile) {
+      const file = pendingPastedFile
+      const caption = draft.trim()
+      removePendingImage()
+      setDraft('')
+      await handleChatFileUpload(file, caption)
+      return
+    }
+    send(e)
+  }
+
+  const filteredMessages = useMemo(() => {
+    return messages.filter(m => {
+      if (!searchQuery.trim()) return true
+      const q = searchQuery.toLowerCase().trim()
+      if (q.startsWith('de:') || q.startsWith('from:')) {
+        const authorQ = q.slice(3).trim().replace('@', '')
+        return (m.profile?.display_name || '').toLowerCase().includes(authorQ)
+      }
+      return m.body.toLowerCase().includes(q) || (m.profile?.display_name || '').toLowerCase().includes(q)
+    })
+  }, [messages, searchQuery])
+
+  const channelVirtualizer = useVirtualizer({
+    count: filteredMessages.length,
+    getScrollElement: () => messagesContainerRef.current,
+    estimateSize: () => 64,
+    overscan: 8,
+    paddingEnd: 32
+  })
+
+  // Garante que o chat role suavemente para o fim e mantenha a última mensagem sempre acima da caixa de digitação
+  useEffect(() => {
+    if (filteredMessages.length > 0) {
+      channelVirtualizer.scrollToIndex(filteredMessages.length - 1, { align: 'end' })
+      const t1 = setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+        }
+      }, 50)
+      const t2 = setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+        }
+      }, 160)
+      return () => {
+        clearTimeout(t1)
+        clearTimeout(t2)
+      }
+    }
+  }, [filteredMessages.length, channelVirtualizer])
 
   return (
 <>
@@ -355,100 +444,107 @@ export function TextChannelView({
                           }
                         }}
                       >
-                        {(() => {
-                          const filtered = messages.filter(m => {
-                            if (!searchQuery.trim()) return true
-                            const q = searchQuery.toLowerCase().trim()
-                            if (q.startsWith('de:') || q.startsWith('from:')) {
-                              const authorQ = q.slice(3).trim().replace('@', '')
-                              return (m.profile?.display_name || '').toLowerCase().includes(authorQ)
+                        {/* Indicador de carregamento de mensagens anteriores */}
+                        {isLoadingMore && (
+                          <div className="loading-more-messages">
+                            <span className="loading-spinner-circle" />
+                            <span>Carregando mensagens anteriores...</span>
+                          </div>
+                        )}
+
+                        {/* Channel Welcome Hero (visível apenas ao alcançar o início histórico do canal) */}
+                        {!searchQuery.trim() && !hasMoreMessages && (
+                          <div className="channel-welcome-hero">
+                            <div className="channel-welcome-icon-box">
+                              {selectedChannel.is_announcement ? <MegaphoneIcon /> : <HashtagIcon />}
+                            </div>
+                            <h2 className="channel-welcome-title">Bem-vindo ao canal #{selectedChannel.name}!</h2>
+                            <p className="channel-welcome-desc">
+                              {selectedChannel.topic || `Este é o início do canal #${selectedChannel.name} da comunidade ${currentSpace?.name || 'Echo'}. Envie uma mensagem para iniciar o papo!`}
+                            </p>
+                            <div className="channel-welcome-meta">
+                              <span>🔒 Canal seguro</span>
+                              <span>•</span>
+                              <span>💬 Início do canal</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {filteredMessages.length === 0 && searchQuery && (
+                          <div className="no-messages">
+                            <span className="no-msg-icon">🔍</span>
+                            <p>{`Nenhuma mensagem encontrada para "${searchQuery}"`}</p>
+                          </div>
+                        )}
+
+                        <div
+                          style={{
+                            height: `${channelVirtualizer.getTotalSize()}px`,
+                            width: '100%',
+                            position: 'relative'
+                          }}
+                        >
+                          {channelVirtualizer.getVirtualItems().map((virtualRow) => {
+                            const index = virtualRow.index
+                            const message = filteredMessages[index]
+                            const prevMessage = index > 0 ? filteredMessages[index - 1] : null
+                            const msgDate = new Date(message.created_at)
+                            const prevDate = prevMessage ? new Date(prevMessage.created_at) : null
+                            const isDifferentDay = !prevDate || msgDate.toDateString() !== prevDate.toDateString()
+
+                            // Parse reply quote if present
+                            let displayedBody = message.body
+                            let replyQuoteText: string | null = null
+                            if (displayedBody.startsWith('> @')) {
+                              const firstLineEnd = displayedBody.indexOf('\n')
+                              if (firstLineEnd !== -1) {
+                                replyQuoteText = displayedBody.slice(2, firstLineEnd)
+                                displayedBody = displayedBody.slice(firstLineEnd + 1)
+                              }
                             }
-                            return m.body.toLowerCase().includes(q) || (m.profile?.display_name || '').toLowerCase().includes(q)
-                          })
 
-                          return (
-                            <>
-                              {/* Indicador de carregamento de mensagens anteriores */}
-                              {isLoadingMore && (
-                                <div className="loading-more-messages">
-                                  <span className="loading-spinner-circle" />
-                                  <span>Carregando mensagens anteriores...</span>
-                                </div>
-                              )}
+                            // Consecutive Message Grouping (Same author within 5 min, same calendar day, not a reply, and not voice note)
+                            const isSameAuthor = prevMessage && prevMessage.author_id === message.author_id
+                            const isWithinWindow = prevMessage && (msgDate.getTime() - prevDate!.getTime() < 5 * 60 * 1000)
+                            const isAudioNote = message.attachment_type === 'audio' || prevMessage?.attachment_type === 'audio'
+                            const isConsecutive = !isDifferentDay && isSameAuthor && isWithinWindow && !replyQuoteText && !isAudioNote
 
-                              {/* Channel Welcome Hero (visível apenas ao alcançar o início histórico do canal) */}
-                              {!searchQuery.trim() && !hasMoreMessages && (
-                                <div className="channel-welcome-hero">
-                                  <div className="channel-welcome-icon-box">
-                                    {selectedChannel.is_announcement ? <MegaphoneIcon /> : <HashtagIcon />}
+                            const isMentioned = message.author_id !== user.id && message.body.toLowerCase().includes(`@${profileDisplayName.toLowerCase()}`)
+                            const msgRole = currentSpace ? getUserHighestRole(currentSpace.id, message.author_id) : null
+                            const isPinned = (pinnedMessages[selectedChannel.id] || []).some(p => p.message_id === message.id)
+                            const canManagePins = currentSpace && (canUserDo(currentSpace.id, user.id, 'manageMessages') || currentSpace.creator_id === user.id)
+                            const reactions = messageReactions[message.id] || {}
+
+                            const authorClanTag = localStorage.getItem(`echo-clan-tag-${message.author_id}`) || (message.author_id === user.id ? localStorage.getItem(`echo-clan-tag-${user.id}`) : null)
+                            const authorClanTagColor = localStorage.getItem(`echo-clan-tag-color-${message.author_id}`) || (message.author_id === user.id ? localStorage.getItem(`echo-clan-tag-color-${user.id}`) : '#00f2fe') || '#00f2fe'
+
+                            return (
+                              <div
+                                key={message.id || virtualRow.key}
+                                data-index={virtualRow.index}
+                                ref={channelVirtualizer.measureElement}
+                                style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
+                                  width: '100%',
+                                  transform: `translateY(${virtualRow.start}px)`
+                                }}
+                              >
+                                {isDifferentDay && (
+                                  <div className="chat-date-divider">
+                                    <div className="chat-date-line" />
+                                    <span className="chat-date-pill">
+                                      {formatChatDateDivider(msgDate)}
+                                    </span>
+                                    <div className="chat-date-line" />
                                   </div>
-                                  <h2 className="channel-welcome-title">Bem-vindo ao canal #{selectedChannel.name}!</h2>
-                                  <p className="channel-welcome-desc">
-                                    {selectedChannel.topic || `Este é o início do canal #${selectedChannel.name} da comunidade ${currentSpace?.name || 'Echo'}. Envie uma mensagem para iniciar o papo!`}
-                                  </p>
-                                  <div className="channel-welcome-meta">
-                                    <span>🔒 Canal seguro</span>
-                                    <span>•</span>
-                                    <span>💬 Início do canal</span>
-                                  </div>
-                                </div>
-                              )}
+                                )}
 
-                              {filtered.length === 0 && searchQuery && (
-                                <div className="no-messages">
-                                  <span className="no-msg-icon">🔍</span>
-                                  <p>{`Nenhuma mensagem encontrada para "${searchQuery}"`}</p>
-                                </div>
-                              )}
-
-                              {filtered.map((message, index) => {
-                                const prevMessage = index > 0 ? filtered[index - 1] : null
-                                const msgDate = new Date(message.created_at)
-                                const prevDate = prevMessage ? new Date(prevMessage.created_at) : null
-                                const isDifferentDay = !prevDate || msgDate.toDateString() !== prevDate.toDateString()
-
-                                // Parse reply quote if present
-                                let displayedBody = message.body
-                                let replyQuoteText: string | null = null
-                                if (displayedBody.startsWith('> @')) {
-                                  const firstLineEnd = displayedBody.indexOf('\n')
-                                  if (firstLineEnd !== -1) {
-                                    replyQuoteText = displayedBody.slice(2, firstLineEnd)
-                                    displayedBody = displayedBody.slice(firstLineEnd + 1)
-                                  }
-                                }
-
-                                // Consecutive Message Grouping (Same author within 5 min, same calendar day, not a reply, and not voice note)
-                                const isSameAuthor = prevMessage && prevMessage.author_id === message.author_id
-                                const isWithinWindow = prevMessage && (msgDate.getTime() - prevDate!.getTime() < 5 * 60 * 1000)
-                                const isAudioNote = message.attachment_type === 'audio' || prevMessage?.attachment_type === 'audio'
-                                const isConsecutive = !isDifferentDay && isSameAuthor && isWithinWindow && !replyQuoteText && !isAudioNote
-
-                                const isMentioned = message.author_id !== user.id && message.body.toLowerCase().includes(`@${profileDisplayName.toLowerCase()}`)
-                                const msgRole = currentSpace ? getUserHighestRole(currentSpace.id, message.author_id) : null
-                                const isPinned = (pinnedMessages[selectedChannel.id] || []).some(p => p.message_id === message.id)
-                                const canManagePins = currentSpace && (canUserDo(currentSpace.id, user.id, 'manageMessages') || currentSpace.creator_id === user.id)
-                                const reactions = messageReactions[message.id] || {}
-
-                                const authorClanTag = localStorage.getItem(`echo-clan-tag-${message.author_id}`) || (message.author_id === user.id ? localStorage.getItem(`echo-clan-tag-${user.id}`) : null)
-                                const authorClanTagColor = localStorage.getItem(`echo-clan-tag-color-${message.author_id}`) || (message.author_id === user.id ? localStorage.getItem(`echo-clan-tag-color-${user.id}`) : '#00f2fe') || '#00f2fe'
-
-                                return (
-                                  <React.Fragment key={message.id}>
-                                    {isDifferentDay && (
-                                      <div className="chat-date-divider">
-                                        <div className="chat-date-line" />
-                                        <span className="chat-date-pill">
-                                          {formatChatDateDivider(msgDate)}
-                                        </span>
-                                        <div className="chat-date-line" />
-                                      </div>
-                                    )}
-
-                                    <article 
-                                      className={`msg-card ${isConsecutive ? 'msg-consecutive' : ''} ${message.attachment_type === 'audio' ? 'has-voice-note' : ''} ${message.author_id === user.id ? 'msg-own' : ''} ${isMentioned ? 'mention-highlight' : ''} ${message.status === 'sending' ? 'msg-sending' : ''} ${message.status === 'failed' ? 'msg-failed' : ''}`} 
-                                      style={{ position: 'relative' }}
-                                    >
+                                <article 
+                                  className={`msg-card ${isConsecutive ? 'msg-consecutive' : ''} ${message.attachment_type === 'audio' ? 'has-voice-note' : ''} ${message.author_id === user.id ? 'msg-own' : ''} ${isMentioned ? 'mention-highlight' : ''} ${message.status === 'sending' ? 'msg-sending' : ''} ${message.status === 'failed' ? 'msg-failed' : ''}`} 
+                                  style={{ position: 'relative' }}
+                                >
                                       {/* Message Hover Action Bar */}
                                       <div className="message-hover-actions">
                                         {['👍', '❤️', '😂', '🔥', '🎮', '💀'].map(emoji => (
@@ -640,7 +736,17 @@ export function TextChannelView({
 
                                         {/* Message content */}
                                         {message.attachment_url && message.attachment_type === 'image' ? (
-                                          <img src={message.attachment_url} alt="anexo" className="msg-attachment-img" onClick={() => window.open(message.attachment_url, '_blank')} />
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            <img
+                                              src={message.attachment_url}
+                                              alt="anexo"
+                                              className="msg-attachment-img"
+                                              onClick={() => openLightbox(message.attachment_url!)}
+                                            />
+                                            {displayedBody && displayedBody !== 'Imagem' && !displayedBody.startsWith('http') && (
+                                              <p>{formatMessageText(displayedBody, profileDisplayName, serverEmojis)}</p>
+                                            )}
+                                          </div>
                                         ) : message.attachment_url && message.attachment_type === 'audio' ? (
                                           <ModernVoiceNotePlayer
                                             audioUrl={message.attachment_url}
@@ -652,7 +758,19 @@ export function TextChannelView({
                                             activeAudioRef={voiceNoteAudioRef}
                                           />
                                         ) : message.attachment_url && message.attachment_type !== 'image' ? (
-                                          <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-file">📎 {displayedBody}</a>
+                                          <a
+                                            href={message.attachment_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="msg-attachment-file"
+                                            onClick={(e) => {
+                                              e.preventDefault()
+                                              openExternalUrl(message.attachment_url)
+                                            }}
+                                          >
+                                            <PaperclipIcon style={{ width: '13px', height: '13px', display: 'inline-block', verticalAlign: 'middle', marginRight: '5px' }} />
+                                            <span>{displayedBody}</span>
+                                          </a>
                                         ) : (
                                           <>
                                             <p>{formatMessageText(displayedBody, profileDisplayName, serverEmojis)}</p>
@@ -703,13 +821,12 @@ export function TextChannelView({
                                         )}
                                       </div>
                                     </article>
-                                  </React.Fragment>
-                                )
-                              })}
-                            </>
-                          )
-                        })()}
-                        <div ref={messagesEndRef} />
+                                  </div>
+                                  )
+                                })}
+                              </div>
+                              <div style={{ height: '24px', flexShrink: 0 }} />
+                              <div ref={messagesEndRef} />
                       </div>
 
                       {/* Announcement / Read-only Channel check */}
@@ -779,51 +896,101 @@ export function TextChannelView({
                               </div>
                             </div>
                           ) : (
-                            <form className="composer" onSubmit={send} style={{ position: 'relative' }}>
-                              <input type="file" id="chat-file-input" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleChatFileUpload(f); e.target.value = '' }} />
-                              <button type="button" className="dm-attach-btn" onClick={() => document.getElementById('chat-file-input')?.click()} disabled={isUploading} title="Anexar arquivo ou imagem" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 8px 0 0', display: 'flex', alignItems: 'center' }}>
-                                <PaperclipIcon />
-                              </button>
+                            <>
+                              {typingUsers && typingUsers.length > 0 && (
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '4px 20px',
+                                  fontSize: '12px',
+                                  color: '#38bdf8',
+                                  animation: 'fadeIn 0.2s ease-in-out'
+                                }}>
+                                  <span style={{ display: 'inline-flex', gap: '3px', alignItems: 'center' }}>
+                                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#38bdf8' }} />
+                                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#38bdf8' }} />
+                                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#38bdf8' }} />
+                                  </span>
+                                  <span>
+                                    <strong>{typingUsers.join(', ')}</strong> {typingUsers.length === 1 ? 'está digitando...' : 'estão digitando...'}
+                                  </span>
+                                </div>
+                              )}
+                              {pendingPastedFile && pendingImagePreview && (
+                                <div className="composer-image-staging">
+                                  <div className="staging-thumb-wrap">
+                                    <img src={pendingImagePreview} alt="Screenshot colado" />
+                                  </div>
+                                  <div className="staging-info">
+                                    <div className="staging-title-row">
+                                      <span className="staging-badge">Print / Clipboard</span>
+                                      <span className="staging-name">{pendingPastedFile.name}</span>
+                                    </div>
+                                    <span className="staging-subtext">
+                                      {(pendingPastedFile.size / 1024).toFixed(1)} KB • Pressione Enter para enviar com a mensagem
+                                    </span>
+                                  </div>
+                                  <button 
+                                    type="button" 
+                                    className="staging-remove-btn" 
+                                    onClick={removePendingImage}
+                                    title="Descartar print (Esc)"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              )}
+                              <form className="composer" onSubmit={handleComposerSubmit} style={{ position: 'relative' }}>
+                                <input type="file" id="chat-file-input" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleChatFileUpload(f); e.target.value = '' }} />
+                                <button type="button" className="dm-attach-btn" onClick={() => document.getElementById('chat-file-input')?.click()} disabled={isUploading} title="Anexar arquivo ou imagem" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 8px 0 0', display: 'flex', alignItems: 'center' }}>
+                                  <PaperclipIcon />
+                                </button>
 
-                              {/* Voice Note Button */}
-                              <button 
-                                type="button" 
-                                className="dm-attach-btn" 
-                                onClick={() => startVoiceNoteRecording('channel')} 
-                                title="Gravar Mensagem de Voz"
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 6px 0 0', display: 'flex', alignItems: 'center' }}
-                              >
-                                <VoiceMessageIcon />
-                              </button>
+                                {/* Voice Note Button */}
+                                <button 
+                                  type="button" 
+                                  className="dm-attach-btn" 
+                                  onClick={() => startVoiceNoteRecording('channel')} 
+                                  title="Gravar Mensagem de Voz"
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 6px 0 0', display: 'flex', alignItems: 'center' }}
+                                >
+                                  <VoiceMessageIcon />
+                                </button>
 
-                              {/* GIF Picker Button */}
-                              <button 
-                                type="button" 
-                                className="dm-attach-btn" 
-                                onClick={() => setShowGifPicker(!showGifPicker)} 
-                                title="Escolher GIF Gamer"
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: showGifPicker ? 'var(--accent-color)' : 'var(--text-muted)', padding: '0 6px 0 0', display: 'flex', alignItems: 'center', fontWeight: 700, fontSize: '11px', letterSpacing: '0.5px' }}
-                              >
-                                GIF
-                              </button>
+                                {/* GIF Picker Button */}
+                                <button 
+                                  type="button" 
+                                  className="dm-attach-btn" 
+                                  onClick={() => setShowGifPicker(!showGifPicker)} 
+                                  title="Escolher GIF Gamer"
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: showGifPicker ? 'var(--accent-color)' : 'var(--text-muted)', padding: '0 6px 0 0', display: 'flex', alignItems: 'center', fontWeight: 700, fontSize: '11px', letterSpacing: '0.5px' }}
+                                >
+                                  GIF
+                                </button>
 
-                              {/* Emoji Picker Button */}
-                              <button 
-                                type="button" 
-                                className="dm-attach-btn" 
-                                onClick={() => setShowEmojiPicker(!showEmojiPicker)} 
-                                title="Escolher Emoji"
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: showEmojiPicker ? 'var(--accent-color)' : 'var(--text-muted)', padding: '0 6px 0 0', display: 'flex', alignItems: 'center' }}
-                              >
-                                <SmileIcon />
-                              </button>
+                                {/* Emoji Picker Button */}
+                                <button 
+                                  type="button" 
+                                  className="dm-attach-btn" 
+                                  onClick={() => setShowEmojiPicker(!showEmojiPicker)} 
+                                  title="Escolher Emoji"
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: showEmojiPicker ? 'var(--accent-color)' : 'var(--text-muted)', padding: '0 6px 0 0', display: 'flex', alignItems: 'center' }}
+                                >
+                                  <SmileIcon />
+                                </button>
 
-                              <input 
-                                value={draft} 
-                                onChange={(e) => setDraft(e.target.value)} 
-                                placeholder={slowmodeCooldown > 0 ? `Modo Lento ativo: aguarde ${slowmodeCooldown}s para digitar…` : `Mensagem em #${selectedChannel.name}…`} 
-                                disabled={slowmodeCooldown > 0}
-                              />
+                                <input 
+                                  id="chat-input-field"
+                                  value={draft} 
+                                  onChange={(e) => {
+                                    setDraft(e.target.value)
+                                    if (notifyTyping) notifyTyping()
+                                  }} 
+                                  onPaste={handlePaste}
+                                  placeholder={slowmodeCooldown > 0 ? `Modo Lento ativo: aguarde ${slowmodeCooldown}s para digitar…` : `Mensagem em #${selectedChannel.name}…`} 
+                                  disabled={slowmodeCooldown > 0}
+                                />
 
                               {slowmodeCooldown > 0 ? (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11.5px', color: '#e0554c', fontWeight: 700, paddingRight: '8px' }}>
@@ -831,7 +998,7 @@ export function TextChannelView({
                                   <span>{slowmodeCooldown}s</span>
                                 </div>
                               ) : (
-                                <button type="submit" className="send-btn" disabled={!draft.trim() && !isUploading}>
+                                <button type="submit" className="send-btn" disabled={(!draft.trim() && !pendingPastedFile) || isUploading}>
                                   <span>↑</span>
                                 </button>
                               )}
@@ -925,7 +1092,8 @@ export function TextChannelView({
                                   </div>
                                 </div>
                               )}
-                            </form>
+                              </form>
+                            </>
                           )}
                         </div>
                       )}

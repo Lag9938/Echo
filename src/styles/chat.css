@@ -78,6 +78,125 @@
 }
 .send-btn:disabled { opacity: .35; transform: none; box-shadow: none; }
 
+/* ── Staged Clipboard Image / Paste Attachment Preview ── */
+.composer-image-staging {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 20px 10px;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1.5px solid rgba(0, 242, 254, 0.35);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), 0 0 14px rgba(0, 242, 254, 0.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: stagingPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  z-index: 10;
+}
+
+.dm-image-staging {
+  margin: 10px 20px 0;
+}
+
+.voice-chat-image-staging {
+  margin: 0 12px 8px;
+}
+
+@keyframes stagingPopIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.staging-thumb-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  background: #000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.staging-thumb-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.staging-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.staging-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.staging-badge {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(0, 242, 254, 0.15);
+  color: #00f2fe;
+  border: 1px solid rgba(0, 242, 254, 0.3);
+}
+
+.staging-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.staging-subtext {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.staging-remove-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+
+.staging-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: #ef4444;
+  color: #f87171;
+  transform: scale(1.12);
+}
 
 /* ── Additional Chat Modules ── */
 /* ── Mention Highlight & Tags ─────────────────── */

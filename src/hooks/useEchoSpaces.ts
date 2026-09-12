@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type FormEvent } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback, type FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { Space, Channel } from '../types'
 
@@ -35,18 +35,56 @@ export function useEchoSpaces({
   loadSpaceRoles,
   loadMemberRoles,
   setMessages,
-  supabase
+  supabase,
 }: UseEchoSpacesOptions) {
   const [spaces, setSpaces] = useState<Space[]>([])
   const [expandedSpace, setExpandedSpace] = useState<string | null>(null)
   const [spaceChannels, setSpaceChannels] = useState<Record<string, Channel[]>>({})
   const spaceChannelsRef = useRef(spaceChannels)
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null)
-  const [spaceMembers, setSpaceMembers] = useState<any[]>([])
+  
+  // Mapa isolado de membros por space_id: Record<spaceId, Member[]>
+  const [spaceMembersMap, setSpaceMembersMap] = useState<Record<string, any[]>>({})
+  const spaceMembersMapRef = useRef<Record<string, any[]>>({})
+  spaceMembersMapRef.current = spaceMembersMap
+
+  const activeSpaceId = expandedSpace || selectedChannel?.space_id || null
+
+  // Lista de membros do espaço ativo atual (estritamente isolado por spaceId)
+  const spaceMembers = useMemo(() => {
+    if (!activeSpaceId) return []
+    return spaceMembersMap[activeSpaceId] || []
+  }, [spaceMembersMap, activeSpaceId])
+
+  const setSpaceMembers = useCallback((updater: any[] | ((prev: any[]) => any[])) => {
+    const currentId = expandedSpace || selectedChannel?.space_id || null
+    if (!currentId) return
+    setSpaceMembersMap(prevMap => {
+      const currentList = prevMap[currentId] || []
+      const nextList = typeof updater === 'function' ? updater(currentList) : updater
+      return {
+        ...prevMap,
+        [currentId]: nextList
+      }
+    })
+  }, [expandedSpace, selectedChannel?.space_id])
+
   const spaceMembersRef = useRef<any[]>([])
   spaceMembersRef.current = spaceMembers
   const registeredSpacesRef = useRef<Set<string>>(new Set())
   const loadSpaceMembersTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Limpa caches corrompidos de versões anteriores do localStorage na inicialização
+  useEffect(() => {
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith('echo-space-members-')) {
+          localStorage.removeItem(key)
+        }
+      }
+    } catch (e) {}
+  }, [])
 
   // Space Creation & Invitation States
   const [newSpace, setNewSpace] = useState('')
@@ -64,6 +102,8 @@ export function useEchoSpaces({
   const [newChannelUserLimit, setNewChannelUserLimit] = useState<number>(0)
   const [newChannelSlowmode, setNewChannelSlowmode] = useState<number>(0)
   const [newChannelCategory, setNewChannelCategory] = useState('')
+  const [newChannelIsPrivate, setNewChannelIsPrivate] = useState(false)
+  const [newChannelAllowedRoles, setNewChannelAllowedRoles] = useState<string[]>([])
 
   // Keep spaceChannelsRef updated
   useEffect(() => {
@@ -131,7 +171,7 @@ export function useEchoSpaces({
     const { data, error: queryError } = await supabase.from('channels').select('*').eq('space_id', spaceId).order('position')
     if (queryError) { setError(queryError.message); return }
 
-    let localChannelMeta: Record<string, { topic?: string; position?: number; is_announcement?: boolean; user_limit?: number; slowmode_seconds?: number; category?: string }> = {}
+    let localChannelMeta: Record<string, { topic?: string; position?: number; is_announcement?: boolean; user_limit?: number; slowmode_seconds?: number; category?: string; is_private?: boolean; allowed_role_ids?: string[] }> = {}
     try {
       localChannelMeta = JSON.parse(localStorage.getItem('echo-channels-metadata') || '{}')
     } catch {
@@ -148,7 +188,9 @@ export function useEchoSpaces({
       is_announcement: ch.is_announcement !== undefined ? ch.is_announcement : (localChannelMeta[ch.id]?.is_announcement || false),
       user_limit: ch.user_limit !== undefined ? ch.user_limit : (localChannelMeta[ch.id]?.user_limit || 0),
       slowmode_seconds: ch.slowmode_seconds !== undefined ? ch.slowmode_seconds : (localChannelMeta[ch.id]?.slowmode_seconds || 0),
-      category: ch.category || localChannelMeta[ch.id]?.category || ''
+      category: ch.category || localChannelMeta[ch.id]?.category || '',
+      is_private: ch.is_private !== undefined ? ch.is_private : (localChannelMeta[ch.id]?.is_private || false),
+      allowed_role_ids: ch.allowed_role_ids !== undefined ? ch.allowed_role_ids : (localChannelMeta[ch.id]?.allowed_role_ids || [])
     }))
 
     result.sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
@@ -165,23 +207,11 @@ export function useEchoSpaces({
   }
 
   async function loadSpaceMembers(spaceId: string) {
-    if (!supabase) return
+    if (!supabase || !spaceId) return
     try {
-      const cacheKey = `echo-space-members-${spaceId}`
       const memberMap = new Map<string, any>()
 
-      // 1. Inicializa imediatamente com o cache local para nunca exibir lista vazia
-      try {
-        const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]')
-        cached.forEach((m: any) => {
-          if (m?.user?.id) memberMap.set(m.user.id, m)
-        })
-        if (memberMap.size > 0 && spaceMembersRef.current.length === 0) {
-          setSpaceMembers(Array.from(memberMap.values()))
-        }
-      } catch (e) {}
-
-      // 2. Consulta membros do banco de dados na tabela space_members
+      // 1. Consulta membros do banco de dados na tabela space_members (FONTE REAL DE VERDADE)
       let dbSuccess = false
       try {
         const { data, error: queryError } = await supabase
@@ -189,11 +219,11 @@ export function useEchoSpaces({
           .select('role, user:profiles(id, display_name, avatar_url)')
           .eq('space_id', spaceId)
 
-        if (!queryError && data && data.length > 0) {
+        if (!queryError && data) {
           data.forEach((row: any) => {
             const u = Array.isArray(row.user) ? row.user[0] : row.user
             if (u?.id) {
-              memberMap.set(u.id, { role: row.role || 'member', user: u })
+              memberMap.set(u.id, { role: row.role || 'member', user: u, space_id: spaceId })
               dbSuccess = true
             }
           })
@@ -202,8 +232,8 @@ export function useEchoSpaces({
         console.warn("loadSpaceMembers db error", dbErr)
       }
 
-      // 3. Fallback: Se a consulta com join não retornou outros membros, busca por user_id + profiles
-      if (!dbSuccess || memberMap.size <= 1) {
+      // 2. Fallback: Se o join direto falhou, busca por user_id e perfis separadamente
+      if (!dbSuccess && memberMap.size === 0) {
         try {
           const { data: directMembers } = await supabase
             .from('space_members')
@@ -220,7 +250,7 @@ export function useEchoSpaces({
             const profMap = new Map((profs || []).map((p: any) => [p.id, p]))
             directMembers.forEach((d: any) => {
               const u = profMap.get(d.user_id) || { id: d.user_id, display_name: 'Membro', avatar_url: '' }
-              memberMap.set(d.user_id, { role: d.role || 'member', user: u })
+              memberMap.set(d.user_id, { role: d.role || 'member', user: u, space_id: spaceId })
             })
           }
         } catch (fbErr) {
@@ -228,31 +258,7 @@ export function useEchoSpaces({
         }
       }
 
-      // 4. Descobre autores de mensagens nos canais de texto deste servidor
-      try {
-        const spaceChs = spaceChannelsRef.current[spaceId] || []
-        const chIds = spaceChs.map(c => c.id)
-        if (chIds.length > 0) {
-          const { data: msgData } = await supabase
-            .from('messages')
-            .select('author_id, profiles(id, display_name, avatar_url)')
-            .in('channel_id', chIds)
-            .limit(100)
-
-          if (msgData) {
-            msgData.forEach((m: any) => {
-              const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles
-              if (p?.id && !memberMap.has(p.id)) {
-                memberMap.set(p.id, { role: 'member', user: p })
-              }
-            })
-          }
-        }
-      } catch (msgErr) {
-        console.warn("loadSpaceMembers msg authors error", msgErr)
-      }
-
-      // 5. Garante que o Criador/Dono do servidor está na lista
+      // 3. Garante que o Criador/Dono do servidor está na lista
       const spObj = spaces.find(s => s.id === spaceId)
       if (spObj && spObj.creator_id && !memberMap.has(spObj.creator_id)) {
         try {
@@ -263,51 +269,33 @@ export function useEchoSpaces({
             .maybeSingle()
 
           if (creatorProf) {
-            memberMap.set(spObj.creator_id, { role: 'owner', user: creatorProf })
+            memberMap.set(spObj.creator_id, { role: 'owner', user: creatorProf, space_id: spaceId })
           }
         } catch (crErr) {}
       }
 
-      // 6. Garante que o usuário logado está na lista e registrado na tabela
+      // 4. Se o usuário logado for o criador do servidor, garante na lista
       const profName = getProfileDisplayName ? getProfileDisplayName() : displayName
       const profAvatar = getProfileAvatarUrl ? getProfileAvatarUrl() : ''
 
-      if (user && !memberMap.has(user.id)) {
+      if (user && !memberMap.has(user.id) && spObj?.creator_id === user.id) {
         const myMemberObj = {
-          role: spObj?.creator_id === user.id ? 'owner' : 'member',
-          user: { id: user.id, display_name: profName || 'Membro', avatar_url: profAvatar }
+          role: 'owner',
+          user: { id: user.id, display_name: profName || 'Membro', avatar_url: profAvatar },
+          space_id: spaceId
         }
         memberMap.set(user.id, myMemberObj)
         if (!registeredSpacesRef.current.has(spaceId)) {
           registeredSpacesRef.current.add(spaceId)
-          supabase.from('space_members').upsert({ space_id: spaceId, user_id: user.id, role: myMemberObj.role }).then(() => {})
+          supabase.from('space_members').upsert({ space_id: spaceId, user_id: user.id, role: 'owner' }).then(() => {})
         }
       }
 
       const finalList = Array.from(memberMap.values())
-      setSpaceMembers(prev => {
-        if (prev.length === finalList.length) {
-          let same = true
-          for (let i = 0; i < prev.length; i++) {
-            if (
-              prev[i]?.user?.id !== finalList[i]?.user?.id ||
-              prev[i]?.role !== finalList[i]?.role ||
-              prev[i]?.user?.display_name !== finalList[i]?.user?.display_name ||
-              prev[i]?.user?.avatar_url !== finalList[i]?.user?.avatar_url
-            ) {
-              same = false
-              break
-            }
-          }
-          if (same) return prev
-        }
-        return finalList
-      })
-
-      // Salva a lista consolidada atualizada no cache local
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify(finalList))
-      } catch (e) {}
+      setSpaceMembersMap(prev => ({
+        ...prev,
+        [spaceId]: finalList
+      }))
     } catch (err) {
       console.warn("loadSpaceMembers catch", err)
     }
@@ -315,9 +303,8 @@ export function useEchoSpaces({
 
   // Realtime space members and presence subscription
   useEffect(() => {
-    const currentSpaceId = selectedChannel?.space_id || expandedSpace
+    const currentSpaceId = expandedSpace || selectedChannel?.space_id
     if (!supabase || !currentSpaceId) {
-      setSpaceMembers([])
       return
     }
 
@@ -378,31 +365,35 @@ export function useEchoSpaces({
       })
 
       if (liveUsers.length > 0) {
-        setSpaceMembers(prev => {
+        setSpaceMembersMap(prevMap => {
+          const list = prevMap[currentSpaceId] || []
+          if (list.length === 0) return prevMap
           const map = new Map<string, any>()
-          prev.forEach(m => { if (m?.user?.id) map.set(m.user.id, m) })
-          liveUsers.forEach(m => { if (m?.user?.id) map.set(m.user.id, m) })
-          const merged = Array.from(map.values())
-          if (prev.length === merged.length) {
-            let same = true
-            for (let i = 0; i < prev.length; i++) {
-              if (
-                prev[i]?.user?.id !== merged[i]?.user?.id ||
-                prev[i]?.role !== merged[i]?.role ||
-                prev[i]?.user?.display_name !== merged[i]?.user?.display_name ||
-                prev[i]?.user?.avatar_url !== merged[i]?.user?.avatar_url ||
-                prev[i]?.user?.avatar_decoration !== merged[i]?.user?.avatar_decoration
-              ) {
-                same = false
-                break
+          list.forEach(m => { if (m?.user?.id) map.set(m.user.id, m) })
+
+          let hasChanges = false
+          liveUsers.forEach(liveU => {
+            const existing = map.get(liveU.user.id)
+            if (existing) {
+              // Atualiza cosméticos e display name em tempo real para membros existentes
+              const updated = {
+                ...existing,
+                user: {
+                  ...existing.user,
+                  display_name: liveU.user.display_name || existing.user.display_name,
+                  avatar_url: liveU.user.avatar_url ?? existing.user.avatar_url,
+                  avatar_decoration: liveU.user.avatar_decoration ?? existing.user.avatar_decoration
+                }
               }
+              map.set(liveU.user.id, updated)
+              hasChanges = true
             }
-            if (same) return prev
+          })
+          if (!hasChanges) return prevMap
+          return {
+            ...prevMap,
+            [currentSpaceId]: Array.from(map.values())
           }
-          try {
-            localStorage.setItem(`echo-space-members-${currentSpaceId}`, JSON.stringify(merged))
-          } catch (e) {}
-          return merged
         })
       }
     }
@@ -454,7 +445,7 @@ export function useEchoSpaces({
       supabase?.removeChannel(membersChannel)
       supabase?.removeChannel(spacePresenceChannel)
     }
-  }, [selectedChannel?.space_id, expandedSpace, user?.id])
+  }, [expandedSpace, selectedChannel?.space_id, user?.id])
 
   // Sync channels on expandedSpace change
   useEffect(() => {
@@ -621,11 +612,13 @@ export function useEchoSpaces({
       name: newChannelName.trim(),
       type: newChannelType,
       position: currentChannels.length,
+      is_private: newChannelIsPrivate,
+      allowed_role_ids: newChannelAllowedRoles
     }).select().single()
     if (channelError) { setError(channelError.message); return }
 
     if (createdCh) {
-      let localChannelMeta: Record<string, { topic?: string; position?: number; is_announcement?: boolean; user_limit?: number; slowmode_seconds?: number; category?: string }> = {}
+      let localChannelMeta: Record<string, { topic?: string; position?: number; is_announcement?: boolean; user_limit?: number; slowmode_seconds?: number; category?: string; is_private?: boolean; allowed_role_ids?: string[] }> = {}
       try {
         localChannelMeta = JSON.parse(localStorage.getItem('echo-channels-metadata') || '{}')
       } catch {
@@ -637,13 +630,15 @@ export function useEchoSpaces({
         is_announcement: newChannelIsAnnouncement,
         user_limit: newChannelUserLimit,
         slowmode_seconds: newChannelSlowmode,
-        category: newChannelCategory.trim()
+        category: newChannelCategory.trim(),
+        is_private: newChannelIsPrivate,
+        allowed_role_ids: newChannelAllowedRoles
       }
       localStorage.setItem('echo-channels-metadata', JSON.stringify(localChannelMeta))
     }
 
-    addAuditLog?.(spaceId, `Criou o canal "${newChannelName.trim()}" (${newChannelType === 'text' ? 'Texto' : 'Voz'})`)
-    setNewChannelName(''); setNewChannelTopic(''); setNewChannelIsAnnouncement(false); setNewChannelUserLimit(0); setNewChannelSlowmode(0); setNewChannelCategory(''); setShowNewChannel(null); setNewChannelType('text')
+    addAuditLog?.(spaceId, `Criou o canal "${newChannelName.trim()}" (${newChannelType === 'text' ? 'Texto' : 'Voz'}${newChannelIsPrivate ? ' - Privado' : ''})`)
+    setNewChannelName(''); setNewChannelTopic(''); setNewChannelIsAnnouncement(false); setNewChannelUserLimit(0); setNewChannelSlowmode(0); setNewChannelCategory(''); setNewChannelIsPrivate(false); setNewChannelAllowedRoles([]); setShowNewChannel(null); setNewChannelType('text')
     await loadChannelsForSpace(spaceId)
   }
 
@@ -690,6 +685,10 @@ export function useEchoSpaces({
     setNewChannelSlowmode,
     newChannelCategory,
     setNewChannelCategory,
+    newChannelIsPrivate,
+    setNewChannelIsPrivate,
+    newChannelAllowedRoles,
+    setNewChannelAllowedRoles,
     loadSpaces,
     loadChannelsForSpace,
     loadSpaceMembers,

@@ -377,10 +377,26 @@ export function useEchoSpaceSettings({
     setSpaceChannels(prev => ({ ...prev, [editingSpace.id]: currentList }))
   }, [editingSpace, spaceChannels, supabase, setSpaceChannels])
 
-  const updateChannelSettings = useCallback((channelId: string, updates: { topic?: string; is_announcement?: boolean; user_limit?: number; slowmode_seconds?: number; category?: string }) => {
+  const updateChannelSettings = useCallback((channelId: string, updates: { 
+    topic?: string; 
+    is_announcement?: boolean; 
+    user_limit?: number; 
+    slowmode_seconds?: number; 
+    category?: string;
+    is_private?: boolean;
+    allowed_role_ids?: string[];
+  }) => {
+    // Persiste no localStorage como cache local imediato
     const localChannelMeta: Record<string, any> = JSON.parse(localStorage.getItem('echo-channels-metadata') || '{}')
     localChannelMeta[channelId] = { ...localChannelMeta[channelId], ...updates }
     localStorage.setItem('echo-channels-metadata', JSON.stringify(localChannelMeta))
+
+    // Persiste no banco de dados para sincronizar com todos os membros
+    if (supabase) {
+      supabase.from('channels').update(updates).eq('id', channelId).then(({ error }: any) => {
+        if (error) console.warn('updateChannelSettings db error:', error)
+      })
+    }
 
     if (editingSpace) {
       setSpaceChannels(prev => ({
@@ -391,7 +407,7 @@ export function useEchoSpaceSettings({
     if (selectedChannel?.id === channelId) {
       setSelectedChannel(prev => prev ? { ...prev, ...updates } : null)
     }
-  }, [editingSpace, selectedChannel?.id, setSpaceChannels, setSelectedChannel])
+  }, [editingSpace, selectedChannel?.id, supabase, setSpaceChannels, setSelectedChannel])
 
   const toggleMuteSpace = useCallback((spaceId: string) => {
     setMutedSpaces(prev => {
@@ -625,7 +641,7 @@ export function useEchoSpaceSettings({
 
       setSpaceMembers(prev => {
         if (prev.some((m: any) => (m?.user?.id || m?.id) === friend.user.id)) return prev
-        return [...prev, { role: 'member', user: friend.user }]
+        return [...prev, { role: 'member', user: friend.user, space_id: spaceId }]
       })
 
       setSpaces(prev => prev.map(s => s.id === spaceId ? { ...s, member_count: (s.member_count || 1) + 1 } : s))

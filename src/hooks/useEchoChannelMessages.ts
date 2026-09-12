@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type FormEvent } from 'react'
+import { useState, useRef, useEffect, useCallback, type FormEvent } from 'react'
 import type { User, RealtimeChannel } from '@supabase/supabase-js'
 import type { Message, Channel, Space, RolePermissions } from '../types'
 
@@ -45,12 +45,14 @@ export function useEchoChannelMessages({
   const [slowmodeCooldown, setSlowmodeCooldown] = useState<number>(0)
   const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true)
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false)
+  const [typingUsersMap, setTypingUsersMap] = useState<Record<string, { name: string, timeout: any }>>({})
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const channelBroadcastRef = useRef<RealtimeChannel | null>(null)
   const isPrependingRef = useRef<boolean>(false)
   const messagesCacheRef = useRef<Record<string, Message[]>>({})
+  const lastTypingSentRef = useRef<number>(0)
 
   // Slowmode timer
   useEffect(() => {
@@ -181,6 +183,46 @@ export function useEchoChannelMessages({
       } catch (e) {}
       return merged
     })
+
+    // Carrega reações do banco para as mensagens visíveis
+    loadReactionsForChannel(channelId)
+  }
+
+  // Carrega reações do Supabase para todas as mensagens de um canal
+  async function loadReactionsForChannel(channelId: string) {
+    if (!supabase) return
+    try {
+      // Busca IDs das mensagens do cache atual para o canal
+      const msgs = messagesCacheRef.current[channelId] || []
+      if (msgs.length === 0) return
+      const msgIds = msgs.filter(m => m.status === 'sent').map(m => m.id)
+      if (msgIds.length === 0) return
+
+      const { data, error } = await supabase
+        .from('message_reactions')
+        .select('message_id, user_id, emoji')
+        .in('message_id', msgIds)
+
+      if (error || !data) return
+
+      // Agrega reações no formato { [messageId]: { [emoji]: userId[] } }
+      const aggregated: Record<string, Record<string, string[]>> = {}
+      for (const row of data) {
+        if (!aggregated[row.message_id]) aggregated[row.message_id] = {}
+        if (!aggregated[row.message_id][row.emoji]) aggregated[row.message_id][row.emoji] = []
+        aggregated[row.message_id][row.emoji].push(row.user_id)
+      }
+
+      setMessageReactions(prev => {
+        const next = { ...prev, ...aggregated }
+        try {
+          localStorage.setItem('echo-message-reactions', JSON.stringify(next))
+        } catch {}
+        return next
+      })
+    } catch (err) {
+      console.warn('loadReactionsForChannel error:', err)
+    }
   }
 
   // Infinite scroll pagination for older messages
@@ -250,12 +292,13 @@ export function useEchoChannelMessages({
   }
 
   // Upload attachment file (images or documents)
-  async function handleChatFileUpload(file: File) {
+  async function handleChatFileUpload(file: File, caption?: string) {
     if (!supabase || !selectedChannel) return
     setIsUploading(true)
     setError('')
     try {
-      const ext = file.name.split('.').pop()
+      const rawExt = file.name && file.name.includes('.') ? file.name.split('.').pop() : (file.type.split('/')[1] || 'png')
+      const ext = (rawExt || 'png').replace(/[^a-zA-Z0-9]/g, '')
       const path = `channels/${selectedChannel.id}/${Date.now()}.${ext}`
       const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file)
       if (uploadError) {
@@ -265,7 +308,8 @@ export function useEchoChannelMessages({
       }
       const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
       const fileType = file.type.startsWith('image/') ? 'image' : 'file'
-      await postChannelMessage(selectedChannel.id, file.name, urlData.publicUrl, fileType)
+      const messageText = caption && caption.trim() ? caption.trim() : (file.name || 'Imagem')
+      await postChannelMessage(selectedChannel.id, messageText, urlData.publicUrl, fileType)
     } catch (err: any) {
       setError(err.message || 'Erro no upload.')
     } finally {
@@ -273,23 +317,41 @@ export function useEchoChannelMessages({
     }
   }
 
-  // Toggle emoji reactions
+  // Toggle emoji reactions — persiste no Supabase e atualiza localmente de forma otimista
   function toggleReaction(messageId: string, emoji: string) {
     setMessageReactions(prev => {
       const msgReactions = prev[messageId] ? { ...prev[messageId] } : {}
       const userList = msgReactions[emoji] ? [...msgReactions[emoji]] : []
-      if (userList.includes(user.id)) {
+      const alreadyReacted = userList.includes(user.id)
+      if (alreadyReacted) {
         const filtered = userList.filter(id => id !== user.id)
         if (filtered.length === 0) {
           delete msgReactions[emoji]
         } else {
           msgReactions[emoji] = filtered
         }
+        // Remove do banco de dados
+        if (supabase) {
+          supabase.from('message_reactions')
+            .delete()
+            .eq('message_id', messageId)
+            .eq('user_id', user.id)
+            .eq('emoji', emoji)
+            .then(({ error }: any) => { if (error) console.warn('reaction delete error:', error) })
+        }
       } else {
         msgReactions[emoji] = [...userList, user.id]
+        // Salva no banco de dados
+        if (supabase) {
+          supabase.from('message_reactions')
+            .upsert({ message_id: messageId, user_id: user.id, emoji }, { onConflict: 'message_id,user_id,emoji' })
+            .then(({ error }: any) => { if (error) console.warn('reaction upsert error:', error) })
+        }
       }
       const next = { ...prev, [messageId]: msgReactions }
-      localStorage.setItem('echo-message-reactions', JSON.stringify(next))
+      try {
+        localStorage.setItem('echo-message-reactions', JSON.stringify(next))
+      } catch {}
       return next
     })
   }
@@ -532,7 +594,25 @@ export function useEchoChannelMessages({
       })
     })
 
-    // 2. PostgreSQL Changes (sincronização contínua com banco de dados)
+    // 2. Typing indicator broadcast listener
+    live.on('broadcast', { event: 'typing' }, ({ payload }: { payload: any }) => {
+      if (!payload || !payload.userId || payload.userId === user?.id) return
+      setTypingUsersMap(prev => {
+        if (prev[payload.userId]?.timeout) {
+          clearTimeout(prev[payload.userId].timeout)
+        }
+        const timeout = setTimeout(() => {
+          setTypingUsersMap(current => {
+            const next = { ...current }
+            delete next[payload.userId]
+            return next
+          })
+        }, 3000)
+        return { ...prev, [payload.userId]: { name: payload.displayName || 'Membro', timeout } }
+      })
+    })
+
+    // 3. PostgreSQL Changes — mensagens (DELETE/UPDATE)
     live.on('postgres_changes', { 
       event: '*', 
       schema: 'public', 
@@ -543,22 +623,59 @@ export function useEchoChannelMessages({
       loadMessages(selectedChannel.id, isDeleteOrUpdate)
     })
 
+    // 4. PostgreSQL Changes — reações em tempo real (todos os membros veem as reações sincronizadas)
+    live.on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'message_reactions'
+    }, (_payload: any) => {
+      // Recarrega as reações para o canal atual quando qualquer reação mudar
+      loadReactionsForChannel(selectedChannel.id)
+    })
+
     live.subscribe()
     channelBroadcastRef.current = live
 
     return () => {
       channelBroadcastRef.current = null
       client.removeChannel(live)
+      setTypingUsersMap({})
     }
   }, [selectedChannel?.id, user?.id, profileDisplayName, sfxVolume])
 
-  // Scroll to bottom on new messages
+  // Broadcast typing indicator with 2s debounce
+  const notifyTyping = useCallback(() => {
+    if (!channelBroadcastRef.current || !user) return
+    const now = Date.now()
+    if (now - lastTypingSentRef.current < 2000) return
+    lastTypingSentRef.current = now
+    channelBroadcastRef.current.send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { userId: user.id, displayName: profileDisplayName || displayName || 'Você' }
+    }).catch(() => {})
+  }, [user?.id, profileDisplayName, displayName])
+
+  // Scroll to bottom on new messages (com suporte a renderização dinâmica do virtualizador)
   useEffect(() => {
     if (isPrependingRef.current) return
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+    const el = messagesContainerRef.current
+    if (el) {
+      el.scrollTop = el.scrollHeight
+      const timer1 = setTimeout(() => {
+        if (el) el.scrollTop = el.scrollHeight
+      }, 50)
+      const timer2 = setTimeout(() => {
+        if (el) el.scrollTop = el.scrollHeight
+      }, 150)
+      return () => {
+        clearTimeout(timer1)
+        clearTimeout(timer2)
+      }
     }
   }, [messages])
+
+  const typingUsers = Object.values(typingUsersMap).map(u => u.name)
 
   return {
     messages,
@@ -588,6 +705,8 @@ export function useEchoChannelMessages({
     postChannelMessage,
     retrySendMessage,
     handleDeleteMessage,
-    send
+    send,
+    typingUsers,
+    notifyTyping
   }
 }
