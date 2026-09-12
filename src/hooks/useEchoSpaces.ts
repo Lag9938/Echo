@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useMemo, useCallback, type FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { Space, Channel } from '../types'
+import { useSpacesStore } from '../stores/useSpacesStore'
+import { playJoinSound } from '../lib/soundEffects'
 
 export interface UseEchoSpacesOptions {
   user: User
@@ -149,6 +151,7 @@ export function useEchoSpaces({
     }).filter((space: any): space is Space => Boolean(space))
 
     setSpaces(result)
+    useSpacesStore.getState().setSpaces(result)
     if (result.length > 0 && !expandedSpace) {
       setExpandedSpace(result[0].id)
     }
@@ -165,11 +168,11 @@ export function useEchoSpaces({
       if (!selectedChannel) {
         setSelectedChannel(window.location.search.includes('channel=text') ? mockChs[0] : mockChs[1])
       }
-      return
+      return mockChs
     }
-    if (!supabase) return
+    if (!supabase) return []
     const { data, error: queryError } = await supabase.from('channels').select('*').eq('space_id', spaceId).order('position')
-    if (queryError) { setError(queryError.message); return }
+    if (queryError) { setError(queryError.message); return [] }
 
     let localChannelMeta: Record<string, { topic?: string; position?: number; is_announcement?: boolean; user_limit?: number; slowmode_seconds?: number; category?: string; is_private?: boolean; allowed_role_ids?: string[] }> = {}
     try {
@@ -204,6 +207,7 @@ export function useEchoSpaces({
         }
       }
     }
+    return result
   }
 
   async function loadSpaceMembers(spaceId: string) {
@@ -498,23 +502,36 @@ export function useEchoSpaces({
     }
     
     try {
+      let spaceName = ''
+      let spaceId = code
+
       const { data: space, error: spaceError } = await supabase
         .from('spaces')
         .select('id, name')
         .eq('id', code)
         .single()
         
-      if (spaceError || !space) {
-        setError('Link de convite inválido ou espaço não encontrado.')
-        showToast('Convite Inválido', 'Espaço ou canal não encontrado.', 'info')
-        setJoining(false)
-        return
+      if (space && !spaceError) {
+        spaceName = space.name
+        spaceId = space.id
+      } else {
+        // Fallback seguro via RPC pública get_space_invite_details
+        const { data: rpcData } = await supabase.rpc('get_space_invite_details', { p_space_id: code })
+        if (rpcData && Array.isArray(rpcData) && rpcData.length > 0 && rpcData[0].name) {
+          spaceName = rpcData[0].name
+          spaceId = code
+        } else {
+          setError('Link de convite inválido ou espaço não encontrado.')
+          showToast('Convite Inválido', 'Espaço ou canal não encontrado.', 'info')
+          setJoining(false)
+          return
+        }
       }
       
       const { data: member } = await supabase
         .from('space_members')
         .select('space_id')
-        .eq('space_id', space.id)
+        .eq('space_id', spaceId)
         .eq('user_id', user.id)
         .maybeSingle()
         
@@ -523,10 +540,10 @@ export function useEchoSpaces({
         setJoinSpaceCode('')
         setJoining(false)
         setPage('Servidores')
-        setExpandedSpace(space.id)
-        await loadChannelsForSpace(space.id)
+        setExpandedSpace(spaceId)
+        const loadedChs = await loadChannelsForSpace(spaceId)
 
-        const chs = spaceChannels[space.id] || []
+        const chs = (loadedChs && loadedChs.length > 0) ? loadedChs : (spaceChannels[spaceId] || [])
         const chToJoin = targetChannelId 
           ? chs.find(c => c.id === targetChannelId)
           : (chs.find(c => c.type === 'voice') || chs.find(c => c.type === 'text') || chs[0])
@@ -534,20 +551,20 @@ export function useEchoSpaces({
         if (chToJoin) {
           setSelectedChannel(chToJoin)
           if (chToJoin.type === 'voice') {
-            handleJoinVoice?.(chToJoin.id, space.id)
+            handleJoinVoice?.(chToJoin.id, spaceId)
             showToast("Conectado!", `Você entrou na chamada "${chToJoin.name}".`, "info")
           } else {
             showToast("Canal Aberto", `Navegando para #${chToJoin.name}.`, "info")
           }
         } else {
-          showToast("Espaço Aberto", `Você já está no espaço "${space.name}".`, "info")
+          showToast("Espaço Aberto", `Você já está no espaço "${spaceName}".`, "info")
         }
         return
       }
       
       const { error: insertError } = await supabase
         .from('space_members')
-        .insert({ space_id: space.id, user_id: user.id, role: 'member' })
+        .insert({ space_id: spaceId, user_id: user.id, role: 'member' })
         
       if (insertError) {
         setError(insertError.message)
@@ -560,13 +577,13 @@ export function useEchoSpaces({
         const { data: defaultRoles } = await supabase
           .from('space_roles')
           .select('id')
-          .eq('space_id', space.id)
+          .eq('space_id', spaceId)
           .eq('is_default', true)
           .limit(1)
 
         if (defaultRoles && defaultRoles.length > 0) {
           await supabase.from('space_member_roles').insert({
-            space_id: space.id,
+            space_id: spaceId,
             user_id: user.id,
             role_id: defaultRoles[0].id
           })
@@ -580,10 +597,10 @@ export function useEchoSpaces({
       setJoining(false)
       await loadSpaces()
       setPage('Servidores')
-      setExpandedSpace(space.id)
-      await loadChannelsForSpace(space.id)
+      setExpandedSpace(spaceId)
+      const freshChannels = await loadChannelsForSpace(spaceId)
 
-      const chs = spaceChannels[space.id] || []
+      const chs = (freshChannels && freshChannels.length > 0) ? freshChannels : (spaceChannels[spaceId] || [])
       const chToJoin = targetChannelId 
         ? chs.find(c => c.id === targetChannelId)
         : (chs.find(c => c.type === 'voice') || chs.find(c => c.type === 'text') || chs[0])
@@ -591,11 +608,15 @@ export function useEchoSpaces({
       if (chToJoin) {
         setSelectedChannel(chToJoin)
         if (chToJoin.type === 'voice') {
-          handleJoinVoice?.(chToJoin.id, space.id)
+          handleJoinVoice?.(chToJoin.id, spaceId)
         }
       }
 
-      showToast("Bem-vindo!", `Você entrou no espaço "${space.name}".`, "info")
+      try {
+        playJoinSound()
+      } catch {}
+
+      showToast("Bem-vindo!", `Você entrou no espaço "${spaceName}".`, "info")
     } catch (err: any) {
       setError(err.message || 'Erro ao entrar no espaço.')
       setJoining(false)

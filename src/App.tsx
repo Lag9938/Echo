@@ -910,13 +910,28 @@ function Echo({ user }: { user: User }) {
   })
 
 
-  // Deep-Link Protocol Listener (echo://invite/...)
+  // In-App & Custom Invite Event Listener (Tratamento interno 100% no app sem abrir navegador)
+  useEffect(() => {
+    const handleInAppInviteEvent = (e: any) => {
+      const input = e.detail?.input
+      if (input && processSpaceInviteRef.current) {
+        console.log('[InAppInvite] Processando convite internamente:', input)
+        processSpaceInviteRef.current(input)
+      }
+    }
+    window.addEventListener('echo-process-invite', handleInAppInviteEvent as EventListener)
+    return () => {
+      window.removeEventListener('echo-process-invite', handleInAppInviteEvent as EventListener)
+    }
+  }, [])
+
+  // Deep-Link Protocol Listener (echo://invite/... ou URLs externas)
   useEffect(() => {
     if (!user?.id || !(window as any).electronAPI) return
 
     const handleInviteUrl = (url: string) => {
-      if (url && typeof url === 'string' && url.startsWith('echo://')) {
-        console.log('[DeepLink] Convite recebido via echo://', url)
+      if (url && typeof url === 'string' && (url.startsWith('echo://') || url.includes('/invite') || url.includes('space='))) {
+        console.log('[DeepLink] Convite recebido via deep-link ou web:', url)
         processSpaceInviteRef.current?.(url)
       }
     }

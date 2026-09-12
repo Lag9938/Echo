@@ -7,6 +7,7 @@ import { PinnedMessagesDrawer } from '../components/chat/PinnedMessagesDrawer'
 import { StreamTile } from '../components/streaming/StreamTile'
 import { AvatarDecoration } from '../components/AvatarDecoration'
 import { ModernVoiceNotePlayer } from '../components/chat/ModernVoiceNotePlayer'
+import { ChatLinkEmbed } from '../components/chat/ChatLinkEmbed'
 import { formatMessageText } from '../lib/messageFormatter'
 import {
   BrainIcon,
@@ -991,7 +992,10 @@ export function VoiceChannelView({
                                           📎 {message.body}
                                         </a>
                                       ) : (
-                                        <p>{formatMessageText(message.body, profileDisplayName)}</p>
+                                        <>
+                                          <p>{formatMessageText(message.body, profileDisplayName)}</p>
+                                          <ChatLinkEmbed content={message.body} />
+                                        </>
                                       )}
                                     </div>
                                   </article>

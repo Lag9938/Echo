@@ -30,7 +30,7 @@ if (process.defaultApp) {
 }
 
 // Armazena URL de convite recebida no arranque para repassar ao carregamento da janela
-let pendingInviteUrl = process.argv.find(arg => typeof arg === 'string' && arg.startsWith('echo://')) || null
+let pendingInviteUrl = process.argv.find(arg => typeof arg === 'string' && (arg.startsWith('echo://') || arg.includes('/Echo/invite') || (arg.includes('/invite') && arg.includes('space=')))) || null
 
 if (isDevelopment) {
   try {
@@ -410,6 +410,13 @@ function createWindow() {
 
   // Redireciona qualquer clique em links externos para o navegador padrão do sistema
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    // Intercepta links de convite do Echo para processar dentro do próprio app SEM abrir o navegador externo
+    if (url.includes('/Echo/invite') || url.startsWith('echo://invite') || (url.includes('/invite') && url.includes('space='))) {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('deep-link-invite', url)
+      }
+      return { action: 'deny' }
+    }
     if (url.startsWith('http:') || url.startsWith('https:') || url.startsWith('mailto:')) {
       shell.openExternal(url).catch((err) => console.warn('[Shell] Falha ao abrir URL externa no navegador:', err))
       return { action: 'deny' }
@@ -1246,7 +1253,7 @@ app.whenReady().then(() => {
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
 
   app.on('second-instance', (event, commandLine) => {
-    const inviteArg = commandLine.find(arg => typeof arg === 'string' && arg.startsWith('echo://'))
+    const inviteArg = commandLine.find(arg => typeof arg === 'string' && (arg.startsWith('echo://') || arg.includes('/Echo/invite') || (arg.includes('/invite') && arg.includes('space='))))
     if (inviteArg) {
       pendingInviteUrl = inviteArg
     }

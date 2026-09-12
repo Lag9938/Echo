@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
 import { openExternalUrl } from '../../lib/openExternal'
+import { isEchoInviteUrl } from '../../lib/invite'
 import { useUIStore } from '../../stores/useUIStore'
 import { MusicIcon, PlayIcon, ExternalLinkIcon, LinkIcon } from '../icons'
+import { InAppSpaceInviteCard } from './InAppSpaceInviteCard'
 
 interface ChatLinkEmbedProps {
   url?: string
@@ -14,13 +16,19 @@ export const ChatLinkEmbed: React.FC<ChatLinkEmbedProps> = ({ url, content }) =>
 
   let targetUrl = url
   if (!targetUrl && content) {
-    const match = content.match(/https?:\/\/[^\s<>"{}|\\^`]+/i)
+    const match = content.match(/(?:https?:\/\/|echo:\/\/)[^\s<>"{}|\\^`]+/i)
     if (match) {
       targetUrl = match[0]
     }
   }
 
   if (!targetUrl) return null
+
+  // 0. Echo Space Invites: Discord-Style In-App Interactive Card
+  if (isEchoInviteUrl(targetUrl)) {
+    return <InAppSpaceInviteCard inviteUrl={targetUrl} />
+  }
+
 
   // 1. YouTube & YouTube Music Detection
   const isYoutubeMusic = /music\.youtube\.com/i.test(targetUrl)
