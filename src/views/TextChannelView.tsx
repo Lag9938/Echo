@@ -640,9 +640,7 @@ export function TextChannelView({
                                   <div className="chat-date-divider">
                                     <div className="chat-date-line" />
                                     <span className="chat-date-pill">
-                                      <span className="chat-date-wave">∿∿</span>
-                                      <span>{formatChatDateDivider(msgDate)}</span>
-                                      <span className="chat-date-wave">∿∿</span>
+                                      {formatChatDateDivider(msgDate)}
                                     </span>
                                     <div className="chat-date-line" />
                                   </div>
@@ -832,7 +830,7 @@ export function TextChannelView({
 
                                               {isSelf && (
                                                 <span className="msg-self-badge">
-                                                  Você
+                                                  você
                                                 </span>
                                               )}
 
