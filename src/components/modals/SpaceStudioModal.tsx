@@ -22,6 +22,7 @@ import {
   BellIcon,
   BellOffIcon,
   CameraIcon,
+  CopyIcon,
   CrownIcon,
   FileTextIcon,
   HashtagIcon,
@@ -32,6 +33,7 @@ import {
   SettingsIcon,
   ShieldIcon,
   SmileIcon,
+  SparklesIcon,
   TrashIcon,
   UserMinusIcon,
   UsersIcon,
@@ -1690,18 +1692,20 @@ export function SpaceStudioModal({
                     <button 
                       type="button" 
                       className="invite-message-btn"
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                       onClick={() => {
                         const directUrl = getPublicInviteUrl(editingSpace.id)
-                        const inviteMsg = `Entre no meu espaço "${editingSpace.name}" no Echo!\n🔗 Link Direto: ${directUrl}\n🔑 Código do Espaço: ${editingSpace.id}`
+                        const inviteMsg = `Entre no meu espaço "${editingSpace.name}" no Echo!\nLink Direto: ${directUrl}\nCódigo do Espaço: ${editingSpace.id}`
                         copyToClipboard(inviteMsg)
                         showToast("Mensagem Copiada!", "Texto de convite com link e código copiado para a área de transferência.", "info")
                       }}
                     >
-                      📋 Copiar Mensagem de Convite Pronta
+                      <CopyIcon style={{ width: '14px', height: '14px' }} />
+                      <span>Copiar Mensagem de Convite Pronta</span>
                     </button>
 
-                    <div className="invite-help-box">
-                      <span style={{ fontSize: '16px' }}>💡</span>
+                    <div className="invite-help-box" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                      <SparklesIcon style={{ width: '16px', height: '16px', color: '#00f2fe', flexShrink: 0, marginTop: '2px' }} />
                       <p>
                         <strong>Como funciona:</strong> Seus amigos só precisam clicar no link para entrar. Caso prefiram, podem colar esse mesmo link na opção <strong>"Entrar em um Espaço"</strong> no menu superior do Echo.
                       </p>

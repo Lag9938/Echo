@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react'
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { User } from '@supabase/supabase-js'
 import type { Space, Channel, Message, PinnedMessage, ServerEmoji, RolePermissions, ServerRole } from '../types'
@@ -221,6 +221,54 @@ export function TextChannelView({
   const [pendingPastedFile, setPendingPastedFile] = useState<File | null>(null)
   const [pendingImagePreview, setPendingImagePreview] = useState<string | null>(null)
 
+  // Drag & drop file upload state
+  const [isDraggingOver, setIsDraggingOver] = useState(false)
+  const dragCounterRef = useRef(0)
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounterRef.current += 1
+    if (e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
+      setIsDraggingOver(true)
+    }
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounterRef.current -= 1
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0
+      setIsDraggingOver(false)
+    }
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounterRef.current = 0
+    setIsDraggingOver(false)
+
+    const file = e.dataTransfer?.files?.[0]
+    if (file) {
+      if (file.type.startsWith('image/')) {
+        setPendingImagePreview(prev => {
+          if (prev) URL.revokeObjectURL(prev)
+          return URL.createObjectURL(file)
+        })
+        setPendingPastedFile(file)
+      } else {
+        handleChatFileUpload(file)
+      }
+    }
+  }, [handleChatFileUpload])
+
   const removePendingImage = useCallback(() => {
     setPendingPastedFile(null)
     setPendingImagePreview(prev => {
@@ -434,7 +482,53 @@ export function TextChannelView({
                     </button>
                   </div>
                 </header>
-                <div className="chat-workspace-wrapper" style={{ display: 'flex', flex: 1, minHeight: 0, width: '100%', position: 'relative', overflow: 'hidden' }}>
+                <div 
+                  className="chat-workspace-wrapper" 
+                  onDragEnter={handleDragEnter}
+                  onDragLeave={handleDragLeave}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  style={{ display: 'flex', flex: 1, minHeight: 0, width: '100%', position: 'relative', overflow: 'hidden' }}
+                >
+                  {isDraggingOver && (
+                    <div style={{
+                      position: 'absolute',
+                      inset: '10px',
+                      zIndex: 100,
+                      background: 'rgba(10, 13, 20, 0.94)',
+                      border: '2px dashed #00f2fe',
+                      borderRadius: '16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '12px',
+                      backdropFilter: 'blur(8px)',
+                      boxShadow: '0 0 35px rgba(0, 242, 254, 0.3)',
+                      pointerEvents: 'none'
+                    }}>
+                      <div style={{
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '16px',
+                        background: 'rgba(0, 242, 254, 0.15)',
+                        border: '1px solid rgba(0, 242, 254, 0.4)',
+                        display: 'grid',
+                        placeItems: 'center',
+                        color: '#00f2fe'
+                      }}>
+                        <PaperclipIcon style={{ width: '26px', height: '26px' }} />
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <h3 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: 800, color: '#fff' }}>
+                          Solte para Enviar em #{selectedChannel.name}
+                        </h3>
+                        <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255, 255, 255, 0.6)' }}>
+                          Imagens, prints, vídeos ou documentos
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <div className="chat-area-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, height: '100%', overflow: 'hidden' }}>
                       <div 
                         className="messages-area"

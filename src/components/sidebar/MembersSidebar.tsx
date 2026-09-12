@@ -265,7 +265,7 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
           <div className="member-name-row">
             <span 
               className={`member-name ${memberNameEffect && memberNameEffect !== 'none' ? `name-effect-${memberNameEffect}` : ''}`} 
-              style={{ color: (memberNameEffect && memberNameEffect !== 'none') ? undefined : (memberRole?.color || 'var(--text-primary)') }}
+              style={{ color: (memberNameEffect && memberNameEffect !== 'none') ? undefined : (memberRole?.color || (isCreator ? '#f59e0b' : 'var(--text-primary)')) }}
             >
               {member.user.display_name}
             </span>
