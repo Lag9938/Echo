@@ -140,7 +140,7 @@
       position: relative;
       z-index: 2;
       width: 100%;
-      max-width: 460px;
+      max-width: 440px;
       background: var(--card-bg);
       border: 1px solid var(--border);
       backdrop-filter: blur(28px);
@@ -243,11 +243,11 @@
       align-items: center;
       justify-content: center;
       gap: 16px;
-      padding: 6px 16px;
+      padding: 7px 18px;
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(255, 255, 255, 0.06);
       border-radius: 20px;
-      margin-bottom: 22px;
+      margin-bottom: 26px;
     }
 
     .stat-item {
@@ -272,34 +272,6 @@
       height: 8px;
       border-radius: 50%;
       background: #64748b;
-    }
-
-    /* Feature Highlights (What is Echo) */
-    .feature-pills {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 24px;
-      text-align: left;
-      background: rgba(0, 0, 0, 0.25);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 14px;
-      padding: 12px 14px;
-    }
-
-    .feature-item {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      font-size: 12px;
-      color: #cbd5e1;
-    }
-
-    .feature-icon {
-      width: 16px;
-      height: 16px;
-      color: var(--accent);
-      flex-shrink: 0;
     }
 
     /* Action Buttons */
@@ -440,33 +412,9 @@
         </div>
       </div>
 
-      <!-- Feature highlights -->
-      <div class="feature-pills">
-        <div class="feature-item">
-          <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-            <line x1="12" y1="19" x2="12" y2="22"/>
-          </svg>
-          <span>Áudio estéreo ultrarrápido em 128 kbps</span>
-        </div>
-        <div class="feature-item">
-          <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-          </svg>
-          <span>Compartilhamento de tela e jogos a 60 FPS</span>
-        </div>
-        <div class="feature-item">
-          <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
-          <span>Cargos, canais privados e emojis animados</span>
-        </div>
-      </div>
-
       <!-- Main Action: Open Echo App -->
       <a href="#" class="btn-main" id="btnOpenApp">
-        <span>Aceitar Convite / Abrir no Echo</span>
+        <span>Aceitar Convite</span>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="9 18 15 12 9 6"></polyline>
         </svg>
