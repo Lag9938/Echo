@@ -3,213 +3,495 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Convite para Espaço | Echo</title>
+  <title>Convite para Servidor | Echo</title>
   
-  <!-- OpenGraph / Social Preview -->
-  <meta property="og:title" content="Convite para entrar no Echo">
-  <meta property="og:description" content="Participe de conversas em tempo real com áudio ultra fluido a 60 FPS no Echo.">
+  <!-- OpenGraph / WhatsApp / Discord / Telegram Social Preview -->
+  <meta property="og:site_name" content="Echo">
+  <meta property="og:title" id="ogTitle" content="Convite para Servidor no Echo">
+  <meta property="og:description" id="ogDesc" content="Participe de chamadas e canais em tempo real com áudio em alta fidelidade e streaming a 60 FPS no Echo.">
   <meta property="og:image" content="https://raw.githubusercontent.com/Lag9938/Echo/main/assets/echo-icon.png">
   <meta property="og:type" content="website">
   <meta name="theme-color" content="#00f2fe">
 
-  <link rel="stylesheet" href="../style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
   <style>
+    :root {
+      --bg-dark: #07090e;
+      --card-bg: rgba(16, 20, 31, 0.88);
+      --accent: #00f2fe;
+      --accent-glow: rgba(0, 242, 254, 0.35);
+      --accent-secondary: #0284c7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --border: rgba(255, 255, 255, 0.08);
+      --emerald: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-      padding: 20px;
-      background-color: #080a0f;
-    }
-    .invite-box {
-      background: rgba(18, 23, 34, 0.85);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-radius: 24px;
-      padding: 40px 32px;
-      max-width: 440px;
-      width: 100%;
-      text-align: center;
-      box-shadow: 0 30px 70px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.15);
+      padding: 24px 16px;
+      overflow-x: hidden;
       position: relative;
-      overflow: hidden;
-      animation: fadeIn 0.4s ease-out;
     }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(12px) scale(0.98); }
+
+    /* Atmospheric Neon Glow Blobs */
+    .mesh-glow {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(130px);
+      opacity: 0.18;
+      animation: floatBlob 20s infinite alternate ease-in-out;
+    }
+
+    .blob-1 {
+      width: 550px;
+      height: 550px;
+      background: #00f2fe;
+      top: -150px;
+      left: 10%;
+    }
+
+    .blob-2 {
+      width: 500px;
+      height: 500px;
+      background: #6366f1;
+      bottom: -150px;
+      right: 15%;
+      animation-delay: -6s;
+    }
+
+    .blob-3 {
+      width: 400px;
+      height: 400px;
+      background: #0284c7;
+      top: 40%;
+      left: 60%;
+      animation-delay: -12s;
+    }
+
+    @keyframes floatBlob {
+      0% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(40px, 30px) scale(1.08); }
+      100% { transform: translate(-30px, 50px) scale(0.95); }
+    }
+
+    /* Top Brand Header */
+    .top-brand {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+      text-decoration: none;
+    }
+
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #00f2fe 0%, #0284c7 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 16px rgba(0, 242, 254, 0.4);
+    }
+
+    .brand-mark svg {
+      width: 18px;
+      height: 18px;
+      color: #030712;
+    }
+
+    .brand-text {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      color: #fff;
+    }
+
+    /* Discord-Style Central Invite Card */
+    .invite-card {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 460px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border-radius: 24px;
+      box-shadow: 0 32px 80px -15px rgba(0, 0, 0, 0.85), 0 0 40px -10px rgba(0, 242, 254, 0.12);
+      overflow: hidden;
+      animation: cardFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes cardFadeIn {
+      from { opacity: 0; transform: translateY(16px) scale(0.97); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
-    .invite-box::before {
+
+    /* Banner */
+    .card-banner {
+      width: 100%;
+      height: 110px;
+      background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 50%, #0284c7 100%);
+      position: relative;
+      background-size: cover;
+      background-position: center;
+    }
+
+    .card-banner::after {
       content: '';
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, #00f2fe, #4facfe);
+      inset: 0;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(16, 20, 31, 0.9) 100%);
     }
-    .space-avatar-wrap {
-      width: 88px;
-      height: 88px;
-      border-radius: 26px;
-      margin: 0 auto 20px auto;
-      background: linear-gradient(135deg, rgba(0, 242, 254, 0.25) 0%, rgba(79, 172, 254, 0.1) 100%);
-      border: 1px solid rgba(0, 242, 254, 0.4);
-      display: grid;
-      place-items: center;
-      box-shadow: 0 12px 28px rgba(0, 242, 254, 0.25);
-      overflow: hidden;
+
+    /* Avatar Floating over Banner */
+    .avatar-wrap {
       position: relative;
+      width: 82px;
+      height: 82px;
+      margin: -45px auto 14px auto;
+      border-radius: 24px;
+      border: 4px solid #10141f;
+      background: #141a29;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      z-index: 3;
     }
-    .space-avatar-wrap img {
+
+    .avatar-wrap img {
       width: 100%;
       height: 100%;
       object-fit: cover;
     }
-    .space-initial {
-      font-size: 38px;
+
+    .avatar-initial {
+      font-size: 34px;
       font-weight: 900;
-      background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: #fff;
     }
-    .invite-badge {
-      display: inline-block;
+
+    /* Card Content */
+    .card-body {
+      padding: 0 28px 28px 28px;
+      text-align: center;
+    }
+
+    .invite-overline {
       font-size: 11px;
-      font-weight: 800;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: #38bdf8;
-      background: rgba(56, 189, 248, 0.12);
-      border: 1px solid rgba(56, 189, 248, 0.25);
-      padding: 4px 10px;
-      border-radius: 6px;
-      margin-bottom: 12px;
+      color: var(--text-dim);
+      margin-bottom: 6px;
     }
-    .space-name {
-      font-size: 23px;
+
+    .server-name {
+      font-size: 22px;
       font-weight: 800;
       color: #fff;
-      margin: 0 0 8px 0;
+      margin-bottom: 8px;
       letter-spacing: -0.02em;
+      line-height: 1.25;
       word-break: break-word;
     }
-    .invite-desc {
+
+    .server-desc {
       font-size: 13px;
-      color: #94a3b8;
-      line-height: 1.5;
-      margin: 0 0 26px 0;
+      color: var(--text-muted);
+      line-height: 1.45;
+      margin-bottom: 14px;
+      max-height: 60px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .btn-open-app {
+
+    /* Discord-Style Stats Row */
+    .stats-row {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 6px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 20px;
+      margin-bottom: 22px;
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+
+    .status-dot-green {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--emerald);
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+    }
+
+    .status-dot-gray {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #64748b;
+    }
+
+    /* Feature Highlights (What is Echo) */
+    .feature-pills {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 24px;
+      text-align: left;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 14px;
+      padding: 12px 14px;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 12px;
+      color: #cbd5e1;
+    }
+
+    .feature-icon {
+      width: 16px;
+      height: 16px;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    /* Action Buttons */
+    .btn-main {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
       width: 100%;
-      padding: 14px 20px;
+      padding: 13px 20px;
       background: linear-gradient(135deg, #00f2fe 0%, #0284c7 100%);
       color: #030712;
       font-weight: 800;
       font-size: 14px;
       border-radius: 12px;
       text-decoration: none;
-      box-shadow: 0 4px 18px rgba(0, 242, 254, 0.35);
-      transition: all 0.15s ease;
-      margin-bottom: 12px;
+      box-shadow: 0 4px 20px rgba(0, 242, 254, 0.35);
+      transition: all 0.18s ease;
       cursor: pointer;
       border: none;
+      margin-bottom: 10px;
     }
-    .btn-open-app:hover {
+
+    .btn-main:hover {
       transform: translateY(-1px);
-      box-shadow: 0 6px 24px rgba(0, 242, 254, 0.5);
+      box-shadow: 0 6px 26px rgba(0, 242, 254, 0.5);
     }
-    .btn-download-app {
+
+    .btn-secondary {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
       width: 100%;
-      padding: 11px 18px;
+      padding: 11px 16px;
       background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       color: #cbd5e1;
       font-size: 12px;
       font-weight: 600;
-      border-radius: 10px;
+      border-radius: 11px;
       text-decoration: none;
       transition: all 0.15s ease;
+      cursor: pointer;
     }
-    .btn-download-app:hover {
+
+    .btn-secondary:hover {
       background: rgba(255, 255, 255, 0.08);
       color: #fff;
     }
-    .auto-launch-status {
-      font-size: 11px;
-      color: #64748b;
-      margin-top: 18px;
+
+    /* Auto Launch Notification */
+    .launch-info {
+      margin-top: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 7px;
+      font-size: 11px;
+      color: var(--text-dim);
     }
+
     .pulse-dot {
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: #00f2fe;
-      animation: pulse 1.5s infinite;
+      background: var(--accent);
+      animation: pulseAnim 1.6s infinite ease-in-out;
     }
-    @keyframes pulse {
-      0% { transform: scale(0.95); opacity: 0.5; }
-      50% { transform: scale(1.3); opacity: 1; }
-      100% { transform: scale(0.95); opacity: 0.5; }
+
+    @keyframes pulseAnim {
+      0%, 100% { opacity: 0.3; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.3); }
+    }
+
+    /* Footer */
+    .page-footer {
+      position: relative;
+      z-index: 2;
+      margin-top: 20px;
+      font-size: 11px;
+      color: var(--text-dim);
+      text-align: center;
+    }
+
+    .page-footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+
+    .page-footer a:hover {
+      color: #fff;
     }
   </style>
 </head>
 <body>
 
-  <!-- Background neon meshes -->
-  <div class="mesh-bg">
+  <!-- Animated Neon Mesh -->
+  <div class="mesh-glow">
     <div class="blob blob-1"></div>
     <div class="blob blob-2"></div>
     <div class="blob blob-3"></div>
   </div>
 
-  <div class="invite-box">
-    <div class="space-avatar-wrap" id="spaceAvatar">
-      <span class="space-initial" id="spaceInitial">E</span>
+  <!-- Brand Logo -->
+  <a href="https://lag9938.github.io/Echo/" class="top-brand" title="Echo">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="2" fill="currentColor"/>
+        <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/>
+      </svg>
+    </div>
+    <span class="brand-text">echo</span>
+  </a>
+
+  <!-- Central Invite Card -->
+  <div class="invite-card">
+    <div class="card-banner" id="cardBanner"></div>
+
+    <div class="avatar-wrap" id="avatarWrap">
+      <span class="avatar-initial" id="avatarInitial">E</span>
     </div>
 
-    <div class="invite-badge">Convite Oficial • Echo</div>
-    <h1 class="space-name" id="spaceName">Espaço no Echo</h1>
-    <p class="invite-desc" id="inviteDesc">
-      Você foi convidado para participar deste espaço. Abra o Echo no seu computador para entrar na chamada ou canal.
-    </p>
+    <div class="card-body">
+      <div class="invite-overline">Você foi convidado para entrar em</div>
+      <h1 class="server-name" id="serverName">Espaço no Echo</h1>
+      <p class="server-desc" id="serverDesc" style="display: none;"></p>
 
-    <a href="#" class="btn-open-app" id="btnOpenApp">
-      <span>Abrir no Echo</span>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="9 18 15 12 9 6"></polyline>
-      </svg>
-    </a>
+      <!-- Stats Pill -->
+      <div class="stats-row">
+        <div class="stat-item">
+          <span class="status-dot-green"></span>
+          <span>Comunidade Ativa</span>
+        </div>
+        <div class="stat-item">
+          <span class="status-dot-gray"></span>
+          <span id="memberCountText">1 membro</span>
+        </div>
+      </div>
 
-    <a href="https://github.com/Lag9938/Echo/releases/latest" class="btn-download-app" target="_blank" rel="noopener noreferrer">
-      <span>Ainda não tem o Echo? Baixar para Windows</span>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-        <polyline points="7 10 12 15 17 10"></polyline>
-        <line x1="12" y1="15" x2="12" y2="3"></line>
-      </svg>
-    </a>
+      <!-- Feature highlights -->
+      <div class="feature-pills">
+        <div class="feature-item">
+          <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="22"/>
+          </svg>
+          <span>Áudio estéreo ultrarrápido em 128 kbps</span>
+        </div>
+        <div class="feature-item">
+          <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+          <span>Compartilhamento de tela e jogos a 60 FPS</span>
+        </div>
+        <div class="feature-item">
+          <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          <span>Cargos, canais privados e emojis animados</span>
+        </div>
+      </div>
 
-    <div class="auto-launch-status" id="autoLaunchStatus">
-      <span class="pulse-dot"></span>
-      <span>Tentando abrir o aplicativo automaticamente...</span>
+      <!-- Main Action: Open Echo App -->
+      <a href="#" class="btn-main" id="btnOpenApp">
+        <span>Aceitar Convite / Abrir no Echo</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </a>
+
+      <!-- Secondary Action: Download Echo -->
+      <a href="https://github.com/Lag9938/Echo/releases/latest" class="btn-secondary" target="_blank" rel="noopener noreferrer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        <span>Ainda não tem o Echo? Baixar para Windows</span>
+      </a>
+
+      <!-- Status notice -->
+      <div class="launch-info" id="launchInfo">
+        <span class="pulse-dot"></span>
+        <span id="launchStatusText">Tentando abrir o aplicativo automaticamente...</span>
+      </div>
     </div>
+  </div>
+
+  <div class="page-footer">
+    Echo &bull; O aplicativo ultrarrápido de voz e comunidades &bull; <a href="https://github.com/Lag9938/Echo" target="_blank" rel="noopener noreferrer">GitHub</a>
   </div>
 
   <script>
@@ -222,43 +504,103 @@
       var btnOpen = document.getElementById('btnOpenApp');
       btnOpen.href = deepLink;
 
-      // Se temos o ID do espaço, consulta o nome e o ícone no Supabase
+      btnOpen.addEventListener('click', function() {
+        document.getElementById('launchStatusText').textContent = 'Abrindo o aplicativo Echo...';
+      });
+
+      function getInitials(name) {
+        if (!name) return 'E';
+        var words = name.trim().split(/\s+/);
+        if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+        return name.slice(0, 2).toUpperCase();
+      }
+
+      function getGradient(name) {
+        var gradients = [
+          'linear-gradient(135deg, #5865F2, #7289DA)',
+          'linear-gradient(135deg, #FF4655, #0F1923)',
+          'linear-gradient(135deg, #10B981, #059669)',
+          'linear-gradient(135deg, #8B5CF6, #6366F1)',
+          'linear-gradient(135deg, #EC4899, #F43F5E)',
+          'linear-gradient(135deg, #F59E0B, #D97706)',
+          'linear-gradient(135deg, #06B6D4, #3B82F6)',
+          'linear-gradient(135deg, #6366F1, #4F46E5)'
+        ];
+        var hash = 0;
+        for (var i = 0; i < (name || '').length; i++) {
+          hash = (name || '').charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return gradients[Math.abs(hash) % gradients.length];
+      }
+
       if (spaceId) {
         var supabaseUrl = 'https://fcgizoopltqrldixvyve.supabase.co';
         var supabaseKey = 'sb_publishable_O75gPLOo_oZ2Uy-47UvBDw_MR4cBY8K';
 
-        fetch(supabaseUrl + '/rest/v1/spaces?id=eq.' + encodeURIComponent(spaceId) + '&select=name,icon_url', {
+        // Chama a RPC get_space_invite_details para obter dados reais completos do servidor
+        fetch(supabaseUrl + '/rest/v1/rpc/get_space_invite_details', {
+          method: 'POST',
           headers: {
+            'Content-Type': 'application/json',
             'apikey': supabaseKey,
             'Authorization': 'Bearer ' + supabaseKey
-          }
+          },
+          body: JSON.stringify({ p_space_id: spaceId })
         })
         .then(function(res) { return res.json(); })
-        .then(function(data) {
-          if (Array.isArray(data) && data[0]) {
-            var space = data[0];
-            if (space.name) {
-              document.getElementById('spaceName').textContent = space.name;
-              document.title = 'Convite: ' + space.name + ' | Echo';
-              document.getElementById('spaceInitial').textContent = space.name.charAt(0).toUpperCase();
+        .then(function(space) {
+          if (space && space.name) {
+            document.getElementById('serverName').textContent = space.name;
+            document.title = 'Convite: ' + space.name + ' | Echo';
+            
+            // Meta tag OpenGraph
+            var ogTitle = document.getElementById('ogTitle');
+            if (ogTitle) ogTitle.content = 'Convite para ' + space.name + ' no Echo';
+
+            // Descrição do servidor
+            if (space.description && space.description.trim()) {
+              var descEl = document.getElementById('serverDesc');
+              descEl.textContent = space.description;
+              descEl.style.display = 'block';
             }
+
+            // Quantidade de membros
+            if (typeof space.member_count === 'number') {
+              var countText = space.member_count === 1 ? '1 membro' : space.member_count + ' membros';
+              document.getElementById('memberCountText').textContent = countText;
+            }
+
+            // Avatar do servidor
+            var avatarWrap = document.getElementById('avatarWrap');
             if (space.icon_url) {
-              var avatarContainer = document.getElementById('spaceAvatar');
-              avatarContainer.innerHTML = '<img src="' + space.icon_url + '" alt="' + (space.name || 'Espaço') + '">';
+              avatarWrap.innerHTML = '<img src="' + space.icon_url + '" alt="' + space.name + '">';
+            } else {
+              var grad = getGradient(space.name);
+              avatarWrap.style.background = grad;
+              document.getElementById('avatarInitial').textContent = getInitials(space.name);
+            }
+
+            // Banner do servidor
+            if (space.banner_url) {
+              var bannerEl = document.getElementById('cardBanner');
+              bannerEl.style.backgroundImage = 'url(' + space.banner_url + ')';
+            } else {
+              var bannerEl = document.getElementById('cardBanner');
+              bannerEl.style.background = getGradient(space.name + '-banner');
             }
           }
         })
         .catch(function(err) {
-          console.warn('Erro ao carregar dados do espaço:', err);
+          console.warn('Não foi possível obter detalhes do espaço via RPC:', err);
         });
       }
 
-      // Tenta abrir o aplicativo automaticamente após 350ms
+      // Tenta acionar o aplicativo automaticamente após 500ms
       setTimeout(function() {
         try {
           window.location.href = deepLink;
         } catch (e) {}
-      }, 350);
+      }, 500);
     })();
   </script>
 </body>
