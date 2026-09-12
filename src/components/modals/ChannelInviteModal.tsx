@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { copyToClipboard } from '../../lib/clipboard'
+import { getPublicInviteUrl } from '../../lib/invite'
 import type { Channel, Space, FriendshipRequest } from '../../types'
 
 export interface ChannelInviteModalProps {
@@ -24,8 +25,8 @@ export function ChannelInviteModal({
   const [invitedFriends, setInvitedFriends] = useState<Record<string, boolean>>({})
 
   const isVoice = channel.type === 'voice'
-  const inviteLink = `echo://invite/${space.id}?channel=${channel.id}`
-  const formattedInviteMsg = `Entre no meu espaço "${space.name}" no Echo!\n🔗 Link Direto: ${inviteLink}\n🔑 Código do Espaço: ${space.id}`
+  const inviteLink = getPublicInviteUrl(space.id, channel.id)
+  const formattedInviteMsg = `Entre no meu espaço "${space.name}" no Echo!\n🔗 Link de Convite: ${inviteLink}\n🔑 Código do Espaço: ${space.id}`
 
   const handleCopy = () => {
     copyToClipboard(inviteLink)

@@ -367,14 +367,14 @@
    ═════════════════════════════════════════════════════════════════════════════ */
 .echo-avatar-decoration-wrap {
   position: absolute;
-  inset: -26%;
-  width: 152%;
-  height: 152%;
+  inset: -28%;
+  width: 156%;
+  height: 156%;
   pointer-events: none;
   z-index: 2;
-  border-radius: 50%;
   transform-origin: center center;
   will-change: transform;
+  overflow: visible;
 }
 
 .echo-avatar-decoration-wrap.echo-deco-direct-asset {
@@ -433,6 +433,11 @@
 .echo-avatar-decoration-wrap.deco-heart_harmony {
   filter: drop-shadow(0 0 7px rgba(244, 63, 94, 0.75)) drop-shadow(0 0 14px rgba(253, 164, 175, 0.4));
 }
+
+.echo-avatar-decoration-wrap.deco-astral_kitsune {
+  filter: drop-shadow(0 0 10px rgba(255, 42, 133, 0.8)) drop-shadow(0 0 22px rgba(168, 85, 247, 0.55)) drop-shadow(0 0 35px rgba(56, 189, 248, 0.3));
+}
+
 
 /* ─────────────────────────────────────────────────────────────────────────────
    60 FPS GPU-ACCELERATED KEYFRAMES
@@ -742,6 +747,122 @@
 .echo-anim-pulse-hex {
   transform-origin: 60px 60px;
   animation: echoKeyframePulseHex 2.4s ease-in-out infinite alternate;
+}
+
+/* ── Astral Kitsune Animations ────────────────────────────────────────────── */
+@keyframes echoKeyframeKitsuneTailSwayL {
+  0% {
+    transform: rotate(0deg) translateY(0);
+  }
+  50% {
+    transform: rotate(-3deg) translateY(-2px) scale(1.02);
+  }
+  100% {
+    transform: rotate(1.5deg) translateY(1px) scale(0.99);
+  }
+}
+
+@keyframes echoKeyframeKitsuneTailSwayR {
+  0% {
+    transform: rotate(0deg) translateY(0);
+  }
+  50% {
+    transform: rotate(3deg) translateY(-2px) scale(1.02);
+  }
+  100% {
+    transform: rotate(-1.5deg) translateY(1px) scale(0.99);
+  }
+}
+
+@keyframes echoKeyframeKitsuneFrontTail {
+  0% {
+    transform: translateY(0) scaleY(1);
+  }
+  50% {
+    transform: translateY(-2.5px) scaleY(1.03);
+  }
+  100% {
+    transform: translateY(1.5px) scaleY(0.98);
+  }
+}
+
+@keyframes echoKeyframeKitsuneEars {
+  0%, 100% {
+    transform: scale(1) translateY(0);
+  }
+  40% {
+    transform: scale(1.02) translateY(-1px);
+  }
+  44% {
+    transform: scale(1.03) translateY(-1.5px) rotate(0.6deg);
+  }
+  48% {
+    transform: scale(1.01) translateY(-0.5px) rotate(-0.4deg);
+  }
+  80% {
+    transform: scale(0.99) translateY(0.5px);
+  }
+}
+
+@keyframes echoKeyframeKitsuneSparkle {
+  0%, 100% {
+    opacity: 0.25;
+    transform: scale(0.6) translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25) translateY(-3px);
+  }
+}
+
+.echo-anim-kitsune-tails-left {
+  transform-origin: 50px 70px;
+  animation: echoKeyframeKitsuneTailSwayL 4.8s ease-in-out infinite alternate;
+}
+
+.echo-anim-kitsune-tails-right {
+  transform-origin: 90px 70px;
+  animation: echoKeyframeKitsuneTailSwayR 4.5s ease-in-out infinite alternate;
+}
+
+.echo-anim-kitsune-front-tail {
+  transform-origin: 70px 115px;
+  animation: echoKeyframeKitsuneFrontTail 3.6s ease-in-out infinite alternate;
+}
+
+.echo-anim-kitsune-ears {
+  transform-origin: 70px 25px;
+  animation: echoKeyframeKitsuneEars 4s ease-in-out infinite;
+}
+
+.echo-anim-kitsune-sparkle-1 {
+  transform-origin: 18px 12px;
+  animation: echoKeyframeKitsuneSparkle 2.4s ease-in-out infinite;
+}
+
+.echo-anim-kitsune-sparkle-2 {
+  transform-origin: 122px 12px;
+  animation: echoKeyframeKitsuneSparkle 2.9s ease-in-out 0.8s infinite;
+}
+
+.echo-anim-kitsune-sparkle-3 {
+  transform-origin: 8px 70px;
+  animation: echoKeyframeKitsuneSparkle 3.1s ease-in-out 1.4s infinite;
+}
+
+.echo-anim-kitsune-sparkle-4 {
+  transform-origin: 132px 70px;
+  animation: echoKeyframeKitsuneSparkle 2.6s ease-in-out 0.4s infinite;
+}
+
+.echo-anim-kitsune-sparkle-5 {
+  transform-origin: 28px 124px;
+  animation: echoKeyframeKitsuneSparkle 3.4s ease-in-out 1.1s infinite;
+}
+
+.echo-anim-kitsune-sparkle-6 {
+  transform-origin: 118px 122px;
+  animation: echoKeyframeKitsuneSparkle 2.8s ease-in-out 1.7s infinite;
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════
@@ -1337,13 +1458,14 @@
 
 /* Preview Box Inside Item Card */
 .echo-inv-card-preview-box {
-  height: 96px;
+  height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   background: rgba(0, 0, 0, 0.35);
-  overflow: hidden;
+  overflow: visible;
+  padding: 10px 0;
 }
 
 .echo-inv-card-preview-box.default-box {

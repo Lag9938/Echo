@@ -123,18 +123,12 @@ export function useEchoScreenShare({
   }, [localScreenStream, changeScreenShareSettings, screenFps])
 
   const handleFpsChange = useCallback(async (newFps: 15 | 30 | 60) => {
-    const isCurrentStreamGameOrScreen = !activeSharingSource || 
-      activeSharingSource.type === 'screen' || 
-      activeSharingSource.id?.startsWith('screen:') || 
-      activeSharingSource.isGame === true || 
-      (activeSharingSource.name || '').toLowerCase().includes('(jogo)')
-    const targetFps = (!isCurrentStreamGameOrScreen && newFps === 60) ? 30 : newFps
-    setScreenFps(targetFps)
+    setScreenFps(newFps)
     if (localScreenStream) {
       const { w, h } = getQualityDimensions(screenQuality)
-      await changeScreenShareSettings(w, h, targetFps)
+      await changeScreenShareSettings(w, h, newFps)
     }
-  }, [activeSharingSource, localScreenStream, screenQuality, changeScreenShareSettings])
+  }, [localScreenStream, screenQuality, changeScreenShareSettings])
 
   const forceOpenScreenPicker = useCallback(async () => {
     setShowScreenMenu(false)

@@ -4,7 +4,6 @@ import type { User } from '@supabase/supabase-js'
 import type { VoiceParticipant } from '../../lib/useVoiceChannel'
 import type { Space, Channel, Page, RolePermissions, ServerRole } from '../../types'
 import { UnifiedUserProfileFooter } from './UnifiedUserProfileFooter'
-import { copyToClipboard } from '../../lib/clipboard'
 import {
   BellIcon,
   BellOffIcon,
@@ -14,7 +13,6 @@ import {
   HashtagIcon,
   HeadphonesIcon,
   HeadphonesOffIcon,
-  LinkIcon,
   LogOutIcon,
   MegaphoneIcon,
   MicIcon,
@@ -180,7 +178,6 @@ export function ChannelsSidebar({
   setVolumeControlUser,
   spaceMembers,
   isConnected,
-  showToast,
   newChannelIsPrivate,
   setNewChannelIsPrivate,
   newChannelAllowedRoles,
@@ -543,7 +540,7 @@ export function ChannelsSidebar({
                       style={{ color: 'var(--accent-color, #00f2fe)', fontWeight: 600 }}
                     >
                       <UserPlusIcon style={{ width: '15px', height: '15px', color: 'var(--accent-color, #00f2fe)' }} />
-                      <span>Convidar Amigos / Adicionar Membros</span>
+                      <span>Convidar Pessoas</span>
                     </button>
                     {(activeSpace.creator_id === user.id || canUserDo(activeSpace.id, user.id, 'manageChannels')) && (
                       <button 
@@ -555,19 +552,6 @@ export function ChannelsSidebar({
                         <span>Novo Canal</span>
                       </button>
                     )}
-                    <button 
-                      type="button" 
-                      className="server-dropdown-item" 
-                      onClick={() => {
-                        setShowServerDropdown(false)
-                        const inviteLink = `echo://invite/${activeSpace.id}`
-                        copyToClipboard(inviteLink)
-                        showToast("Link Copiado!", `Link de convite do espaço "${activeSpace.name}" copiado para a área de transferência.`, 'info')
-                      }}
-                    >
-                      <LinkIcon style={{ width: '15px', height: '15px', color: '#10b981' }} />
-                      <span>Compartilhar Link de Convite</span>
-                    </button>
                     <div className="server-dropdown-divider" />
                     <button 
                       type="button" 

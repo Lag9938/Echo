@@ -31,7 +31,7 @@ export function useEchoCosmetics({
   const [cardFinish, setCardFinish] = useState<'none' | 'holographic' | 'glass' | 'carbon'>(() => (localStorage.getItem(`echo-card-finish-${user.id}`) as any) || 'none')
   const [nameEffect, setNameEffect] = useState<string>(() => localStorage.getItem(`echo-name-effect-${user.id}`) || 'resonance_cyan')
   const [shopInitialTab, setShopInitialTab] = useState<'decorations' | 'profile_effects' | 'auras' | 'finishes' | 'name_effects'>('decorations')
-  const [settingsInitialTab, setSettingsInitialTab] = useState<'profile' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog'>('profile')
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'profile' | 'subscription' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog'>('profile')
 
   // Theme & Appearance States
   const [theme, setTheme] = useState<string>(() => {
@@ -251,6 +251,12 @@ export function useEchoCosmetics({
     }
   }
 
+  function handleResetSubscription() {
+    setIsPremiumUser(false)
+    localStorage.removeItem('echo-premium')
+    setShowSubscriptionModal(false)
+  }
+
   return {
     avatarDecoration,
     setAvatarDecoration,
@@ -287,6 +293,7 @@ export function useEchoCosmetics({
     handleEquipNameEffect,
     selectTheme,
     toggleTheme,
-    handleSimulateSubscription
+    handleSimulateSubscription,
+    handleResetSubscription
   }
 }

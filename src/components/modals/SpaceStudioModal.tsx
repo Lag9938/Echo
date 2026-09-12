@@ -15,6 +15,7 @@ import {
   ROLE_COLOR_PRESETS
 } from '../../lib/formatters'
 import { copyToClipboard } from '../../lib/clipboard'
+import { getPublicInviteUrl } from '../../lib/invite'
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -1664,7 +1665,7 @@ export function SpaceStudioModal({
                     <div className="invite-input-row">
                       <input 
                         type="text" 
-                        value={`echo://invite/${editingSpace.id}`} 
+                        value={getPublicInviteUrl(editingSpace.id)} 
                         readOnly 
                         className="invite-code-input"
                       />
@@ -1673,7 +1674,7 @@ export function SpaceStudioModal({
                         className="ch-create-btn" 
                         style={{ padding: '10px 20px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                         onClick={() => {
-                          const link = `echo://invite/${editingSpace.id}`
+                          const link = getPublicInviteUrl(editingSpace.id)
                           copyToClipboard(link)
                           showToast("Link Copiado!", "Link de convite direto do espaço copiado com sucesso.", "info")
                         }}
@@ -1690,7 +1691,8 @@ export function SpaceStudioModal({
                       type="button" 
                       className="invite-message-btn"
                       onClick={() => {
-                        const inviteMsg = `Entre no meu espaço "${editingSpace.name}" no Echo!\n🔗 Link Direto: echo://invite/${editingSpace.id}\n🔑 Código do Espaço: ${editingSpace.id}`
+                        const directUrl = getPublicInviteUrl(editingSpace.id)
+                        const inviteMsg = `Entre no meu espaço "${editingSpace.name}" no Echo!\n🔗 Link Direto: ${directUrl}\n🔑 Código do Espaço: ${editingSpace.id}`
                         copyToClipboard(inviteMsg)
                         showToast("Mensagem Copiada!", "Texto de convite com link e código copiado para a área de transferência.", "info")
                       }}

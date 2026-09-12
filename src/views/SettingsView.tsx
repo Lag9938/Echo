@@ -19,6 +19,7 @@ import {
 import { AppearanceTab } from './settings/AppearanceTab'
 import { WindowsTab } from './settings/WindowsTab'
 import { AudioVideoTab } from './settings/AudioVideoTab'
+import { SubscriptionTab } from './settings/SubscriptionTab'
 
 export function SettingsView({
   userId,
@@ -88,7 +89,11 @@ export function SettingsView({
   onPttModeChange,
   pttKey,
   onPttKeyChange,
-  onToggleOverlay
+  onToggleOverlay,
+  onSimulateSubscription,
+  onResetSubscription,
+  userEmail,
+  onSubscriptionSuccess
 }: {
   userId: string
   userCreatedAt?: string
@@ -106,7 +111,7 @@ export function SettingsView({
   onEquipAvatarFrame?: (id: string) => void
   onEquipCardFinish?: (id: string) => void
   onEquipNameEffect?: (id: string) => void
-  initialTab?: 'profile' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog'
+  initialTab?: 'profile' | 'subscription' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog'
   onOpenShop?: (targetTab?: 'decorations' | 'profile_effects' | 'auras' | 'finishes' | 'name_effects') => void
   onProfileUpdate: (name: string, avatar: string) => void
   onCustomStatusUpdate: (status: string) => void
@@ -158,9 +163,13 @@ export function SettingsView({
   pttKey?: string
   onPttKeyChange?: (val: string) => void
   onToggleOverlay?: () => void
+  onSimulateSubscription?: () => void
+  onResetSubscription?: () => void
+  userEmail?: string
+  onSubscriptionSuccess?: () => void
 }) {
   const [prevInitialTab, setPrevInitialTab] = useState(initialTab)
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog'>(initialTab || 'profile')
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'subscription' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog'>(initialTab || 'profile')
 
   if (initialTab && initialTab !== prevInitialTab) {
     setPrevInitialTab(initialTab)
@@ -477,6 +486,40 @@ export function SettingsView({
             >
               <UserIcon className="menu-icon" style={{ width: '17px', height: '17px' }} />
               <span>Meu Perfil</span>
+            </button>
+            <button 
+              className={`menu-item ${activeSettingsTab === 'subscription' ? 'active' : ''}`}
+              onClick={() => setActiveSettingsTab('subscription')}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style={{ verticalAlign: 'middle', flexShrink: 0 }}>
+                  <defs>
+                    <linearGradient id="menuProCrownGrad" x1="2" y1="3" x2="22" y2="21" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stopColor="#fbbf24" />
+                      <stop offset="100%" stopColor="#d97706" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M3 6L6.5 16H17.5L21 6L15.5 11L12 4L8.5 11L3 6Z" fill="url(#menuProCrownGrad)" stroke="#f59e0b" strokeWidth="1.2" strokeLinejoin="round" />
+                  <circle cx="3" cy="6" r="1.5" fill="#fef08a" />
+                  <circle cx="12" cy="4" r="1.5" fill="#fef08a" />
+                  <circle cx="21" cy="6" r="1.5" fill="#fef08a" />
+                  <rect x="6.5" y="17.5" width="11" height="2" rx="1" fill="url(#menuProCrownGrad)" stroke="#f59e0b" strokeWidth="0.8" />
+                </svg>
+                <span>Assinatura</span>
+              </div>
+              <span style={{
+                fontSize: '9px',
+                fontWeight: '800',
+                padding: '1px 6px',
+                borderRadius: '5px',
+                background: isPremiumUser ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                border: isPremiumUser ? '1px solid #10b981' : '1px solid #f59e0b',
+                color: isPremiumUser ? '#34d399' : '#fbbf24',
+                letterSpacing: '0.04em'
+              }}>
+                {isPremiumUser ? 'ATIVO' : 'PRO'}
+              </span>
             </button>
             <button 
               className={`menu-item ${activeSettingsTab === 'inventory' ? 'active' : ''}`}
@@ -1227,6 +1270,17 @@ export function SettingsView({
               }}
             />
           </div>
+        )}
+
+        {activeSettingsTab === 'subscription' && (
+          <SubscriptionTab
+            isPremiumUser={isPremiumUser}
+            onSimulateSubscription={onSimulateSubscription}
+            onResetSubscription={onResetSubscription}
+            userEmail={userEmail}
+            userName={localDisplayName || profileDisplayName || currentDisplayName}
+            onSubscriptionSuccess={onSubscriptionSuccess}
+          />
         )}
 
         {activeSettingsTab === 'audio' && (

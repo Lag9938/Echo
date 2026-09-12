@@ -21,5 +21,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Auto-start with Windows (Startup) API
   getAutoStartSettings: () => ipcRenderer.invoke('get-autostart-settings'),
-  setAutoStartSettings: (settings) => ipcRenderer.invoke('set-autostart-settings', settings)
+  setAutoStartSettings: (settings) => ipcRenderer.invoke('set-autostart-settings', settings),
+
+  // Asaas Payments & Subscriptions Integration
+  asaasGetCheckoutUrl: () => ipcRenderer.invoke('asaas-get-checkout-url'),
+  asaasCreatePixCharge: (params) => ipcRenderer.invoke('asaas-create-pix-charge', params),
+  asaasCheckPaymentStatus: (paymentId) => ipcRenderer.invoke('asaas-check-payment-status', paymentId)
 })

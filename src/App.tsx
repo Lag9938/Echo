@@ -565,7 +565,8 @@ function Echo({ user }: { user: User }) {
     handleEquipNameEffect,
     selectTheme,
     toggleTheme,
-    handleSimulateSubscription
+    handleSimulateSubscription,
+    handleResetSubscription
   } = useEchoCosmetics({
     user,
     getProfileDisplayName: () => profileDisplayNameRef.current,
@@ -988,7 +989,8 @@ function Echo({ user }: { user: User }) {
     if ((window as any).electronAPI?.onDeepLinkInvite) {
       (window as any).electronAPI.onDeepLinkInvite((url: string) => {
         if (!url) return
-        const match = url.match(/(?:invite\/|^)([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
+        const spMatch = url.match(/[?&]space=([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
+        const match = spMatch || url.match(/(?:invite\/|^)([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
         if (match && match[1]) {
           setJoinSpaceCode(match[1])
           setAddSpaceModalTab('join')
@@ -1362,6 +1364,10 @@ function Echo({ user }: { user: User }) {
   }, [selectedChannel?.id])
 
 
+  useEffect(() => {
+    ;(window as any).__resetEchoPro = handleResetSubscription
+  }, [handleResetSubscription])
+
   const currentSpace = spaces.find(s => s.id === expandedSpace) || getSpaceForChannel(selectedChannel) || spaces[0] || null
 
 
@@ -1379,6 +1385,11 @@ function Echo({ user }: { user: User }) {
           isOpen={showSubscriptionModal}
           onClose={() => setShowSubscriptionModal(false)}
           onSimulateSubscription={handleSimulateSubscription}
+          isPremiumUser={isPremiumUser}
+          onResetSubscription={handleResetSubscription}
+          userEmail={user.email}
+          userName={profileDisplayName || user.email}
+          onSubscriptionSuccess={handleSimulateSubscription}
         />
       </Suspense>
 
@@ -1531,6 +1542,7 @@ function Echo({ user }: { user: User }) {
                     messagesEndRef={messagesEndRef}
                     user={user}
                     profileDisplayName={profileDisplayName}
+                    profileAvatarUrl={profileAvatarUrl}
                     avatarDecoration={avatarDecoration}
                     nameEffect={nameEffect}
                     presenceData={presenceData}
@@ -1656,6 +1668,8 @@ function Echo({ user }: { user: User }) {
                     handleQualityChange={handleQualityChange}
                     screenFps={screenFps}
                     handleFpsChange={handleFpsChange}
+                    isPremiumUser={isPremiumUser}
+                    onOpenSubscription={() => setShowSubscriptionModal(true)}
                     activeSharingSource={activeSharingSource}
                     peerScreenVolumes={peerScreenVolumes}
                     setPeerScreenVolumes={setPeerScreenVolumes}
@@ -1849,6 +1863,7 @@ function Echo({ user }: { user: User }) {
                   presenceChannelRef.current.track({
                     user_id: user.id,
                     display_name: name,
+                    avatar_url: avatar,
                     online_at: new Date().toISOString(),
                     custom_status: customStatus,
                     presence_status: presenceStatus,
@@ -1898,6 +1913,10 @@ function Echo({ user }: { user: User }) {
             toggleTheme={toggleTheme}
             selectTheme={selectTheme}
             isPremiumUser={isPremiumUser}
+            onSimulateSubscription={handleSimulateSubscription}
+            onResetSubscription={handleResetSubscription}
+            userEmail={user?.email || ''}
+            onSubscriptionSuccess={handleSimulateSubscription}
             setPage={setPage}
             onSignOut={() => supabase?.auth.signOut()}
             noiseSuppressionEnabled={noiseSuppressionEnabled}
@@ -2022,6 +2041,8 @@ function Echo({ user }: { user: User }) {
         setScreenQuality={setScreenQuality}
         screenFps={screenFps}
         setScreenFps={setScreenFps}
+        isPremiumUser={isPremiumUser}
+        onOpenSubscription={() => setShowSubscriptionModal(true)}
       />
 
       {/* Echo Space Studio Deck (Modern Non-Discord Settings Architecture) */}

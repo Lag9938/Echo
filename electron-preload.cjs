@@ -72,5 +72,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isOverlayOpen: () => ipcRenderer.invoke('is-overlay-open'),
 
   // Open External URL in default browser
-  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+
+  // Asaas Payments & Subscriptions Integration
+  asaasGetCheckoutUrl: () => ipcRenderer.invoke('asaas-get-checkout-url'),
+  asaasCreatePixCharge: (params) => ipcRenderer.invoke('asaas-create-pix-charge', params),
+  asaasCheckPaymentStatus: (paymentId) => ipcRenderer.invoke('asaas-check-payment-status', paymentId)
 })

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Convite para Espaço | Echo</title>
+  
+  <!-- OpenGraph / Social Preview -->
+  <meta property="og:title" content="Convite para entrar no Echo">
+  <meta property="og:description" content="Participe de conversas em tempo real com áudio ultra fluido a 60 FPS no Echo.">
+  <meta property="og:image" content="https://raw.githubusercontent.com/Lag9938/Echo/main/assets/echo-icon.png">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#00f2fe">
+
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      background-color: #080a0f;
+    }
+    .invite-box {
+      background: rgba(18, 23, 34, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 24px;
+      padding: 40px 32px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 30px 70px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.15);
+      position: relative;
+      overflow: hidden;
+      animation: fadeIn 0.4s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .invite-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #00f2fe, #4facfe);
+    }
+    .space-avatar-wrap {
+      width: 88px;
+      height: 88px;
+      border-radius: 26px;
+      margin: 0 auto 20px auto;
+      background: linear-gradient(135deg, rgba(0, 242, 254, 0.25) 0%, rgba(79, 172, 254, 0.1) 100%);
+      border: 1px solid rgba(0, 242, 254, 0.4);
+      display: grid;
+      place-items: center;
+      box-shadow: 0 12px 28px rgba(0, 242, 254, 0.25);
+      overflow: hidden;
+      position: relative;
+    }
+    .space-avatar-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .space-initial {
+      font-size: 38px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .invite-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+    .space-name {
+      font-size: 23px;
+      font-weight: 800;
+      color: #fff;
+      margin: 0 0 8px 0;
+      letter-spacing: -0.02em;
+      word-break: break-word;
+    }
+    .invite-desc {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin: 0 0 26px 0;
+    }
+    .btn-open-app {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 14px 20px;
+      background: linear-gradient(135deg, #00f2fe 0%, #0284c7 100%);
+      color: #030712;
+      font-weight: 800;
+      font-size: 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      box-shadow: 0 4px 18px rgba(0, 242, 254, 0.35);
+      transition: all 0.15s ease;
+      margin-bottom: 12px;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-open-app:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(0, 242, 254, 0.5);
+    }
+    .btn-download-app {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      padding: 11px 18px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .btn-download-app:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+    .auto-launch-status {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #00f2fe;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.5; }
+      50% { transform: scale(1.3); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.5; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background neon meshes -->
+  <div class="mesh-bg">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <div class="invite-box">
+    <div class="space-avatar-wrap" id="spaceAvatar">
+      <span class="space-initial" id="spaceInitial">E</span>
+    </div>
+
+    <div class="invite-badge">Convite Oficial • Echo</div>
+    <h1 class="space-name" id="spaceName">Espaço no Echo</h1>
+    <p class="invite-desc" id="inviteDesc">
+      Você foi convidado para participar deste espaço. Abra o Echo no seu computador para entrar na chamada ou canal.
+    </p>
+
+    <a href="#" class="btn-open-app" id="btnOpenApp">
+      <span>Abrir no Echo</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </a>
+
+    <a href="https://github.com/Lag9938/Echo/releases/latest" class="btn-download-app" target="_blank" rel="noopener noreferrer">
+      <span>Ainda não tem o Echo? Baixar para Windows</span>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+    </a>
+
+    <div class="auto-launch-status" id="autoLaunchStatus">
+      <span class="pulse-dot"></span>
+      <span>Tentando abrir o aplicativo automaticamente...</span>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var params = new URLSearchParams(window.location.search);
+      var spaceId = params.get('space') || params.get('code') || params.get('id') || '';
+      var channelId = params.get('channel') || '';
+
+      var deepLink = 'echo://invite/' + encodeURIComponent(spaceId) + (channelId ? '?channel=' + encodeURIComponent(channelId) : '');
+      var btnOpen = document.getElementById('btnOpenApp');
+      btnOpen.href = deepLink;
+
+      // Se temos o ID do espaço, consulta o nome e o ícone no Supabase
+      if (spaceId) {
+        var supabaseUrl = 'https://fcgizoopltqrldixvyve.supabase.co';
+        var supabaseKey = 'sb_publishable_O75gPLOo_oZ2Uy-47UvBDw_MR4cBY8K';
+
+        fetch(supabaseUrl + '/rest/v1/spaces?id=eq.' + encodeURIComponent(spaceId) + '&select=name,icon_url', {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': 'Bearer ' + supabaseKey
+          }
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (Array.isArray(data) && data[0]) {
+            var space = data[0];
+            if (space.name) {
+              document.getElementById('spaceName').textContent = space.name;
+              document.title = 'Convite: ' + space.name + ' | Echo';
+              document.getElementById('spaceInitial').textContent = space.name.charAt(0).toUpperCase();
+            }
+            if (space.icon_url) {
+              var avatarContainer = document.getElementById('spaceAvatar');
+              avatarContainer.innerHTML = '<img src="' + space.icon_url + '" alt="' + (space.name || 'Espaço') + '">';
+            }
+          }
+        })
+        .catch(function(err) {
+          console.warn('Erro ao carregar dados do espaço:', err);
+        });
+      }
+
+      // Tenta abrir o aplicativo automaticamente após 350ms
+      setTimeout(function() {
+        try {
+          window.location.href = deepLink;
+        } catch (e) {}
+      }, 350);
+    })();
+  </script>
+</body>
+</html>

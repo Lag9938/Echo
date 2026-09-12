@@ -910,6 +910,134 @@ function createWindow() {
     return url
   })
 
+  // Asaas Payments & Subscriptions Integration (Echo Pro Monetization)
+  ipcMain.handle('asaas-get-checkout-url', () => {
+    return {
+      success: true,
+      url: 'https://www.asaas.com/c/1gt86ha34vf8us16',
+      cardUrl: 'https://www.asaas.com/c/1gt86ha34vf8us16',
+      pixUrl: 'https://www.asaas.com/c/btwdghfsbzw95dhd',
+      price: 9.90,
+      planName: 'Echo Pro'
+    }
+  })
+
+  ipcMain.handle('asaas-create-pix-charge', async (_event, params = {}) => {
+    try {
+      const { name, email, cpfCnpj, value = 9.90 } = params
+      const envPath = path.join(__dirname, '.env')
+      let apiKey = process.env.ASAAS_API_KEY || ''
+      if (!apiKey && fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf8')
+        const match = envContent.match(/ASAAS_API_KEY=(.+)/)
+        if (match) apiKey = match[1].trim()
+      }
+      if (!apiKey) {
+        throw new Error('Chave ASAAS_API_KEY não configurada no .env')
+      }
+
+      // 1. Localiza ou cria cliente
+      let customerId = null
+      if (email) {
+        const searchRes = await fetch(`https://api.asaas.com/v3/customers?email=${encodeURIComponent(email)}`, {
+          headers: { access_token: apiKey, 'User-Agent': 'EchoApp' }
+        }).then(r => r.json()).catch(() => null)
+        if (searchRes && searchRes.data && searchRes.data.length > 0) {
+          customerId = searchRes.data[0].id
+        }
+      }
+
+      if (!customerId) {
+        const createCusRes = await fetch('https://api.asaas.com/v3/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', access_token: apiKey, 'User-Agent': 'EchoApp' },
+          body: JSON.stringify({
+            name: name || 'Membro Echo',
+            email: email || undefined,
+            cpfCnpj: cpfCnpj ? cpfCnpj.replace(/\D/g, '') : undefined
+          })
+        }).then(r => r.json())
+        if (createCusRes && createCusRes.id) {
+          customerId = createCusRes.id
+        } else if (createCusRes && createCusRes.errors) {
+          return { success: false, error: createCusRes.errors[0]?.description || 'Erro ao cadastrar cliente no Asaas.' }
+        }
+      }
+
+      if (customerId && cpfCnpj) {
+        await fetch(`https://api.asaas.com/v3/customers/${customerId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', access_token: apiKey, 'User-Agent': 'EchoApp' },
+          body: JSON.stringify({ cpfCnpj: cpfCnpj.replace(/\D/g, '') })
+        }).catch(() => {})
+      }
+
+      // 2. Cria cobrança PIX
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+      const paymentRes = await fetch('https://api.asaas.com/v3/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', access_token: apiKey, 'User-Agent': 'EchoApp' },
+        body: JSON.stringify({
+          customer: customerId,
+          billingType: 'PIX',
+          value: Number(value) || 9.90,
+          dueDate: tomorrow,
+          description: 'Assinatura Echo Pro - 60 FPS & Alta Definição (1 Mês)'
+        })
+      }).then(r => r.json())
+
+      if (!paymentRes || !paymentRes.id) {
+        return { success: false, error: paymentRes?.errors?.[0]?.description || 'Erro ao gerar cobrança no Asaas.' }
+      }
+
+      // 3. Obtém dados do QR Code Pix
+      const qrRes = await fetch(`https://api.asaas.com/v3/payments/${paymentRes.id}/pixQrCode`, {
+        headers: { access_token: apiKey, 'User-Agent': 'EchoApp' }
+      }).then(r => r.json())
+
+      return {
+        success: true,
+        paymentId: paymentRes.id,
+        value: paymentRes.value,
+        qrCodeImage: qrRes.encodedImage ? `data:image/png;base64,${qrRes.encodedImage}` : null,
+        copyPaste: qrRes.payload || null,
+        expirationDate: qrRes.expirationDate || null
+      }
+    } catch (err) {
+      console.error('[Asaas] Erro ao criar cobrança Pix:', err)
+      return { success: false, error: err.message || 'Falha de comunicação com o Asaas.' }
+    }
+  })
+
+  ipcMain.handle('asaas-check-payment-status', async (_event, paymentId) => {
+    try {
+      if (!paymentId) return { success: false, error: 'ID de pagamento ausente.' }
+      const envPath = path.join(__dirname, '.env')
+      let apiKey = process.env.ASAAS_API_KEY || ''
+      if (!apiKey && fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf8')
+        const match = envContent.match(/ASAAS_API_KEY=(.+)/)
+        if (match) apiKey = match[1].trim()
+      }
+      if (!apiKey) {
+        throw new Error('Chave ASAAS_API_KEY não configurada no .env')
+      }
+
+      const res = await fetch(`https://api.asaas.com/v3/payments/${paymentId}`, {
+        headers: { access_token: apiKey, 'User-Agent': 'EchoApp' }
+      }).then(r => r.json())
+
+      const isPaid = res && (res.status === 'RECEIVED' || res.status === 'CONFIRMED')
+      return {
+        success: true,
+        status: res.status,
+        isPaid
+      }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  })
+
   // Windows / System Auto-Start at Login (Discord Style - Default Enabled)
   ipcMain.handle('get-autostart-settings', () => {
     try {

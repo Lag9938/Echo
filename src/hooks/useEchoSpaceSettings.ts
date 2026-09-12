@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import type { FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { Space, Channel, ServerAuditLog, FriendshipRequest, RolePermissions } from '../types'
+import { getPublicInviteUrl } from '../lib/invite'
 
 export interface UseEchoSpaceSettingsOptions {
   user: User
@@ -649,8 +650,9 @@ export function useEchoSpaceSettings({
       try {
         const spObj = spaces.find(s => s.id === spaceId)
         const spaceName = spObj?.name || 'servidor'
+        const inviteUrl = getPublicInviteUrl(spaceId)
         const msg = `👋 Olá! Adicionei você ao espaço "${spaceName}" no Echo!
-🔗 Entre diretamente por aqui: echo://invite/${spaceId}
+🔗 Entre diretamente por aqui: ${inviteUrl}
 🔑 Código do Espaço: ${spaceId}`
         await supabase.from('direct_messages').insert({
           sender_id: user.id,

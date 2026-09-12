@@ -1691,11 +1691,11 @@ export function useVoiceChannel(options?: {
             localVideoTrack.mediaStreamTrack.contentHint = 'motion'
           } catch (e) {}
 
-          // Bitrate inteligente otimizado estilo Discord (Economia Oracle Cloud):
-          // 1080p 60fps = 2.4 Mbps | 1080p 30fps = 1.8 Mbps | 720p 60fps = 1.5 Mbps | 720p 30fps = 1.0 Mbps
+          // Bitrate e taxa de quadros para alta fidelidade e fluidez 60 FPS:
+          // 1080p 60fps = 5.0 Mbps | 1080p 30fps = 3.0 Mbps | 720p 60fps = 3.0 Mbps | 720p 30fps = 1.8 Mbps
           const calculatedBitrate = targetWidth > 1280
-            ? (targetFps >= 60 ? 2400000 : 1800000)
-            : (targetFps >= 60 ? 1500000 : 1000000)
+            ? (targetFps >= 60 ? 5000000 : 3000000)
+            : (targetFps >= 60 ? 3000000 : 1800000)
 
           await room.localParticipant.publishTrack(localVideoTrack, {
             source: Track.Source.ScreenShare,
@@ -1706,7 +1706,7 @@ export function useVoiceChannel(options?: {
               maxBitrate: calculatedBitrate,
               maxFramerate: targetFps
             },
-            degradationPreference: 'maintain-resolution'
+            degradationPreference: targetFps >= 60 ? 'maintain-framerate' : 'balanced'
           })
 
           if (audioTrack) {
@@ -1870,10 +1870,33 @@ export function useVoiceChannel(options?: {
     if (localScreenVideoTrackRef.current) {
       try {
         const constraints: MediaTrackConstraints = {}
-        if (width) constraints.width = { max: width }
-        if (height) constraints.height = { max: height }
-        if (fps) constraints.frameRate = { max: fps }
+        if (width) constraints.width = { max: width, ideal: width }
+        if (height) constraints.height = { max: height, ideal: height }
+        if (fps) constraints.frameRate = { max: fps, ideal: fps }
         await localScreenVideoTrackRef.current.mediaStreamTrack.applyConstraints(constraints)
+
+        // Atualiza parâmetros de codificação diretamente no RTCRtpSender do WebRTC/LiveKit
+        const sender = (localScreenVideoTrackRef.current as any).sender as RTCRtpSender | undefined
+        if (sender && typeof sender.getParameters === 'function') {
+          const params = sender.getParameters()
+          if (params && params.encodings && params.encodings.length > 0) {
+            if (fps) {
+              params.encodings[0].maxFramerate = fps
+            }
+            if (width && fps) {
+              const newBitrate = width > 1280
+                ? (fps >= 60 ? 5000000 : 3000000)
+                : (fps >= 60 ? 3000000 : 1800000)
+              params.encodings[0].maxBitrate = newBitrate
+            }
+            if ((params as any).degradationPreference) {
+              ;(params as any).degradationPreference = (fps && fps >= 60) ? 'maintain-framerate' : 'balanced'
+            }
+            await sender.setParameters(params).catch((paramErr) => {
+              console.warn('[ScreenShare] Erro ao atualizar parâmetros de codificação no sender:', paramErr)
+            })
+          }
+        }
       } catch (e) {
         console.warn('[ScreenShare] Erro ao aplicar novas configurações na faixa de vídeo:', e)
       }

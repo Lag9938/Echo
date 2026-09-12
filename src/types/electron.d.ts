@@ -75,6 +75,31 @@ export interface ElectronAPI {
 
   // External Browser URL Opening
   openExternal: (url: string) => Promise<boolean>
+
+  // Asaas Payments & Subscriptions Integration
+  asaasGetCheckoutUrl?: () => Promise<{
+    success: boolean
+    url: string
+    cardUrl?: string
+    pixUrl?: string
+    price: number
+    planName: string
+  }>
+  asaasCreatePixCharge?: (params?: { name?: string; email?: string; cpfCnpj?: string; value?: number }) => Promise<{
+    success: boolean
+    paymentId?: string
+    value?: number
+    qrCodeImage?: string | null
+    copyPaste?: string | null
+    expirationDate?: string | null
+    error?: string
+  }>
+  asaasCheckPaymentStatus?: (paymentId: string) => Promise<{
+    success: boolean
+    status?: string
+    isPaid?: boolean
+    error?: string
+  }>
 }
 
 declare global {

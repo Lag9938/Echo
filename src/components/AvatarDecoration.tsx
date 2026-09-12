@@ -9,7 +9,8 @@ import {
   GhostfireDecoration,
   NekoCyberDecoration,
   HexShieldDecoration,
-  HeartHarmonyDecoration
+  HeartHarmonyDecoration,
+  AstralKitsuneDecoration
 } from './HighTierDecorations'
 
 export interface DecorationMetadata {
@@ -101,10 +102,22 @@ export const AVATAR_DECORATIONS: DecorationMetadata[] = [
     description: 'Corações translúcidos tridimensionais e notas harmônicas flutuando suavemente em órbita.',
     badge: 'ROMÂNTICO',
     themeColor: '#ec4899'
+  },
+  {
+    id: 'astral_kitsune',
+    name: 'Raposa Astral',
+    category: 'Animais',
+    description: 'Orelhas místicas translúcidas e caudas espirituais de Kitsune com energia celestial ondulando em magenta, violeta e luz estelar.',
+    badge: 'MÍTICO',
+    themeColor: '#ec4899'
   }
 ]
 
 const DECORATION_ALIASES: Record<string, string> = {
+  kitsune: 'astral_kitsune',
+  fox_tails: 'astral_kitsune',
+  raposa_astral: 'astral_kitsune',
+  astral_fox: 'astral_kitsune',
   solar_orbit: 'soundwave_orb',
   fire_elemental: 'fire_storm',
   rage_flame: 'fire_storm',
@@ -203,6 +216,8 @@ export function AvatarDecoration({ decorationId, className = '', style }: Avatar
         return <HexShieldDecoration />
       case 'heart_harmony':
         return <HeartHarmonyDecoration />
+      case 'astral_kitsune':
+        return <AstralKitsuneDecoration />
       default:
         return <SoundwaveOrbDecoration />
     }
@@ -213,14 +228,12 @@ export function AvatarDecoration({ decorationId, className = '', style }: Avatar
       className={`echo-avatar-decoration-wrap deco-${normalizedId} ${className}`}
       style={{
         position: 'absolute',
-        inset: '-26%',
-        width: '152%',
-        height: '152%',
-        maxWidth: '120px',
-        maxHeight: '120px',
+        inset: '-28%',
+        width: '156%',
+        height: '156%',
         pointerEvents: 'none',
         zIndex: 2,
-        borderRadius: '50%',
+        overflow: 'visible',
         ...style
       }}
       aria-hidden="true"

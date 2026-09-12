@@ -486,10 +486,15 @@ export function useEchoSpaces({
       targetChannelId = chMatch[1]
     }
 
-    // Suporta links como echo://invite/{id}, https://.../invite/{id} ou UUID puro
-    const urlMatch = rawInput.match(/(?:invite\/|^)([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
-    if (urlMatch && urlMatch[1]) {
-      code = urlMatch[1]
+    // Suporta links com parâmetro ?space=id, echo://invite/{id}, https://.../invite/{id} ou UUID puro
+    const spMatch = rawInput.match(/[?&]space=([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
+    if (spMatch && spMatch[1]) {
+      code = spMatch[1]
+    } else {
+      const urlMatch = rawInput.match(/(?:invite\/|^)([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
+      if (urlMatch && urlMatch[1]) {
+        code = urlMatch[1]
+      }
     }
     
     try {

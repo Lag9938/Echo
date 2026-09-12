@@ -75,6 +75,7 @@ export interface TextChannelViewProps {
   messagesEndRef: React.RefObject<HTMLDivElement | null>
   user: User
   profileDisplayName: string
+  profileAvatarUrl?: string
   avatarDecoration?: string | null
   nameEffect?: string | null
   presenceData: Record<string, any>
@@ -150,6 +151,7 @@ export function TextChannelView({
   messagesEndRef,
   user,
   profileDisplayName,
+  profileAvatarUrl = '',
   avatarDecoration,
   nameEffect,
   presenceData,
@@ -518,6 +520,15 @@ export function TextChannelView({
                             const authorClanTag = localStorage.getItem(`echo-clan-tag-${message.author_id}`) || (message.author_id === user.id ? localStorage.getItem(`echo-clan-tag-${user.id}`) : null)
                             const authorClanTagColor = localStorage.getItem(`echo-clan-tag-color-${message.author_id}`) || (message.author_id === user.id ? localStorage.getItem(`echo-clan-tag-color-${user.id}`) : '#00f2fe') || '#00f2fe'
 
+                            const isSelf = message.author_id === user.id
+                            const resolvedAuthorName = isSelf
+                              ? (profileDisplayName || (user.user_metadata as any)?.display_name || message.profile?.display_name || 'Você')
+                              : (presenceData[message.author_id]?.display_name || spaceMembers.find(m => (m?.user?.id === message.author_id || m?.id === message.author_id))?.user?.display_name || message.profile?.display_name || 'Membro')
+
+                            const resolvedAuthorAvatar = isSelf
+                              ? (profileAvatarUrl || message.profile?.avatar_url)
+                              : (presenceData[message.author_id]?.avatar_url || spaceMembers.find(m => (m?.user?.id === message.author_id || m?.id === message.author_id))?.user?.avatar_url || message.profile?.avatar_url)
+
                             return (
                               <div
                                 key={message.id || virtualRow.key}
@@ -617,8 +628,8 @@ export function TextChannelView({
                                               setInspectedMember({
                                                 user: {
                                                   id: message.author_id,
-                                                  display_name: message.profile?.display_name || 'Membro',
-                                                  avatar_url: message.profile?.avatar_url
+                                                  display_name: resolvedAuthorName,
+                                                  avatar_url: resolvedAuthorAvatar
                                                 },
                                                 roleName: msgRole?.name,
                                                 roleColor: msgRole?.color,
@@ -629,10 +640,10 @@ export function TextChannelView({
                                           title="Ver perfil do membro"
                                         >
                                           <div style={{ width: '100%', height: '100%', borderRadius: 'inherit', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            {message.profile?.avatar_url ? (
-                                              <img src={message.profile.avatar_url} alt={message.profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            {resolvedAuthorAvatar ? (
+                                              <img src={resolvedAuthorAvatar} alt={resolvedAuthorName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                             ) : (
-                                              (message.profile?.display_name ?? 'E').slice(0, 1).toUpperCase()
+                                              (resolvedAuthorName ?? 'E').slice(0, 1).toUpperCase()
                                             )}
                                           </div>
                                           {(() => {
@@ -668,8 +679,8 @@ export function TextChannelView({
                                                           setInspectedMember({
                                                             user: {
                                                               id: message.author_id,
-                                                              display_name: message.profile?.display_name || 'Membro',
-                                                              avatar_url: message.profile?.avatar_url
+                                                              display_name: resolvedAuthorName,
+                                                              avatar_url: resolvedAuthorAvatar
                                                             },
                                                             roleName: msgRole?.name,
                                                             roleColor: msgRole?.color,
@@ -678,7 +689,7 @@ export function TextChannelView({
                                                         }
                                                       }}
                                                     >
-                                                      {message.profile?.display_name ?? 'Membro'}
+                                                      {resolvedAuthorName}
                                                     </strong>
                                                     {authorNameEffect && authorNameEffect !== 'none' && (
                                                       <span className="name-soundwave-indicator" title={authorNameMeta?.name || 'Aura Sonora'}>
@@ -723,7 +734,9 @@ export function TextChannelView({
                                                 </span>
                                               )}
 
-                                              <time>{msgDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
+                                              <time className="msg-time" title={msgDate.toLocaleString('pt-BR')}>
+                                                {msgDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                              </time>
                                               
                                                {isPinned && (
                                                  <span title="Mensagem Fixada" style={{ fontSize: '11px', color: 'var(--accent-color)', marginLeft: '4px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
@@ -841,7 +854,11 @@ export function TextChannelView({
                           {replyingToMessage && (
                             <div className="reply-quote-bar">
                               <span>
-                                ↩️ Respondendo a <strong>@{replyingToMessage.profile?.display_name || 'Membro'}</strong>: "{replyingToMessage.body.slice(0, 45)}..."
+                                ↩️ Respondendo a <strong>@{
+                                  replyingToMessage.author_id === user.id
+                                    ? (profileDisplayName || 'Você')
+                                    : (presenceData[replyingToMessage.author_id]?.display_name || spaceMembers.find(m => (m?.user?.id === replyingToMessage.author_id || m?.id === replyingToMessage.author_id))?.user?.display_name || replyingToMessage.profile?.display_name || 'Membro')
+                                }</strong>: "{replyingToMessage.body.slice(0, 45)}..."
                               </span>
                               <button 
                                 type="button" 

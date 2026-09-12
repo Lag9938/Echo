@@ -886,3 +886,14 @@ export function CloseXIcon({ className, style }: { className?: string; style?: R
   )
 }
 
+export function KeyIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="7.5" cy="15.5" r="4.5" />
+      <path d="m21 3-9.5 9.5" />
+      <path d="m15.5 7.5 3 3" />
+    </svg>
+  )
+}
+
+

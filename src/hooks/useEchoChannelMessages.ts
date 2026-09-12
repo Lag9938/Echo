@@ -63,6 +63,38 @@ export function useEchoChannelMessages({
     return () => clearInterval(interval)
   }, [slowmodeCooldown])
 
+  // Sincroniza o nome e avatar atualizados do próprio usuário no estado de mensagens e no cache local
+  useEffect(() => {
+    if (!user || !profileDisplayName) return
+    setMessages(prev => {
+      let changed = false
+      const updated = prev.map(m => {
+        if (m.author_id === user.id) {
+          if (m.profile?.display_name !== profileDisplayName || (profileAvatarUrl && m.profile?.avatar_url !== profileAvatarUrl)) {
+            changed = true
+            return {
+              ...m,
+              profile: {
+                ...m.profile,
+                display_name: profileDisplayName,
+                avatar_url: profileAvatarUrl || m.profile?.avatar_url
+              }
+            }
+          }
+        }
+        return m
+      })
+      if (changed && selectedChannel) {
+        messagesCacheRef.current[selectedChannel.id] = updated
+        try {
+          localStorage.setItem(`echo-msgs-${selectedChannel.id}`, JSON.stringify(updated.slice(-50)))
+        } catch (e) {}
+        return updated
+      }
+      return prev
+    })
+  }, [profileDisplayName, profileAvatarUrl, user?.id, selectedChannel?.id])
+
   // Resilient load messages function with instant memory + localStorage cache & delta query
   async function loadMessages(channelId: string, forceFullFetch = false) {
     const isMock = typeof window !== 'undefined' && window.location.search.includes('mock=true')

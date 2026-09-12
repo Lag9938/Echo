@@ -193,7 +193,7 @@ export interface UserInventory {
 }
 
 const DEFAULT_INVENTORY: UserInventory = {
-  decorations: ['soundwave_orb'],
+  decorations: ['soundwave_orb', 'astral_kitsune'],
   effects: ['echo_resonance'],
   auras: ['aura-cyan'],
   finishes: ['none'],
@@ -209,14 +209,14 @@ export function getUserInventory(userId: string): UserInventory {
     const rawFinishes = localStorage.getItem(`echo-inventory-finishes-${userId}`)
     const rawNameEffects = localStorage.getItem(`echo-inventory-name_effects-${userId}`)
 
-    const decorations = rawDecos ? JSON.parse(rawDecos) : ['soundwave_orb']
+    const decorations = rawDecos ? JSON.parse(rawDecos) : ['soundwave_orb', 'astral_kitsune']
     const effects = rawEffects ? JSON.parse(rawEffects) : ['echo_resonance']
     const auras = rawAuras ? JSON.parse(rawAuras) : ['aura-cyan']
     const finishes = rawFinishes ? JSON.parse(rawFinishes) : ['none']
     const nameEffects = rawNameEffects ? JSON.parse(rawNameEffects) : ['resonance_cyan']
 
     return {
-      decorations: Array.from(new Set(['soundwave_orb', ...decorations])),
+      decorations: Array.from(new Set(['soundwave_orb', 'astral_kitsune', ...decorations])),
       effects: Array.from(new Set(['echo_resonance', ...effects])),
       auras: Array.from(new Set(['aura-cyan', ...auras])),
       finishes: Array.from(new Set(['none', ...finishes])),

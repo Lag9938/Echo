@@ -95,6 +95,8 @@ export interface VoiceChannelViewProps {
   handleQualityChange: (q: any) => void | Promise<void>
   screenFps: number
   handleFpsChange: (fps: any) => void | Promise<void>
+  isPremiumUser?: boolean
+  onOpenSubscription?: () => void
   _isCurrentStreamGameOrScreen?: boolean
   activeSharingSource: any
   _is60DisabledInCall?: boolean
@@ -198,7 +200,9 @@ export function VoiceChannelView({
   handleQualityChange,
   screenFps,
   handleFpsChange,
-  activeSharingSource,
+  isPremiumUser = false,
+  onOpenSubscription,
+  activeSharingSource: _activeSharingSource,
   peerScreenVolumes,
   setPeerScreenVolumes,
   screenAudioSyncDelayMs,
@@ -814,26 +818,37 @@ export function VoiceChannelView({
                                     <div className="dropdown-section">
                                       <span className="section-title">FPS</span>
                                       {([15, 30, 60] as const).map(fps => {
-                                        const isCurrentStreamGameOrScreen = !activeSharingSource || 
-                                          activeSharingSource.type === 'screen' || 
-                                          activeSharingSource.id?.startsWith('screen:') || 
-                                          activeSharingSource.isGame === true || 
-                                          (activeSharingSource.name || '').toLowerCase().includes('(jogo)')
-                                        const is60DisabledInCall = fps === 60 && !isCurrentStreamGameOrScreen
+                                        const is60 = fps === 60
+                                        const is60Locked = is60 && !isPremiumUser
                                         return (
                                           <button 
                                             key={fps} 
-                                            disabled={is60DisabledInCall}
-                                            title={is60DisabledInCall ? '60 FPS disponível apenas em Jogos e Telas Inteiras' : undefined}
-                                            className={`dropdown-option ${screenFps === fps ? 'selected' : ''} ${is60DisabledInCall ? 'disabled' : ''}`}
-                                            style={is60DisabledInCall ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+                                            title={is60Locked ? '60 FPS exclusivo para assinantes Echo Pro' : undefined}
+                                            className={`dropdown-option ${screenFps === fps ? 'selected' : ''} ${is60Locked ? 'pro-locked' : ''}`}
+                                            style={is60Locked ? { color: '#fbbf24', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' } : undefined}
                                             onClick={() => {
-                                              if (!is60DisabledInCall) {
+                                              if (is60Locked) {
+                                                onOpenSubscription?.()
+                                              } else {
                                                 handleFpsChange(fps)
                                               }
                                             }}
                                           >
-                                            {fps} FPS {is60DisabledInCall ? '(Jogos/Telas)' : ''}
+                                            <span>{fps} FPS</span>
+                                            {is60 && (
+                                              <span style={{
+                                                fontSize: '10px',
+                                                fontWeight: 800,
+                                                padding: '1px 5px',
+                                                borderRadius: '4px',
+                                                background: isPremiumUser ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                                                border: isPremiumUser ? '1px solid #10b981' : '1px solid #f59e0b',
+                                                color: isPremiumUser ? '#34d399' : '#fbbf24',
+                                                letterSpacing: '0.04em'
+                                              }}>
+                                                PRO
+                                              </span>
+                                            )}
                                           </button>
                                         )
                                       })}
@@ -884,8 +899,17 @@ export function VoiceChannelView({
                               {messages.map((message) => {
                                 const isMentioned = message.author_id !== user.id && message.body.toLowerCase().includes(`@${profileDisplayName.toLowerCase()}`)
                                 const canManageMsg = currentSpace && (canUserDo(currentSpace.id, user.id, 'manageMessages') || currentSpace.creator_id === user.id)
+                                const isSelf = message.author_id === user.id
+                                const resolvedAuthorName = isSelf
+                                  ? (profileDisplayName || (user.user_metadata as any)?.display_name || message.profile?.display_name || 'Você')
+                                  : (presenceData[message.author_id]?.display_name || spaceMembers.find(m => (m?.user?.id === message.author_id || m?.id === message.author_id))?.user?.display_name || message.profile?.display_name || 'Membro')
+
+                                const resolvedAuthorAvatar = isSelf
+                                  ? (profileAvatarUrl || message.profile?.avatar_url)
+                                  : (presenceData[message.author_id]?.avatar_url || spaceMembers.find(m => (m?.user?.id === message.author_id || m?.id === message.author_id))?.user?.avatar_url || message.profile?.avatar_url)
+
                                 return (
-                                  <article className={`msg-card ${message.author_id === user.id ? 'msg-own' : ''} ${message.attachment_type === 'audio' ? 'has-voice-note' : ''} ${isMentioned ? 'mention-highlight' : ''}`} key={message.id} style={{ position: 'relative' }}>
+                                  <article className={`msg-card ${isSelf ? 'msg-own' : ''} ${message.attachment_type === 'audio' ? 'has-voice-note' : ''} ${isMentioned ? 'mention-highlight' : ''}`} key={message.id} style={{ position: 'relative' }}>
                                     <div className="message-hover-actions">
                                       <button 
                                         type="button" 
@@ -910,23 +934,25 @@ export function VoiceChannelView({
                                         </button>
                                       )}
                                     </div>
-                                    <div className={`msg-avatar ${message.author_id === user.id ? 'avatar-self' : 'avatar-other'}`} style={{ position: 'relative', overflow: 'visible' }}>
+                                    <div className={`msg-avatar ${isSelf ? 'avatar-self' : 'avatar-other'}`} style={{ position: 'relative', overflow: 'visible' }}>
                                       <div style={{ width: '100%', height: '100%', borderRadius: 'inherit', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        {message.profile?.avatar_url ? (
-                                          <img src={message.profile.avatar_url} alt={message.profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        {resolvedAuthorAvatar ? (
+                                          <img src={resolvedAuthorAvatar} alt={resolvedAuthorName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                         ) : (
-                                          (message.profile?.display_name ?? 'E').slice(0, 1).toUpperCase()
+                                          (resolvedAuthorName ?? 'E').slice(0, 1).toUpperCase()
                                         )}
                                       </div>
                                       {(() => {
-                                        const deco = presenceData[message.author_id]?.avatar_decoration || (message.author_id === user.id ? avatarDecoration : null)
+                                        const deco = presenceData[message.author_id]?.avatar_decoration || (isSelf ? avatarDecoration : null)
                                         return deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null
                                       })()}
                                     </div>
                                     <div className="msg-body">
                                       <div className="msg-meta">
-                                        <strong>{message.profile?.display_name ?? 'Membro'}</strong>
-                                        <time>{new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
+                                        <strong>{resolvedAuthorName}</strong>
+                                        <time className="msg-time" title={new Date(message.created_at).toLocaleString('pt-BR')}>
+                                          {new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                        </time>
                                       </div>
                                       {message.attachment_url && message.attachment_type === 'image' ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

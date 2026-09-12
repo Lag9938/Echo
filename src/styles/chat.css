@@ -33,8 +33,31 @@
   flex-direction: column;
   gap: 4px;
 }
-.msg-meta { display: flex; align-items: baseline; gap: 8px; }
-.msg-meta strong { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.msg-meta { 
+  display: flex; 
+  align-items: baseline; 
+  flex-wrap: wrap;
+  gap: 6px 8px; 
+}
+.msg-meta strong { 
+  font-size: 13.5px; 
+  font-weight: 700; 
+  color: var(--text-primary); 
+  letter-spacing: -0.01em;
+}
+.msg-meta time,
+.msg-meta .msg-time {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted, #94a3b8);
+  margin-left: 2px;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  user-select: none;
+  line-height: 1;
+  opacity: 0.85;
+}
 .msg-body p { 
   margin: 2px 0 0; 
   font-size: 14.5px; 

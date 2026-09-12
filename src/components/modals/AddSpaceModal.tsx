@@ -97,7 +97,7 @@ export function AddSpaceModal({
               <input 
                 value={joinSpaceCode} 
                 onChange={(e) => setJoinSpaceCode(e.target.value)} 
-                placeholder="echo://invite/... ou código do espaço" 
+                placeholder="Link de convite ou código do espaço" 
                 required 
               />
               <button type="submit" className="add-space-modal-submit-btn" disabled={joining}>

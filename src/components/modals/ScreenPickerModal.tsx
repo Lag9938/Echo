@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import {
   ColoredRocketIcon,
   ColoredRefreshIcon,
@@ -19,6 +18,8 @@ export interface ScreenSource {
   isMinimized?: boolean
 }
 
+import { useEffect } from 'react'
+
 export function ScreenPickerModal({
   isOpen,
   onClose,
@@ -32,7 +33,9 @@ export function ScreenPickerModal({
   screenQuality,
   setScreenQuality,
   screenFps,
-  setScreenFps
+  setScreenFps,
+  isPremiumUser = false,
+  onOpenSubscription
 }: {
   isOpen: boolean
   onClose: () => void
@@ -47,19 +50,14 @@ export function ScreenPickerModal({
   setScreenQuality: (q: '720p' | '1080p' | 'native') => void
   screenFps: number
   setScreenFps: (fps: 15 | 30 | 60) => void
+  isPremiumUser?: boolean
+  onOpenSubscription?: () => void
 }) {
-  const currentSelectedPickerSource = screenSources.find(s => s.id === selectedPickerSourceId)
-  const isPickerGameOrScreen = screenPickerTab === 'screens' || 
-    currentSelectedPickerSource?.type === 'screen' || 
-    currentSelectedPickerSource?.id?.startsWith('screen:') || 
-    currentSelectedPickerSource?.isGame === true || 
-    (currentSelectedPickerSource?.name || '').toLowerCase().includes('(jogo)')
-
   useEffect(() => {
-    if (isOpen && !isPickerGameOrScreen && screenFps === 60) {
+    if (isOpen && !isPremiumUser && screenFps === 60) {
       setScreenFps(30)
     }
-  }, [isOpen, isPickerGameOrScreen, screenFps, setScreenFps])
+  }, [isOpen, isPremiumUser, screenFps, setScreenFps])
 
   if (!isOpen) return null
 
@@ -115,10 +113,6 @@ export function ScreenPickerModal({
               const firstWin = screenSources.find(s => s.type === 'window' || s.id.startsWith('window:'))
               if (firstWin) {
                 setSelectedPickerSourceId(firstWin.id)
-                const isGame = firstWin.isGame === true || (firstWin.name || '').toLowerCase().includes('(jogo)')
-                if (!isGame && screenFps === 60) {
-                  setScreenFps(30)
-                }
               }
             }}
           >
@@ -242,28 +236,49 @@ export function ScreenPickerModal({
             <span className="picker-section-label">TAXA DE QUADROS</span>
             <div className="picker-chips-row">
               {([15, 30, 60] as const).map(f => {
-                const is60Locked = f === 60 && !isPickerGameOrScreen
+                const is60 = f === 60
+                const isLocked = is60 && !isPremiumUser
                 return (
                   <button
                     key={f}
                     type="button"
-                    disabled={is60Locked}
-                    title={is60Locked ? '60 FPS disponível apenas em Jogos e Telas Inteiras' : undefined}
-                    className={`picker-config-chip ${screenFps === f ? 'active' : ''} ${f === 60 ? 'fps-60' : ''} ${is60Locked ? 'disabled' : ''}`}
+                    title={isLocked ? '60 FPS exclusivo para assinantes Echo Pro' : undefined}
+                    className={`picker-config-chip ${screenFps === f ? 'active' : ''} ${is60 ? 'fps-60' : ''} ${isLocked ? 'pro-locked' : ''}`}
                     onClick={() => {
-                      if (!is60Locked) {
+                      if (isLocked) {
+                        onOpenSubscription?.()
+                      } else {
                         setScreenFps(f)
                       }
                     }}
                   >
-                    {f === 60 ? (
+                    {is60 ? (
                       <>
-                        <ColoredLightningIcon size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} /> 60 FPS (Ultra Suave)
-                        {is60Locked && (
-                          <span style={{ fontSize: '9px', marginLeft: 6, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                            (Jogos/Telas)
-                          </span>
-                        )}
+                        <ColoredLightningIcon size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} /> 60 FPS
+                        <span 
+                          className="pro-badge-tag"
+                          title={isPremiumUser ? 'Assinatura Echo Pro Ativa (clique para gerenciar)' : '60 FPS exclusivo para assinantes Echo Pro'}
+                          style={{
+                            marginLeft: 6,
+                            fontSize: '10px',
+                            fontWeight: 800,
+                            padding: '1px 6px',
+                            borderRadius: '6px',
+                            background: isPremiumUser ? 'rgba(16, 185, 129, 0.25)' : 'linear-gradient(135deg, rgba(245, 158, 11, 0.35), rgba(217, 119, 6, 0.35))',
+                            border: isPremiumUser ? '1px solid #10b981' : '1px solid #f59e0b',
+                            color: isPremiumUser ? '#34d399' : '#fbbf24',
+                            letterSpacing: '0.05em',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            cursor: 'pointer'
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onOpenSubscription?.()
+                          }}
+                        >
+                          PRO
+                        </span>
                       </>
                     ) : (
                       `${f} FPS`
@@ -286,6 +301,9 @@ export function ScreenPickerModal({
             onClick={() => {
               const targetId = selectedPickerSourceId || (screenSources[0]?.id)
               if (targetId) {
+                if (!isPremiumUser && screenFps === 60) {
+                  setScreenFps(30)
+                }
                 selectScreenSource(targetId)
               }
             }}

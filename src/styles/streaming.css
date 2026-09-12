@@ -1232,3 +1232,41 @@
   font-family: monospace;
 }
 
+/* ── Echo Pro Monetization Badges & Chips ── */
+.picker-config-chip.pro-locked {
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  background: rgba(245, 158, 11, 0.08) !important;
+  color: #fbbf24 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease;
+}
+
+.picker-config-chip.pro-locked:hover {
+  background: rgba(245, 158, 11, 0.18) !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.3) !important;
+  transform: translateY(-1px);
+}
+
+.dropdown-option.pro-locked {
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 6px;
+  margin: 2px 0;
+  transition: all 0.15s ease;
+}
+
+.dropdown-option.pro-locked:hover {
+  background: rgba(245, 158, 11, 0.16) !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+}
+
+.pro-badge-tag {
+  transition: transform 0.15s ease;
+}
+
+.pro-badge-tag:hover {
+  transform: scale(1.06);
+}
+
