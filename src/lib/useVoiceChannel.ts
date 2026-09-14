@@ -1412,10 +1412,10 @@ export function useVoiceChannel(options?: {
       let nativeAudioTrack: MediaStreamTrack | null = null
       const isWindowSource = sourceId && sourceId.startsWith('window:')
 
-      // 1. Captura de áudio nativa por processo (Windows WASAPI loopback por PID)
-      if (isWindowSource && typeof (window as any).electronAPI?.startProcessAudioCapture === 'function') {
+      // 1. Captura de áudio nativa por processo (Windows WASAPI loopback por PID para janelas ou Exclusão do Echo para tela inteira)
+      if (typeof (window as any).electronAPI?.startProcessAudioCapture === 'function') {
         try {
-          const res = await (window as any).electronAPI.startProcessAudioCapture(sourceId)
+          const res = await (window as any).electronAPI.startProcessAudioCapture(sourceId || 'screen:0:0')
           if (res && res.success) {
             const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext
             const procCtx = new AudioCtxClass({ sampleRate: 48000 })

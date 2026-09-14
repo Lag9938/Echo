@@ -68,6 +68,7 @@ function ensureLocalLivekitServer() {
 
 // Rich Presence: Popular Games List
 const POPULAR_GAMES = [
+  { match: ['pes2021', 'pes2020', 'pes2019', 'pes', 'efootball', 'efootball2024', 'efootball2025', 'we2021'], name: 'eFootball PES', icon: '⚽' },
   { match: ['valorant-win64-shipping', 'valorant'], name: 'VALORANT', icon: '🎮' },
   { match: ['cs2', 'csgo'], name: 'Counter-Strike 2', icon: '🔫' },
   { match: ['fortniteclient-win64-shipping', 'fortnite'], name: 'Fortnite', icon: '🪂' },
@@ -663,14 +664,26 @@ function createWindow() {
   // Handlers para captura de áudio nativa por processo (Windows WASAPI Loopback estilo Discord)
   ipcMain.handle('start-process-audio-capture', async (_event, sourceId) => {
     stopAudioCapture()
-    if (!sourceId || typeof sourceId !== 'string' || !sourceId.startsWith('window:')) {
-      return { success: false, reason: 'Not a window source' }
+    if (!sourceId || typeof sourceId !== 'string') {
+      return { success: false, reason: 'Invalid sourceId' }
     }
 
-    const parts = sourceId.split(':')
-    const hwnd = parts[1]
-    if (!hwnd) {
-      return { success: false, reason: 'Invalid HWND' }
+    const port = 8092
+    let helperArgs = []
+
+    if (sourceId.startsWith('window:')) {
+      const parts = sourceId.split(':')
+      const hwnd = parts[1]
+      if (!hwnd) {
+        return { success: false, reason: 'Invalid HWND' }
+      }
+      helperArgs = ['--hwnd', hwnd, port.toString()]
+    } else if (sourceId.startsWith('screen:') || sourceId === 'screen') {
+      // Para captura de tela inteira: captura todo o áudio do sistema EXCLUINDO o processo do próprio Echo!
+      // Isso impede que a voz dos participantes na chamada do Echo seja capturada no loopback e cause eco/retorno!
+      helperArgs = ['--exclude-pid', process.pid.toString(), port.toString()]
+    } else {
+      return { success: false, reason: 'Unsupported source type' }
     }
 
     try {
@@ -678,10 +691,8 @@ function createWindow() {
         ? path.join(__dirname, 'src', 'native', 'AudioCaptureHelper', 'bin', 'AudioCaptureHelper.exe')
         : path.join(process.resourcesPath, 'AudioCaptureHelper.exe')
 
-      const port = 8092
-
-      // Spawn AudioCaptureHelper with --hwnd <hwnd> <port>
-      audioHelperProcess = spawn(helperPath, ['--hwnd', hwnd, port.toString()], {
+      // Spawn AudioCaptureHelper with calculated args
+      audioHelperProcess = spawn(helperPath, helperArgs, {
         windowsHide: true,
         stdio: ['ignore', 'pipe', 'pipe']
       })

@@ -129,6 +129,8 @@ namespace AudioCaptureHelper
 
                     bool isGame = isValorant ||
                                  processName.IndexOf("cs2", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                 processName.IndexOf("pes", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                 processName.IndexOf("efootball", StringComparison.OrdinalIgnoreCase) >= 0 ||
                                  processName.IndexOf("fortnite", StringComparison.OrdinalIgnoreCase) >= 0 ||
                                  processName.IndexOf("league", StringComparison.OrdinalIgnoreCase) >= 0 ||
                                  processName.IndexOf("overwatch", StringComparison.OrdinalIgnoreCase) >= 0 ||
@@ -404,6 +406,7 @@ namespace AudioCaptureHelper
             string mode = args[0];
             string valueStr = args[1];
             uint pid = 0;
+            ProcessLoopbackMode loopbackMode = ProcessLoopbackMode.IncludeTargetProcessTree;
 
             if (mode == "--pid")
             {
@@ -412,6 +415,15 @@ namespace AudioCaptureHelper
                     Console.WriteLine("Error: Invalid PID format.");
                     return;
                 }
+            }
+            else if (mode == "--exclude-pid")
+            {
+                if (!uint.TryParse(valueStr, out pid))
+                {
+                    Console.WriteLine("Error: Invalid PID format.");
+                    return;
+                }
+                loopbackMode = ProcessLoopbackMode.ExcludeTargetProcessTree;
             }
             else if (mode == "--hwnd")
             {
@@ -433,7 +445,7 @@ namespace AudioCaptureHelper
             }
             else
             {
-                Console.WriteLine($"Error: Unknown mode '{mode}'. Use --pid or --hwnd.");
+                Console.WriteLine($"Error: Unknown mode '{mode}'. Use --pid, --exclude-pid or --hwnd.");
                 return;
             }
 
@@ -443,7 +455,7 @@ namespace AudioCaptureHelper
                 port = customPort;
             }
 
-            Console.WriteLine($"Starting AudioCaptureHelper for PID: {pid} on port: {port}");
+            Console.WriteLine($"Starting AudioCaptureHelper for PID: {pid} (Mode: {loopbackMode}) on port: {port}");
 
             TcpListener server = null;
             WasapiRecorder recorder = null;
@@ -462,7 +474,7 @@ namespace AudioCaptureHelper
 
                 // Setup WASAPI recorder using NAudio 3 builder
                 var builder = new WasapiRecorderBuilder()
-                    .WithProcessLoopback(pid, ProcessLoopbackMode.IncludeTargetProcessTree)
+                    .WithProcessLoopback(pid, loopbackMode)
                     .WithFormat(new WaveFormat(48000, 16, 2)); // 48kHz, 16-bit, stereo PCM
 
                 recorder = await builder.BuildAsync();
