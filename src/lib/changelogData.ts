@@ -14,15 +14,36 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.33.4'
+export const APP_CURRENT_VERSION = '0.33.5'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.33.5',
+    title: 'Echo v0.33.5 - Assistir Transmissão na Lateral e Barra de Chats Diretos',
+    date: '14 de Setembro de 2026',
+    tagline: 'Assista a transmissões ao vivo de amigos com 1 clique direto na barra lateral, novo menu rápido de chamada e barra dedicada de Mensagens Diretas.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '📺',
+        badge: 'STREAMING AO VIVO',
+        title: 'Assistir Transmissão na Lateral',
+        description: 'Clique em qualquer amigo transmitindo na barra lateral dos canais para sintonizar imediatamente na transmissão, ajustar volume ou abrir seu perfil com 1 clique.'
+      },
+      {
+        icon: '💬',
+        badge: 'MENSAGENS DIRETAS',
+        title: 'Nova Barra Lateral de Chats',
+        description: 'A tela de amigos agora traz uma barra lateral dedicada para acesso instantâneo a todas as conversas diretas recentes, com busca rápida e badges de não lidas.'
+      }
+    ]
+  },
   {
     version: '0.33.4',
     title: 'Echo v0.33.4 - Persistência Permanente de Decorações de Avatar e Efeitos',
     date: '14 de Setembro de 2026',
     tagline: 'Decorações de avatar e efeitos de perfil agora permanecem visíveis para sempre, mesmo quando o usuário fica offline, sai de chamadas ou navega entre servidores.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🔥',

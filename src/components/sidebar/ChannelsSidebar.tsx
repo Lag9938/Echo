@@ -450,9 +450,6 @@ export function ChannelsSidebar({
                   <div className="sidebar-voice-users">
                     {channelVoiceUsers.map(p => {
                       const isSharer = Boolean(p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0))
-                      const userDeco = presenceData?.[p.userId]?.avatar_decoration ||
-                        spaceMembers.find(m => (m.user?.id || m.id) === p.userId)?.user?.avatar_decoration ||
-                        (p.userId === user.id ? avatarDecoration : null)
 
                       const handleUserClick = (e: React.MouseEvent) => {
                         e.stopPropagation()
@@ -486,9 +483,6 @@ export function ChannelsSidebar({
                               <img src={p.avatarUrl} alt={p.displayName} className="sidebar-avatar-img" />
                             ) : (
                               p.displayName.slice(0, 1).toUpperCase()
-                            )}
-                            {userDeco && userDeco !== 'none' && (
-                              <AvatarDecoration decorationId={userDeco} />
                             )}
                           </div>
                           <span className="sidebar-voice-name">{p.displayName}</span>
