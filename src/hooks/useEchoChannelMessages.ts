@@ -66,28 +66,14 @@ export function useEchoChannelMessages({
     return () => clearInterval(interval)
   }, [slowmodeCooldown])
 
-  // Limpa caches corrompidos que possam ter vazado mensagens entre canais diferentes
+  // Limpa permanentemente todo e qualquer cache legado de mensagens do localStorage
   useEffect(() => {
     try {
       const keysToRemove: string[] = []
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
-        if (key && key.startsWith('echo-msgs-')) {
-          const chId = key.replace('echo-msgs-', '')
-          const raw = localStorage.getItem(key)
-          if (raw) {
-            const parsed = JSON.parse(raw)
-            if (Array.isArray(parsed)) {
-              // Se tiver mensagem de outro canal ou o leak conhecido do YouTube music fora do canal teste
-              const hasCorrupt = parsed.some((m: any) => 
-                (m.channel_id && m.channel_id !== chId) ||
-                (chId !== 'bd6e1c4f-87fb-4fe2-9b4f-a49cb518c70e' && m.id === '11300792-a0a6-44a7-849f-f2ae60c85a15')
-              )
-              if (hasCorrupt) {
-                keysToRemove.push(key)
-              }
-            }
-          }
+        if (key && (key.startsWith('echo-msgs-') || key.startsWith('echo-cached-msgs-'))) {
+          keysToRemove.push(key)
         }
       }
       keysToRemove.forEach(k => localStorage.removeItem(k))
@@ -118,119 +104,41 @@ export function useEchoChannelMessages({
       })
       if (changed) {
         messagesCacheRef.current[currentChId] = updated
-        try {
-          localStorage.setItem(`echo-msgs-${currentChId}`, JSON.stringify(updated.slice(-50)))
-        } catch (e) {}
         return updated
       }
       return prev
     })
   }, [profileDisplayName, profileAvatarUrl, user?.id])
 
-  // Resilient load messages function with instant memory + localStorage cache & delta query
-  async function loadMessages(channelId: string, forceFullFetch = false) {
+  // Busca robusta de mensagens com cache estrito em memória por canal e consulta direta ao Supabase
+  async function loadMessages(channelId: string, _forceFullFetch = false) {
     const isMock = typeof window !== 'undefined' && window.location.search.includes('mock=true')
     if (isMock) {
       setMessages([
-        { id: 'msg-1', body: 'Olá! Este canal de voz agora possui o chat de texto completo integrado.', created_at: new Date().toISOString(), author_id: 'friend-valkyrie', profile: { display_name: 'Valkyrie_Echo' }, status: 'sent' },
-        { id: 'msg-2', body: 'Perfeito! O chat de texto é exibido diretamente, sem tela vazia.', created_at: new Date().toISOString(), author_id: user.id, profile: { display_name: 'Lag9938' }, status: 'sent' }
+        { id: 'msg-1', channel_id: channelId, body: 'Olá! Este canal de voz agora possui o chat de texto completo integrado.', created_at: new Date().toISOString(), author_id: 'friend-valkyrie', profile: { display_name: 'Valkyrie_Echo' }, status: 'sent' },
+        { id: 'msg-2', channel_id: channelId, body: 'Perfeito! O chat de texto é exibido diretamente, sem tela vazia.', created_at: new Date().toISOString(), author_id: user.id, profile: { display_name: 'Lag9938' }, status: 'sent' }
       ])
       return
     }
     if (!supabase) return
 
-    // 1. Render instantâneo do cache local (0ms e 0 requisições desnecessárias)
-    let currentCached: Message[] = []
+    // 1. Render instantâneo do cache em memória desta sessão (se estritamente deste canal)
     let foundCached = false
     if (messagesCacheRef.current[channelId] && messagesCacheRef.current[channelId].length > 0) {
       const memCached = messagesCacheRef.current[channelId]
       if (memCached.every(m => !m.channel_id || m.channel_id === channelId)) {
-        currentCached = memCached
-        setMessages(currentCached)
+        setMessages(memCached)
         foundCached = true
       } else {
         delete messagesCacheRef.current[channelId]
       }
     }
-    
-    if (!foundCached) {
-      try {
-        const cached = localStorage.getItem(`echo-msgs-${channelId}`)
-        if (cached) {
-          const parsed = JSON.parse(cached)
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            if (parsed.every((m: any) => !m.channel_id || m.channel_id === channelId)) {
-              currentCached = parsed
-              messagesCacheRef.current[channelId] = parsed
-              setMessages(parsed)
-              foundCached = true
-            } else {
-              localStorage.removeItem(`echo-msgs-${channelId}`)
-            }
-          }
-        }
-      } catch (e) {}
-    }
 
-    // Se o canal ainda não possui cache, limpa a tela de mensagens antigas imediatamente
     if (!foundCached) {
       setMessages([])
     }
 
-    // 2. Busca Delta Inteligente (Supabase Query Optimization)
-    const newestCached = !forceFullFetch && currentCached.length > 0
-      ? [...currentCached].reverse().find(m => m.status === 'sent' && m.created_at)
-      : null
-
-    if (newestCached && newestCached.created_at) {
-      try {
-        const { data: deltaData, error: deltaErr } = await supabase
-          .from('messages')
-          .select('id,channel_id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
-          .eq('channel_id', channelId)
-          .gt('created_at', newestCached.created_at)
-          .order('created_at', { ascending: true })
-          .limit(50)
-
-        if (!deltaErr && deltaData) {
-          if (deltaData.length === 0) {
-            return
-          }
-
-          if (activeChannelIdRef.current !== channelId) return
-
-          const newLoaded: Message[] = deltaData.map((row: any) => ({
-            ...row,
-            channel_id: row.channel_id || channelId,
-            profile: Array.isArray(row.profiles) ? row.profiles?.[0] : row.profiles,
-            status: 'sent' as const
-          }))
-
-          setMessages(prev => {
-            if (activeChannelIdRef.current !== channelId) return prev
-            const existingMap = new Map(prev.filter(m => !m.channel_id || m.channel_id === channelId).map(m => [m.id, m]))
-            newLoaded.forEach(nm => {
-              existingMap.set(nm.id, nm)
-            })
-            const merged = Array.from(existingMap.values()).sort((a, b) => {
-              const tA = a.created_at ? new Date(a.created_at).getTime() : 0
-              const tB = b.created_at ? new Date(b.created_at).getTime() : 0
-              return tA - tB
-            })
-            messagesCacheRef.current[channelId] = merged
-            try {
-              localStorage.setItem(`echo-msgs-${channelId}`, JSON.stringify(merged.slice(-50)))
-            } catch (e) {}
-            return merged
-          })
-          return
-        }
-      } catch (deltaCatchErr) {
-        console.warn('[Cache] Erro no fetch delta, caindo para busca completa:', deltaCatchErr)
-      }
-    }
-
-    // 3. Busca Completa Paginada (Fallback ou primeira abertura do canal)
+    // 2. Busca Oficial e Segura das mensagens no Supabase para o canal ativo
     const { data, error: queryError } = await supabase
       .from('messages')
       .select('id,channel_id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
@@ -238,8 +146,12 @@ export function useEchoChannelMessages({
       .order('created_at', { ascending: false })
       .limit(50)
 
-    if (queryError) { setError(queryError.message); return }
+    if (queryError) { 
+      setError(queryError.message)
+      return 
+    }
 
+    // Se o usuário já navegou para outro canal enquanto a busca acontecia, descarte
     if (activeChannelIdRef.current !== channelId) return
 
     const rawData = data ?? []
@@ -262,9 +174,6 @@ export function useEchoChannelMessages({
       )
       const merged = [...loaded, ...pendingLocal]
       messagesCacheRef.current[channelId] = merged
-      try {
-        localStorage.setItem(`echo-msgs-${channelId}`, JSON.stringify(merged.slice(-50)))
-      } catch (e) {}
       return merged
     })
 
@@ -561,9 +470,6 @@ export function useEchoChannelMessages({
       setMessages(prev => {
         const next = prev.filter(m => m.id !== messageId)
         messagesCacheRef.current[selectedChannel.id] = next
-        try {
-          localStorage.setItem(`echo-msgs-${selectedChannel.id}`, JSON.stringify(next.slice(-50)))
-        } catch (e) {}
         return next
       })
 
@@ -657,9 +563,6 @@ export function useEchoChannelMessages({
           updated = [...prev, { ...payload, status: 'sent' }]
         }
         messagesCacheRef.current[selectedChannel.id] = updated
-        try {
-          localStorage.setItem(`echo-msgs-${selectedChannel.id}`, JSON.stringify(updated.slice(-50)))
-        } catch (e) {}
         return updated
       })
 
@@ -677,9 +580,6 @@ export function useEchoChannelMessages({
         const updated = prev.filter(m => m.id !== payload.id)
         if (selectedChannel) {
           messagesCacheRef.current[selectedChannel.id] = updated
-          try {
-            localStorage.setItem(`echo-msgs-${selectedChannel.id}`, JSON.stringify(updated.slice(-50)))
-          } catch (e) {}
         }
         return updated
       })

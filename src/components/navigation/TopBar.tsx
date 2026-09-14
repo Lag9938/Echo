@@ -159,6 +159,7 @@ export function TopBar({
                   type="button"
                   className={`topbar-server-btn ${isSelected ? 'selected' : ''}`}
                   onClick={async () => {
+                    setHoveredSpaceCard(null)
                     setPage('Servidores')
                     setExpandedSpace(space.id)
                     const chs = spaceChannels[space.id] || []
@@ -170,7 +171,6 @@ export function TopBar({
                       setSelectedChannel(null)
                     }
                     await loadChannelsForSpace(space.id)
-                    setHoveredSpaceCard(null)
                   }}
                   style={{ background: space.icon_url ? 'transparent' : getServerGradient(space.name) }}
                   title={space.name}
@@ -247,6 +247,7 @@ export function TopBar({
               cursor: 'pointer'
             }}
             onClick={async () => {
+              setHoveredSpaceCard(null)
               setPage('Servidores')
               setExpandedSpace(space.id)
               const chs = spaceChannels[space.id] || []
@@ -257,7 +258,6 @@ export function TopBar({
                 setSelectedChannel(null)
               }
               await loadChannelsForSpace(space.id)
-              setHoveredSpaceCard(null)
             }}
             onMouseEnter={() => {
               showTopbar()

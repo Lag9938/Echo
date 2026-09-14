@@ -345,6 +345,10 @@ export function TextChannelView({
 
   const filteredMessages = useMemo(() => {
     return messages.filter(m => {
+      // Isolamento estrito de canal: se a mensagem pertencer a outro canal, NUNCA renderize
+      if (m.channel_id && selectedChannel && m.channel_id !== selectedChannel.id) {
+        return false
+      }
       if (!searchQuery.trim()) return true
       const q = searchQuery.toLowerCase().trim()
       if (q.startsWith('de:') || q.startsWith('from:')) {
@@ -353,7 +357,7 @@ export function TextChannelView({
       }
       return m.body.toLowerCase().includes(q) || (m.profile?.display_name || '').toLowerCase().includes(q)
     })
-  }, [messages, searchQuery])
+  }, [messages, searchQuery, selectedChannel?.id])
 
   const channelVirtualizer = useVirtualizer({
     count: filteredMessages.length,

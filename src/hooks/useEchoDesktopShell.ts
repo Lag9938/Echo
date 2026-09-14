@@ -51,9 +51,9 @@ export function useEchoDesktopShell({
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
   }, [channelSearchInputRef])
 
-  // Topbar Auto-Hide & Pin State
+  // Topbar Auto-Hide & Pin State (fixado por padrão para eliminar saltos de layout e animações presas)
   const [topbarPinned, setTopbarPinned] = useState<boolean>(() => {
-    return localStorage.getItem('echo-topbar-pinned') === 'true'
+    return localStorage.getItem('echo-topbar-pinned') !== 'false'
   })
   const [topbarHovered, setTopbarHovered] = useState<boolean>(false)
   const topbarHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
