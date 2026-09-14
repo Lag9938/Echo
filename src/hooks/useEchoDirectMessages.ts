@@ -71,6 +71,59 @@ export function useEchoDirectMessages({
     } catch {}
   }, [recentDMUserIds])
 
+  // Carrega automaticamente parceiros de conversas diretas anteriores do Supabase
+  useEffect(() => {
+    if (!supabase || !user) return
+    async function loadPastDMPartners() {
+      try {
+        const { data, error } = await supabase
+          .from('direct_messages')
+          .select('sender_id, receiver_id, created_at')
+          .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+          .order('created_at', { ascending: false })
+          .limit(100)
+
+        if (!error && data && data.length > 0) {
+          const partners: string[] = []
+          data.forEach((m: any) => {
+            const other = m.sender_id === user.id ? m.receiver_id : m.sender_id
+            if (other && other !== user.id && !partners.includes(other)) {
+              partners.push(other)
+            }
+          })
+
+          if (partners.length > 0) {
+            setRecentDMUserIds(prev => Array.from(new Set([...prev, ...partners])))
+
+            const { data: profs } = await supabase
+              .from('profiles')
+              .select('id, display_name, avatar_url, avatar_decoration, profile_effect')
+              .in('id', partners)
+
+            if (profs && profs.length > 0) {
+              setKnownProfiles(prev => {
+                const next = { ...prev }
+                profs.forEach((p: any) => {
+                  next[p.id] = {
+                    id: p.id,
+                    display_name: p.display_name || 'Membro',
+                    avatar_url: p.avatar_url,
+                    avatar_decoration: p.avatar_decoration,
+                    profile_effect: p.profile_effect
+                  }
+                })
+                return next
+              })
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Erro ao carregar parceiros de conversas diretas:', e)
+      }
+    }
+    loadPastDMPartners()
+  }, [supabase, user?.id])
+
   const loadDirectMessages = useCallback(async (friendId: string) => {
     if (!supabase || !user) return
     const { data, error: queryError } = await supabase

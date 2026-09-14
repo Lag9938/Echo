@@ -8,10 +8,8 @@ import { ModernVoiceNotePlayer } from '../components/chat/ModernVoiceNotePlayer'
 import { ChatLinkEmbed } from '../components/chat/ChatLinkEmbed'
 import { UnifiedUserProfileFooter } from '../components/sidebar/UnifiedUserProfileFooter'
 import {
-  ActivityIcon,
   ClockIcon,
   CopyIcon,
-  GamepadIcon,
   HeadphonesIcon,
   HeadphonesOffIcon,
   InboxIcon,
@@ -86,8 +84,8 @@ export function FriendsView({
   toggleMute,
   toggleDeafen,
   knownProfiles = {},
-  recentDMUserIds: _recentDMUserIds = [],
-  onRemoveRecentDM: _onRemoveRecentDM,
+  recentDMUserIds = [],
+  onRemoveRecentDM,
   onAddFriend,
   onStartVoiceNote,
   onStopVoiceNote,
@@ -178,6 +176,7 @@ export function FriendsView({
   const dmMessagesContainerRef = useRef<HTMLDivElement>(null)
   const friendsSearchRef = useRef<HTMLInputElement>(null)
   const [localSearch, setLocalSearch] = useState('')
+  const [dmSearchQuery, setDmSearchQuery] = useState('')
   const [showSidebar, setShowSidebar] = useState<boolean>(() => {
     return localStorage.getItem('echo-friends-sidebar-open') !== 'false'
   })
@@ -405,115 +404,256 @@ export function FriendsView({
     }
   }, [selectedDMUserId, friendships, knownProfiles, spaceMembers, presenceData])
 
+  // Lista de conversas diretas ativas e contatos para o menu lateral
+  const dmConversations = useMemo(() => {
+    const list: Array<{
+      id: string
+      display_name: string
+      avatar_url?: string
+      avatar_decoration?: string | null
+      status: string
+      presence_status: 'online' | 'idle' | 'dnd' | 'offline'
+      isOnline: boolean
+      unreadCount: number
+      isFriend: boolean
+      activeGame?: string | null
+    }> = []
+
+    const addedIds = new Set<string>()
+
+    const resolveUserData = (userId: string) => {
+      if (!userId || addedIds.has(userId) || userId === user.id) return
+      addedIds.add(userId)
+
+      const friend = friendships.find(f => f.user.id === userId && f.status === 'accepted')
+      const known = knownProfiles[userId]
+      const member = spaceMembers.find(m => (m.user?.id || m.id) === userId)
+      const pres = presenceData[userId]
+
+      const displayName = friend?.user.display_name || known?.display_name || member?.user?.display_name || member?.display_name || 'Usuário'
+      const avatarUrl = friend?.user.avatar_url || known?.avatar_url || member?.user?.avatar_url || member?.avatar_url
+      const deco = pres?.avatar_decoration || (friend?.user as any)?.avatar_decoration || known?.avatar_decoration || member?.user?.avatar_decoration || null
+
+      const isOnline = onlineUsers.has(userId) || (pres && pres.presence_status !== 'invisible' && pres.presence_status !== 'offline')
+      const presenceStatus: 'online' | 'idle' | 'dnd' | 'offline' = isOnline ? (pres?.presence_status || 'online') : 'offline'
+      const activeGame = pres?.current_game?.name || pres?.game_presence?.name || null
+      const unreadCount = unreadDMs[userId] || 0
+
+      list.push({
+        id: userId,
+        display_name: displayName,
+        avatar_url: avatarUrl,
+        avatar_decoration: deco,
+        status: pres?.custom_status || (activeGame ? `Jogando ${activeGame}` : (isOnline ? 'Disponível' : 'Offline')),
+        presence_status: presenceStatus,
+        isOnline,
+        unreadCount,
+        isFriend: !!friend,
+        activeGame
+      })
+    }
+
+    // 1. Chat atualmente selecionado (se houver)
+    if (selectedDMUserId) {
+      resolveUserData(selectedDMUserId)
+    }
+
+    // 2. Usuários com mensagens não lidas primeiro
+    Object.keys(unreadDMs).forEach(id => {
+      if (unreadDMs[id] > 0) resolveUserData(id)
+    })
+
+    // 3. Usuários recentes de conversas
+    recentDMUserIds.forEach(id => resolveUserData(id))
+
+    // 4. Amigos aceitos
+    friendships.filter(f => f.status === 'accepted').forEach(f => {
+      resolveUserData(f.user.id)
+    })
+
+    return list
+  }, [selectedDMUserId, recentDMUserIds, unreadDMs, friendships, knownProfiles, spaceMembers, presenceData, onlineUsers, user.id])
+
+  const filteredConversations = useMemo(() => {
+    if (!dmSearchQuery.trim()) return dmConversations
+    const q = dmSearchQuery.toLowerCase().trim()
+    return dmConversations.filter(c => 
+      c.display_name.toLowerCase().includes(q) || 
+      c.status.toLowerCase().includes(q)
+    )
+  }, [dmConversations, dmSearchQuery])
+
   return (
     <section className={`friends-workspace ${selectedDMUserId ? 'has-dm-open' : ''} ${!showSidebar ? 'sidebar-collapsed' : ''}`}>
-      {/* 1. Left Sidebar: Navigation, Ativo Agora Activities, and User Profile */}
+      {/* 1. Left Sidebar: Navegação, Conversas Diretas (DMs) e Perfil */}
       <aside className={`friends-sidebar ${!showSidebar ? 'collapsed' : ''}`}>
-        {/* Sidebar Header: Ativo Agora + Collapse Button */}
-        <div className="friends-sidebar-top" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: '1px solid var(--border-color)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ActivityIcon style={{ width: '15px', height: '15px', color: 'var(--accent-color)' }} />
-            <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)' }}>
-              Ativo Agora
-            </span>
-            {activeFeedFriends.length > 0 && (
-              <span className="activity-live-badge">
-                <span className="live-dot" />
-                {activeFeedFriends.length} ao vivo
+        {/* Top Header: Botão Amigos com badge de pendentes + Botão Colapsar */}
+        <div className="friends-sidebar-top" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 10px 8px 10px' }}>
+          <button
+            type="button"
+            className={`friends-sidebar-home-btn ${!selectedDMUserId ? 'active' : ''}`}
+            onClick={onCloseDM}
+            title="Ver hub de amigos"
+          >
+            <div className="home-btn-left">
+              <UsersIcon style={{ width: '17px', height: '17px' }} />
+              <span>Amigos</span>
+            </div>
+            {pendingRequests.length > 0 && (
+              <span className="home-pending-badge" title={`${pendingRequests.length} solicitações pendentes`}>
+                {pendingRequests.length}
               </span>
             )}
-          </div>
-          <button 
-            type="button" 
-            className="sidebar-collapse-btn" 
+          </button>
+          <button
+            type="button"
+            className="sidebar-collapse-btn"
             onClick={() => setShowSidebar(false)}
-            title="Ocultar barra lateral"
-            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', borderRadius: '4px', display: 'flex', alignItems: 'center' }}
+            title="Ocultar barra de conversas"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              padding: '6px',
+              borderRadius: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              flexShrink: 0
+            }}
           >
             <PanelLeftCloseIcon style={{ width: '15px', height: '15px' }} />
           </button>
         </div>
 
-        <div className="friends-sidebar-scrollable" style={{ paddingTop: '8px' }}>
+        {/* Busca Rápida de Conversas */}
+        <div style={{ padding: '6px 10px 4px 10px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: 'var(--bg-tertiary)',
+            padding: '5px 8px',
+            borderRadius: '6px',
+            border: '1px solid var(--border-color)'
+          }}>
+            <SearchIcon style={{ width: '13px', height: '13px', color: 'var(--text-muted)', flexShrink: 0 }} />
+            <input
+              type="text"
+              placeholder="Buscar conversa..."
+              value={dmSearchQuery}
+              onChange={e => setDmSearchQuery(e.target.value)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                color: 'var(--text-primary)',
+                fontSize: '12px',
+                width: '100%'
+              }}
+            />
+            {dmSearchQuery && (
+              <button
+                type="button"
+                onClick={() => setDmSearchQuery('')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  padding: '0 2px'
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
 
-          {activeFeedFriends.length > 0 ? (
-            <div className="activity-feed-list" style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {activeFeedFriends.map(friend => {
-                const pres = presenceData[friend.user.id]
-                const isGaming = isFriendGaming(friend.user.id)
-                const gameName = pres?.current_game?.name || pres?.custom_status?.replace(/^jogando\s+/i, '') || 'Jogo'
-                const friendDeco = pres?.avatar_decoration || (friend.user as any).avatar_decoration || null
-                const gameStartedAt = pres?.current_game?.startedAt || pres?.game_presence?.startedAt
-                const gameDur = formatGameDuration(gameStartedAt)
+        {/* Título da Seção: Mensagens Diretas */}
+        <div className="dm-section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px 4px 12px' }}>
+          <span>Mensagens Diretas</span>
+          <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
+            {filteredConversations.length}
+          </span>
+        </div>
+
+        {/* Lista de Conversas com Scroll */}
+        <div className="friends-sidebar-scrollable" style={{ flex: 1, overflowY: 'auto', padding: '4px 6px 12px 6px' }}>
+          {filteredConversations.length > 0 ? (
+            <div className="dm-sidebar-list">
+              {filteredConversations.map(conv => {
+                const isSelected = selectedDMUserId === conv.id
                 return (
-                  <div key={friend.id} className="activity-card" onClick={() => onOpenDM(friend.user.id)}>
-                    <div className="activity-user-header">
-                      <div className="activity-user-avatar">
-                        {friend.user.avatar_url ? (
-                          <img src={friend.user.avatar_url} alt={friend.user.display_name} />
-                        ) : (
-                          friend.user.display_name.slice(0, 1).toUpperCase()
-                        )}
-                        {friendDeco && friendDeco !== 'none' && (
-                          <AvatarDecoration decorationId={friendDeco} />
-                        )}
-                        <span className="online-indicator online" />
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                        <span className="activity-user-name">{friend.user.display_name}</span>
-                        <span style={{ fontSize: '11px', color: '#22c55e', fontWeight: 600 }}>
-                          {isGaming ? 'Jogando agora' : 'Atividade ativa'}
-                        </span>
-                      </div>
+                  <div
+                    key={conv.id}
+                    className={`dm-list-item ${isSelected ? 'active' : ''}`}
+                    onClick={() => onOpenDM(conv.id)}
+                    title={`Abrir conversa com ${conv.display_name}`}
+                  >
+                    <div className="dm-item-avatar-wrapper">
+                      {conv.avatar_url ? (
+                        <img src={conv.avatar_url} alt={conv.display_name} />
+                      ) : (
+                        <div style={{
+                          width: '100%',
+                          height: '100%',
+                          borderRadius: '50%',
+                          background: 'var(--bg-tertiary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 700,
+                          fontSize: '12px',
+                          color: 'var(--text-primary)'
+                        }}>
+                          {conv.display_name.slice(0, 1).toUpperCase()}
+                        </div>
+                      )}
+                      {conv.avatar_decoration && conv.avatar_decoration !== 'none' && (
+                        <AvatarDecoration decorationId={conv.avatar_decoration} />
+                      )}
+                      <span className={`online-indicator ${conv.presence_status}`} />
                     </div>
 
-                    <div className="activity-game-body">
-                      <div className="activity-game-icon">
-                        {isGaming ? (
-                          <GameLogo gameName={gameName} size={18} />
+                    <div className="dm-item-text">
+                      <span className="dm-item-name">{conv.display_name}</span>
+                      <span className="dm-item-sub">
+                        {isFriendTyping && isSelected ? (
+                          <span style={{ color: '#00f2fe', fontWeight: 600 }}>Digitando...</span>
+                        ) : conv.activeGame ? (
+                          <span>🎮 {conv.activeGame}</span>
                         ) : (
-                          <GamepadIcon style={{ width: '15px', height: '15px', color: '#00f2fe' }} />
+                          conv.status
                         )}
-                      </div>
-                      <div className="activity-game-info">
-                        <span className="activity-game-title" title={gameName}>{gameName}</span>
-                        {gameDur && (
-                          <span className="activity-game-time">
-                            <ClockIcon style={{ width: '11px', height: '11px' }} />
-                            <span>{gameDur}</span>
-                          </span>
-                        )}
-                      </div>
+                      </span>
                     </div>
 
-                    <button 
-                      type="button" 
-                      className="activity-action-btn"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onOpenDM(friend.user.id)
-                      }}
-                    >
-                      <MessageSquareIcon style={{ width: '13px', height: '13px' }} />
-                      <span>Conversar</span>
-                    </button>
+                    {conv.unreadCount > 0 && (
+                      <span className="dm-unread-badge">{conv.unreadCount}</span>
+                    )}
+
+                    {onRemoveRecentDM && (
+                      <button
+                        type="button"
+                        className="dm-dismiss-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onRemoveRecentDM(conv.id)
+                        }}
+                        title="Fechar conversa"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                 )
               })}
             </div>
           ) : (
-            <div className="friends-radar-card" style={{ margin: '8px 10px', padding: '22px 14px' }}>
-              <div className="friends-radar-graphic" style={{ width: '60px', height: '60px' }}>
-                <div className="friends-radar-wave-1" style={{ width: '26px', height: '26px' }} />
-                <div className="friends-radar-wave-2" style={{ width: '26px', height: '26px' }} />
-                <div className="friends-radar-center" style={{ width: '30px', height: '30px' }}>
-                  <GamepadIcon style={{ width: '15px', height: '15px' }} />
-                </div>
-              </div>
-              <div className="friends-radar-title" style={{ fontSize: '13px' }}>Tudo calmo por aqui</div>
-              <div className="friends-radar-desc" style={{ fontSize: '11px' }}>
-                Quando seus amigos estiverem jogando ou ativos, as atividades aparecerão aqui.
-              </div>
+            <div className="dm-sidebar-empty">
+              {dmSearchQuery ? 'Nenhuma conversa encontrada.' : 'Nenhum chat aberto. Inicie uma conversa com seus amigos!'}
             </div>
           )}
         </div>
@@ -541,6 +681,18 @@ export function FriendsView({
           {/* Header */}
           <div className="dm-full-header">
             <div className="dm-full-header-left">
+              {!showSidebar && (
+                <button
+                  type="button"
+                  className="dm-back-to-friends-btn"
+                  onClick={() => setShowSidebar(true)}
+                  title="Mostrar barra de conversas"
+                  style={{ marginRight: '6px' }}
+                >
+                  <PanelLeftIcon style={{ width: '15px', height: '15px' }} />
+                </button>
+              )}
+
               <button
                 type="button"
                 className="dm-back-to-friends-btn"
