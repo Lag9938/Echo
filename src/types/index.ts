@@ -84,6 +84,7 @@ export interface Channel {
 export interface Message { 
   id: string; 
   tempId?: string;
+  channel_id?: string;
   body: string; 
   created_at: string; 
   author_id: string; 

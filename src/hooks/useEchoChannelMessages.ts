@@ -54,6 +54,9 @@ export function useEchoChannelMessages({
   const messagesCacheRef = useRef<Record<string, Message[]>>({})
   const lastTypingSentRef = useRef<number>(0)
 
+  const activeChannelIdRef = useRef<string | null>(selectedChannel?.id || null)
+  activeChannelIdRef.current = selectedChannel?.id || null
+
   // Slowmode timer
   useEffect(() => {
     if (slowmodeCooldown <= 0) return
@@ -63,13 +66,42 @@ export function useEchoChannelMessages({
     return () => clearInterval(interval)
   }, [slowmodeCooldown])
 
-  // Sincroniza o nome e avatar atualizados do próprio usuário no estado de mensagens e no cache local
+  // Limpa caches corrompidos que possam ter vazado mensagens entre canais diferentes
   useEffect(() => {
-    if (!user || !profileDisplayName) return
+    try {
+      const keysToRemove: string[] = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith('echo-msgs-')) {
+          const chId = key.replace('echo-msgs-', '')
+          const raw = localStorage.getItem(key)
+          if (raw) {
+            const parsed = JSON.parse(raw)
+            if (Array.isArray(parsed)) {
+              // Se tiver mensagem de outro canal ou o leak conhecido do YouTube music fora do canal teste
+              const hasCorrupt = parsed.some((m: any) => 
+                (m.channel_id && m.channel_id !== chId) ||
+                (chId !== 'bd6e1c4f-87fb-4fe2-9b4f-a49cb518c70e' && m.id === '11300792-a0a6-44a7-849f-f2ae60c85a15')
+              )
+              if (hasCorrupt) {
+                keysToRemove.push(key)
+              }
+            }
+          }
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k))
+    } catch {}
+  }, [])
+
+  // Sincroniza o nome e avatar atualizados do próprio usuário apenas quando o perfil mudar
+  useEffect(() => {
+    if (!user || !profileDisplayName || !selectedChannel) return
+    const currentChId = selectedChannel.id
     setMessages(prev => {
       let changed = false
       const updated = prev.map(m => {
-        if (m.author_id === user.id) {
+        if (m.author_id === user.id && (!m.channel_id || m.channel_id === currentChId)) {
           if (m.profile?.display_name !== profileDisplayName || (profileAvatarUrl && m.profile?.avatar_url !== profileAvatarUrl)) {
             changed = true
             return {
@@ -84,16 +116,16 @@ export function useEchoChannelMessages({
         }
         return m
       })
-      if (changed && selectedChannel) {
-        messagesCacheRef.current[selectedChannel.id] = updated
+      if (changed) {
+        messagesCacheRef.current[currentChId] = updated
         try {
-          localStorage.setItem(`echo-msgs-${selectedChannel.id}`, JSON.stringify(updated.slice(-50)))
+          localStorage.setItem(`echo-msgs-${currentChId}`, JSON.stringify(updated.slice(-50)))
         } catch (e) {}
         return updated
       }
       return prev
     })
-  }, [profileDisplayName, profileAvatarUrl, user?.id, selectedChannel?.id])
+  }, [profileDisplayName, profileAvatarUrl, user?.id])
 
   // Resilient load messages function with instant memory + localStorage cache & delta query
   async function loadMessages(channelId: string, forceFullFetch = false) {
@@ -111,19 +143,30 @@ export function useEchoChannelMessages({
     let currentCached: Message[] = []
     let foundCached = false
     if (messagesCacheRef.current[channelId] && messagesCacheRef.current[channelId].length > 0) {
-      currentCached = messagesCacheRef.current[channelId]
-      setMessages(currentCached)
-      foundCached = true
-    } else {
+      const memCached = messagesCacheRef.current[channelId]
+      if (memCached.every(m => !m.channel_id || m.channel_id === channelId)) {
+        currentCached = memCached
+        setMessages(currentCached)
+        foundCached = true
+      } else {
+        delete messagesCacheRef.current[channelId]
+      }
+    }
+    
+    if (!foundCached) {
       try {
         const cached = localStorage.getItem(`echo-msgs-${channelId}`)
         if (cached) {
           const parsed = JSON.parse(cached)
           if (Array.isArray(parsed) && parsed.length > 0) {
-            currentCached = parsed
-            messagesCacheRef.current[channelId] = parsed
-            setMessages(parsed)
-            foundCached = true
+            if (parsed.every((m: any) => !m.channel_id || m.channel_id === channelId)) {
+              currentCached = parsed
+              messagesCacheRef.current[channelId] = parsed
+              setMessages(parsed)
+              foundCached = true
+            } else {
+              localStorage.removeItem(`echo-msgs-${channelId}`)
+            }
           }
         }
       } catch (e) {}
@@ -143,7 +186,7 @@ export function useEchoChannelMessages({
       try {
         const { data: deltaData, error: deltaErr } = await supabase
           .from('messages')
-          .select('id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
+          .select('id,channel_id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
           .eq('channel_id', channelId)
           .gt('created_at', newestCached.created_at)
           .order('created_at', { ascending: true })
@@ -154,14 +197,18 @@ export function useEchoChannelMessages({
             return
           }
 
+          if (activeChannelIdRef.current !== channelId) return
+
           const newLoaded: Message[] = deltaData.map((row: any) => ({
             ...row,
+            channel_id: row.channel_id || channelId,
             profile: Array.isArray(row.profiles) ? row.profiles?.[0] : row.profiles,
             status: 'sent' as const
           }))
 
           setMessages(prev => {
-            const existingMap = new Map(prev.map(m => [m.id, m]))
+            if (activeChannelIdRef.current !== channelId) return prev
+            const existingMap = new Map(prev.filter(m => !m.channel_id || m.channel_id === channelId).map(m => [m.id, m]))
             newLoaded.forEach(nm => {
               existingMap.set(nm.id, nm)
             })
@@ -186,12 +233,14 @@ export function useEchoChannelMessages({
     // 3. Busca Completa Paginada (Fallback ou primeira abertura do canal)
     const { data, error: queryError } = await supabase
       .from('messages')
-      .select('id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
+      .select('id,channel_id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
       .eq('channel_id', channelId)
       .order('created_at', { ascending: false })
       .limit(50)
 
     if (queryError) { setError(queryError.message); return }
+
+    if (activeChannelIdRef.current !== channelId) return
 
     const rawData = data ?? []
     setHasMoreMessages(rawData.length >= 50)
@@ -199,13 +248,16 @@ export function useEchoChannelMessages({
     // Reverte para manter a ordem cronológica correta (mais antigas no topo)
     const loaded: Message[] = [...rawData].reverse().map((row: any) => ({
       ...row,
+      channel_id: row.channel_id || channelId,
       profile: Array.isArray(row.profiles) ? row.profiles?.[0] : row.profiles,
       status: 'sent' as const
     }))
 
     setMessages(prev => {
+      if (activeChannelIdRef.current !== channelId) return prev
       const pendingLocal = prev.filter(m => 
         (m.status === 'sending' || m.status === 'failed') &&
+        (!m.channel_id || m.channel_id === channelId) &&
         !loaded.some(dbM => dbM.id === m.id || (m.tempId && dbM.id === m.tempId))
       )
       const merged = [...loaded, ...pendingLocal]
@@ -270,7 +322,7 @@ export function useEchoChannelMessages({
     try {
       const { data, error: queryError } = await supabase
         .from('messages')
-        .select('id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
+        .select('id,channel_id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
         .eq('channel_id', channelId)
         .lt('created_at', oldest.created_at)
         .order('created_at', { ascending: false })
@@ -281,6 +333,8 @@ export function useEchoChannelMessages({
         return
       }
 
+      if (activeChannelIdRef.current !== channelId) return
+
       const rawData = data ?? []
       if (rawData.length < 50) {
         setHasMoreMessages(false)
@@ -290,6 +344,7 @@ export function useEchoChannelMessages({
 
       const olderMessages: Message[] = [...rawData].reverse().map((row: any) => ({
         ...row,
+        channel_id: row.channel_id || channelId,
         profile: Array.isArray(row.profiles) ? row.profiles?.[0] : row.profiles,
         status: 'sent' as const
       }))
@@ -299,6 +354,7 @@ export function useEchoChannelMessages({
       const prevScrollTop = container ? container.scrollTop : 0
 
       setMessages(prev => {
+        if (activeChannelIdRef.current !== channelId) return prev
         const newItems = olderMessages.filter(om => !prev.some(pm => pm.id === om.id))
         const updated = [...newItems, ...prev]
         messagesCacheRef.current[channelId] = updated
@@ -404,6 +460,7 @@ export function useEchoChannelMessages({
     const optimisticMsg: Message = {
       id: tempId,
       tempId,
+      channel_id: channelId,
       body,
       created_at: nowIso,
       author_id: user.id,
@@ -439,7 +496,7 @@ export function useEchoChannelMessages({
           attachment_url: attachmentUrl,
           attachment_type: attachmentType
         })
-        .select('id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
+        .select('id,channel_id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
         .single()
 
       if (insertError) {
@@ -452,6 +509,7 @@ export function useEchoChannelMessages({
 
       const confirmedMsg: Message = {
         ...inserted,
+        channel_id: channelId,
         profile: Array.isArray(inserted.profiles) ? inserted.profiles?.[0] : (inserted.profiles || { display_name: profileDisplayName, avatar_url: profileAvatarUrl }),
         status: 'sent',
         tempId
@@ -584,6 +642,7 @@ export function useEchoChannelMessages({
     // 1. WebSocket Broadcast em tempo real (0ms entre todos conectados no canal)
     live.on('broadcast', { event: 'new-message' }, ({ payload }: { payload: any }) => {
       if (!payload || !payload.id) return
+      if (payload.channel_id && payload.channel_id !== selectedChannel.id) return
 
       setMessages(prev => {
         const matchIdx = prev.findIndex(m => 

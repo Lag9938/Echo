@@ -43,6 +43,7 @@ export function useEchoSpaces({
   const [expandedSpace, setExpandedSpace] = useState<string | null>(null)
   const [spaceChannels, setSpaceChannels] = useState<Record<string, Channel[]>>({})
   const spaceChannelsRef = useRef(spaceChannels)
+  spaceChannelsRef.current = spaceChannels
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null)
   
   // Mapa isolado de membros por space_id: Record<spaceId, Member[]>

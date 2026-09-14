@@ -1454,8 +1454,7 @@ function Echo({ user }: { user: User }) {
       />
 
       <section 
-        key={expandedSpace || 'default'} 
-        className="workspace server-view-enter" 
+        className="workspace" 
         style={{ display: page === 'Servidores' ? undefined : 'none' }}
       >
         {/* 2. CHANNELS SIDEBAR FOR ACTIVE SERVER (240px) */}
