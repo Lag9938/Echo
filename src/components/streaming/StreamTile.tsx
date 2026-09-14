@@ -107,10 +107,12 @@ export function StreamTile({
     if (!stream) return
 
     const track = stream.getVideoTracks?.()[0]
+    let trackTargetFps = 30
     if (track) {
       const settings = track.getSettings?.()
       if (settings?.frameRate && settings.frameRate > 0) {
-        setDetectedFps(Math.round(settings.frameRate))
+        trackTargetFps = Math.round(settings.frameRate)
+        setDetectedFps(trackTargetFps)
       }
     }
 
@@ -126,7 +128,8 @@ export function StreamTile({
       const elapsed = now - lastTime
       if (elapsed >= 1500) {
         const rawFps = Math.round((frameCount * 1000) / elapsed)
-        const normalizedFps = rawFps >= 45 ? 60 : rawFps >= 22 ? 30 : rawFps >= 10 ? 15 : rawFps
+        // Tolerância inteligente a frames estáticos/menus para não derrubar falsamente 30 FPS para 15 FPS
+        const normalizedFps = rawFps >= 42 ? 60 : rawFps >= 18 ? 30 : (trackTargetFps >= 30 && rawFps >= 10) ? 30 : rawFps >= 8 ? 15 : rawFps
         if (normalizedFps > 0) {
           setDetectedFps(normalizedFps)
         }

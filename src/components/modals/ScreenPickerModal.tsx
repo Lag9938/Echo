@@ -143,6 +143,26 @@ export function ScreenPickerModal({
           </button>
         </div>
 
+        {screenPickerTab === 'windows' && (
+          <div className="picker-game-fullscreen-hint" style={{
+            margin: '0 0 12px 0',
+            padding: '8px 12px',
+            background: 'rgba(56, 189, 248, 0.08)',
+            border: '1px solid rgba(56, 189, 248, 0.2)',
+            borderRadius: '8px',
+            fontSize: '12px',
+            color: 'var(--text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span style={{ fontSize: '14px' }}>💡</span>
+            <span>
+              <strong>Não encontrou o jogo?</strong> Jogos em Tela Cheia Exclusiva (como PES / eFootball, CS2, etc.) devem ser transmitidos selecionando a aba <strong>Telas Inteiras (Monitores)</strong> ou ativando <em>Modo Janela Sem Bordas</em> nas opções do jogo.
+            </span>
+          </div>
+        )}
+
         <div className="sources-list">
           {screenSources
             .filter(s => screenPickerTab === 'windows' ? (s.type === 'window' || s.id.startsWith('window:')) : (s.type === 'screen' || s.id.startsWith('screen:')))
