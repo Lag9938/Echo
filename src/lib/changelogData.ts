@@ -35,6 +35,18 @@ export const CHANGELOG_DATA: ReleaseNote[] = [
         badge: 'MENSAGENS DIRETAS',
         title: 'Nova Barra Lateral de Chats',
         description: 'A tela de amigos agora traz uma barra lateral dedicada para acesso instantâneo a todas as conversas diretas recentes, com busca rápida e badges de não lidas.'
+      },
+      {
+        icon: '🎧',
+        badge: 'ZERO RETORNO',
+        title: 'Filtro de Voz na Transmissão de Tela Inteira',
+        description: 'Transmissões de monitor agora filtram e removem automaticamente a chamada de voz do Echo via Windows CoreAudio, eliminando o retorno/eco da sua voz para quem está assistindo.'
+      },
+      {
+        icon: '⚽',
+        badge: 'JOGOS',
+        title: 'Suporte a eFootball PES e Calibração de FPS',
+        description: 'Detecção aprimorada para jogos como PES e calibrador inteligente de taxa de quadros para manter 30/60 FPS fluidos mesmo em telas estáticas.'
       }
     ]
   },
