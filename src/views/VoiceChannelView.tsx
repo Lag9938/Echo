@@ -662,7 +662,7 @@ export function VoiceChannelView({
                                           </span>
                                         )}
                                         {(() => {
-                                          const deco = presenceData[p.userId]?.avatar_decoration || (p.userId === user.id ? avatarDecoration : null)
+                                          const deco = presenceData[p.userId]?.avatar_decoration || spaceMembers.find(m => (m.user?.id || m.id) === p.userId)?.user?.avatar_decoration || (p.userId === user.id ? avatarDecoration : null)
                                           return deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null
                                         })()}
                                         {(p.isDeafened || p.isMuted) && (
@@ -944,7 +944,7 @@ export function VoiceChannelView({
                                         )}
                                       </div>
                                       {(() => {
-                                        const deco = presenceData[message.author_id]?.avatar_decoration || (isSelf ? avatarDecoration : null)
+                                        const deco = presenceData[message.author_id]?.avatar_decoration || (message.profile as any)?.avatar_decoration || (isSelf ? avatarDecoration : null)
                                         return deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null
                                       })()}
                                     </div>

@@ -221,7 +221,7 @@ export function useEchoSpaces({
       try {
         const { data, error: queryError } = await supabase
           .from('space_members')
-          .select('role, user:profiles(id, display_name, avatar_url)')
+          .select('role, user:profiles(id, display_name, avatar_url, avatar_decoration, profile_effect)')
           .eq('space_id', spaceId)
 
         if (!queryError && data) {
@@ -249,7 +249,7 @@ export function useEchoSpaces({
             const uIds = directMembers.map((d: any) => d.user_id)
             const { data: profs } = await supabase
               .from('profiles')
-              .select('id, display_name, avatar_url')
+              .select('id, display_name, avatar_url, avatar_decoration, profile_effect')
               .in('id', uIds)
 
             const profMap = new Map((profs || []).map((p: any) => [p.id, p]))
@@ -269,7 +269,7 @@ export function useEchoSpaces({
         try {
           const { data: creatorProf } = await supabase
             .from('profiles')
-            .select('id, display_name, avatar_url')
+            .select('id, display_name, avatar_url, avatar_decoration, profile_effect')
             .eq('id', spObj.creator_id)
             .maybeSingle()
 
@@ -341,6 +341,27 @@ export function useEchoSpaces({
       .on('postgres_changes', { event: '*', schema: 'public', table: 'spaces', filter: `id=eq.${currentSpaceId}` }, () => {
         loadSpaces()
       })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload: any) => {
+        const updated = payload.new as any
+        if (!updated?.id) return
+        setSpaceMembersMap(prev => {
+          const list = prev[currentSpaceId] || []
+          const idx = list.findIndex(m => (m.user?.id || m.id) === updated.id)
+          if (idx === -1) return prev
+          const nextList = [...list]
+          nextList[idx] = {
+            ...nextList[idx],
+            user: {
+              ...nextList[idx].user,
+              display_name: updated.display_name || nextList[idx].user.display_name,
+              avatar_url: updated.avatar_url ?? nextList[idx].user.avatar_url,
+              avatar_decoration: updated.avatar_decoration ?? nextList[idx].user.avatar_decoration,
+              profile_effect: updated.profile_effect ?? nextList[idx].user.profile_effect
+            }
+          }
+          return { ...prev, [currentSpaceId]: nextList }
+        })
+      })
       .subscribe()
 
     // Canal Realtime de Presença do Servidor (WebSockets direto, imune a RLS)
@@ -362,7 +383,8 @@ export function useEchoSpaces({
                 id: p.user_id,
                 display_name: p.display_name || 'Membro',
                 avatar_url: p.avatar_url,
-                avatar_decoration: p.avatar_decoration
+                avatar_decoration: p.avatar_decoration,
+                profile_effect: p.profile_effect
               }
             })
           }
@@ -387,7 +409,12 @@ export function useEchoSpaces({
                   ...existing.user,
                   display_name: liveU.user.display_name || existing.user.display_name,
                   avatar_url: liveU.user.avatar_url ?? existing.user.avatar_url,
-                  avatar_decoration: liveU.user.avatar_decoration ?? existing.user.avatar_decoration
+                  avatar_decoration: (liveU.user.avatar_decoration !== undefined && liveU.user.avatar_decoration !== null && liveU.user.avatar_decoration !== '')
+                    ? liveU.user.avatar_decoration
+                    : (existing.user.avatar_decoration || null),
+                  profile_effect: (liveU.user.profile_effect !== undefined && liveU.user.profile_effect !== null && liveU.user.profile_effect !== '')
+                    ? liveU.user.profile_effect
+                    : (existing.user.profile_effect || null)
                 }
               }
               map.set(liveU.user.id, updated)

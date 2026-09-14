@@ -141,7 +141,7 @@ export function useEchoChannelMessages({
     // 2. Busca Oficial e Segura das mensagens no Supabase para o canal ativo
     const { data, error: queryError } = await supabase
       .from('messages')
-      .select('id,channel_id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
+      .select('id,channel_id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url,avatar_decoration,profile_effect)')
       .eq('channel_id', channelId)
       .order('created_at', { ascending: false })
       .limit(50)
@@ -231,7 +231,7 @@ export function useEchoChannelMessages({
     try {
       const { data, error: queryError } = await supabase
         .from('messages')
-        .select('id,channel_id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
+        .select('id,channel_id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url,avatar_decoration,profile_effect)')
         .eq('channel_id', channelId)
         .lt('created_at', oldest.created_at)
         .order('created_at', { ascending: false })
@@ -405,7 +405,7 @@ export function useEchoChannelMessages({
           attachment_url: attachmentUrl,
           attachment_type: attachmentType
         })
-        .select('id,channel_id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url)')
+        .select('id,channel_id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url,avatar_decoration,profile_effect)')
         .single()
 
       if (insertError) {

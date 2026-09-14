@@ -745,7 +745,7 @@ export function TextChannelView({
                                             )}
                                           </div>
                                           {(() => {
-                                            const deco = message.author_id === user.id ? (avatarDecoration || null) : (presenceData[message.author_id]?.avatar_decoration || null)
+                                            const deco = message.author_id === user.id ? (avatarDecoration || null) : (presenceData[message.author_id]?.avatar_decoration || (message.profile as any)?.avatar_decoration || null)
                                             return deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null
                                           })()}
                                         </div>

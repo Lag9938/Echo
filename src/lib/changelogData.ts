@@ -14,15 +14,36 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.33.3'
+export const APP_CURRENT_VERSION = '0.33.4'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.33.4',
+    title: 'Echo v0.33.4 - Persistência Permanente de Decorações de Avatar e Efeitos',
+    date: '14 de Setembro de 2026',
+    tagline: 'Decorações de avatar e efeitos de perfil agora permanecem visíveis para sempre, mesmo quando o usuário fica offline, sai de chamadas ou navega entre servidores.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🔥',
+        badge: 'COSMÉTICOS',
+        title: 'Efeitos Permanentes',
+        description: 'Decorações de avatar (como Fogo/Plasma) agora são carregadas e persistidas diretamente do perfil no banco de dados. Nunca mais somem ao desconectar ou trocar de servidor.'
+      },
+      {
+        icon: '⚡',
+        badge: 'TEMPO REAL',
+        title: 'Sincronização Instantânea de Perfis',
+        description: 'Quando qualquer membro equipa ou troca uma decoração na loja ou inventário, todos os servidores e chats recebem a atualização imediatamente.'
+      }
+    ]
+  },
   {
     version: '0.33.3',
     title: 'Echo v0.33.3 - Isolamento Estrito de Mensagens e TopBar Estável',
     date: '14 de Setembro de 2026',
     tagline: 'Fim permanente de mensagens cruzadas entre canais, eliminação de cache antigo em disco e navegação estável sem saltos de layout.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🛡️',

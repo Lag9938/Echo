@@ -4,7 +4,7 @@
  */
 
 const GITHUB_REPO = 'Lag9938/Echo';
-const DEFAULT_DIRECT_EXE = 'https://github.com/Lag9938/Echo/releases/download/v0.33.3/Echo-Setup-0.33.3.exe';
+const DEFAULT_DIRECT_EXE = 'https://github.com/Lag9938/Echo/releases/download/v0.33.4/Echo-Setup-0.33.4.exe';
 
 async function configureDirectDownload() {
   const downloadBtn = document.getElementById('download-btn');
@@ -24,7 +24,7 @@ async function configureDirectDownload() {
     
     const releases = await response.json();
     let directExeUrl = null;
-    let targetVersion = 'v0.33.3';
+    let targetVersion = 'v0.33.4';
 
     for (const rel of releases) {
       if (rel.assets && Array.isArray(rel.assets)) {

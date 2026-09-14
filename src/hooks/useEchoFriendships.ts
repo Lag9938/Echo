@@ -79,7 +79,7 @@ export function useEchoFriendships({
     try {
       const { data, error: qError } = await supabase
         .from('friendships')
-        .select('id, status, user_id, friend_id, user:profiles!friendships_user_id_fkey(id, display_name, avatar_url), friend:profiles!friendships_friend_id_fkey(id, display_name, avatar_url)')
+        .select('id, status, user_id, friend_id, user:profiles!friendships_user_id_fkey(id, display_name, avatar_url, avatar_decoration, profile_effect), friend:profiles!friendships_friend_id_fkey(id, display_name, avatar_url, avatar_decoration, profile_effect)')
         .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
 
       if (qError) {
@@ -150,7 +150,7 @@ export function useEchoFriendships({
     try {
       const { data: profiles, error: pError } = await supabase
         .from('profiles')
-        .select('id, display_name, avatar_url')
+        .select('id, display_name, avatar_url, avatar_decoration, profile_effect')
         .ilike('display_name', targetName)
 
       if (pError || !profiles || profiles.length === 0) {

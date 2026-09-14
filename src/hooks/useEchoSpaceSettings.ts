@@ -93,7 +93,7 @@ export function useEchoSpaceSettings({
     setLoadingEditingMembers(true)
     const { data, error: qErr } = await supabase
       .from('space_members')
-      .select('role, joined_at, user:profiles(id, display_name, avatar_url)')
+      .select('role, joined_at, user:profiles(id, display_name, avatar_url, avatar_decoration, profile_effect)')
       .eq('space_id', spaceId)
 
     if (qErr) {

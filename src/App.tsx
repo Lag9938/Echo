@@ -1325,6 +1325,16 @@ function Echo({ user }: { user: User }) {
     const liveFriendships = supabase
       .channel('public-friendships')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, handleFriendshipPostgresChanges)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload: any) => {
+        handleFriendshipPostgresChanges(payload)
+        const updated = payload.new as any
+        if (updated && updated.id === user.id) {
+          if (updated.avatar_decoration !== undefined) setAvatarDecoration(updated.avatar_decoration || '')
+          if (updated.profile_effect !== undefined) setProfileEffect(updated.profile_effect || '')
+          if (updated.display_name) setProfileDisplayName(updated.display_name)
+          if (updated.avatar_url) setProfileAvatarUrl(updated.avatar_url)
+        }
+      })
       .subscribe()
 
     // Dedicated Realtime WebSockets Broadcast Channel
