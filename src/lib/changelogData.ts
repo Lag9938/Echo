@@ -14,15 +14,42 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.33.2'
+export const APP_CURRENT_VERSION = '0.33.3'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.33.3',
+    title: 'Echo v0.33.3 - Isolamento Estrito de Mensagens e TopBar Estável',
+    date: '14 de Setembro de 2026',
+    tagline: 'Fim permanente de mensagens cruzadas entre canais, eliminação de cache antigo em disco e navegação estável sem saltos de layout.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🛡️',
+        badge: 'ISOLAMENTO TOTAL',
+        title: 'Canais 100% Isolados',
+        description: 'Implementado isolamento rigoroso em 5 camadas. Cada canal exibe única e exclusivamente as suas próprias mensagens, com descarte automático de dados de navegações anteriores.'
+      },
+      {
+        icon: '🧹',
+        badge: 'CACHE EM MEMÓRIA',
+        title: 'Eliminação de Cache em Disco',
+        description: 'Removida a persistência em localStorage que causava contaminação cruzada. As mensagens agora vivem em memória RAM por sessão com sincronização em tempo real.'
+      },
+      {
+        icon: '🚀',
+        badge: 'ESTABILIDADE',
+        title: 'Navegação sem Saltos de Tela',
+        description: 'Barra superior agora fica fixada por padrão, eliminando os saltos de layout de 52px e o travamento de cards flutuantes ao alternar servidores.'
+      }
+    ]
+  },
   {
     version: '0.33.2',
     title: 'Echo v0.33.2 - Dock Flutuante de Transmissão e Fim de Informações Duplicadas',
     date: '12 de Setembro de 2026',
     tagline: 'Novo dock flutuante centralizado estilo Dynamic Island para ouvintes, fim de barras vazias de ponta a ponta e eliminação de duplicidades ao assistir transmissões.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🏝️',
