@@ -15,6 +15,7 @@ import {
   HeadphonesOffIcon,
   LogOutIcon,
   MegaphoneIcon,
+  MessageSquareIcon,
   MicIcon,
   MicOffIcon,
   PhoneOffIcon,
@@ -24,10 +25,12 @@ import {
   SearchIcon,
   SettingsIcon,
   SoundboardIcon,
+  UserIcon,
   UserPlusIcon,
   UsersIcon,
   VolumeIcon
 } from '../icons'
+import { AvatarDecoration } from '../AvatarDecoration'
 
 export interface ChannelsSidebarProps {
   spaces: Space[]
@@ -106,6 +109,10 @@ export interface ChannelsSidebarProps {
   setNewChannelAllowedRoles?: React.Dispatch<React.SetStateAction<string[]>>
   serverRoles?: ServerRole[]
   memberRoleMap?: Record<string, string[]>
+  onWatchStream?: (channel: Channel, userId: string) => void
+  onInspectMember?: (member: any) => void
+  onOpenDM?: (userId: string) => void
+  presenceData?: Record<string, any>
 }
 
 export function ChannelsSidebar({
@@ -183,8 +190,28 @@ export function ChannelsSidebar({
   newChannelAllowedRoles,
   setNewChannelAllowedRoles,
   serverRoles,
-  memberRoleMap
+  memberRoleMap,
+  onWatchStream,
+  onInspectMember,
+  onOpenDM,
+  presenceData
 }: ChannelsSidebarProps) {
+  const [voiceUserMenu, setVoiceUserMenu] = React.useState<{
+    participant: any
+    channel: Channel
+    isSharer: boolean
+    x: number
+    y: number
+  } | null>(null)
+
+  React.useEffect(() => {
+    if (!voiceUserMenu) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setVoiceUserMenu(null)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [voiceUserMenu])
   const [sidebarWidth, setSidebarWidth] = React.useState<number>(() => {
     const saved = localStorage.getItem('echo-channels-sidebar-width')
     if (saved) {
@@ -421,45 +448,79 @@ export function ChannelsSidebar({
                 </button>
                 {channelVoiceUsers.length > 0 && (
                   <div className="sidebar-voice-users">
-                    {channelVoiceUsers.map(p => (
-                      <div 
-                        key={p.userId} 
-                        className={`sidebar-voice-user ${p.isSpeaking ? 'speaking' : ''}`}
-                        onClick={() => {
-                          if (isActive && p.userId !== user.id) {
-                            setVolumeControlUser(p)
-                          }
-                        }}
-                        style={{ cursor: (isActive && p.userId !== user.id) ? 'pointer' : 'default' }}
-                        title={(isActive && p.userId !== user.id) ? "Ajustar volume de áudio" : p.displayName}
-                      >
-                        <div className={`sidebar-voice-avatar ${p.isSpeaking ? 'speaking-wave' : ''}`}>
-                          {p.avatarUrl ? (
-                            <img src={p.avatarUrl} alt={p.displayName} className="sidebar-avatar-img" />
-                          ) : (
-                            p.displayName.slice(0, 1).toUpperCase()
-                          )}
+                    {channelVoiceUsers.map(p => {
+                      const isSharer = Boolean(p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0))
+                      const userDeco = presenceData?.[p.userId]?.avatar_decoration ||
+                        spaceMembers.find(m => (m.user?.id || m.id) === p.userId)?.user?.avatar_decoration ||
+                        (p.userId === user.id ? avatarDecoration : null)
+
+                      const handleUserClick = (e: React.MouseEvent) => {
+                        e.stopPropagation()
+                        const target = e.currentTarget as HTMLElement
+                        const rect = target.getBoundingClientRect()
+                        const x = Math.min(window.innerWidth - 245, rect.right + 6)
+                        const y = Math.min(window.innerHeight - 260, Math.max(8, rect.top - 6))
+                        setVoiceUserMenu({
+                          participant: p,
+                          channel: ch,
+                          isSharer,
+                          x,
+                          y
+                        })
+                      }
+
+                      return (
+                        <div 
+                          key={p.userId} 
+                          className={`sidebar-voice-user ${p.isSpeaking ? 'speaking' : ''} ${isSharer ? 'has-sharer' : ''}`}
+                          onClick={handleUserClick}
+                          onContextMenu={(e) => {
+                            e.preventDefault()
+                            handleUserClick(e)
+                          }}
+                          style={{ cursor: 'pointer' }}
+                          title={isSharer ? `${p.displayName} (Transmitindo tela - Clique para opções ou assistir)` : `${p.displayName} (Clique para opções)`}
+                        >
+                          <div className={`sidebar-voice-avatar ${p.isSpeaking ? 'speaking-wave' : ''}`}>
+                            {p.avatarUrl ? (
+                              <img src={p.avatarUrl} alt={p.displayName} className="sidebar-avatar-img" />
+                            ) : (
+                              p.displayName.slice(0, 1).toUpperCase()
+                            )}
+                            {userDeco && userDeco !== 'none' && (
+                              <AvatarDecoration decorationId={userDeco} />
+                            )}
+                          </div>
+                          <span className="sidebar-voice-name">{p.displayName}</span>
+                          <div className="sidebar-voice-user-icons">
+                            {isSharer && (
+                              <button
+                                type="button"
+                                className="sidebar-voice-stream-action-badge"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onWatchStream?.(ch, p.userId)
+                                }}
+                                title={`Assistir transmissão ao vivo de ${p.displayName}`}
+                              >
+                                <ScreenIcon style={{ width: '12px', height: '12px' }} />
+                                <span className="live-stream-label">Assistir</span>
+                              </button>
+                            )}
+                            {p.isMuted && (
+                              <span title="Microfone Silenciado" style={{ color: '#e0554c', display: 'inline-flex', alignItems: 'center' }}>
+                                <MicOffIcon style={{ width: '13px', height: '13px' }} />
+                              </span>
+                            )}
+                            {p.isDeafened && (
+                              <span title="Áudio Silenciado (Ensurdecido)" style={{ color: '#e0554c', display: 'inline-flex', alignItems: 'center' }}>
+                                <HeadphonesOffIcon style={{ width: '13px', height: '13px' }} />
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <span className="sidebar-voice-name">{p.displayName}</span>
-                        <div className="sidebar-voice-user-icons">
-                          {(p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0)) && (
-                            <span title="Transmitindo tela" style={{ color: '#ef4444', display: 'inline-flex' }}>
-                              <ScreenIcon style={{ width: '13px', height: '13px' }} />
-                            </span>
-                          )}
-                          {p.isMuted && (
-                            <span title="Microfone Silenciado" style={{ color: '#e0554c', display: 'inline-flex', alignItems: 'center' }}>
-                              <MicOffIcon style={{ width: '13px', height: '13px' }} />
-                            </span>
-                          )}
-                          {p.isDeafened && (
-                            <span title="Áudio Silenciado (Ensurdecido)" style={{ color: '#e0554c', display: 'inline-flex', alignItems: 'center' }}>
-                              <HeadphonesOffIcon style={{ width: '13px', height: '13px' }} />
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -991,6 +1052,126 @@ export function ChannelsSidebar({
                 myGamePresence={myGamePresence}
                 avatarDecoration={avatarDecoration}
               />
+              {/* Voice User Action Context Popover */}
+              {voiceUserMenu && (
+                <>
+                  <div
+                    className="voice-user-menu-backdrop"
+                    onClick={() => setVoiceUserMenu(null)}
+                  />
+                  <div
+                    className="voice-user-menu-popover"
+                    style={{ left: `${voiceUserMenu.x}px`, top: `${voiceUserMenu.y}px` }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="voice-user-menu-header">
+                      <div className="voice-user-menu-avatar">
+                        {voiceUserMenu.participant.avatarUrl ? (
+                          <img src={voiceUserMenu.participant.avatarUrl} alt={voiceUserMenu.participant.displayName} />
+                        ) : (
+                          voiceUserMenu.participant.displayName.slice(0, 1).toUpperCase()
+                        )}
+                        {(() => {
+                          const deco = presenceData?.[voiceUserMenu.participant.userId]?.avatar_decoration ||
+                            spaceMembers.find(m => (m.user?.id || m.id) === voiceUserMenu.participant.userId)?.user?.avatar_decoration ||
+                            (voiceUserMenu.participant.userId === user.id ? avatarDecoration : null)
+                          return deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null
+                        })()}
+                      </div>
+                      <div className="voice-user-menu-info">
+                        <span className="voice-user-menu-name">{voiceUserMenu.participant.displayName}</span>
+                        <span className="voice-user-menu-sub">
+                          <VolumeIcon style={{ width: '11px', height: '11px' }} />
+                          <span>{voiceUserMenu.channel.name}</span>
+                        </span>
+                        {voiceUserMenu.isSharer && (
+                          <span className="voice-user-menu-live-tag">
+                            ● TRANSMITINDO TELA
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="voice-user-menu-actions">
+                      {voiceUserMenu.isSharer && (
+                        <button
+                          type="button"
+                          className="voice-user-menu-item watch-stream"
+                          onClick={() => {
+                            onWatchStream?.(voiceUserMenu.channel, voiceUserMenu.participant.userId)
+                            setVoiceUserMenu(null)
+                          }}
+                        >
+                          <ScreenIcon style={{ width: '15px', height: '15px' }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, textAlign: 'left' }}>
+                            <span style={{ fontWeight: 700, fontSize: '13px' }}>Assistir Transmissão</span>
+                            <span style={{ fontSize: '10px', opacity: 0.85 }}>Sintonizar na tela ao vivo</span>
+                          </div>
+                        </button>
+                      )}
+
+                      {voiceUserMenu.participant.userId !== user.id && (
+                        <button
+                          type="button"
+                          className="voice-user-menu-item"
+                          onClick={() => {
+                            setVolumeControlUser(voiceUserMenu.participant)
+                            setVoiceUserMenu(null)
+                          }}
+                        >
+                          <VolumeIcon style={{ width: '15px', height: '15px' }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, textAlign: 'left' }}>
+                            <span>Ajustar Volume</span>
+                            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Volume individual e áudio</span>
+                          </div>
+                        </button>
+                      )}
+
+                      {onInspectMember && (
+                        <button
+                          type="button"
+                          className="voice-user-menu-item"
+                          onClick={() => {
+                            const member = spaceMembers.find(m => (m.user?.id || m.id) === voiceUserMenu.participant.userId) || {
+                              user: {
+                                id: voiceUserMenu.participant.userId,
+                                display_name: voiceUserMenu.participant.displayName,
+                                avatar_url: voiceUserMenu.participant.avatarUrl
+                              }
+                            }
+                            onInspectMember(member)
+                            setVoiceUserMenu(null)
+                          }}
+                        >
+                          <UserIcon style={{ width: '15px', height: '15px' }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, textAlign: 'left' }}>
+                            <span>Ver Perfil</span>
+                            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Cargos e emblemas</span>
+                          </div>
+                        </button>
+                      )}
+
+                      {onOpenDM && voiceUserMenu.participant.userId !== user.id && (
+                        <button
+                          type="button"
+                          className="voice-user-menu-item"
+                          onClick={() => {
+                            onOpenDM(voiceUserMenu.participant.userId)
+                            setVoiceUserMenu(null)
+                          }}
+                        >
+                          <MessageSquareIcon style={{ width: '15px', height: '15px' }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, textAlign: 'left' }}>
+                            <span>Conversar no Privado</span>
+                            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Abrir mensagem direta</span>
+                          </div>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
               <div
                 className={`channels-sidebar-resizer ${isResizing ? 'active' : ''}`}
                 onMouseDown={handleMouseDownResize}

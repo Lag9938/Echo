@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, lazy, Suspense } from 'react'
+import { useEffect, useState, useRef, useCallback, lazy, Suspense } from 'react'
 import type { FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
@@ -1127,6 +1127,16 @@ function Echo({ user }: { user: User }) {
     updateScreenSubscriptions
   })
 
+  const handleWatchUserStream = useCallback((channel: Channel, userId: string) => {
+    setSelectedChannel(channel)
+    if (activeVoiceChannelId !== channel.id || !isConnected) {
+      handleJoinVoice(channel.id, channel.space_id)
+    }
+    setSelectedScreenSharerUserId(userId)
+    setIsWatchingStreams(true)
+    setScreenShareViewMode('focus')
+    setPage('Servidores')
+  }, [activeVoiceChannelId, isConnected, handleJoinVoice, setSelectedChannel, setSelectedScreenSharerUserId, setIsWatchingStreams, setScreenShareViewMode, setPage])
 
   // Screen Share Hook
   const {
@@ -1546,6 +1556,15 @@ function Echo({ user }: { user: User }) {
             setNewChannelAllowedRoles={setNewChannelAllowedRoles}
             serverRoles={serverRoles}
             memberRoleMap={memberRoleMap}
+            onWatchStream={handleWatchUserStream}
+            onInspectMember={(member) => setInspectedMember(member)}
+            onOpenDM={(targetUserId: string) => {
+              setSelectedDMUserId(targetUserId)
+              setUnreadDMs(prev => { const next = { ...prev }; delete next[targetUserId]; return next })
+              loadDirectMessages(targetUserId)
+              setPage('Amigos')
+            }}
+            presenceData={presenceData}
           />
         </ErrorBoundary>
 
