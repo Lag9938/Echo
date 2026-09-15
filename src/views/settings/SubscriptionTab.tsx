@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { supabase } from '../../lib/supabase'
 import { ColoredLightningIcon } from '../../components/ColoredIcons'
 import { BadgeVipIcon, PaletteIcon, CopyIcon } from '../../components/icons'
 
@@ -6,6 +7,7 @@ export interface SubscriptionTabProps {
   isPremiumUser: boolean
   onSimulateSubscription?: () => void
   onResetSubscription?: () => void
+  userId?: string
   userEmail?: string
   userName?: string
   onSubscriptionSuccess?: () => void
@@ -77,6 +79,7 @@ export function SubscriptionTab({
   isPremiumUser,
   onSimulateSubscription,
   onResetSubscription,
+  userId,
   userEmail = '',
   userName = '',
   onSubscriptionSuccess
@@ -194,11 +197,19 @@ export function SubscriptionTab({
         name: fullName.trim() || 'Usuário Echo',
         email: userEmail.trim(),
         cpfCnpj: cleanCpf,
-        value: 9.90
+        value: 9.90,
+        userId: userId
       })
 
       if (!res || !res.success) {
         throw new Error(res?.error || 'Não foi possível gerar a cobrança Pix. Verifique os dados inseridos.')
+      }
+
+      if (res.customerId && userId && supabase) {
+        await supabase
+          .from('profiles')
+          .update({ asaas_customer_id: res.customerId })
+          .eq('id', userId)
       }
 
       setPixData({

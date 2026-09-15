@@ -241,7 +241,7 @@ export function useEchoCosmetics({
     setTheme(prev => prev === 'light' ? 'dark' : 'light')
   }
 
-  function handleSimulateSubscription() {
+  const handleSimulateSubscription = async () => {
     setIsPremiumUser(true)
     localStorage.setItem('echo-premium', 'true')
     setShowSubscriptionModal(false)
@@ -249,12 +249,27 @@ export function useEchoCosmetics({
       setTheme(pendingTheme)
       setPendingTheme(null)
     }
+    if (supabase && user) {
+      try {
+        const thirtyDays = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        await supabase.from('profiles').update({ is_premium: true, premium_until: thirtyDays }).eq('id', user.id)
+      } catch (e) {
+        console.warn('Failed to update is_premium in profiles:', e)
+      }
+    }
   }
 
-  function handleResetSubscription() {
+  const handleResetSubscription = async () => {
     setIsPremiumUser(false)
     localStorage.removeItem('echo-premium')
     setShowSubscriptionModal(false)
+    if (supabase && user) {
+      try {
+        await supabase.from('profiles').update({ is_premium: false, premium_until: null }).eq('id', user.id)
+      } catch (e) {
+        console.warn('Failed to reset is_premium in profiles:', e)
+      }
+    }
   }
 
   return {

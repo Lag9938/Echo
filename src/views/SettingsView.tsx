@@ -1277,6 +1277,7 @@ export function SettingsView({
             isPremiumUser={isPremiumUser}
             onSimulateSubscription={onSimulateSubscription}
             onResetSubscription={onResetSubscription}
+            userId={userId}
             userEmail={userEmail}
             userName={localDisplayName || profileDisplayName || currentDisplayName}
             onSubscriptionSuccess={onSubscriptionSuccess}

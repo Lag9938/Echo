@@ -1000,7 +1000,8 @@ function createWindow() {
           billingType: 'PIX',
           value: Number(value) || 9.90,
           dueDate: tomorrow,
-          description: 'Assinatura Echo Pro - 60 FPS & Alta Definição (1 Mês)'
+          description: 'Assinatura Echo Pro - 60 FPS & Alta Definição (1 Mês)',
+          externalReference: params.userId || undefined
         })
       }).then(r => r.json())
 
@@ -1016,6 +1017,7 @@ function createWindow() {
       return {
         success: true,
         paymentId: paymentRes.id,
+        customerId: customerId,
         value: paymentRes.value,
         qrCodeImage: qrRes.encodedImage ? `data:image/png;base64,${qrRes.encodedImage}` : null,
         copyPaste: qrRes.payload || null,

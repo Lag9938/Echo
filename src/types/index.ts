@@ -88,7 +88,7 @@ export interface Message {
   body: string; 
   created_at: string; 
   author_id: string; 
-  profile?: { display_name: string; avatar_url?: string; avatar_decoration?: string | null; profile_effect?: string | null };
+  profile?: { display_name: string; avatar_url?: string; avatar_decoration?: string | null; profile_effect?: string | null; is_premium?: boolean; premium_until?: string | null };
   attachment_url?: string;
   attachment_type?: string;
   status?: 'sending' | 'sent' | 'failed';
@@ -113,7 +113,7 @@ export interface Toast {
 
 export interface FriendshipRequest {
   id: string
-  user: { id: string; display_name: string; avatar_url?: string; avatar_decoration?: string | null; profile_effect?: string | null }
+  user: { id: string; display_name: string; avatar_url?: string; avatar_decoration?: string | null; profile_effect?: string | null; is_premium?: boolean; premium_until?: string | null }
   status: 'pending' | 'accepted'
   initiatorId: string
 }
@@ -137,7 +137,7 @@ export interface SavedMessageItem {
 
 export interface MemberProfileModalProps {
   inspectedMember: {
-    user: { id: string; display_name: string; avatar_url?: string; avatar_decoration?: string | null; profile_effect?: string | null }
+    user: { id: string; display_name: string; avatar_url?: string; avatar_decoration?: string | null; profile_effect?: string | null; is_premium?: boolean; premium_until?: string | null }
     joined_at?: string
     roleName?: string
     roleColor?: string

@@ -550,6 +550,7 @@ function Echo({ user }: { user: User }) {
     setSettingsInitialTab,
     theme,
     isPremiumUser,
+    setIsPremiumUser,
     showSubscriptionModal,
     setShowSubscriptionModal,
     customAccentColor,
@@ -1047,7 +1048,12 @@ function Echo({ user }: { user: User }) {
     async function loadUserProfile() {
       if (!supabase) return
       try {
-        const { data, error } = await supabase.from('profiles').select('display_name, avatar_url, avatar_decoration, profile_effect').eq('id', user.id).single()
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('display_name, avatar_url, avatar_decoration, profile_effect, is_premium, premium_until, asaas_customer_id')
+          .eq('id', user.id)
+          .single()
+
         if (!error && data) {
           if (data.display_name) setProfileDisplayName(data.display_name)
           if (data.avatar_url) setProfileAvatarUrl(data.avatar_url)
@@ -1061,6 +1067,19 @@ function Echo({ user }: { user: User }) {
             localStorage.setItem(`echo-profile-effect-${user.id}`, data.profile_effect)
             localStorage.setItem('echo-profile-effect', data.profile_effect)
           }
+
+          // Validação autoritativa de assinatura diretamente do Supabase
+          const hasActivePro = Boolean(
+            data.is_premium && 
+            (!data.premium_until || new Date(data.premium_until).getTime() > Date.now())
+          )
+
+          setIsPremiumUser(hasActivePro)
+          if (hasActivePro) {
+            localStorage.setItem('echo-premium', 'true')
+          } else {
+            localStorage.removeItem('echo-premium')
+          }
           return
         }
       } catch (e) {}
@@ -1070,9 +1089,11 @@ function Echo({ user }: { user: User }) {
         if (data.display_name) setProfileDisplayName(data.display_name)
         if (data.avatar_url) setProfileAvatarUrl(data.avatar_url)
       }
+      setIsPremiumUser(false)
+      localStorage.removeItem('echo-premium')
     }
     loadUserProfile()
-  }, [user.id])
+  }, [user.id, setIsPremiumUser])
 
   // Peer Audio Configuration Hook (Phase 19)
   const {
@@ -1343,6 +1364,18 @@ function Echo({ user }: { user: User }) {
           if (updated.profile_effect !== undefined) setProfileEffect(updated.profile_effect || '')
           if (updated.display_name) setProfileDisplayName(updated.display_name)
           if (updated.avatar_url) setProfileAvatarUrl(updated.avatar_url)
+          if (updated.is_premium !== undefined) {
+            const hasActivePro = Boolean(
+              updated.is_premium && 
+              (!updated.premium_until || new Date(updated.premium_until).getTime() > Date.now())
+            )
+            setIsPremiumUser(hasActivePro)
+            if (hasActivePro) {
+              localStorage.setItem('echo-premium', 'true')
+            } else {
+              localStorage.removeItem('echo-premium')
+            }
+          }
         }
       })
       .subscribe()
@@ -1422,6 +1455,7 @@ function Echo({ user }: { user: User }) {
           onSimulateSubscription={handleSimulateSubscription}
           isPremiumUser={isPremiumUser}
           onResetSubscription={handleResetSubscription}
+          userId={user.id}
           userEmail={user.email}
           userName={profileDisplayName || user.email}
           onSubscriptionSuccess={handleSimulateSubscription}
