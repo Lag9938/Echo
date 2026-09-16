@@ -18,6 +18,7 @@ import {
 } from './lib/soundEffects'
 import { WhatsNewModal } from './components/WhatsNewModal'
 import { APP_CURRENT_VERSION } from './lib/changelogData'
+import { initAnalytics, identifyUser, resetUser, trackAppOpened } from './lib/analytics'
 import { EchoShop } from './components/EchoShop'
 
 import { ChannelInviteModal } from './components/modals/ChannelInviteModal'
@@ -212,10 +213,21 @@ function MainApp() {
     return null
   })
   const [loading, setLoading] = useState(() => !isMock && Boolean(supabase))
+
+  useEffect(() => {
+    initAnalytics()
+    trackAppOpened(APP_CURRENT_VERSION)
+  }, [])
+
   useEffect(() => {
     if (isMock || !supabase) return
     supabase.auth.getSession().then(({ data }) => { setUser(data.session?.user ?? null); setLoading(false) })
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null))
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null)
+      if (event === 'SIGNED_OUT') {
+        resetUser()
+      }
+    })
     return () => listener.subscription.unsubscribe()
   }, [isMock])
   if (loading) {
@@ -291,6 +303,7 @@ function Echo({ user }: { user: User }) {
   const handleJoinVoiceRef = useRef<(channelId: string, explicitSpaceId?: string) => Promise<void>>(() => Promise.resolve())
   const setMessagesRef = useRef<(msgs: any[]) => void>(() => {})
   const processSpaceInviteRef = useRef<((url: string) => Promise<void>) | null>(null)
+  const pendingDeepLinkUrlRef = useRef<string | null>(null)
 
   // Spaces, Channels & Members Hook
   const {
@@ -928,12 +941,16 @@ function Echo({ user }: { user: User }) {
 
   // Deep-Link Protocol Listener (echo://invite/... ou URLs externas)
   useEffect(() => {
-    if (!user?.id || !(window as any).electronAPI) return
+    if (!(window as any).electronAPI) return
 
     const handleInviteUrl = (url: string) => {
       if (url && typeof url === 'string' && (url.startsWith('echo://') || url.includes('/invite') || url.includes('space='))) {
         console.log('[DeepLink] Convite recebido via deep-link ou web:', url)
-        processSpaceInviteRef.current?.(url)
+        if (user?.id && processSpaceInviteRef.current) {
+          processSpaceInviteRef.current(url)
+        } else {
+          pendingDeepLinkUrlRef.current = url
+        }
       }
     }
 
@@ -947,6 +964,16 @@ function Echo({ user }: { user: User }) {
           handleInviteUrl(initialUrl)
         }
       }).catch(() => {})
+    }
+  }, [])
+
+  // Processa convite pendente recebido antes de o usuário estar autenticado
+  useEffect(() => {
+    if (user?.id && pendingDeepLinkUrlRef.current && processSpaceInviteRef.current) {
+      const url = pendingDeepLinkUrlRef.current
+      pendingDeepLinkUrlRef.current = null
+      console.log('[DeepLink] Executando convite pendente após login:', url)
+      processSpaceInviteRef.current(url)
     }
   }, [user?.id])
 
@@ -999,22 +1026,6 @@ function Echo({ user }: { user: User }) {
     setSelectedDMUserId,
     setPage
   })
-
-  // Deep Link: Join space via echo://invite/... or link
-  useEffect(() => {
-    if ((window as any).electronAPI?.onDeepLinkInvite) {
-      (window as any).electronAPI.onDeepLinkInvite((url: string) => {
-        if (!url) return
-        const spMatch = url.match(/[?&]space=([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
-        const match = spMatch || url.match(/(?:invite\/|^)([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
-        if (match && match[1]) {
-          setJoinSpaceCode(match[1])
-          setAddSpaceModalTab('join')
-          setShowAddSpaceModal(true)
-        }
-      })
-    }
-  }, [])
 
 
 
@@ -1094,6 +1105,16 @@ function Echo({ user }: { user: User }) {
     }
     loadUserProfile()
   }, [user.id, setIsPremiumUser])
+
+  useEffect(() => {
+    if (user?.id) {
+      identifyUser({
+        id: user.id,
+        email: user.email,
+        displayName: profileDisplayName || (user.user_metadata?.display_name as string) || ''
+      })
+    }
+  }, [user.id, user.email, profileDisplayName])
 
   // Peer Audio Configuration Hook (Phase 19)
   const {

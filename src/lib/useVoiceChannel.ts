@@ -19,6 +19,7 @@ import rnnoiseWorkletPath from '@sapphi-red/web-noise-suppressor/rnnoiseWorklet.
 import rnnoiseWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise.wasm?url'
 import rnnoiseSimdWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise_simd.wasm?url'
 import { playJoinSound, playLeaveSound } from './soundEffects'
+import { trackVoiceJoined, trackVoiceLeft, trackScreenShareStarted, trackScreenShareStopped } from './analytics'
 
 export type VoiceParticipant = {
   userId: string
@@ -302,6 +303,10 @@ export function useVoiceChannel(options?: {
   // Supabase presence channel
   const channelRef = useRef<RealtimeChannel | null>(null)
   const myInfoRef = useRef<{ userId: string; displayName: string; avatarUrl?: string } | null>(null)
+
+  // Analytics timing refs
+  const voiceJoinTimeRef = useRef<number | null>(null)
+  const screenShareStartTimeRef = useRef<number | null>(null)
   
   // Audio playback elements & volume/pan
   const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map())
@@ -676,6 +681,12 @@ export function useVoiceChannel(options?: {
     localScreenStreamRef.current = null
     setLocalScreenStream(null)
 
+    if (screenShareStartTimeRef.current) {
+      const dur = (Date.now() - screenShareStartTimeRef.current) / 1000
+      trackScreenShareStopped(dur)
+      screenShareStartTimeRef.current = null
+    }
+
     if (channelRef.current && myInfoRef.current) {
       channelRef.current.track({
         user_id: myInfoRef.current.userId,
@@ -702,6 +713,12 @@ export function useVoiceChannel(options?: {
     isReconnectingRef.current = false
     setIsReconnecting(false)
     lastJoinParamsRef.current = null
+
+    if (voiceJoinTimeRef.current && activeChannelIdRef.current) {
+      const dur = (Date.now() - voiceJoinTimeRef.current) / 1000
+      trackVoiceLeft(activeChannelIdRef.current, dur)
+      voiceJoinTimeRef.current = null
+    }
 
     isConnectingRef.current = false
     activeChannelIdRef.current = null
@@ -1118,6 +1135,8 @@ export function useVoiceChannel(options?: {
         try {
           await room.connect(connectionUrl, token)
           console.log('[LiveKit] Conectado com sucesso ao SFU!')
+          voiceJoinTimeRef.current = Date.now()
+          trackVoiceJoined(channelId)
           setIsConnected(true)
           syncParticipants()
         } catch (connErr) {
@@ -1708,6 +1727,9 @@ export function useVoiceChannel(options?: {
             },
             degradationPreference: targetFps >= 60 ? 'maintain-framerate' : 'balanced'
           })
+
+          screenShareStartTimeRef.current = Date.now()
+          trackScreenShareStarted(`${targetHeight}p`, targetFps)
 
           if (audioTrack) {
             try {

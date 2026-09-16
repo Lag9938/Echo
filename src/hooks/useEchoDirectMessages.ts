@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { DirectMessage, FriendshipRequest, Page } from '../types'
+import { trackMessageSent } from '../lib/analytics'
 
 export interface UseEchoDirectMessagesOptions {
   user: User
@@ -128,7 +129,7 @@ export function useEchoDirectMessages({
     if (!supabase || !user) return
     const { data, error: queryError } = await supabase
       .from('direct_messages')
-      .select('id, sender_id, receiver_id, body, attachment_url, attachment_type, created_at')
+      .select('id, sender_id, receiver_id, body, attachment_url, attachment_type, created_at, read_at')
       .or(`and(sender_id.eq.${user.id},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${user.id})`)
       .order('created_at')
 
@@ -137,6 +138,15 @@ export function useEchoDirectMessages({
       return
     }
     setDirectMessages((data ?? []) as DirectMessage[])
+
+    // Marca mensagens recebidas como lidas em background
+    supabase
+      .from('direct_messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('receiver_id', user.id)
+      .eq('sender_id', friendId)
+      .is('read_at', null)
+      .then(() => {})
   }, [supabase, user, setError])
 
   const sendDirectMessage = useCallback(async (body: string, attachmentUrl?: string, attachmentType?: string) => {
@@ -156,6 +166,7 @@ export function useEchoDirectMessages({
       setError(sendError.message)
     } else {
       setDmDraft('')
+      trackMessageSent(attachmentType ? 'attachment' : 'text')
 
       socialChannelRef.current?.send({
         type: 'broadcast',

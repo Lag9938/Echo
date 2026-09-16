@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, type FormEvent } from 'react'
 import type { User, RealtimeChannel } from '@supabase/supabase-js'
 import type { Message, Channel, Space, RolePermissions } from '../types'
+import { trackMessageSent } from '../lib/analytics'
 
 export interface UseEchoChannelMessagesOptions {
   user: User
@@ -141,7 +142,7 @@ export function useEchoChannelMessages({
     // 2. Busca Oficial e Segura das mensagens no Supabase para o canal ativo
     const { data, error: queryError } = await supabase
       .from('messages')
-      .select('id,channel_id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url,avatar_decoration,profile_effect)')
+      .select('id,channel_id,body,created_at,updated_at,author_id,attachment_url,attachment_type,reply_to_message_id,is_edited,message_type,profiles(display_name,avatar_url,avatar_decoration,profile_effect)')
       .eq('channel_id', channelId)
       .order('created_at', { ascending: false })
       .limit(50)
@@ -231,7 +232,7 @@ export function useEchoChannelMessages({
     try {
       const { data, error: queryError } = await supabase
         .from('messages')
-        .select('id,channel_id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url,avatar_decoration,profile_effect)')
+        .select('id,channel_id,body,created_at,updated_at,author_id,attachment_url,attachment_type,reply_to_message_id,is_edited,message_type,profiles(display_name,avatar_url,avatar_decoration,profile_effect)')
         .eq('channel_id', channelId)
         .lt('created_at', oldest.created_at)
         .order('created_at', { ascending: false })
@@ -358,8 +359,9 @@ export function useEchoChannelMessages({
     channelId: string, 
     body: string, 
     attachmentUrl?: string, 
-    attachmentType?: string,
-    existingTempId?: string
+    attachmentType?: string, 
+    existingTempId?: string,
+    replyToMessageId?: string | null
   ) {
     if (!supabase || !user) return
 
@@ -379,6 +381,7 @@ export function useEchoChannelMessages({
       },
       attachment_url: attachmentUrl,
       attachment_type: attachmentType,
+      reply_to_message_id: replyToMessageId || null,
       status: 'sending'
     }
 
@@ -403,9 +406,10 @@ export function useEchoChannelMessages({
           author_id: user.id,
           body,
           attachment_url: attachmentUrl,
-          attachment_type: attachmentType
+          attachment_type: attachmentType,
+          reply_to_message_id: replyToMessageId || null
         })
-        .select('id,channel_id,body,created_at,author_id,attachment_url,attachment_type,profiles(display_name,avatar_url,avatar_decoration,profile_effect)')
+        .select('id,channel_id,body,created_at,updated_at,author_id,attachment_url,attachment_type,reply_to_message_id,is_edited,message_type,profiles(display_name,avatar_url,avatar_decoration,profile_effect)')
         .single()
 
       if (insertError) {
@@ -433,6 +437,8 @@ export function useEchoChannelMessages({
         event: 'new-message',
         payload: confirmedMsg
       }).catch(() => {})
+
+      trackMessageSent(attachmentType ? 'attachment' : 'text')
 
     } catch (err: any) {
       console.error('Erro na requisição de envio:', err)
@@ -502,6 +508,7 @@ export function useEchoChannelMessages({
     }
 
     let finalBody = draft.trim()
+    const replyTargetId = replyingToMessage ? replyingToMessage.id : null
     if (replyingToMessage) {
       const authorName = replyingToMessage.profile?.display_name || 'Membro'
       const quoteSnippet = replyingToMessage.body.slice(0, 60).replace(/\n/g, ' ')
@@ -514,7 +521,7 @@ export function useEchoChannelMessages({
       setSlowmodeCooldown(selectedChannel.slowmode_seconds)
     }
 
-    await postChannelMessage(selectedChannel.id, finalBody)
+    await postChannelMessage(selectedChannel.id, finalBody, undefined, undefined, undefined, replyTargetId)
   }
 
   // Realtime subscription for selectedChannel messages (Broadcast + Postgres changes)

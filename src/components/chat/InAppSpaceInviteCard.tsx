@@ -52,7 +52,7 @@ export const InAppSpaceInviteCard: React.FC<InAppSpaceInviteCardProps> = ({ invi
       })
     }
 
-    // Busca detalhes públicos via RPC segura do Supabase (get_space_invite_details)
+    // Busca detalhes públicos via RPC segura do Supabase (get_space_invite_details) ou fallback
     async function fetchDetails() {
       if (!supabase) return
       try {
@@ -62,10 +62,11 @@ export const InAppSpaceInviteCard: React.FC<InAppSpaceInviteCardProps> = ({ invi
 
         if (!isMounted) return
 
-        if (!rpcError && data && Array.isArray(data) && data.length > 0) {
-          const detail = data[0]
+        const detail = Array.isArray(data) ? data[0] : data
+
+        if (!rpcError && detail && (detail.name || detail.id)) {
           setSpaceInfo((prev) => ({
-            id: spaceId,
+            id: detail.id || spaceId,
             name: detail.name || prev?.name || 'Espaço Echo',
             description: detail.description ?? prev?.description,
             icon_url: detail.icon_url ?? prev?.icon_url,
@@ -74,9 +75,30 @@ export const InAppSpaceInviteCard: React.FC<InAppSpaceInviteCardProps> = ({ invi
             member_count: Number(detail.member_count) || 1
           }))
           setError(false)
-        } else if (!memberSpace) {
-          // Se não encontrou via RPC nem é membro local
-          setError(true)
+        } else {
+          // Fallback para consulta direta na tabela spaces
+          const { data: spaceData, error: spaceError } = await supabase
+            .from('spaces')
+            .select('id, name, description, icon_url, banner_url, banner_theme')
+            .eq('id', spaceId)
+            .maybeSingle()
+
+          if (!isMounted) return
+
+          if (!spaceError && spaceData) {
+            setSpaceInfo((prev) => ({
+              id: spaceData.id,
+              name: spaceData.name || prev?.name || 'Espaço Echo',
+              description: spaceData.description ?? prev?.description,
+              icon_url: spaceData.icon_url ?? prev?.icon_url,
+              banner_url: spaceData.banner_url ?? prev?.banner_url,
+              banner_theme: spaceData.banner_theme ?? prev?.banner_theme,
+              member_count: prev?.member_count || 1
+            }))
+            setError(false)
+          } else if (!memberSpace) {
+            setError(true)
+          }
         }
       } catch (err) {
         console.warn('[InAppSpaceInviteCard] Falha ao carregar detalhes do convite:', err)
@@ -350,7 +372,7 @@ export const InAppSpaceInviteCard: React.FC<InAppSpaceInviteCardProps> = ({ invi
           {isAlreadyMember ? (
             <>
               <CheckIcon style={{ width: '13px', height: '13px' }} />
-              <span>Acessar</span>
+              <span>Acessar Servidor</span>
             </>
           ) : isJoining ? (
             <>
@@ -360,7 +382,7 @@ export const InAppSpaceInviteCard: React.FC<InAppSpaceInviteCardProps> = ({ invi
           ) : (
             <>
               <UsersIcon style={{ width: '13px', height: '13px' }} />
-              <span>Entrar</span>
+              <span>Aceitar Convite</span>
             </>
           )}
         </button>

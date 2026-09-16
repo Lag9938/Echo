@@ -14,15 +14,48 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.33.5'
+export const APP_CURRENT_VERSION = '0.33.6'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.33.6',
+    title: 'Echo v0.33.6 - Convites Diretos de Servidor, Moderação e Otimizações de Chat',
+    date: '16 de Setembro de 2026',
+    tagline: 'Entre em comunidades instantaneamente por link, novo modal de convite com links rápidos, exclusão de mensagens para moderadores e chat ultrarrápido.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🔗',
+        badge: 'CONVITES & DEEP LINK',
+        title: 'Convites Diretos de Servidor',
+        description: 'Entre em comunidades com 1 clique através de links de convite (echo:// e web) com card interativo de confirmação e sincronização em tempo real na lista de servidores.'
+      },
+      {
+        icon: '🛡️',
+        badge: 'MODERAÇÃO ATIVA',
+        title: 'Exclusão de Mensagens para Moderadores',
+        description: 'Donos de servidor e moderadores com permissão de gerenciar mensagens agora podem remover mensagens de terceiros no banco de dados para combater spam e abusos.'
+      },
+      {
+        icon: '⚡',
+        badge: 'PERFORMANCE',
+        title: 'Otimização de DMs e Canais',
+        description: 'Índices compostos avançados no Supabase eliminam lentidões em conversas diretas, garantindo carregamento instantâneo do histórico e menor consumo de recursos.'
+      },
+      {
+        icon: '💬',
+        badge: 'RECURSOS DE CHAT',
+        title: 'Respostas Nativas e Status de Edição',
+        description: 'Respostas agora guardam a referência direta da mensagem citada, mensagens editadas são identificadas automaticamente e recibos de leitura foram integrados às DMs.'
+      }
+    ]
+  },
   {
     version: '0.33.5',
     title: 'Echo v0.33.5 - Assistir Transmissão na Lateral e Barra de Chats Diretos',
     date: '14 de Setembro de 2026',
     tagline: 'Assista a transmissões ao vivo de amigos com 1 clique direto na barra lateral, novo menu rápido de chamada e barra dedicada de Mensagens Diretas.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '📺',

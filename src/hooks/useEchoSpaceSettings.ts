@@ -39,14 +39,14 @@ export function useEchoSpaceSettings({
   getProfileDisplayName,
   displayName,
   spaces,
-  setSpaces,
+  setSpaces: _setSpaces,
   spaceChannels,
   setSpaceChannels,
   selectedChannel,
   setSelectedChannel,
   expandedSpace,
   setExpandedSpace,
-  setSpaceMembers,
+  setSpaceMembers: _setSpaceMembers,
   socialChannelRef,
   canUserDo,
   loadSpaces,
@@ -609,75 +609,44 @@ export function useEchoSpaceSettings({
   const handleAddMemberToSpace = useCallback(async (spaceId: string, friend: FriendshipRequest): Promise<boolean> => {
     if (!supabase || !user) return false
     try {
-      const { error: insertError } = await supabase
-        .from('space_members')
-        .insert({ space_id: spaceId, user_id: friend.user.id, role: 'member' })
+      const spObj = spaces.find(s => s.id === spaceId)
+      const spaceName = spObj?.name || 'servidor'
+      const inviteUrl = getPublicInviteUrl(spaceId)
+      const msg = `👋 Olá! Convidei você para o espaço "${spaceName}" no Echo!\n🔗 Clique no convite abaixo para entrar:\n${inviteUrl}\n🔑 Código do Espaço: ${spaceId}`
 
-      if (insertError) {
-        if (!insertError.message?.includes('duplicate') && !insertError.message?.includes('unique')) {
-          throw insertError
-        }
-      }
-
-      try {
-        const { data: defaultRoles } = await supabase
-          .from('space_roles')
-          .select('id')
-          .eq('space_id', spaceId)
-          .eq('is_default', true)
-        if (defaultRoles && defaultRoles.length > 0) {
-          for (const dr of defaultRoles) {
-            await supabase.from('space_member_roles').insert({
-              space_id: spaceId,
-              user_id: friend.user.id,
-              role_id: dr.id
-            })
-          }
-        }
-      } catch (roleErr) {
-        console.warn('Erro ao atribuir cargo padrão ao novo membro:', roleErr)
-      }
-
-      setSpaceMembers(prev => {
-        if (prev.some((m: any) => (m?.user?.id || m?.id) === friend.user.id)) return prev
-        return [...prev, { role: 'member', user: friend.user, space_id: spaceId }]
+      // Envia a mensagem direta com o link de convite oficial
+      const { error: dmError } = await supabase.from('direct_messages').insert({
+        sender_id: user.id,
+        receiver_id: friend.user.id,
+        body: msg
       })
 
-      setSpaces(prev => prev.map(s => s.id === spaceId ? { ...s, member_count: (s.member_count || 1) + 1 } : s))
+      if (dmError) {
+        console.error('[handleAddMemberToSpace] dmError:', dmError)
+        throw dmError
+      }
 
-      try {
-        const spObj = spaces.find(s => s.id === spaceId)
-        const spaceName = spObj?.name || 'servidor'
-        const inviteUrl = getPublicInviteUrl(spaceId)
-        const msg = `👋 Olá! Adicionei você ao espaço "${spaceName}" no Echo!
-🔗 Entre diretamente por aqui: ${inviteUrl}
-🔑 Código do Espaço: ${spaceId}`
-        await supabase.from('direct_messages').insert({
-          sender_id: user.id,
-          receiver_id: friend.user.id,
+      // Notifica em tempo real via broadcast do canal social
+      const effectiveProfileName = getProfileDisplayName ? getProfileDisplayName() : profileDisplayName
+      socialChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'dm-event',
+        payload: {
+          receiverId: friend.user.id,
+          senderId: user.id,
+          senderName: effectiveProfileName || displayName || 'Amigo',
           body: msg
-        })
-        const effectiveProfileName = getProfileDisplayName ? getProfileDisplayName() : profileDisplayName
-        socialChannelRef.current?.send({
-          type: 'broadcast',
-          event: 'dm-event',
-          payload: {
-            receiverId: friend.user.id,
-            senderId: user.id,
-            senderName: effectiveProfileName || displayName || 'Amigo',
-            body: msg
-          }
-        })
-      } catch (dmErr) {}
+        }
+      })
 
-      showToast('Membro Adicionado!', `@${friend.user.display_name} agora faz parte do espaço.`, 'friend')
+      showToast('Convite Enviado!', `Convite para ${spaceName} enviado para @${friend.user.display_name}.`, 'friend')
       return true
     } catch (err: any) {
       console.error('handleAddMemberToSpace error:', err)
-      showToast('Erro ao adicionar', err?.message || 'Não foi possível adicionar o membro.', 'info')
+      showToast('Erro ao convidar', err?.message || 'Não foi possível enviar o convite.', 'info')
       return false
     }
-  }, [supabase, user, setSpaceMembers, setSpaces, spaces, socialChannelRef, profileDisplayName, displayName, showToast])
+  }, [supabase, user, spaces, socialChannelRef, getProfileDisplayName, profileDisplayName, displayName, showToast])
 
   return {
     editingSpace,

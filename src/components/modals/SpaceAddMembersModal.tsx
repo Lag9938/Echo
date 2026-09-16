@@ -37,7 +37,7 @@ export function SpaceAddMembersModal({
 }: SpaceAddMembersModalProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [addingIds, setAddingIds] = useState<Record<string, boolean>>({})
-  const [addedIds, setAddedIds] = useState<Record<string, boolean>>({})
+  const [invitedIds, setInvitedIds] = useState<Record<string, boolean>>({})
   const [copiedLink, setCopiedLink] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
   const [copiedMessage, setCopiedMessage] = useState(false)
@@ -71,7 +71,7 @@ export function SpaceAddMembersModal({
       setAddingIds(prev => ({ ...prev, [friend.user.id]: true }))
       const success = await onAddMember(friend)
       if (success) {
-        setAddedIds(prev => ({ ...prev, [friend.user.id]: true }))
+        setInvitedIds(prev => ({ ...prev, [friend.user.id]: true }))
       }
     } finally {
       setAddingIds(prev => ({ ...prev, [friend.user.id]: false }))
@@ -319,7 +319,8 @@ export function SpaceAddMembersModal({
             ) : (
               filteredFriends.map(friend => {
                 const isOnline = onlineUsers.has(friend.user.id)
-                const isAlreadyIn = addedIds[friend.user.id] || spaceMembers.some(m => (m?.user?.id || m?.id) === friend.user.id)
+                const isMember = spaceMembers.some(m => (m?.user?.id || m?.id) === friend.user.id)
+                const wasInvited = invitedIds[friend.user.id]
                 const isAdding = addingIds[friend.user.id]
 
                 return (
@@ -391,7 +392,7 @@ export function SpaceAddMembersModal({
                       </div>
                     </div>
 
-                    {isAlreadyIn ? (
+                    {isMember ? (
                       <span style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -406,6 +407,22 @@ export function SpaceAddMembersModal({
                       }}>
                         <CheckIcon style={{ width: '12px', height: '12px' }} />
                         No Servidor
+                      </span>
+                    ) : wasInvited ? (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        padding: '5px 11px',
+                        borderRadius: '7px',
+                        background: 'rgba(56, 189, 248, 0.12)',
+                        border: '1px solid rgba(56, 189, 248, 0.28)',
+                        color: '#38bdf8',
+                        fontSize: '11.5px',
+                        fontWeight: 600
+                      }}>
+                        <CheckIcon style={{ width: '12px', height: '12px' }} />
+                        Convidado
                       </span>
                     ) : (
                       <button

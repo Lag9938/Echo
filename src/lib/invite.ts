@@ -48,26 +48,58 @@ export function extractSpaceIdFromInvite(rawInput: string | null | undefined): {
   let spaceId = ''
   let channelId: string | undefined
 
-  // Extrai parâmetro de canal se presente (?channel=... ou &channel=...)
-  const chMatch = trimmed.match(/[?&]channel=([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
-  if (chMatch && chMatch[1]) {
-    channelId = chMatch[1]
+  // 1. Tenta analisar via construtor URL padrão caso seja URL ou Deep Link
+  try {
+    const urlStringToParse = trimmed.startsWith('echo://')
+      ? trimmed.replace(/^echo:\/\//i, 'http://echo/')
+      : (trimmed.startsWith('http://') || trimmed.startsWith('https://') ? trimmed : `http://dummy.local/${trimmed}`)
+
+    const parsedUrl = new URL(urlStringToParse)
+    const spParam = parsedUrl.searchParams.get('space') || parsedUrl.searchParams.get('code') || parsedUrl.searchParams.get('id')
+    const chParam = parsedUrl.searchParams.get('channel')
+
+    if (spParam) {
+      // Valida se é um identificador aceitável
+      const cleanSp = spParam.split('&')[0].trim()
+      if (cleanSp) spaceId = cleanSp
+    }
+
+    if (chParam) {
+      const cleanCh = chParam.split('&')[0].trim()
+      if (cleanCh) channelId = cleanCh
+    }
+
+    // Se o path tiver /invite/{uuid}
+    if (!spaceId) {
+      const pathMatch = parsedUrl.pathname.match(/\/invite\/([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
+      if (pathMatch && pathMatch[1]) {
+        spaceId = pathMatch[1]
+      }
+    }
+  } catch {}
+
+  // 2. Fallbacks via Regex caso o URL parsing não encontre
+  if (!channelId) {
+    const chMatch = trimmed.match(/[?&]channel=([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
+    if (chMatch && chMatch[1]) {
+      channelId = chMatch[1]
+    }
   }
 
-  // 1. Tenta parâmetro ?space=UUID ou &space=UUID
-  const spMatch = trimmed.match(/[?&]space=([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
-  if (spMatch && spMatch[1]) {
-    spaceId = spMatch[1]
-  } else {
-    // 2. Tenta echo://invite/UUID ou /invite/UUID
-    const urlMatch = trimmed.match(/(?:invite\/|^)([a-f0-9-]{36})/i)
-    if (urlMatch && urlMatch[1]) {
-      spaceId = urlMatch[1]
+  if (!spaceId) {
+    const spMatch = trimmed.match(/[?&]space=([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
+    if (spMatch && spMatch[1]) {
+      spaceId = spMatch[1]
     } else {
-      // 3. Fallback: UUID puro de 36 caracteres
-      const uuidMatch = trimmed.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i)
-      if (uuidMatch && uuidMatch[1]) {
-        spaceId = uuidMatch[1]
+      const urlMatch = trimmed.match(/(?:invite\/|^)([a-f0-9-]{36})/i)
+      if (urlMatch && urlMatch[1]) {
+        spaceId = urlMatch[1]
+      } else {
+        // Fallback: UUID puro de 36 caracteres em qualquer parte do texto
+        const uuidMatch = trimmed.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i)
+        if (uuidMatch && uuidMatch[1]) {
+          spaceId = uuidMatch[1]
+        }
       }
     }
   }

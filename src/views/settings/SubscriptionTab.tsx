@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
+import { trackProModalOpened, trackPixGenerated, trackProActivated } from '../../lib/analytics'
 import { ColoredLightningIcon } from '../../components/ColoredIcons'
 import { BadgeVipIcon, PaletteIcon, CopyIcon } from '../../components/icons'
 
@@ -102,6 +103,10 @@ export function SubscriptionTab({
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const pollTimerRef = useRef<any>(null)
 
+  useEffect(() => {
+    trackProModalOpened('settings_tab')
+  }, [])
+
   // Polling for Pix payment status
   useEffect(() => {
     if (!pixData?.paymentId || paymentSuccess) return
@@ -111,6 +116,7 @@ export function SubscriptionTab({
         if ((window as any).electronAPI?.asaasCheckPaymentStatus) {
           const res = await (window as any).electronAPI.asaasCheckPaymentStatus(pixData.paymentId)
           if (res && res.isPaid) {
+            trackProActivated(30)
             setPaymentSuccess(true)
             if (pollTimerRef.current) clearInterval(pollTimerRef.current)
             setTimeout(() => {
@@ -204,6 +210,8 @@ export function SubscriptionTab({
       if (!res || !res.success) {
         throw new Error(res?.error || 'Não foi possível gerar a cobrança Pix. Verifique os dados inseridos.')
       }
+
+      trackPixGenerated(res.value || 9.90)
 
       if (res.customerId && userId && supabase) {
         await supabase

@@ -92,6 +92,10 @@ export interface Message {
   attachment_url?: string;
   attachment_type?: string;
   status?: 'sending' | 'sent' | 'failed';
+  reply_to_message_id?: string | null;
+  is_edited?: boolean;
+  message_type?: string;
+  updated_at?: string;
 }
 
 export interface DirectMessage {
@@ -102,6 +106,7 @@ export interface DirectMessage {
   attachment_url?: string;
   attachment_type?: string;
   created_at: string;
+  read_at?: string | null;
 }
 
 export interface Toast {

@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js'
 import type { Space, Channel } from '../types'
 import { useSpacesStore } from '../stores/useSpacesStore'
 import { playJoinSound } from '../lib/soundEffects'
+import { extractSpaceIdFromInvite } from '../lib/invite'
 
 export interface UseEchoSpacesOptions {
   user: User
@@ -157,6 +158,31 @@ export function useEchoSpaces({
       setExpandedSpace(result[0].id)
     }
   }
+
+  // Inscrição Realtime global para mudanças nos espaços deste usuário (adicionado ou removido de espaços)
+  useEffect(() => {
+    if (!supabase || !user?.id) return
+
+    const userSpacesChannel = supabase
+      .channel(`user-spaces-membership-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'space_members',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          loadSpaces()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(userSpacesChannel)
+    }
+  }, [supabase, user?.id])
 
   async function loadChannelsForSpace(spaceId: string) {
     const isMock = typeof window !== 'undefined' && window.location.search.includes('mock=true')
@@ -509,45 +535,31 @@ export function useEchoSpaces({
     if (!supabase || !rawInput.trim()) return
     setJoining(true)
     setError('')
-    let code = rawInput.trim()
-    let targetChannelId: string | null = null
 
-    // Extrai parâmetro de canal se presente no link (?channel=id ou &channel=id)
-    const chMatch = rawInput.match(/[?&]channel=([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
-    if (chMatch && chMatch[1]) {
-      targetChannelId = chMatch[1]
-    }
+    const parsed = extractSpaceIdFromInvite(rawInput)
+    let spaceId = parsed?.spaceId || rawInput.trim()
+    const targetChannelId = parsed?.channelId || null
 
-    // Suporta links com parâmetro ?space=id, echo://invite/{id}, https://.../invite/{id} ou UUID puro
-    const spMatch = rawInput.match(/[?&]space=([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
-    if (spMatch && spMatch[1]) {
-      code = spMatch[1]
-    } else {
-      const urlMatch = rawInput.match(/(?:invite\/|^)([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
-      if (urlMatch && urlMatch[1]) {
-        code = urlMatch[1]
-      }
-    }
-    
     try {
       let spaceName = ''
-      let spaceId = code
 
+      // 1. Tenta consulta direta na tabela spaces
       const { data: space, error: spaceError } = await supabase
         .from('spaces')
         .select('id, name')
-        .eq('id', code)
-        .single()
+        .eq('id', spaceId)
+        .maybeSingle()
         
       if (space && !spaceError) {
         spaceName = space.name
         spaceId = space.id
       } else {
-        // Fallback seguro via RPC pública get_space_invite_details
-        const { data: rpcData } = await supabase.rpc('get_space_invite_details', { p_space_id: code })
-        if (rpcData && Array.isArray(rpcData) && rpcData.length > 0 && rpcData[0].name) {
-          spaceName = rpcData[0].name
-          spaceId = code
+        // Fallback seguro via RPC pública get_space_invite_details (suporta objeto JSON ou array)
+        const { data: rpcData, error: rpcError } = await supabase.rpc('get_space_invite_details', { p_space_id: spaceId })
+        const rpcDetail = Array.isArray(rpcData) ? rpcData[0] : rpcData
+        if (!rpcError && rpcDetail && (rpcDetail.name || rpcDetail.id)) {
+          spaceName = rpcDetail.name || 'Espaço Echo'
+          spaceId = rpcDetail.id || spaceId
         } else {
           setError('Link de convite inválido ou espaço não encontrado.')
           showToast('Convite Inválido', 'Espaço ou canal não encontrado.', 'info')
@@ -556,6 +568,7 @@ export function useEchoSpaces({
         }
       }
       
+      // 2. Verifica se o usuário já faz parte deste espaço
       const { data: member } = await supabase
         .from('space_members')
         .select('space_id')
@@ -567,6 +580,8 @@ export function useEchoSpaces({
         setShowAddSpaceModal(false)
         setJoinSpaceCode('')
         setJoining(false)
+        // ESSENCIAL: Recarrega os espaços para que a lista local tenha o servidor imediatamente
+        await loadSpaces()
         setPage('Servidores')
         setExpandedSpace(spaceId)
         const loadedChs = await loadChannelsForSpace(spaceId)
@@ -590,12 +605,15 @@ export function useEchoSpaces({
         return
       }
       
+      // 3. Usuário novo: Insere como membro
       const { error: insertError } = await supabase
         .from('space_members')
         .insert({ space_id: spaceId, user_id: user.id, role: 'member' })
         
       if (insertError) {
+        console.error('[processSpaceInvite] Erro ao entrar:', insertError)
         setError(insertError.message)
+        showToast('Erro ao entrar', insertError.message || 'Não foi possível entrar no espaço.', 'info')
         setJoining(false)
         return
       }
@@ -646,7 +664,9 @@ export function useEchoSpaces({
 
       showToast("Bem-vindo!", `Você entrou no espaço "${spaceName}".`, "info")
     } catch (err: any) {
+      console.error('[processSpaceInvite] Exceção:', err)
       setError(err.message || 'Erro ao entrar no espaço.')
+      showToast('Erro ao entrar', err.message || 'Não foi possível entrar no espaço.', 'info')
       setJoining(false)
     }
   }
