@@ -20,6 +20,7 @@ import { AppearanceTab } from './settings/AppearanceTab'
 import { WindowsTab } from './settings/WindowsTab'
 import { AudioVideoTab } from './settings/AudioVideoTab'
 import { SubscriptionTab } from './settings/SubscriptionTab'
+import { PhotoAdjustModal } from '../components/modals/PhotoAdjustModal'
 
 export function SettingsView({
   userId,
@@ -90,6 +91,12 @@ export function SettingsView({
   pttKey,
   onPttKeyChange,
   onToggleOverlay,
+  muteShortcut,
+  onMuteShortcutChange,
+  deafenShortcut,
+  onDeafenShortcutChange,
+  aiDenoiseShortcut,
+  onAiDenoiseShortcutChange,
   onSimulateSubscription,
   onResetSubscription,
   userEmail,
@@ -163,6 +170,12 @@ export function SettingsView({
   pttKey?: string
   onPttKeyChange?: (val: string) => void
   onToggleOverlay?: () => void
+  muteShortcut?: string
+  onMuteShortcutChange?: (key: string) => void
+  deafenShortcut?: string
+  onDeafenShortcutChange?: (key: string) => void
+  aiDenoiseShortcut?: string
+  onAiDenoiseShortcutChange?: (key: string) => void
   onSimulateSubscription?: () => void
   onResetSubscription?: () => void
   userEmail?: string
@@ -204,6 +217,7 @@ export function SettingsView({
   const [uploadingBanner, setUploadingBanner] = useState(false)
   const [devUnlockBadges, setDevUnlockBadges] = useState(false)
   const [profileSavedToast, setProfileSavedToast] = useState(false)
+  const [photoAdjustConfig, setPhotoAdjustConfig] = useState<{ file: File; type: 'avatar' | 'banner' } | null>(null)
 
   // Unconditional file input references for Avatar and Banner
   const avatarFileInputRef = useRef<HTMLInputElement>(null)
@@ -604,7 +618,7 @@ export function SettingsView({
               style={{ display: 'none' }} 
               onChange={(e) => { 
                 const f = e.target.files?.[0]
-                if (f) handleAvatarUpload(f)
+                if (f) setPhotoAdjustConfig({ file: f, type: 'avatar' })
                 e.target.value = '' 
               }} 
             />
@@ -615,16 +629,15 @@ export function SettingsView({
               style={{ display: 'none' }} 
               onChange={(e) => { 
                 const f = e.target.files?.[0]
-                if (f) handleBannerUpload(f)
+                if (f) setPhotoAdjustConfig({ file: f, type: 'banner' })
                 e.target.value = '' 
               }} 
             />
 
             <div className="profile-studio-header">
               <div>
-                <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h2>
                   <span>Meu Perfil</span>
-                  <span className="profile-studio-badge">ECHO PASS // 2026</span>
                 </h2>
                 <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
                   Personalize sua identidade, capa e presença no Echo com visualização em tempo real.
@@ -1314,6 +1327,12 @@ export function SettingsView({
             pttKey={pttKey}
             onPttKeyChange={onPttKeyChange}
             onToggleOverlay={onToggleOverlay}
+            muteShortcut={muteShortcut}
+            onMuteShortcutChange={onMuteShortcutChange}
+            deafenShortcut={deafenShortcut}
+            onDeafenShortcutChange={onDeafenShortcutChange}
+            aiDenoiseShortcut={aiDenoiseShortcut}
+            onAiDenoiseShortcutChange={onAiDenoiseShortcutChange}
           />
         )}
 
@@ -1340,6 +1359,21 @@ export function SettingsView({
             <WhatsNewModal isOpen={true} isEmbedded={true} />
           </div>
         )}
+
+        <PhotoAdjustModal
+          isOpen={Boolean(photoAdjustConfig)}
+          file={photoAdjustConfig?.file || null}
+          type={photoAdjustConfig?.type || 'avatar'}
+          onClose={() => setPhotoAdjustConfig(null)}
+          onConfirm={(processedFile) => {
+            if (photoAdjustConfig?.type === 'avatar') {
+              handleAvatarUpload(processedFile)
+            } else {
+              handleBannerUpload(processedFile)
+            }
+            setPhotoAdjustConfig(null)
+          }}
+        />
       </section>
     </section>
   )

@@ -102,7 +102,7 @@ export interface TextChannelViewProps {
   setDraft: React.Dispatch<React.SetStateAction<string>>
   send: (e: React.FormEvent) => void
   isUploading: boolean
-  handleChatFileUpload: (file: File, caption?: string) => void
+  handleChatFileUpload: (file: File, caption?: string, sizePreference?: string) => void
   isVoiceNoteRecording: boolean
   voiceNoteDuration: number
   startVoiceNoteRecording: (target: 'channel' | 'dm') => void
@@ -220,6 +220,117 @@ export function TextChannelView({
   // Staged clipboard paste image state
   const [pendingPastedFile, setPendingPastedFile] = useState<File | null>(null)
   const [pendingImagePreview, setPendingImagePreview] = useState<string | null>(null)
+  const [pendingImageSize, setPendingImageSize] = useState<'small' | 'medium' | 'large' | 'original'>('medium')
+
+  // Mention Autocomplete State (@)
+  const [showMentionPicker, setShowMentionPicker] = useState(false)
+  const [mentionQuery, setMentionQuery] = useState('')
+  const [mentionStartIndex, setMentionStartIndex] = useState(-1)
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0)
+  const chatInputRef = useRef<HTMLInputElement | null>(null)
+
+  const mentionCandidates = useMemo(() => {
+    const list: { id: string; name: string; avatarUrl?: string; roleName?: string; roleColor?: string; isSpecial?: boolean }[] = []
+    const q = mentionQuery.toLowerCase().trim()
+
+    // Opção especial @todos
+    if (!q || 'todos'.includes(q) || 'everyone'.includes(q)) {
+      list.push({
+        id: 'everyone-mention',
+        name: 'todos',
+        roleName: 'Notificar todos no canal',
+        roleColor: '#f59e0b',
+        isSpecial: true
+      })
+    }
+
+    const seen = new Set<string>()
+    ;(spaceMembers || []).forEach(m => {
+      const u = m.user || m
+      if (!u || !u.id || seen.has(u.id)) return
+      seen.add(u.id)
+      const dName = u.display_name || u.name || 'Membro'
+      if (!q || dName.toLowerCase().includes(q)) {
+        const role = getUserHighestRole?.(currentSpace?.id || '', u.id)
+        list.push({
+          id: u.id,
+          name: dName,
+          avatarUrl: u.avatar_url,
+          roleName: role?.name,
+          roleColor: role?.color
+        })
+      }
+    })
+
+    return list.slice(0, 8)
+  }, [mentionQuery, spaceMembers, currentSpace?.id, getUserHighestRole])
+
+  const selectMention = useCallback((candidate: { name: string }) => {
+    if (!candidate || mentionStartIndex === -1) return
+    const input = chatInputRef.current
+    const cursorPos = input?.selectionStart ?? draft.length
+    const beforeAt = draft.slice(0, mentionStartIndex)
+    const afterCursor = draft.slice(cursorPos)
+    const mentionText = `@${candidate.name} `
+    const newDraft = beforeAt + mentionText + afterCursor
+    setDraft(newDraft)
+    setShowMentionPicker(false)
+    setMentionStartIndex(-1)
+
+    setTimeout(() => {
+      if (input) {
+        input.focus()
+        const newPos = beforeAt.length + mentionText.length
+        input.setSelectionRange(newPos, newPos)
+      }
+    }, 10)
+  }, [draft, mentionStartIndex, setDraft])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setDraft(val)
+    if (notifyTyping) notifyTyping()
+
+    const cursorPos = e.target.selectionStart ?? val.length
+    const textBeforeCursor = val.slice(0, cursorPos)
+    const match = textBeforeCursor.match(/(?:^|\s)@([a-zA-Z0-9_\u00C0-\u017F]*)$/)
+
+    if (match) {
+      const q = match[1]
+      const atIdx = textBeforeCursor.lastIndexOf('@')
+      setMentionQuery(q)
+      setMentionStartIndex(atIdx)
+      setSelectedMentionIndex(0)
+      setShowMentionPicker(true)
+    } else {
+      setShowMentionPicker(false)
+    }
+  }
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (showMentionPicker && mentionCandidates.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedMentionIndex(prev => (prev + 1) % mentionCandidates.length)
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedMentionIndex(prev => (prev - 1 + mentionCandidates.length) % mentionCandidates.length)
+        return
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        selectMention(mentionCandidates[selectedMentionIndex])
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setShowMentionPicker(false)
+        return
+      }
+    }
+  }
 
   // Drag & drop file upload state
   const [isDraggingOver, setIsDraggingOver] = useState(false)
@@ -335,9 +446,10 @@ export function TextChannelView({
     if (pendingPastedFile) {
       const file = pendingPastedFile
       const caption = draft.trim()
+      const sizePref = pendingImageSize
       removePendingImage()
       setDraft('')
-      await handleChatFileUpload(file, caption)
+      await handleChatFileUpload(file, caption, sizePref)
       return
     }
     send(e)
@@ -852,12 +964,22 @@ export function TextChannelView({
                                         )}
 
                                         {/* Message content */}
-                                        {message.attachment_url && message.attachment_type === 'image' ? (
+                                        {message.attachment_url && (message.attachment_type === 'image' || message.attachment_type?.startsWith('image')) ? (
                                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                             <img
                                               src={message.attachment_url}
                                               alt="anexo"
                                               className="msg-attachment-img"
+                                              style={{
+                                                maxWidth: message.attachment_type === 'image:small' ? '240px' :
+                                                          message.attachment_type === 'image:large' ? '680px' :
+                                                          message.attachment_type === 'image:original' ? 'min(100%, 880px)' :
+                                                          'min(100%, 460px)',
+                                                maxHeight: message.attachment_type === 'image:small' ? '240px' :
+                                                           message.attachment_type === 'image:large' ? '540px' :
+                                                           message.attachment_type === 'image:original' ? '700px' :
+                                                           '400px'
+                                              }}
                                               onClick={() => openLightbox(message.attachment_url!)}
                                             />
                                             {displayedBody && displayedBody !== 'Imagem' && !displayedBody.startsWith('http') && (
@@ -874,7 +996,7 @@ export function TextChannelView({
                                             onChangeSpeed={handleChangeVoiceSpeed}
                                             activeAudioRef={voiceNoteAudioRef}
                                           />
-                                        ) : message.attachment_url && message.attachment_type !== 'image' ? (
+                                        ) : message.attachment_url && !message.attachment_type?.startsWith('image') && message.attachment_type !== 'audio' ? (
                                           <a
                                             href={message.attachment_url}
                                             target="_blank"
@@ -1038,33 +1160,88 @@ export function TextChannelView({
                                   </span>
                                 </div>
                               )}
-                              {pendingPastedFile && pendingImagePreview && (
-                                <div className="composer-image-staging">
-                                  <div className="staging-thumb-wrap">
-                                    <img src={pendingImagePreview} alt="Screenshot colado" />
-                                  </div>
-                                  <div className="staging-info">
-                                    <div className="staging-title-row">
-                                      <span className="staging-badge">Print / Clipboard</span>
-                                      <span className="staging-name">{pendingPastedFile.name}</span>
-                                    </div>
-                                    <span className="staging-subtext">
-                                      {(pendingPastedFile.size / 1024).toFixed(1)} KB • Pressione Enter para enviar com a mensagem
-                                    </span>
-                                  </div>
-                                  <button 
-                                    type="button" 
-                                    className="staging-remove-btn" 
-                                    onClick={removePendingImage}
-                                    title="Descartar print (Esc)"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              )}
-                              <form className="composer" onSubmit={handleComposerSubmit} style={{ position: 'relative' }}>
-                                <input type="file" id="chat-file-input" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleChatFileUpload(f); e.target.value = '' }} />
-                                <button type="button" className="composer-action-btn" onClick={() => document.getElementById('chat-file-input')?.click()} disabled={isUploading} title="Anexar arquivo ou imagem">
+                               {pendingPastedFile && pendingImagePreview && (
+                                 <div className="composer-image-staging" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
+                                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
+                                     <div className="staging-thumb-wrap">
+                                       <img src={pendingImagePreview} alt="Foto para enviar" />
+                                     </div>
+                                     <div className="staging-info" style={{ flex: 1 }}>
+                                       <div className="staging-title-row">
+                                         <span className="staging-badge">Foto / Anexo</span>
+                                         <span className="staging-name">{pendingPastedFile.name}</span>
+                                       </div>
+                                       <span className="staging-subtext">
+                                         {(pendingPastedFile.size / 1024).toFixed(1)} KB • Pressione Enter para enviar com a mensagem
+                                       </span>
+                                     </div>
+                                     <button 
+                                       type="button" 
+                                       className="staging-remove-btn" 
+                                       onClick={removePendingImage}
+                                       title="Descartar foto (Esc)"
+                                     >
+                                       ✕
+                                     </button>
+                                   </div>
+
+                                    {/* Seletor de Tamanho da Foto */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', flexWrap: 'wrap' }}>
+                                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                        Tamanho da foto:
+                                      </span>
+                                      <div style={{ display: 'flex', gap: '5px' }}>
+                                        {[
+                                          { id: 'small', label: 'Pequeno (240px)' },
+                                          { id: 'medium', label: 'Médio (440px)' },
+                                          { id: 'large', label: 'Grande (680px)' },
+                                          { id: 'original', label: 'Máximo (100%)' }
+                                        ].map(opt => (
+                                         <button
+                                           key={opt.id}
+                                           type="button"
+                                           onClick={() => setPendingImageSize(opt.id as any)}
+                                           style={{
+                                             padding: '3px 8px',
+                                             fontSize: '11px',
+                                             fontWeight: 600,
+                                             borderRadius: '6px',
+                                             cursor: 'pointer',
+                                             border: pendingImageSize === opt.id ? '1px solid #00f2fe' : '1px solid var(--border-color)',
+                                             background: pendingImageSize === opt.id ? 'rgba(0, 242, 254, 0.2)' : 'var(--bg-secondary)',
+                                             color: pendingImageSize === opt.id ? '#00f2fe' : 'var(--text-secondary)',
+                                             transition: 'all 0.15s ease'
+                                           }}
+                                         >
+                                           {opt.label}
+                                         </button>
+                                       ))}
+                                     </div>
+                                   </div>
+                                 </div>
+                               )}
+                               <form className="composer" onSubmit={handleComposerSubmit} style={{ position: 'relative' }}>
+                                 <input 
+                                   type="file" 
+                                   id="chat-file-input" 
+                                   style={{ display: 'none' }} 
+                                   onChange={(e) => { 
+                                     const f = e.target.files?.[0]
+                                     if (f) {
+                                       if (f.type.startsWith('image/')) {
+                                         setPendingImagePreview(prev => {
+                                           if (prev) URL.revokeObjectURL(prev)
+                                           return URL.createObjectURL(f)
+                                         })
+                                         setPendingPastedFile(f)
+                                       } else {
+                                         handleChatFileUpload(f)
+                                       }
+                                     }
+                                     e.target.value = '' 
+                                   }} 
+                                 />
+                                 <button type="button" className="composer-action-btn" onClick={() => document.getElementById('chat-file-input')?.click()} disabled={isUploading} title="Anexar arquivo ou imagem">
                                   <PaperclipIcon style={{ width: '15px', height: '15px' }} />
                                 </button>
 
@@ -1099,13 +1276,58 @@ export function TextChannelView({
                                   <SmileIcon style={{ width: '15px', height: '15px' }} />
                                 </button>
 
+                                {/* Mention Autocomplete Popover (@) */}
+                                {showMentionPicker && mentionCandidates.length > 0 && (
+                                  <div className="mention-picker-popover" role="listbox">
+                                    <div className="mention-picker-header">
+                                      <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
+                                        Membros correspondentes
+                                      </span>
+                                      <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                                        ↑↓ navegar • ↵ selecionar • Esc fechar
+                                      </span>
+                                    </div>
+                                    <div className="mention-picker-list">
+                                      {mentionCandidates.map((cand, idx) => {
+                                        const isSelected = idx === selectedMentionIndex
+                                        return (
+                                          <div
+                                            key={cand.id}
+                                            className={`mention-picker-item ${isSelected ? 'selected' : ''}`}
+                                            onClick={() => selectMention(cand)}
+                                            onMouseEnter={() => setSelectedMentionIndex(idx)}
+                                          >
+                                            <div className="mention-picker-avatar">
+                                              {cand.avatarUrl ? (
+                                                <img src={cand.avatarUrl} alt={cand.name} />
+                                              ) : (
+                                                <span>{cand.isSpecial ? '@' : cand.name.slice(0, 1).toUpperCase()}</span>
+                                              )}
+                                            </div>
+                                            <div className="mention-picker-info">
+                                              <span className="mention-picker-name">@{cand.name}</span>
+                                              {cand.roleName && (
+                                                <span 
+                                                  className="mention-picker-role"
+                                                  style={cand.roleColor ? { color: cand.roleColor } : undefined}
+                                                >
+                                                  {cand.roleName}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+
                                 <input 
+                                  ref={chatInputRef}
                                   id="chat-input-field"
                                   value={draft} 
-                                  onChange={(e) => {
-                                    setDraft(e.target.value)
-                                    if (notifyTyping) notifyTyping()
-                                  }} 
+                                  onChange={handleInputChange} 
+                                  onKeyDown={handleInputKeyDown}
                                   onPaste={handlePaste}
                                   placeholder={slowmodeCooldown > 0 ? `Modo Lento ativo: aguarde ${slowmodeCooldown}s para digitar…` : `Mensagem em #${selectedChannel.name}…`} 
                                   disabled={slowmodeCooldown > 0}

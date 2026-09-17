@@ -896,6 +896,12 @@
   background: var(--bg-primary);
   color: var(--text-primary);
 }
+.sidebar-voice-user[draggable="true"] {
+  cursor: grab;
+}
+.sidebar-voice-user[draggable="true"]:active {
+  cursor: grabbing;
+}
 .sidebar-voice-avatar {
   display: grid;
   place-items: center;
@@ -1126,6 +1132,41 @@
 
 .voice-user-menu-item.watch-stream:hover svg {
   color: #ffffff;
+}
+
+.voice-channel-node.drag-over-target .channel-item.voice-item {
+  background: rgba(30, 180, 255, 0.22) !important;
+  outline: 2px dashed #1eb4ff;
+  outline-offset: -2px;
+  border-radius: 6px;
+  transform: scale(1.02);
+  transition: all 0.15s ease;
+}
+
+.voice-user-menu-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 4px 0;
+}
+
+.voice-user-menu-submenu-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 10px 2px;
+}
+
+.voice-channel-move-item {
+  padding-left: 14px !important;
+  font-size: 12px !important;
+  gap: 8px !important;
+}
+
+.voice-channel-move-item:hover {
+  background: rgba(30, 180, 255, 0.15) !important;
+  color: #1eb4ff !important;
 }
 
 /* Empty servers prompt */

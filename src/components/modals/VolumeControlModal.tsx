@@ -85,6 +85,35 @@ export function VolumeControlModal({
             }}
             style={{ width: '100%', accentColor: 'var(--accent-color)', cursor: 'pointer' }}
           />
+
+          {(() => {
+            const curVol = userVolumes[volumeControlUser.userId] !== undefined ? userVolumes[volumeControlUser.userId] : 100
+            const isLocallyMuted = curVol === 0
+            return (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: isLocallyMuted ? '#f87171' : 'var(--text-secondary)' }}>
+                  <input
+                    type="checkbox"
+                    checked={isLocallyMuted}
+                    onChange={(e) => {
+                      const shouldMute = e.target.checked
+                      const newVol = shouldMute ? 0 : 100
+                      const newVols = { ...userVolumes, [volumeControlUser.userId]: newVol }
+                      setUserVolumes(newVols)
+                      localStorage.setItem('echo-user-volumes', JSON.stringify(newVols))
+                    }}
+                    style={{ cursor: 'pointer', accentColor: '#f87171' }}
+                  />
+                  <span style={{ fontWeight: 600 }}>🔇 Silenciar Membro (Localmente)</span>
+                </label>
+                {isLocallyMuted && (
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#f87171', background: 'rgba(248, 113, 113, 0.15)', padding: '2px 8px', borderRadius: '4px' }}>
+                    Silenciado
+                  </span>
+                )}
+              </div>
+            )
+          })()}
         </div>
 
         {/* Section 2: 3D Spatial Stereo Panning */}

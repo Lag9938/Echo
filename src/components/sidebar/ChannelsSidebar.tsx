@@ -113,6 +113,12 @@ export interface ChannelsSidebarProps {
   onInspectMember?: (member: any) => void
   onOpenDM?: (userId: string) => void
   presenceData?: Record<string, any>
+  moveParticipant?: (userId: string, targetChannelId: string, targetChannelName?: string) => void
+  serverMuteParticipant?: (userId: string) => void
+  disconnectParticipant?: (userId: string) => void
+  isPiPActive?: boolean
+  setIsPiPActive?: (val: boolean) => void
+  activeScreenSharers?: VoiceParticipant[]
 }
 
 export function ChannelsSidebar({
@@ -185,6 +191,7 @@ export function ChannelsSidebar({
   setVolumeControlUser,
   spaceMembers,
   isConnected,
+  showToast,
   newChannelIsPrivate,
   setNewChannelIsPrivate,
   newChannelAllowedRoles,
@@ -194,7 +201,13 @@ export function ChannelsSidebar({
   onWatchStream,
   onInspectMember,
   onOpenDM,
-  presenceData
+  presenceData,
+  moveParticipant,
+  serverMuteParticipant,
+  disconnectParticipant,
+  isPiPActive,
+  setIsPiPActive,
+  activeScreenSharers
 }: ChannelsSidebarProps) {
   const [voiceUserMenu, setVoiceUserMenu] = React.useState<{
     participant: any
@@ -203,6 +216,12 @@ export function ChannelsSidebar({
     x: number
     y: number
   } | null>(null)
+  const [dragOverVoiceChannelId, setDragOverVoiceChannelId] = React.useState<string | null>(null)
+  const [isMoveSubmenuOpen, setIsMoveSubmenuOpen] = React.useState(false)
+
+  React.useEffect(() => {
+    setIsMoveSubmenuOpen(false)
+  }, [voiceUserMenu])
 
   React.useEffect(() => {
     if (!voiceUserMenu) return
@@ -311,6 +330,9 @@ export function ChannelsSidebar({
           const userRoleIds = memberRoleMap?.[user.id] || []
           const isOwner = activeSpace.creator_id === user.id
           const isAdmin = canUserDo(activeSpace.id, user.id, 'administrator')
+          const canMove = isOwner || isAdmin || canUserDo(activeSpace.id, user.id, 'moveMembers')
+          const canMute = isOwner || isAdmin || canUserDo(activeSpace.id, user.id, 'muteMembers')
+          const canDisconnect = isOwner || isAdmin || canUserDo(activeSpace.id, user.id, 'disconnectMembers')
 
           const visibleChannels = channels.filter(ch => {
             if (!ch.is_private) return true
@@ -318,6 +340,8 @@ export function ChannelsSidebar({
             const allowed = ch.allowed_role_ids || []
             return userRoleIds.some(roleId => allowed.includes(roleId))
           })
+
+          const voiceChannels = visibleChannels.filter(ch => ch.type === 'voice')
 
           const filteredChannels = visibleChannels.filter(ch => !channelSearchQuery.trim() || ch.name.toLowerCase().includes(channelSearchQuery.toLowerCase()))
 
@@ -425,7 +449,38 @@ export function ChannelsSidebar({
             }
 
             return (
-              <div key={ch.id} className="voice-channel-node">
+              <div 
+                key={ch.id} 
+                className={`voice-channel-node ${dragOverVoiceChannelId === ch.id ? 'drag-over-target' : ''}`}
+                onDragOver={(e) => {
+                  if (canMove) {
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                    if (dragOverVoiceChannelId !== ch.id) {
+                      setDragOverVoiceChannelId(ch.id)
+                    }
+                  }
+                }}
+                onDragLeave={(e) => {
+                  if (e.currentTarget.contains(e.relatedTarget as Node)) return
+                  if (dragOverVoiceChannelId === ch.id) {
+                    setDragOverVoiceChannelId(null)
+                  }
+                }}
+                onDrop={(e) => {
+                  if (!canMove) return
+                  e.preventDefault()
+                  setDragOverVoiceChannelId(null)
+                  try {
+                    const raw = e.dataTransfer.getData('text/echo-move-user')
+                    if (!raw) return
+                    const data = JSON.parse(raw)
+                    if (!data.userId || data.fromChannelId === ch.id) return
+                    moveParticipant?.(data.userId, ch.id, ch.name)
+                    showToast('Membro Movido', `${data.displayName} foi movido para o canal #${ch.name}.`, 'info')
+                  } catch (err) {}
+                }}
+              >
                 <button 
                   type="button"
                   className={`channel-item voice-item ${selectedChannel?.id === ch.id ? 'active' : ''} ${isActive ? 'in-voice' : ''}`} 
@@ -494,13 +549,23 @@ export function ChannelsSidebar({
                       return (
                         <div 
                           key={p.userId} 
+                          draggable={canMove}
+                          onDragStart={(e) => {
+                            if (!canMove) return
+                            e.dataTransfer.setData('text/echo-move-user', JSON.stringify({
+                              userId: p.userId,
+                              displayName: p.displayName,
+                              fromChannelId: ch.id
+                            }))
+                            e.dataTransfer.effectAllowed = 'move'
+                          }}
                           className={`sidebar-voice-user ${p.isSpeaking ? 'speaking' : ''} ${isSharer ? 'has-sharer' : ''}`}
                           onClick={handleUserClick}
                           onContextMenu={(e) => {
                             e.preventDefault()
                             handleUserClick(e)
                           }}
-                          style={{ cursor: 'pointer' }}
+                          style={{ cursor: canMove ? 'grab' : 'pointer' }}
                           title={isSharer ? `${p.displayName} (Transmitindo tela - Clique para opções ou assistir)` : `${p.displayName} (Clique para opções)`}
                         >
                           <div className={`sidebar-voice-avatar ${p.isSpeaking ? 'speaking-wave' : ''}`}>
@@ -1070,6 +1135,16 @@ export function ChannelsSidebar({
                         <button className={`voice-action-btn ${isRecordingCall ? 'recording' : ''}`} onClick={isRecordingCall ? stopCallRecording : startCallRecording} title={isRecordingCall ? `Gravando chamada (${recordingDuration}s)` : "Gravar chamada"}>
                           <RecordCallIcon isRecording={isRecordingCall} />
                         </button>
+                        {activeScreenSharers && activeScreenSharers.length > 0 && (
+                          <button 
+                            className={`voice-action-btn ${isPiPActive ? 'active' : ''}`} 
+                            onClick={() => setIsPiPActive?.(!isPiPActive)} 
+                            title={isPiPActive ? "Fechar Mini Player" : "Abrir Mini Player Flutuante da Transmissão"}
+                            style={{ color: isPiPActive ? '#1eb4ff' : undefined }}
+                          >
+                            <ScreenIcon />
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1203,6 +1278,84 @@ export function ChannelsSidebar({
                           <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, textAlign: 'left' }}>
                             <span>Conversar no Privado</span>
                             <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Abrir mensagem direta</span>
+                          </div>
+                        </button>
+                      )}
+
+                      {/* Moderation Actions */}
+                      {canMove && voiceChannels.length > 1 && (
+                        <>
+                          <div className="voice-user-menu-divider" />
+                          <button
+                            type="button"
+                            className="voice-user-menu-item"
+                            onClick={() => setIsMoveSubmenuOpen(!isMoveSubmenuOpen)}
+                          >
+                            <VolumeIcon style={{ width: '15px', height: '15px', color: '#1eb4ff' }} />
+                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, textAlign: 'left', flex: 1 }}>
+                              <span style={{ color: '#1eb4ff' }}>Mover para Canal...</span>
+                              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Mudar membro de sala</span>
+                            </div>
+                            <ChevronRightIcon style={{ width: '13px', height: '13px', color: 'var(--text-muted)', transform: isMoveSubmenuOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s ease' }} />
+                          </button>
+
+                          {isMoveSubmenuOpen && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '2px 0 2px 8px', background: 'rgba(0, 0, 0, 0.2)', borderRadius: '6px' }}>
+                              <div className="voice-user-menu-submenu-title">Canais Disponíveis</div>
+                              {voiceChannels
+                                .filter(vc => vc.id !== voiceUserMenu.channel.id)
+                                .map(vc => (
+                                  <button
+                                    key={vc.id}
+                                    type="button"
+                                    className="voice-user-menu-item voice-channel-move-item"
+                                    onClick={() => {
+                                      moveParticipant?.(voiceUserMenu.participant.userId, vc.id, vc.name)
+                                      showToast('Membro Movido', `${voiceUserMenu.participant.displayName} foi movido para #${vc.name}.`, 'info')
+                                      setVoiceUserMenu(null)
+                                    }}
+                                  >
+                                    <VolumeIcon style={{ width: '13px', height: '13px', opacity: 0.7 }} />
+                                    <span>{vc.name}</span>
+                                  </button>
+                                ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {canMute && voiceUserMenu.participant.userId !== user.id && (
+                        <button
+                          type="button"
+                          className="voice-user-menu-item"
+                          onClick={() => {
+                            serverMuteParticipant?.(voiceUserMenu.participant.userId)
+                            showToast('Membro Silenciado', `${voiceUserMenu.participant.displayName} foi silenciado no servidor.`, 'info')
+                            setVoiceUserMenu(null)
+                          }}
+                        >
+                          <MicOffIcon style={{ width: '15px', height: '15px', color: '#e0554c' }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, textAlign: 'left' }}>
+                            <span style={{ color: '#e0554c' }}>Silenciar no Servidor</span>
+                            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Desativa o mic do usuário</span>
+                          </div>
+                        </button>
+                      )}
+
+                      {canDisconnect && voiceUserMenu.participant.userId !== user.id && (
+                        <button
+                          type="button"
+                          className="voice-user-menu-item"
+                          onClick={() => {
+                            disconnectParticipant?.(voiceUserMenu.participant.userId)
+                            showToast('Desconectado', `${voiceUserMenu.participant.displayName} foi desconectado da chamada.`, 'info')
+                            setVoiceUserMenu(null)
+                          }}
+                        >
+                          <PhoneOffIcon style={{ width: '15px', height: '15px', color: '#e0554c' }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, textAlign: 'left' }}>
+                            <span style={{ color: '#e0554c' }}>Desconectar da Sala</span>
+                            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Expulsa da chamada de voz</span>
                           </div>
                         </button>
                       )}

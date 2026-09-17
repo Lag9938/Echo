@@ -902,6 +902,56 @@ function Echo({ user }: { user: User }) {
     presenceData
   })
   handleJoinVoiceRef.current = handleJoinVoice
+  const handleLeaveVoiceRef = useRef(handleLeaveVoice)
+  handleLeaveVoiceRef.current = handleLeaveVoice
+  const handleToggleMuteRef = useRef(handleToggleMute)
+  handleToggleMuteRef.current = handleToggleMute
+  const isMutedRef = useRef(isMuted)
+  isMutedRef.current = isMuted
+
+  const handleServerMute = useCallback((targetUserId: string) => {
+    serverMuteParticipant(targetUserId)
+    try {
+      socialChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'voice-moderation',
+        payload: {
+          type: 'server_mute',
+          targetUserId
+        }
+      })
+    } catch (e) {}
+  }, [serverMuteParticipant])
+
+  const handleDisconnectParticipant = useCallback((targetUserId: string) => {
+    disconnectParticipant(targetUserId)
+    try {
+      socialChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'voice-moderation',
+        payload: {
+          type: 'disconnect_member',
+          targetUserId
+        }
+      })
+    } catch (e) {}
+  }, [disconnectParticipant])
+
+  const handleMoveParticipant = useCallback((targetUserId: string, targetChannelId: string, targetChannelName?: string) => {
+    moveParticipant(targetUserId, targetChannelId, targetChannelName)
+    try {
+      socialChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'voice-moderation',
+        payload: {
+          type: 'move_member',
+          targetUserId,
+          targetChannelId,
+          targetChannelName
+        }
+      })
+    } catch (e) {}
+  }, [moveParticipant])
 
   // Sincroniza canal de voz ativo com a presença global instantaneamente
   useEffect(() => {
@@ -910,26 +960,50 @@ function Echo({ user }: { user: User }) {
     trackMyPresence()
   }, [activeVoiceChannelId, activeVoiceChannel, trackMyPresence])
 
-  // Global Voice Shortcuts (Mute / Deafen) via Electron IPC
+  // Global In-Game Voice Shortcuts state (Mute / Deafen / AI Denoise)
+  const [muteShortcut, setMuteShortcut] = useState<string>(() => localStorage.getItem('echo-shortcut-mute') || 'F8')
+  const [deafenShortcut, setDeafenShortcut] = useState<string>(() => localStorage.getItem('echo-shortcut-deafen') || 'F9')
+  const [aiDenoiseShortcut, setAiDenoiseShortcut] = useState<string>(() => localStorage.getItem('echo-shortcut-ai-denoise') || 'F7')
+
+  // Global Voice Shortcuts (Mute / Deafen / AI Denoise) via Electron IPC
   useEffect(() => {
     const api = (window as any).electronAPI
     if (!api?.onGlobalVoiceToggle) return
 
-    api.registerGlobalVoiceShortcut?.('toggle-mute', 'F8')
-    api.registerGlobalVoiceShortcut?.('toggle-deafen', 'F9')
+    if (muteShortcut && muteShortcut !== 'none') {
+      api.registerGlobalVoiceShortcut?.('toggle-mute', muteShortcut)
+    } else {
+      api.unregisterGlobalVoiceShortcut?.('toggle-mute')
+    }
+
+    if (deafenShortcut && deafenShortcut !== 'none') {
+      api.registerGlobalVoiceShortcut?.('toggle-deafen', deafenShortcut)
+    } else {
+      api.unregisterGlobalVoiceShortcut?.('toggle-deafen')
+    }
+
+    if (aiDenoiseShortcut && aiDenoiseShortcut !== 'none') {
+      api.registerGlobalVoiceShortcut?.('toggle-ai-denoise', aiDenoiseShortcut)
+    } else {
+      api.unregisterGlobalVoiceShortcut?.('toggle-ai-denoise')
+    }
 
     const removeListener = api.onGlobalVoiceToggle((action: string) => {
       if (action === 'toggle-mute') {
         handleToggleMute()
       } else if (action === 'toggle-deafen') {
         handleToggleDeafen()
+      } else if (action === 'toggle-ai-denoise') {
+        toggleAiDenoise()
+        const willBeActive = !isAiDenoiseEnabled
+        showToast('Filtro de Ruído IA', willBeActive ? 'Supressão por IA Ativada' : 'Supressão por IA Desativada', 'info')
       }
     })
 
     return () => {
       if (typeof removeListener === 'function') removeListener()
     }
-  }, [handleToggleMute, handleToggleDeafen])
+  }, [handleToggleMute, handleToggleDeafen, toggleAiDenoise, isAiDenoiseEnabled, muteShortcut, deafenShortcut, aiDenoiseShortcut, showToast])
 
   // Soundboard & WhatsNew Modals
   const [showSoundboardModal, setShowSoundboardModal] = useState(false)
@@ -1436,6 +1510,22 @@ function Echo({ user }: { user: User }) {
       .on('broadcast', { event: 'dm-typing' }, (payload: any) => {
         handleDMTypingBroadcast(payload?.payload)
       })
+      .on('broadcast', { event: 'voice-moderation' }, (payload: any) => {
+        const data = payload?.payload
+        if (data?.targetUserId === user?.id) {
+          if (data.type === 'move_member' && data.targetChannelId) {
+            handleLeaveVoiceRef.current?.()
+            showToast?.('Movido de Canal', `Você foi movido para o canal ${data.targetChannelName || ''}.`, 'info')
+            handleJoinVoiceRef.current?.(data.targetChannelId)
+          } else if (data.type === 'disconnect_member') {
+            handleLeaveVoiceRef.current?.()
+            showToast?.('Desconectado da Chamada', 'Você foi desconectado da chamada por um moderador.', 'info')
+          } else if (data.type === 'server_mute') {
+            if (!isMutedRef.current) handleToggleMuteRef.current?.()
+            showToast?.('Silenciado no Servidor', 'Um moderador silenciou seu microfone.', 'info')
+          }
+        }
+      })
       .subscribe()
 
     return () => {
@@ -1635,6 +1725,12 @@ function Echo({ user }: { user: User }) {
               setPage('Amigos')
             }}
             presenceData={presenceData}
+            moveParticipant={handleMoveParticipant}
+            serverMuteParticipant={handleServerMute}
+            disconnectParticipant={handleDisconnectParticipant}
+            isPiPActive={isPiPActive}
+            setIsPiPActive={setIsPiPActive}
+            activeScreenSharers={activeScreenSharers}
           />
         </ErrorBoundary>
 
@@ -2088,6 +2184,12 @@ function Echo({ user }: { user: User }) {
             pttKey={pttKey}
             onPttKeyChange={setPttKey}
             onToggleOverlay={handleToggleOverlay}
+            muteShortcut={muteShortcut}
+            onMuteShortcutChange={setMuteShortcut}
+            deafenShortcut={deafenShortcut}
+            onDeafenShortcutChange={setDeafenShortcut}
+            aiDenoiseShortcut={aiDenoiseShortcut}
+            onAiDenoiseShortcutChange={setAiDenoiseShortcut}
           />
         </Suspense>
       </ErrorBoundary>
@@ -2260,9 +2362,9 @@ function Echo({ user }: { user: User }) {
             isSpaceOwner={isSpaceOwner}
             canUserDo={canUserDo}
             availableVoiceChannels={availableVoiceChannels}
-            serverMuteParticipant={serverMuteParticipant}
-            disconnectParticipant={disconnectParticipant}
-            moveParticipant={moveParticipant}
+            serverMuteParticipant={handleServerMute}
+            disconnectParticipant={handleDisconnectParticipant}
+            moveParticipant={handleMoveParticipant}
           />
         )
       })()}

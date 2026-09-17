@@ -204,30 +204,27 @@ namespace AudioCaptureHelper
                         if (pName.IndexOf("VALORANT", StringComparison.OrdinalIgnoreCase) >= 0)
                         {
                             IntPtr mainHwnd = proc.MainWindowHandle;
-                            if (mainHwnd != IntPtr.Zero)
+                            string targetId = mainHwnd != IntPtr.Zero ? $"window:{mainHwnd.ToInt64()}:0" : $"proc:{proc.Id}";
+                            bool alreadyAdded = false;
+                            foreach (dynamic item in list)
                             {
-                                string targetId = $"window:{mainHwnd.ToInt64()}:0";
-                                bool alreadyAdded = false;
-                                foreach (dynamic item in list)
+                                if (item.processName == pName)
                                 {
-                                    if (item.id == targetId)
-                                    {
-                                        alreadyAdded = true;
-                                        break;
-                                    }
+                                    alreadyAdded = true;
+                                    break;
                                 }
-                                if (!alreadyAdded)
+                            }
+                            if (!alreadyAdded)
+                            {
+                                list.Insert(0, new
                                 {
-                                    list.Insert(0, new
-                                    {
-                                        id = targetId,
-                                        name = "VALORANT (Jogo)",
-                                        processName = pName,
-                                        pid = (uint)proc.Id,
-                                        type = "window",
-                                        isGame = true
-                                    });
-                                }
+                                    id = targetId,
+                                    name = "VALORANT (Jogo)",
+                                    processName = pName,
+                                    pid = (uint)proc.Id,
+                                    type = "window",
+                                    isGame = true
+                                });
                             }
                         }
                     }
@@ -287,6 +284,10 @@ namespace AudioCaptureHelper
                         var titleSb = new System.Text.StringBuilder(512);
                         GetWindowText(fgHwnd, titleSb, 512);
                         fgTitle = titleSb.ToString().Trim();
+                        if (string.IsNullOrEmpty(fgProcess) && fgTitle.IndexOf("VALORANT", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            fgProcess = "VALORANT";
+                        }
                     }
                 }
 
@@ -354,6 +355,28 @@ namespace AudioCaptureHelper
                     catch {}
                     return true;
                 }, IntPtr.Zero);
+
+                if (string.IsNullOrEmpty(fgProcess))
+                {
+                    try
+                    {
+                        foreach (var p in System.Diagnostics.Process.GetProcesses())
+                        {
+                            if (p.ProcessName.IndexOf("VALORANT", StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                visibleWindows.Insert(0, new
+                                {
+                                    processName = p.ProcessName,
+                                    title = "VALORANT",
+                                    pid = (uint)p.Id,
+                                    isForeground = true
+                                });
+                                break;
+                            }
+                        }
+                    }
+                    catch {}
+                }
 
                 var result = new
                 {

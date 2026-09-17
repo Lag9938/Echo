@@ -49,6 +49,11 @@ export function useEchoDirectMessages({
   const dmTypingTimeoutRef = useRef<any>(null)
   const lastDMTypingSentRef = useRef<number>(0)
 
+  // Anti-Spam & Rate-Limiting refs
+  const recentDmTimestampsRef = useRef<number[]>([])
+  const lastDmTextRef = useRef<string>('')
+  const lastDmSentTimeRef = useRef<number>(0)
+
   const [recentDMUserIds, setRecentDMUserIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('echo_recent_dms')
@@ -151,6 +156,27 @@ export function useEchoDirectMessages({
 
   const sendDirectMessage = useCallback(async (body: string, attachmentUrl?: string, attachmentType?: string) => {
     if (!supabase || !selectedDMUserId || !user) return
+
+    const now = Date.now()
+    const trimmedBody = body.trim()
+
+    // Proteção Anti-Flood / Rate Limiting (Máximo 4 mensagens em 4 segundos)
+    recentDmTimestampsRef.current = recentDmTimestampsRef.current.filter(t => now - t < 4000)
+    if (recentDmTimestampsRef.current.length >= 4) {
+      showToast('Calma aí!', 'Você está enviando mensagens rápido demais. Aguarde alguns segundos.', 'info')
+      return
+    }
+
+    // Proteção Anti-Spam de repetição consecutiva (em menos de 2s)
+    if (trimmedBody && trimmedBody === lastDmTextRef.current && (now - lastDmSentTimeRef.current) < 2000) {
+      showToast('Spam Detectado', 'Evite enviar a mesma mensagem repetidamente.', 'info')
+      return
+    }
+
+    recentDmTimestampsRef.current.push(now)
+    lastDmTextRef.current = trimmedBody
+    lastDmSentTimeRef.current = now
+
     const targetFriendId = selectedDMUserId
     const { error: sendError } = await supabase
       .from('direct_messages')

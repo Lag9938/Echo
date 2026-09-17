@@ -113,7 +113,7 @@ export interface VoiceChannelViewProps {
   send: (e: React.FormEvent) => void
   draft: string
   setDraft: (val: string) => void
-  handleChatFileUpload: (file: File, caption?: string) => void
+  handleChatFileUpload: (file: File, caption?: string, sizePreference?: string) => void
   isUploading: boolean
   canUserDo: (spaceId: string, userId: string, perm: keyof RolePermissions) => boolean
   isMessageSaved: (msgId: string) => boolean
@@ -246,6 +246,7 @@ export function VoiceChannelView({
   const openLightbox = useUIStore((s) => s.openLightbox)
   const [pendingVoicePastedFile, setPendingVoicePastedFile] = useState<File | null>(null)
   const [pendingVoiceImagePreview, setPendingVoiceImagePreview] = useState<string | null>(null)
+  const [pendingVoiceImageSize, setPendingVoiceImageSize] = useState<'small' | 'medium' | 'large' | 'original'>('medium')
 
   const removePendingVoiceImage = useCallback(() => {
     setPendingVoicePastedFile(null)
@@ -314,9 +315,10 @@ export function VoiceChannelView({
     if (pendingVoicePastedFile) {
       const file = pendingVoicePastedFile
       const caption = draft.trim()
+      const sizePref = pendingVoiceImageSize
       removePendingVoiceImage()
       setDraft('')
-      await handleChatFileUpload(file, caption)
+      await handleChatFileUpload(file, caption, sizePref)
       return
     }
     send(e)
@@ -459,6 +461,7 @@ export function VoiceChannelView({
                                         localScreenFps={screenFps}
                                         screenAudioSyncDelayMs={screenAudioSyncDelayMs}
                                         onChangeScreenAudioSyncDelay={changeScreenAudioSyncDelay}
+                                        isDeafened={isDeafened}
                                       />
                                     ))}
                                   </div>
@@ -480,6 +483,7 @@ export function VoiceChannelView({
                                       localScreenFps={screenFps}
                                       screenAudioSyncDelayMs={screenAudioSyncDelayMs}
                                       onChangeScreenAudioSyncDelay={changeScreenAudioSyncDelay}
+                                      isDeafened={isDeafened}
                                     />
                                   </div>
                                 ) : null}
@@ -955,12 +959,22 @@ export function VoiceChannelView({
                                           {new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                         </time>
                                       </div>
-                                      {message.attachment_url && message.attachment_type === 'image' ? (
+                                      {message.attachment_url && (message.attachment_type === 'image' || message.attachment_type?.startsWith('image')) ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                           <img
                                             src={message.attachment_url}
                                             alt="anexo"
                                             className="msg-attachment-img"
+                                            style={{
+                                              maxWidth: message.attachment_type === 'image:small' ? '240px' :
+                                                        message.attachment_type === 'image:large' ? '680px' :
+                                                        message.attachment_type === 'image:original' ? 'min(100%, 880px)' :
+                                                        'min(100%, 460px)',
+                                              maxHeight: message.attachment_type === 'image:small' ? '240px' :
+                                                         message.attachment_type === 'image:large' ? '540px' :
+                                                         message.attachment_type === 'image:original' ? '700px' :
+                                                         '400px'
+                                            }}
                                             onClick={() => openLightbox(message.attachment_url!)}
                                             title="Clique para ampliar"
                                           />
@@ -1004,31 +1018,86 @@ export function VoiceChannelView({
                               <div ref={messagesEndRef} />
                             </div>
                             {pendingVoicePastedFile && pendingVoiceImagePreview && (
-                              <div className="composer-image-staging voice-chat-image-staging">
-                                <div className="staging-thumb-wrap">
-                                  <img src={pendingVoiceImagePreview} alt="Screenshot colado" />
-                                </div>
-                                <div className="staging-info">
-                                  <div className="staging-title-row">
-                                    <span className="staging-badge">Print / Clipboard</span>
-                                    <span className="staging-name">{pendingVoicePastedFile.name}</span>
+                              <div className="composer-image-staging voice-chat-image-staging" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
+                                  <div className="staging-thumb-wrap">
+                                    <img src={pendingVoiceImagePreview} alt="Foto para enviar" />
                                   </div>
-                                  <span className="staging-subtext">
-                                    {(pendingVoicePastedFile.size / 1024).toFixed(1)} KB • Enter para enviar
-                                  </span>
+                                  <div className="staging-info" style={{ flex: 1 }}>
+                                    <div className="staging-title-row">
+                                      <span className="staging-badge">Foto / Anexo</span>
+                                      <span className="staging-name">{pendingVoicePastedFile.name}</span>
+                                    </div>
+                                    <span className="staging-subtext">
+                                      {(pendingVoicePastedFile.size / 1024).toFixed(1)} KB • Enter para enviar
+                                    </span>
+                                  </div>
+                                  <button 
+                                    type="button" 
+                                    className="staging-remove-btn" 
+                                    onClick={removePendingVoiceImage}
+                                    title="Descartar foto (Esc)"
+                                  >
+                                    ✕
+                                  </button>
                                 </div>
-                                <button 
-                                  type="button" 
-                                  className="staging-remove-btn" 
-                                  onClick={removePendingVoiceImage}
-                                  title="Descartar print (Esc)"
-                                >
-                                  ✕
-                                </button>
+
+                                {/* Seletor de Tamanho da Foto */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingTop: '4px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', flexWrap: 'wrap' }}>
+                                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                    Tamanho:
+                                  </span>
+                                  <div style={{ display: 'flex', gap: '4px' }}>
+                                    {[
+                                      { id: 'small', label: 'Pequeno' },
+                                      { id: 'medium', label: 'Médio' },
+                                      { id: 'large', label: 'Grande' },
+                                      { id: 'original', label: 'Máximo' }
+                                    ].map(opt => (
+                                      <button
+                                        key={opt.id}
+                                        type="button"
+                                        onClick={() => setPendingVoiceImageSize(opt.id as any)}
+                                        style={{
+                                          padding: '2px 7px',
+                                          fontSize: '10.5px',
+                                          fontWeight: 600,
+                                          borderRadius: '5px',
+                                          cursor: 'pointer',
+                                          border: pendingVoiceImageSize === opt.id ? '1px solid #00f2fe' : '1px solid var(--border-color)',
+                                          background: pendingVoiceImageSize === opt.id ? 'rgba(0, 242, 254, 0.2)' : 'var(--bg-secondary)',
+                                          color: pendingVoiceImageSize === opt.id ? '#00f2fe' : 'var(--text-secondary)',
+                                          transition: 'all 0.15s ease'
+                                        }}
+                                      >
+                                        {opt.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
                               </div>
                             )}
                             <form className="voice-chat-composer" onSubmit={handleVoiceComposerSubmit}>
-                              <input type="file" id="voice-chat-file-input" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleChatFileUpload(f); e.target.value = '' }} />
+                              <input 
+                                type="file" 
+                                id="voice-chat-file-input" 
+                                style={{ display: 'none' }} 
+                                onChange={(e) => { 
+                                  const f = e.target.files?.[0]
+                                  if (f) {
+                                    if (f.type.startsWith('image/')) {
+                                      setPendingVoiceImagePreview(prev => {
+                                        if (prev) URL.revokeObjectURL(prev)
+                                        return URL.createObjectURL(f)
+                                      })
+                                      setPendingVoicePastedFile(f)
+                                    } else {
+                                      handleChatFileUpload(f)
+                                    }
+                                  }
+                                  e.target.value = '' 
+                                }} 
+                              />
                               <button type="button" className="dm-attach-btn" onClick={() => document.getElementById('voice-chat-file-input')?.click()} disabled={isUploading} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 8px 0 0' }}>
                                 {isUploading ? <span style={{ fontSize: '12px' }}>...</span> : <PaperclipIcon style={{ width: '15px', height: '15px' }} />}
                               </button>

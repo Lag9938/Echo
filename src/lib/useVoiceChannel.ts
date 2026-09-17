@@ -30,6 +30,7 @@ export type VoiceParticipant = {
   isScreenSharing?: boolean
   isMuted?: boolean
   isDeafened?: boolean
+  screenFps?: number
 }
 
 export interface StudioMicrophoneDSPNodes {
@@ -344,6 +345,7 @@ export function useVoiceChannel(options?: {
   const remoteScreenStreamsRef = useRef<Map<string, MediaStream>>(new Map())
   const overrideProfilesRef = useRef<Map<string, { displayName?: string; avatarUrl?: string }>>(new Map())
   const voicePresenceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const localTargetFpsRef = useRef<number>(30)
 
   const sendVoicePresence = useCallback(async (
     action: 'join' | 'leave' | 'update',
@@ -471,7 +473,8 @@ export function useVoiceChannel(options?: {
         isMuted: isMutedRef.current,
         isDeafened: isDeafenedRef.current,
         screenStream: localScreenStreamRef.current || undefined,
-        isScreenSharing: !!(localScreenStreamRef.current && localScreenStreamRef.current.getVideoTracks().length > 0)
+        isScreenSharing: !!(localScreenStreamRef.current && localScreenStreamRef.current.getVideoTracks().length > 0),
+        screenFps: localTargetFpsRef.current || 30
       })
     }
 
@@ -481,6 +484,13 @@ export function useVoiceChannel(options?: {
         let screenStream: MediaStream | undefined = undefined
         const screenPub = rp.getTrackPublication(Track.Source.ScreenShare) || rp.getTrackPublication(Track.Source.Camera)
         const screenAudioPub = rp.getTrackPublication(Track.Source.ScreenShareAudio)
+
+        let remoteScreenFps = 30
+        const trackName = screenPub?.trackName || (screenPub?.track as any)?.name || ''
+        if (trackName.includes('fps')) {
+          const match = trackName.match(/(\d+)fps/)
+          if (match) remoteScreenFps = parseInt(match[1], 10)
+        }
 
         if (screenPub && screenPub.track && screenPub.track.mediaStreamTrack) {
           const videoTrack = screenPub.track.mediaStreamTrack
@@ -534,7 +544,8 @@ export function useVoiceChannel(options?: {
           isMuted,
           isDeafened: false,
           screenStream,
-          isScreenSharing
+          isScreenSharing,
+          screenFps: remoteScreenFps
         })
       })
     }
@@ -1086,7 +1097,7 @@ export function useVoiceChannel(options?: {
           // para dar lugar ao som unificado com Lip-Sync nativo do WebRTC via C++ no <video>!
           // Se o usuário não estiver assistindo à transmissão, o áudio de tela também é silenciado.
           const isWatching = subscriptionOptionsRef.current.isWatching ?? true
-          audio.muted = isDeafenedRef.current || (isScreen && (!isWatching || activeStreamTilesRef.current.has(participant.identity)))
+          audio.muted = isDeafenedRef.current || savedVol === 0 || (isScreen && (!isWatching || activeStreamTilesRef.current.has(participant.identity)))
 
           if (isScreen) {
             applyScreenAudioDelayToTrack(track, screenAudioSyncDelayMsRef.current)
@@ -1449,9 +1460,12 @@ export function useVoiceChannel(options?: {
       if (key.endsWith('-screen')) {
         const participantId = key.replace(/-screen$/, '')
         const isWatching = subscriptionOptionsRef.current.isWatching ?? true
-        audio.muted = next || !isWatching || activeStreamTilesRef.current.has(participantId)
+        const sVol = peerScreenVolumesRef.current.get(participantId) ?? 1.0
+        audio.muted = next || sVol === 0 || !isWatching || activeStreamTilesRef.current.has(participantId)
       } else {
-        audio.muted = next
+        const participantId = key.replace(/-voice$/, '')
+        const vVol = peerVolumesRef.current.get(participantId) ?? 1.0
+        audio.muted = next || vVol === 0
       }
     })
 
@@ -1486,6 +1500,7 @@ export function useVoiceChannel(options?: {
       const targetWidth = Math.min(width || 1920, 1920)
       const targetHeight = Math.min(height || 1080, 1080)
       const targetFps = Math.min(fps || 60, 60)
+      localTargetFpsRef.current = targetFps
 
       let nativeAudioTrack: MediaStreamTrack | null = null
       const isWindowSource = sourceId && sourceId.startsWith('window:')
@@ -1713,6 +1728,7 @@ export function useVoiceChannel(options?: {
                 chromeMediaSourceId: sourceId || 'screen:0:0',
                 maxWidth: targetWidth,
                 maxHeight: targetHeight,
+                minFrameRate: Math.min(targetFps, 30),
                 maxFrameRate: targetFps
               }
             } as any
@@ -1732,6 +1748,7 @@ export function useVoiceChannel(options?: {
               chromeMediaSourceId: sourceId || 'screen:0:0',
               maxWidth: targetWidth,
               maxHeight: targetHeight,
+              minFrameRate: Math.min(targetFps, 30),
               maxFrameRate: targetFps
             }
           } as any
@@ -1777,14 +1794,14 @@ export function useVoiceChannel(options?: {
 
           await room.localParticipant.publishTrack(localVideoTrack, {
             source: Track.Source.ScreenShare,
-            name: 'screen_video',
+            name: `screen_video_${targetFps}fps`,
             simulcast: false,
             videoCodec: 'h264',
             videoEncoding: {
               maxBitrate: calculatedBitrate,
               maxFramerate: targetFps
             },
-            degradationPreference: targetFps >= 60 ? 'maintain-framerate' : 'balanced'
+            degradationPreference: 'maintain-framerate'
           })
 
           screenShareStartTimeRef.current = Date.now()
@@ -1892,7 +1909,10 @@ export function useVoiceChannel(options?: {
     const clamped = Math.max(0, Math.min(2, volume))
     peerVolumesRef.current.set(peerId, clamped)
     const audio = audioElementsRef.current.get(`${peerId}-voice`)
-    if (audio) audio.volume = Math.max(0, Math.min(1, clamped))
+    if (audio) {
+      audio.volume = Math.max(0, Math.min(1, clamped))
+      audio.muted = isDeafenedRef.current || clamped === 0
+    }
   }, [])
 
   const changePeerScreenVolume = useCallback((peerId: string, volume: number) => {
@@ -1901,6 +1921,8 @@ export function useVoiceChannel(options?: {
     const audio = audioElementsRef.current.get(`${peerId}-screen`)
     if (audio) {
       audio.volume = Math.max(0, Math.min(1, clamped))
+      const isWatching = subscriptionOptionsRef.current.isWatching ?? true
+      audio.muted = isDeafenedRef.current || clamped === 0 || !isWatching || activeStreamTilesRef.current.has(peerId)
     }
   }, [])
 

@@ -14,15 +14,87 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.33.7'
+export const APP_CURRENT_VERSION = '0.33.9'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.33.9',
+    title: 'Echo v0.33.9 - Detecção de Valorant, Menções com @, Mover Membros e Fim de Vazamentos de Áudio',
+    date: '17 de Setembro de 2026',
+    tagline: 'Detecção garantida de jogos com anti-cheat Vanguard, menções interativas no chat, movimentação de membros por arrastar e soltar e silenciamento 100% estanque.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎯',
+        badge: 'STATUS GAMER',
+        title: 'Detecção de VALORANT & Vanguard',
+        description: 'Detecção imediata de jogos como VALORANT mesmo sob o anti-cheat Riot Vanguard, exibindo sua atividade para todos os membros sem atrasos.'
+      },
+      {
+        icon: '🔇',
+        badge: 'ÁUDIO & PRIVACIDADE',
+        title: 'Mudo e Ensurdecer Sem Vazamentos',
+        description: 'Silenciamento 100% estanque: tanto a voz quanto o áudio de transmissões de tela são completamente cortados ao silenciar um usuário ou ensurdecer o fone.'
+      },
+      {
+        icon: '💬',
+        badge: 'CHAT INTELIGENTE',
+        title: 'Menções Interativas com @',
+        description: 'Digite @ em qualquer canal para abrir a lista suspensa de membros estilo WhatsApp e Discord, com navegação por teclado e destaque visual.'
+      },
+      {
+        icon: '🔀',
+        badge: 'MODERAÇÃO DE VOZ',
+        title: 'Mover Membros entre Salas de Voz',
+        description: 'Arraste e solte membros entre salas de voz na barra lateral ou use a nova opção "Mover para Canal..." no menu de contexto.'
+      },
+      {
+        icon: '📺',
+        badge: 'STREAMING',
+        title: 'Mini Player Flutuante Renovado',
+        description: 'Miniplayer PiP sempre no topo com ícones modernos em SVG, botão de acesso rápido na barra de voz conectada e sem emojis padrão do sistema.'
+      }
+    ]
+  },
+  {
+    version: '0.33.8',
+    title: 'Echo v0.33.8 - Personalização de Atalhos para Teclados 60%, Tamanho de Fotos e Anti-Spam',
+    date: '17 de Setembro de 2026',
+    tagline: 'Gravação livre de atalhos in-game para qualquer teclado, ajuste de tamanho de imagens na importação e proteção inteligente contra spam ativa para todos.',
+    isLatest: false,
+    highlights: [
+      {
+        icon: '⌨️',
+        badge: 'TECLADOS 60% & GAMERS',
+        title: 'Gravação Interativa de Atalhos',
+        description: 'Grave qualquer tecla ou combinação no teclado (ex: Alt+M, Ctrl+M, Insert, Delete, Pause) para mutar mic, silenciar fone ou ligar filtro de IA durante qualquer jogo.'
+      },
+      {
+        icon: '📐',
+        badge: 'MÍDIA & CHAT',
+        title: 'Ajuste de Tamanho de Fotos ao Importar',
+        description: 'Ao anexar ou colar fotos no chat, escolha o tamanho ideal (Pequeno, Médio, Grande ou Máximo) com pré-visualização antes de enviar.'
+      },
+      {
+        icon: '🛡️',
+        badge: 'SEGURANÇA DO CHAT',
+        title: 'Timer Anti-Flood e Anti-Spam Geral',
+        description: 'Proteção contra envios acelerados ou repetições consecutivas com timer visual de cooldown na caixa de texto para todos os membros.'
+      },
+      {
+        icon: '🖼️',
+        badge: 'IDENTIDADE',
+        title: 'Ajuste e Enquadramento de Avatar',
+        description: 'Novo modal com slider de zoom e posicionamento de foto para enquadramento perfeito do seu avatar e capa de perfil.'
+      }
+    ]
+  },
   {
     version: '0.33.7',
     title: 'Echo v0.33.7 - Sincronização em Tempo Real de Canais de Voz',
     date: '17 de Setembro de 2026',
     tagline: 'Veja instantaneamente quem está em qualquer canal de voz diretamente na barra lateral, com sincronização resiliente em tempo real e broadcast ativo.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🎙️',

@@ -48,8 +48,11 @@ export function useEchoGlobalPresence({
       if (userPresence && userPresence.length > 0) {
         const p = userPresence[0] as any
         pData[key] = p
+        const uid = p.user_id || key
+        pData[uid] = p
         if (p.presence_status !== 'invisible') {
           online.add(key)
+          online.add(uid)
         }
       }
     })
@@ -79,13 +82,20 @@ export function useEchoGlobalPresence({
         for (const k of nextKeys) {
           const oldP = prev[k]
           const newP = pData[k]
+          const oldGameName = oldP?.current_game?.name || oldP?.game_presence?.name || null
+          const newGameName = newP?.current_game?.name || newP?.game_presence?.name || null
+          const oldGameStart = oldP?.current_game?.startedAt || oldP?.game_presence?.startedAt || null
+          const newGameStart = newP?.current_game?.startedAt || newP?.game_presence?.startedAt || null
+
           if (
             !oldP || 
             oldP.presence_status !== newP?.presence_status || 
             oldP.custom_status !== newP?.custom_status || 
             oldP.avatar_decoration !== newP?.avatar_decoration || 
             oldP.profile_effect !== newP?.profile_effect || 
-            oldP.current_game?.name !== newP?.current_game?.name
+            oldP.name_effect !== newP?.name_effect ||
+            oldGameName !== newGameName ||
+            oldGameStart !== newGameStart
           ) {
             same = false
             break
@@ -150,6 +160,27 @@ export function useEchoGlobalPresence({
       trackMyPresenceRef.current()
     }
   }, [profileDisplayName, displayName, avatarDecoration, profileEffect, myGamePresence])
+
+  // Re-sincroniza presença imediatamente ao detectar alteração de jogo
+  useEffect(() => {
+    const handleGameChange = () => {
+      if (presenceChannelRef.current) {
+        trackMyPresenceRef.current()
+      }
+    }
+    if ((window as any).electronAPI?.onGameDetected) {
+      (window as any).electronAPI.onGameDetected(handleGameChange)
+    }
+    const storageHandler = (e: StorageEvent) => {
+      if (e.key === 'echo-my-game-presence' || e.key === 'echo-custom-status') {
+        handleGameChange()
+      }
+    }
+    window.addEventListener('storage', storageHandler)
+    return () => {
+      window.removeEventListener('storage', storageHandler)
+    }
+  }, [])
 
   useEffect(() => {
     const client = supabase

@@ -58,6 +58,11 @@ export function useEchoChannelMessages({
   const activeChannelIdRef = useRef<string | null>(selectedChannel?.id || null)
   activeChannelIdRef.current = selectedChannel?.id || null
 
+  // Anti-Spam & Rate-Limiting refs
+  const recentMsgTimestampsRef = useRef<number[]>([])
+  const lastMsgTextRef = useRef<string>('')
+  const lastMsgSentTimeRef = useRef<number>(0)
+
   // Slowmode timer
   useEffect(() => {
     if (slowmodeCooldown <= 0) return
@@ -290,7 +295,7 @@ export function useEchoChannelMessages({
   }
 
   // Upload attachment file (images or documents)
-  async function handleChatFileUpload(file: File, caption?: string) {
+  async function handleChatFileUpload(file: File, caption?: string, sizePreference?: string) {
     if (!supabase || !selectedChannel) return
     setIsUploading(true)
     setError('')
@@ -305,7 +310,8 @@ export function useEchoChannelMessages({
         return
       }
       const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
-      const fileType = file.type.startsWith('image/') ? 'image' : 'file'
+      const baseType = file.type.startsWith('image/') ? 'image' : 'file'
+      const fileType = baseType === 'image' && sizePreference ? `image:${sizePreference}` : baseType
       const messageText = caption && caption.trim() ? caption.trim() : (file.name || 'Imagem')
       await postChannelMessage(selectedChannel.id, messageText, urlData.publicUrl, fileType)
     } catch (err: any) {
@@ -399,7 +405,11 @@ export function useEchoChannelMessages({
     }).catch(e => console.warn('Broadcast error:', e))
 
     try {
-      const { data: inserted, error: insertError } = await supabase
+      const timeoutPromise = new Promise<{ data: any; error: any }>((_, reject) =>
+        setTimeout(() => reject(new Error('Tempo limite de envio excedido')), 9000)
+      )
+
+      const insertPromise = supabase
         .from('messages')
         .insert({
           channel_id: channelId,
@@ -411,6 +421,8 @@ export function useEchoChannelMessages({
         })
         .select('id,channel_id,body,created_at,updated_at,author_id,attachment_url,attachment_type,reply_to_message_id,is_edited,message_type,profiles(display_name,avatar_url,avatar_decoration,profile_effect)')
         .single()
+
+      const { data: inserted, error: insertError } = (await Promise.race([insertPromise, timeoutPromise])) as any
 
       if (insertError) {
         console.error('Falha ao salvar mensagem:', insertError)
@@ -507,7 +519,25 @@ export function useEchoChannelMessages({
       }
     }
 
-    let finalBody = draft.trim()
+    const now = Date.now()
+    const trimmedDraft = draft.trim()
+
+    // Proteção Anti-Flood / Rate Limiting (Máximo 4 mensagens em 4 segundos) - Ativo para todos
+    recentMsgTimestampsRef.current = recentMsgTimestampsRef.current.filter(t => now - t < 4000)
+    if (recentMsgTimestampsRef.current.length >= 4) {
+      setSlowmodeCooldown(4)
+      showToast('Calma aí!', 'Você está enviando mensagens rápido demais. Aguarde 4s.', 'info')
+      return
+    }
+
+    // Proteção Anti-Spam de repetição consecutiva (em menos de 2s) - Ativo para todos
+    if (trimmedDraft === lastMsgTextRef.current && (now - lastMsgSentTimeRef.current) < 2000) {
+      setSlowmodeCooldown(2)
+      showToast('Spam Detectado', 'Evite enviar a mesma mensagem repetidamente.', 'info')
+      return
+    }
+
+    let finalBody = trimmedDraft
     const replyTargetId = replyingToMessage ? replyingToMessage.id : null
     if (replyingToMessage) {
       const authorName = replyingToMessage.profile?.display_name || 'Membro'
@@ -515,6 +545,10 @@ export function useEchoChannelMessages({
       finalBody = `> @${authorName}: "${quoteSnippet}"\n${finalBody}`
       setReplyingToMessage(null)
     }
+
+    recentMsgTimestampsRef.current.push(now)
+    lastMsgTextRef.current = trimmedDraft
+    lastMsgSentTimeRef.current = now
 
     setDraft('')
     if (selectedChannel.slowmode_seconds && selectedChannel.slowmode_seconds > 0 && !isImmuneToSlowmode) {

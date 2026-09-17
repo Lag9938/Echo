@@ -27,7 +27,8 @@ export function StreamTile({
   onCloseStream,
   localScreenFps = 30,
   screenAudioSyncDelayMs,
-  onChangeScreenAudioSyncDelay
+  onChangeScreenAudioSyncDelay,
+  isDeafened = false
 }: {
   participant: VoiceParticipant;
   user: User;
@@ -43,6 +44,7 @@ export function StreamTile({
   localScreenFps?: number;
   screenAudioSyncDelayMs?: number;
   onChangeScreenAudioSyncDelay?: (ms: number) => void;
+  isDeafened?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [streamResolution, setStreamResolution] = useState<string>('')
@@ -53,8 +55,8 @@ export function StreamTile({
   const isLocalSharer = participant.userId === user.id
   const volumeVal = peerScreenVolumes[participant.userId] !== undefined ? peerScreenVolumes[participant.userId] : 100
   const [showLocalPreview, setShowLocalPreview] = useState(false)
-  const [detectedFps, setDetectedFps] = useState<number>(30)
-  const streamFps = isLocalSharer ? (localScreenFps || 30) : detectedFps
+  const [detectedFps, setDetectedFps] = useState<number>(participant.screenFps || 30)
+  const streamFps = isLocalSharer ? (localScreenFps || 30) : (participant.screenFps || detectedFps || 30)
 
   const handleMouseMove = () => {
     setIsControlsVisible(true)
@@ -107,12 +109,15 @@ export function StreamTile({
     if (!stream) return
 
     const track = stream.getVideoTracks?.()[0]
-    let trackTargetFps = 30
+    let trackTargetFps = participant.screenFps || 30
     if (track) {
       const settings = track.getSettings?.()
-      if (settings?.frameRate && settings.frameRate > 0) {
+      if (settings?.frameRate && settings.frameRate >= 24) {
         trackTargetFps = Math.round(settings.frameRate)
         setDetectedFps(trackTargetFps)
+      } else if (participant.screenFps) {
+        trackTargetFps = participant.screenFps
+        setDetectedFps(participant.screenFps)
       }
     }
 
@@ -128,8 +133,19 @@ export function StreamTile({
       const elapsed = now - lastTime
       if (elapsed >= 1500) {
         const rawFps = Math.round((frameCount * 1000) / elapsed)
-        // Tolerância inteligente a frames estáticos/menus para não derrubar falsamente 30 FPS para 15 FPS
-        const normalizedFps = rawFps >= 42 ? 60 : rawFps >= 18 ? 30 : (trackTargetFps >= 30 && rawFps >= 10) ? 30 : rawFps >= 8 ? 15 : rawFps
+        // Tolerância inteligente a frames estáticos/menus para transmissões de tela VFR (Variable Frame Rate)
+        // Mantém a meta de 30 FPS ou 60 FPS e não derruba falsamente para 15 FPS quando a tela estiver parada ou em menu
+        const normalizedFps = rawFps >= 42
+          ? 60
+          : (trackTargetFps >= 60 && rawFps >= 22)
+          ? 60
+          : (trackTargetFps >= 30 && rawFps >= 4)
+          ? 30
+          : rawFps >= 20
+          ? 30
+          : rawFps >= 8
+          ? 15
+          : rawFps
         if (normalizedFps > 0) {
           setDetectedFps(normalizedFps)
         }
@@ -179,9 +195,11 @@ export function StreamTile({
       }
 
       // Sincronização Labial Nativa WebRTC A/V: o elemento <video> reproduz o áudio unificado
-      // com volume aplicado nativamente sem eco para o streamer
-      videoEl.muted = isLocalSharer ? true : (participant.isDeafened || false)
-      videoEl.volume = Math.max(0, Math.min(1, volumeVal / 100))
+      // com volume aplicado nativamente sem eco para o streamer.
+      // Silencia 100% se o usuário local estiver ensurdecido (deafened), se for o próprio transmissor, ou se o volume for 0.
+      const isMutedLocally = isLocalSharer || isDeafened || volumeVal === 0
+      videoEl.muted = isMutedLocally
+      videoEl.volume = isMutedLocally ? 0 : Math.max(0, Math.min(1, volumeVal / 100))
 
       if (stream && videoEl.paused) {
         videoEl.play().catch(() => {})

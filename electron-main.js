@@ -68,19 +68,19 @@ function ensureLocalLivekitServer() {
 
 // Rich Presence: Popular Games List
 const POPULAR_GAMES = [
-  { match: ['pes2021', 'pes2020', 'pes2019', 'pes', 'efootball', 'efootball2024', 'efootball2025', 'we2021'], name: 'eFootball PES', icon: '⚽' },
-  { match: ['valorant-win64-shipping', 'valorant'], name: 'VALORANT', icon: '🎮' },
+  { match: ['valorant-win64-shipping', 'valorant', 'valorant-win64'], name: 'VALORANT', icon: '🎮' },
   { match: ['cs2', 'csgo'], name: 'Counter-Strike 2', icon: '🔫' },
   { match: ['fortniteclient-win64-shipping', 'fortnite'], name: 'Fortnite', icon: '🪂' },
   { match: ['league of legends', 'leagueclientux', 'leagueclient'], name: 'League of Legends', icon: '⚔️' },
   { match: ['gta5', 'fivem'], name: 'Grand Theft Auto V', icon: '🚗' },
+  { match: ['pes2021', 'pes2020', 'pes2019', 'pes', 'efootball', 'efootball2024', 'efootball2025', 'we2021'], name: 'eFootball PES', icon: '⚽' },
   { match: ['javaw', 'minecraft.windows', 'minecraft'], name: 'Minecraft', icon: '⛏️' },
   { match: ['robloxplayerbeta', 'roblox'], name: 'Roblox', icon: '🧱' },
   { match: ['r5apex', 'apex'], name: 'Apex Legends', icon: '🏆' },
   { match: ['overwatch'], name: 'Overwatch 2', icon: '🛡️' },
   { match: ['rocketleague'], name: 'Rocket League', icon: '⚽' },
   { match: ['rainbowsix'], name: 'Rainbow Six Siege', icon: '🎯' },
-  { match: ['cod', 'bootstrapper', 'modernwarfare'], name: 'Call of Duty', icon: '💥' },
+  { match: ['cod', 'modernwarfare', 'warzone'], name: 'Call of Duty', icon: '💥' },
   { match: ['rustclient', 'rust'], name: 'Rust', icon: '🏕️' },
   { match: ['deadbydaylight-win64-shipping', 'deadbydaylight'], name: 'Dead by Daylight', icon: '🔪' },
   { match: ['genshinimpact'], name: 'Genshin Impact', icon: '✨' },
@@ -96,12 +96,73 @@ const POPULAR_GAMES = [
   { match: ['sea of thieves', 'sotgame'], name: 'Sea of Thieves', icon: '🏴‍☠️' }
 ]
 
+function matchGameProcess(procName, windowTitle = '') {
+  if (!procName && !windowTitle) return null
+  const p = (procName || '').replace(/\.exe$/i, '').toLowerCase().trim()
+  const title = (windowTitle || '').toLowerCase().trim()
+
+  // Especial: Valorant / Vanguard
+  if (p.includes('valorant') || title.includes('valorant')) {
+    return { name: 'VALORANT', icon: '🎮', processName: procName || 'VALORANT' }
+  }
+
+  // Especial: Counter-Strike 2
+  if (p === 'cs2' || p === 'csgo' || title.includes('counter-strike 2')) {
+    return { name: 'Counter-Strike 2', icon: '🔫', processName: procName || 'cs2' }
+  }
+
+  // Especial: League of Legends
+  if (p === 'leagueclientux' || p === 'leagueclient' || p === 'league of legends' || title.includes('league of legends')) {
+    return { name: 'League of Legends', icon: '⚔️', processName: procName || 'league of legends' }
+  }
+
+  for (const g of POPULAR_GAMES) {
+    for (const m of g.match) {
+      const target = m.toLowerCase()
+      if (
+        p === target || 
+        p.startsWith(target + '-') || 
+        p.startsWith(target + '_') || 
+        (target.length >= 5 && p.includes(target)) || 
+        (target.length >= 5 && title.includes(target))
+      ) {
+        return { name: g.name, icon: g.icon, processName: procName || g.name }
+      }
+    }
+  }
+  return null
+}
+
 let activeGame = null
 let activeGameStartTime = null
 let gameScanInterval = null
 
 async function scanRunningGames() {
   try {
+    let foundGame = null
+
+    // 1. Escaneamento prioritário via tasklist.exe (0 dependências, funciona mesmo com Riot Vanguard)
+    if (process.platform === 'win32') {
+      try {
+        const { stdout } = await execFileAsync('tasklist.exe', ['/fo', 'csv', '/nh'], { timeout: 2500, windowsHide: true })
+        if (stdout) {
+          const lines = stdout.split(/\r?\n/)
+          for (const line of lines) {
+            if (!line.trim()) continue
+            const match = line.match(/^"([^"]+)"/)
+            if (match && match[1]) {
+              const matched = matchGameProcess(match[1])
+              if (matched) {
+                foundGame = matched
+                break
+              }
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 2. Se nenhum jogo foi detectado por tasklist ou para verificar jogo em primeiro plano ativo:
     let helperPath = null
     const devPath1 = path.join(__dirname, 'src', 'native', 'AudioCaptureHelper', 'bin', 'AudioCaptureHelper.exe')
     const devPath2 = path.join(__dirname, 'dist-desktop', 'win-unpacked', 'resources', 'AudioCaptureHelper.exe')
@@ -115,82 +176,19 @@ async function scanRunningGames() {
       helperPath = prodPath
     }
 
-    let foundGame = null
     if (helperPath) {
       try {
         const { stdout } = await execFileAsync(helperPath, ['--get-active-game'], { timeout: 1500 })
         if (stdout && stdout.trim().startsWith('{')) {
           const data = JSON.parse(stdout.trim())
-          const fgName = (data.foreground?.processName || '').replace(/\.exe$/i, '').toLowerCase().trim()
-
-          // 1. Prioridade absoluta: Jogo em primeiro plano (ativo na tela)
-          if (fgName) {
-            const matchedFg = POPULAR_GAMES.find(g => g.match.some(m => {
-              const target = m.toLowerCase()
-              return fgName === target || fgName.startsWith(target + '-') || fgName.startsWith(target + '_')
-            }))
-            if (matchedFg) {
-              foundGame = { name: matchedFg.name, icon: matchedFg.icon, processName: data.foreground.processName }
-            }
-          }
-
-          // 2. Jogo com janela visível aberta na tela (não minimizada e com dimensões válidas)
-          if (!foundGame && Array.isArray(data.windows)) {
+          const fgMatched = matchGameProcess(data.foreground?.processName, data.foreground?.title)
+          if (fgMatched) {
+            foundGame = fgMatched
+          } else if (!foundGame && Array.isArray(data.windows)) {
             for (const win of data.windows) {
-              const pName = (win.processName || '').replace(/\.exe$/i, '').toLowerCase().trim()
-              const matched = POPULAR_GAMES.find(g => g.match.some(m => {
-                const target = m.toLowerCase()
-                return pName === target || pName.startsWith(target + '-') || pName.startsWith(target + '_')
-              }))
+              const matched = matchGameProcess(win.processName, win.title)
               if (matched) {
-                foundGame = { name: matched.name, icon: matched.icon, processName: win.processName }
-                break
-              }
-            }
-          }
-        }
-      } catch (e) {}
-
-      // Fallback para --list-windows se o helper antigo ainda estiver em execução
-      if (!foundGame) {
-        try {
-          const { stdout } = await execFileAsync(helperPath, ['--list-windows'], { timeout: 1500 })
-          if (stdout && stdout.trim().startsWith('[')) {
-            const windows = JSON.parse(stdout.trim())
-            for (const win of windows) {
-              if (win.isMinimized) continue
-              const pName = (win.processName || '').replace(/\.exe$/i, '').toLowerCase().trim()
-              const matched = POPULAR_GAMES.find(g => g.match.some(m => {
-                const target = m.toLowerCase()
-                return pName === target || pName.startsWith(target + '-') || pName.startsWith(target + '_')
-              }))
-              if (matched) {
-                foundGame = { name: matched.name, icon: matched.icon, processName: win.processName }
-                break
-              }
-            }
-          }
-        } catch (e) {}
-      }
-    }
-
-    // 3. Fallback Nativo do Windows: tasklist.exe (0 dependências externas)
-    if (!foundGame && process.platform === 'win32') {
-      try {
-        const { stdout } = await execFileAsync('tasklist.exe', ['/fo', 'csv', '/nh'], { timeout: 2000, windowsHide: true })
-        if (stdout) {
-          const lines = stdout.split(/\r?\n/)
-          for (const line of lines) {
-            if (!line.trim()) continue
-            const match = line.match(/^"([^"]+)"/)
-            if (match && match[1]) {
-              const pName = match[1].replace(/\.exe$/i, '').toLowerCase().trim()
-              const matched = POPULAR_GAMES.find(g => g.match.some(m => {
-                const target = m.toLowerCase()
-                return pName === target || pName.startsWith(target + '-') || pName.startsWith(target + '_')
-              }))
-              if (matched) {
-                foundGame = { name: matched.name, icon: matched.icon, processName: match[1] }
+                foundGame = matched
                 break
               }
             }
@@ -766,9 +764,7 @@ function createWindow() {
 
   // Rich Presence: check active game manually
   ipcMain.handle('check-active-game', async () => {
-    if (!activeGame) {
-      await scanRunningGames()
-    }
+    await scanRunningGames()
     return activeGame ? { name: activeGame.name, icon: activeGame.icon, startedAt: activeGameStartTime } : null
   })
 
@@ -835,7 +831,7 @@ function createWindow() {
         globalShortcut.unregister(registeredShortcuts.get(action))
         registeredShortcuts.delete(action)
       }
-      if (!shortcutKey) return { success: true }
+      if (!shortcutKey || shortcutKey === 'none') return { success: true }
 
       const registered = globalShortcut.register(shortcutKey, () => {
         mainWindow?.webContents.send('global-voice-toggle', action)
@@ -1178,7 +1174,7 @@ function createWindow() {
 
   // Start background game scanner for Rich Presence
   if (gameScanInterval) clearInterval(gameScanInterval)
-  gameScanInterval = setInterval(scanRunningGames, 10000)
+  gameScanInterval = setInterval(scanRunningGames, 5000)
   setTimeout(scanRunningGames, 1500)
 
   if (isDevelopment) {

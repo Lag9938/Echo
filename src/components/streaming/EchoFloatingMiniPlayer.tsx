@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { VoiceParticipant } from '../../lib/useVoiceChannel'
 import { AudioLevelMeter } from '../voice/AudioLevelMeter'
+import { VolumeIcon, VolumeXIcon } from '../icons'
 
 export function EchoFloatingMiniPlayer({
   activeScreenSharers,
@@ -91,7 +92,10 @@ export function EchoFloatingMiniPlayer({
         {/* Header Bar */}
         <div className="echo-pip-header">
           <div className="echo-pip-title-row">
-            <span className="echo-pip-live-badge">🔴 LIVE</span>
+            <span className="echo-pip-live-badge">
+              <span className="echo-pip-live-dot" />
+              AO VIVO
+            </span>
             <span className="echo-pip-streamer-name" title={activeScreenSharer.displayName}>
               {activeScreenSharer.displayName}
             </span>
@@ -110,7 +114,9 @@ export function EchoFloatingMiniPlayer({
                   onSelectSharer(activeScreenSharers[nextIndex].userId)
                 }}
               >
-                🔄
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                </svg>
               </button>
             )}
 
@@ -120,16 +126,24 @@ export function EchoFloatingMiniPlayer({
               title="Expandir foco na chamada"
               onClick={onExpand}
             >
-              ⛶
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 3 21 3 21 9" />
+                <polyline points="9 21 3 21 3 15" />
+                <line x1="21" y1="3" x2="14" y2="10" />
+                <line x1="3" y1="21" x2="10" y2="14" />
+              </svg>
             </button>
 
             <button 
               type="button" 
               className="echo-pip-btn close" 
-              title="Fechar mini player (✕)"
+              title="Fechar mini player"
               onClick={onClose}
             >
-              ✕
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
             </button>
           </div>
         </div>
@@ -156,7 +170,11 @@ export function EchoFloatingMiniPlayer({
               }}
               title={isMuted ? 'Desmutar som do jogo' : 'Mutar som do jogo'}
             >
-              {isMuted || volumeVal === 0 ? '🔇' : '🔊'}
+              {isMuted || volumeVal === 0 ? (
+                <VolumeXIcon style={{ width: '13px', height: '13px', color: '#ff4655' }} />
+              ) : (
+                <VolumeIcon style={{ width: '13px', height: '13px' }} />
+              )}
             </button>
             <input 
               type="range"

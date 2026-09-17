@@ -169,18 +169,19 @@ export function formatMessageText(text: string, userDisplayName?: string, server
           }
 
           // Mentions: @username
-          if (userDisplayName) {
-            const escapedName = userDisplayName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-            const mentionRegex = new RegExp(`(@${escapedName})`, 'gi');
-            subParts = subParts.flatMap(sp => {
-              if (typeof sp !== 'string') return sp;
-              const mParts = sp.split(mentionRegex);
-              return mParts.map((mp, i) => {
-                if (i % 2 === 1) return <span key={`m-${i}`} className="mention-tag">{mp}</span>;
-                return mp;
-              });
+          const mentionRegex = /(@[a-zA-Z0-9_\u00C0-\u017F]+)/g;
+          subParts = subParts.flatMap(sp => {
+            if (typeof sp !== 'string') return sp;
+            const mParts = sp.split(mentionRegex);
+            return mParts.map((mp, i) => {
+              if (i % 2 === 1) {
+                const isMe = userDisplayName && mp.slice(1).trim().toLowerCase() === userDisplayName.trim().toLowerCase();
+                const isEveryone = mp.toLowerCase() === '@todos' || mp.toLowerCase() === '@everyone';
+                return <span key={`m-${i}`} className={`mention-tag ${isMe ? 'mention-me' : ''} ${isEveryone ? 'mention-everyone' : ''}`}>{mp}</span>;
+              }
+              return mp;
             });
-          }
+          });
 
           return <span key={index}>{subParts}</span>;
         })}

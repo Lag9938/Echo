@@ -161,11 +161,18 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
     if (isMe) {
       effectiveStatus = presenceStatus
     } else {
-      effectiveStatus = presenceData[member.user.id]?.presence_status || (onlineUsers.has(member.user.id) ? 'online' : 'offline')
+      const explicitPres = presenceData[member.user.id]?.presence_status
+      if (explicitPres) {
+        effectiveStatus = explicitPres
+      } else if (onlineUsers.has(member.user.id) || isVoiceUserRaw) {
+        effectiveStatus = 'online'
+      } else {
+        effectiveStatus = 'offline'
+      }
     }
 
-    const isOnline = effectiveStatus !== 'invisible' && effectiveStatus !== 'offline' && (onlineUsers.has(member.user.id) || isVoiceUserRaw || isMe)
-    const userPresenceStatus = isOnline ? effectiveStatus : 'offline'
+    const isOnline = effectiveStatus !== 'invisible' && (onlineUsers.has(member.user.id) || isVoiceUserRaw || isMe)
+    const userPresenceStatus = isOnline ? (effectiveStatus === 'offline' ? 'online' : effectiveStatus) : 'offline'
     // Membros offline ou invisíveis NUNCA devem exibir o badge de voz "Em chamada" na barra de membros
     const isVoiceUser = isOnline && isVoiceUserRaw
     const memberRole = getUserHighestRole(currentSpace.id, member.user.id)
