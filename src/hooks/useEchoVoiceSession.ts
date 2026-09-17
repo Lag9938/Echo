@@ -38,6 +38,7 @@ export interface UseEchoVoiceSessionOptions {
   onBeforeJoinVoice?: () => void
   showToast?: (title: string, message: string, type?: any) => void
   supabase: any
+  presenceData?: Record<string, any>
 }
 
 export function useEchoVoiceSession({
@@ -66,7 +67,8 @@ export function useEchoVoiceSession({
   setShowAfkDisconnectedModal,
   onBeforeJoinVoice,
   showToast,
-  supabase
+  supabase,
+  presenceData
 }: UseEchoVoiceSessionOptions) {
   const [activeVoiceChannelId, setActiveVoiceChannelId] = useState<string | null>(null)
   const [spaceVoiceUsers, setSpaceVoiceUsers] = useState<Record<string, VoiceParticipant[]>>({})
@@ -152,14 +154,28 @@ export function useEchoVoiceSession({
     }
   })
 
-  // Voice Presence per space
+  // Sincronização persistente de presença e broadcast de voz por espaço
+  const spaceVoiceChannelsMapRef = useRef<Map<string, any>>(new Map())
+
   useEffect(() => {
     const sb = supabase
-    if (!sb || spaces.length === 0) return
+    if (!sb || spaces.length === 0 || !user?.id) return
 
-    const activeSubscriptions: any[] = []
+    const currentSpaceIds = new Set(spaces.map(s => s.id))
+    const channelsMap = spaceVoiceChannelsMapRef.current
 
+    // Remove canais de espaços dos quais o usuário não faz mais parte
+    channelsMap.forEach((ch, spaceId) => {
+      if (!currentSpaceIds.has(spaceId)) {
+        sb.removeChannel(ch)
+        channelsMap.delete(spaceId)
+      }
+    })
+
+    // Inscreve nos canais de voz de novos espaços
     spaces.forEach(sp => {
+      if (channelsMap.has(sp.id)) return
+
       const channel = sb.channel(`space-voice-${sp.id}`, {
         config: { presence: { key: user.id } }
       })
@@ -216,17 +232,96 @@ export function useEchoVoiceSession({
         .on('presence', { event: 'sync' }, handlePresenceSync)
         .on('presence', { event: 'join' }, handlePresenceSync)
         .on('presence', { event: 'leave' }, handlePresenceSync)
+        .on('broadcast', { event: 'voice_presence_update' }, ({ payload }: any) => {
+          if (!payload || !payload.channel_id || !payload.user_id) return
+          if (payload.action === 'join' || payload.action === 'update') {
+            setSpaceVoiceUsers(prev => {
+              const currentList = prev[payload.channel_id] || []
+              const existingIdx = currentList.findIndex(u => u.userId === payload.user_id)
+              const participant: VoiceParticipant = {
+                userId: payload.user_id,
+                displayName: payload.display_name || 'Membro',
+                avatarUrl: payload.avatar_url,
+                isSpeaking: false,
+                isMuted: !!payload.is_muted,
+                isDeafened: !!payload.is_deafened,
+                screenStream: undefined,
+                isScreenSharing: !!payload.has_screen
+              }
+              const updatedList = existingIdx >= 0
+                ? currentList.map((u, idx) => idx === existingIdx ? participant : u)
+                : [...currentList, participant]
+              return { ...prev, [payload.channel_id]: updatedList }
+            })
+          } else if (payload.action === 'leave') {
+            setSpaceVoiceUsers(prev => {
+              if (!prev[payload.channel_id]) return prev
+              return {
+                ...prev,
+                [payload.channel_id]: prev[payload.channel_id].filter(u => u.userId !== payload.user_id)
+              }
+            })
+          }
+        })
         .subscribe()
 
-      activeSubscriptions.push(channel)
+      channelsMap.set(sp.id, channel)
+    })
+  }, [spaces, user?.id, supabase])
+
+  // Limpeza de todos os canais ao desmontar
+  useEffect(() => {
+    return () => {
+      const channelsMap = spaceVoiceChannelsMapRef.current
+      channelsMap.forEach(ch => {
+        supabase?.removeChannel(ch)
+      })
+      channelsMap.clear()
+    }
+  }, [supabase])
+
+  // Fallback redundante: sincroniza participantes através da presença global
+  useEffect(() => {
+    if (!presenceData) return
+    const globalVoiceByChannel: Record<string, VoiceParticipant[]> = {}
+    Object.values(presenceData).forEach((pres: any) => {
+      if (pres && pres.voice_channel_id && pres.user_id) {
+        if (!globalVoiceByChannel[pres.voice_channel_id]) {
+          globalVoiceByChannel[pres.voice_channel_id] = []
+        }
+        globalVoiceByChannel[pres.voice_channel_id].push({
+          userId: pres.user_id,
+          displayName: pres.display_name || 'Membro',
+          avatarUrl: pres.avatar_url,
+          isSpeaking: false,
+          isMuted: !!pres.voice_is_muted,
+          isDeafened: !!pres.voice_is_deafened,
+          screenStream: undefined,
+          isScreenSharing: !!pres.voice_has_screen
+        })
+      }
     })
 
-    return () => {
-      activeSubscriptions.forEach(ch => {
-        sb.removeChannel(ch)
+    if (Object.keys(globalVoiceByChannel).length > 0) {
+      setSpaceVoiceUsers(prev => {
+        const next = { ...prev }
+        let changed = false
+        Object.entries(globalVoiceByChannel).forEach(([chId, gUsers]) => {
+          const current = next[chId] || []
+          const map = new Map<string, VoiceParticipant>()
+          current.forEach(u => map.set(u.userId, u))
+          gUsers.forEach(u => {
+            if (!map.has(u.userId)) {
+              map.set(u.userId, u)
+              changed = true
+            }
+          })
+          next[chId] = Array.from(map.values())
+        })
+        return changed ? next : prev
       })
     }
-  }, [spaces, user.id])
+  }, [presenceData])
 
   handleJoinVoiceRef.current = handleJoinVoice
   handleLeaveVoiceRef.current = handleLeaveVoice

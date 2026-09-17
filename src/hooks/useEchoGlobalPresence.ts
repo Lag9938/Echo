@@ -12,6 +12,8 @@ export interface UseEchoGlobalPresenceOptions {
   getMyGamePresence?: () => any
   presenceChannelRef?: React.MutableRefObject<any>
   supabase: any
+  activeVoiceChannelIdRef?: React.MutableRefObject<string | null>
+  activeVoiceSpaceIdRef?: React.MutableRefObject<string | null>
 }
 
 export function useEchoGlobalPresence({
@@ -24,7 +26,9 @@ export function useEchoGlobalPresence({
   myGamePresenceRef,
   getMyGamePresence,
   presenceChannelRef: externalPresenceChannelRef,
-  supabase
+  supabase,
+  activeVoiceChannelIdRef,
+  activeVoiceSpaceIdRef
 }: UseEchoGlobalPresenceOptions) {
   const [presenceData, setPresenceData] = useState<Record<string, any>>({})
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
@@ -119,6 +123,8 @@ export function useEchoGlobalPresence({
       ? myGamePresenceRef.current 
       : (myGamePresence !== undefined ? myGamePresence : (getMyGamePresence ? getMyGamePresence() : null))
     const gameData = savedPresStatus === 'invisible' ? null : currentGameData
+    const voiceChanId = activeVoiceChannelIdRef?.current || null
+    const voiceSpId = activeVoiceSpaceIdRef?.current || null
 
     await presenceChannel.track({
       user_id: user.id,
@@ -129,7 +135,9 @@ export function useEchoGlobalPresence({
       avatar_decoration: savedDecoration,
       profile_effect: savedEffect,
       current_game: gameData,
-      game_presence: gameData
+      game_presence: gameData,
+      voice_channel_id: voiceChanId,
+      voice_space_id: voiceSpId
     }).catch(() => {})
   }, [user.id, profileDisplayName, displayName, avatarDecoration, profileEffect, myGamePresence])
 

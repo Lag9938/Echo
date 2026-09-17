@@ -660,12 +660,17 @@ function Echo({ user }: { user: User }) {
     showToast
   })
 
+  // Voice Presence Refs for Global Presence synchronization
+  const activeVoiceChannelIdRef = useRef<string | null>(null)
+  const activeVoiceSpaceIdRef = useRef<string | null>(null)
+
   // Global Online Presence Hook (Phase 19)
   const {
     presenceData,
     setPresenceData,
     onlineUsers,
-    setOnlineUsers
+    setOnlineUsers,
+    trackMyPresence
   } = useEchoGlobalPresence({
     user,
     profileDisplayName,
@@ -674,7 +679,9 @@ function Echo({ user }: { user: User }) {
     profileEffect,
     myGamePresenceRef,
     presenceChannelRef,
-    supabase
+    supabase,
+    activeVoiceChannelIdRef,
+    activeVoiceSpaceIdRef
   })
 
   const [friendTab, setFriendTab] = useState<'online' | 'all' | 'pending' | 'add'>('online')
@@ -891,9 +898,17 @@ function Echo({ user }: { user: User }) {
     selectedChannel,
     spaceChannels,
     showToast,
-    supabase
+    supabase,
+    presenceData
   })
   handleJoinVoiceRef.current = handleJoinVoice
+
+  // Sincroniza canal de voz ativo com a presença global instantaneamente
+  useEffect(() => {
+    activeVoiceChannelIdRef.current = activeVoiceChannelId
+    activeVoiceSpaceIdRef.current = activeVoiceChannel?.space_id || null
+    trackMyPresence()
+  }, [activeVoiceChannelId, activeVoiceChannel, trackMyPresence])
 
   // Global Voice Shortcuts (Mute / Deafen) via Electron IPC
   useEffect(() => {

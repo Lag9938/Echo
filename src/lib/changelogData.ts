@@ -14,15 +14,48 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.33.6'
+export const APP_CURRENT_VERSION = '0.33.7'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.33.7',
+    title: 'Echo v0.33.7 - Sincronização em Tempo Real de Canais de Voz',
+    date: '17 de Setembro de 2026',
+    tagline: 'Veja instantaneamente quem está em qualquer canal de voz diretamente na barra lateral, com sincronização resiliente em tempo real e broadcast ativo.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎙️',
+        badge: 'PRESENÇA EM TEMPO REAL',
+        title: 'Membros Visíveis Fora da Chamada',
+        description: 'Agora você pode ver todos os participantes que já estão dentro de qualquer canal de voz diretamente na barra lateral, antes mesmo de entrar na call.'
+      },
+      {
+        icon: '⚡',
+        badge: 'SINCRONIZAÇÃO HÍBRIDA',
+        title: 'Broadcast Instantâneo e Keepalive',
+        description: 'Eventos de entrada, saída, microfone mutado e compartilhamento de tela são transmitidos com latência ultrabaixa (<50ms) e renovação contínua de conexão.'
+      },
+      {
+        icon: '🌐',
+        badge: 'REDUNDÂNCIA GLOBAL',
+        title: 'Presença Global Integrada',
+        description: 'Camada de fallback na presença global garante que avatares e nomes de quem está em chamadas continuem visíveis mesmo com oscilações de rede.'
+      },
+      {
+        icon: '🛡️',
+        badge: 'ESTABILIDADE',
+        title: 'Inscrições Persistentes de Servidor',
+        description: 'Canais de áudio e presença permanecem conectados durante a navegação sem desconexões acidentais ou perda de sincronia.'
+      }
+    ]
+  },
   {
     version: '0.33.6',
     title: 'Echo v0.33.6 - Convites Diretos de Servidor, Moderação e Otimizações de Chat',
     date: '16 de Setembro de 2026',
     tagline: 'Entre em comunidades instantaneamente por link, novo modal de convite com links rápidos, exclusão de mensagens para moderadores e chat ultrarrápido.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🔗',

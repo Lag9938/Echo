@@ -343,6 +343,55 @@ export function useVoiceChannel(options?: {
   const nativeAudioCleanupRef = useRef<(() => void) | null>(null)
   const remoteScreenStreamsRef = useRef<Map<string, MediaStream>>(new Map())
   const overrideProfilesRef = useRef<Map<string, { displayName?: string; avatarUrl?: string }>>(new Map())
+  const voicePresenceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const sendVoicePresence = useCallback(async (
+    action: 'join' | 'leave' | 'update',
+    overrides?: { isMuted?: boolean; isDeafened?: boolean; hasScreen?: boolean }
+  ) => {
+    const ch = channelRef.current
+    const info = myInfoRef.current
+    const chId = activeChannelIdRef.current
+    const spId = activeSpaceIdRef.current
+    if (!ch || !info || !chId) return
+
+    const muted = overrides?.isMuted !== undefined ? overrides.isMuted : isMutedRef.current
+    const deafened = overrides?.isDeafened !== undefined ? overrides.isDeafened : isDeafenedRef.current
+    const screen = overrides?.hasScreen !== undefined ? overrides.hasScreen : !!localScreenStreamRef.current
+
+    const payload = {
+      action,
+      user_id: info.userId,
+      display_name: info.displayName,
+      avatar_url: info.avatarUrl,
+      channel_id: chId,
+      space_id: spId || null,
+      is_muted: muted,
+      is_deafened: deafened,
+      has_screen: screen
+    }
+
+    try {
+      if (action === 'leave') {
+        ch.send({ type: 'broadcast', event: 'voice_presence_update', payload }).catch(() => {})
+        await ch.untrack().catch(() => {})
+      } else {
+        await ch.track({
+          user_id: info.userId,
+          display_name: info.displayName,
+          avatar_url: info.avatarUrl,
+          channel_id: chId,
+          is_muted: muted,
+          is_deafened: deafened,
+          has_screen: screen,
+          space_id: spId || null
+        })
+        ch.send({ type: 'broadcast', event: 'voice_presence_update', payload }).catch(() => {})
+      }
+    } catch (err) {
+      console.warn('[Voice Presence] Falha ao sincronizar presença:', err)
+    }
+  }, [])
 
   // Reconnection Loop State
   const [isReconnecting, setIsReconnecting] = useState(false)
@@ -687,21 +736,10 @@ export function useVoiceChannel(options?: {
       screenShareStartTimeRef.current = null
     }
 
-    if (channelRef.current && myInfoRef.current) {
-      channelRef.current.track({
-        user_id: myInfoRef.current.userId,
-        display_name: myInfoRef.current.displayName,
-        avatar_url: myInfoRef.current.avatarUrl,
-        channel_id: activeChannelIdRef.current || '',
-        is_muted: isMutedRef.current,
-        is_deafened: isDeafenedRef.current,
-        has_screen: false,
-        space_id: activeSpaceIdRef.current || null
-      }).catch(() => {})
-    }
+    sendVoicePresence('update', { hasScreen: false })
 
     syncParticipants()
-  }, [syncParticipants])
+  }, [syncParticipants, sendVoicePresence])
 
   // Leave voice channel cleanly
   const leaveVoice = useCallback(() => {
@@ -761,10 +799,24 @@ export function useVoiceChannel(options?: {
       audio.srcObject = null
       audio.remove()
     })
-    audioElementsRef.current.clear()
+    if (voicePresenceIntervalRef.current) {
+      clearInterval(voicePresenceIntervalRef.current)
+      voicePresenceIntervalRef.current = null
+    }
 
     if (channelRef.current) {
       try {
+        const payload = {
+          action: 'leave',
+          user_id: myInfoRef.current?.userId,
+          channel_id: activeChannelIdRef.current,
+          space_id: activeSpaceIdRef.current
+        }
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'voice_presence_update',
+          payload
+        }).catch(() => {})
         channelRef.current.untrack().catch(() => {})
       } catch (e) {}
       // Preservamos o canal aberto no Supabase para que a escuta contínua de presença das salas não seja interrompida
@@ -1185,21 +1237,50 @@ export function useVoiceChannel(options?: {
               has_screen: false,
               space_id: spaceId || null
             })
+            sbChannel.send({
+              type: 'broadcast',
+              event: 'voice_presence_update',
+              payload: {
+                action: 'join',
+                user_id: userId,
+                display_name: displayName,
+                avatar_url: avatarUrl,
+                channel_id: channelId,
+                space_id: spaceId || null,
+                is_muted: isMutedRef.current,
+                is_deafened: isDeafenedRef.current,
+                has_screen: false
+              }
+            }).catch(() => {})
             console.log('[Voice Presence] Usuário registrado na presença com sucesso:', channelId)
           } catch (trErr) {
             console.warn('[Voice Presence] Erro ao registrar presença:', trErr)
           }
         }
 
-        if ((sbChannel as any).state === 'joined') {
-          doTrack()
-        } else {
-          sbChannel.subscribe(async (status) => {
-            if (status === 'SUBSCRIBED') {
-              doTrack()
+        // Aguarda o canal estar pronto (joined) de forma resiliente
+        const startTrackingWithRetry = async () => {
+          let attempts = 0
+          while (attempts < 20) {
+            if ((sbChannel as any).state === 'joined') {
+              await doTrack()
+              return
             }
-          })
+            await new Promise(r => setTimeout(r, 200))
+            attempts++
+          }
+          await doTrack()
         }
+        startTrackingWithRetry()
+
+        if (voicePresenceIntervalRef.current) {
+          clearInterval(voicePresenceIntervalRef.current)
+        }
+        voicePresenceIntervalRef.current = setInterval(() => {
+          if (activeChannelIdRef.current === channelId) {
+            doTrack()
+          }
+        }, 10000)
       }
     } catch (err) {
       console.error('[LiveKit] Falha ao entrar no canal de voz:', err)
@@ -1353,21 +1434,10 @@ export function useVoiceChannel(options?: {
       }
     }
 
-    if (channelRef.current && myInfoRef.current) {
-      channelRef.current.track({
-        user_id: myInfoRef.current.userId,
-        display_name: myInfoRef.current.displayName,
-        avatar_url: myInfoRef.current.avatarUrl,
-        channel_id: activeChannelIdRef.current || '',
-        is_muted: next,
-        is_deafened: isDeafenedRef.current,
-        has_screen: !!localScreenStreamRef.current,
-        space_id: activeSpaceIdRef.current || null
-      }).catch(() => {})
-    }
+    sendVoicePresence('update', { isMuted: next })
 
     syncParticipants()
-  }, [syncParticipants])
+  }, [syncParticipants, sendVoicePresence])
 
   // Toggle Deafen
   const toggleDeafen = useCallback(() => {
@@ -1389,21 +1459,10 @@ export function useVoiceChannel(options?: {
       toggleMute()
     }
 
-    if (channelRef.current && myInfoRef.current) {
-      channelRef.current.track({
-        user_id: myInfoRef.current.userId,
-        display_name: myInfoRef.current.displayName,
-        avatar_url: myInfoRef.current.avatarUrl,
-        channel_id: activeChannelIdRef.current || '',
-        is_muted: isMutedRef.current,
-        is_deafened: next,
-        has_screen: !!localScreenStreamRef.current,
-        space_id: activeSpaceIdRef.current || null
-      }).catch(() => {})
-    }
+    sendVoicePresence('update', { isDeafened: next })
 
     syncParticipants()
-  }, [syncParticipants, toggleMute])
+  }, [syncParticipants, toggleMute, sendVoicePresence])
 
   // Start Screen Sharing (Arquitetura Discord SFU - Zero Eco e sem travar janelas)
   const startScreenShare = useCallback(async (
@@ -1752,24 +1811,13 @@ export function useVoiceChannel(options?: {
         }
       }
 
-      if (channelRef.current && myInfoRef.current) {
-        channelRef.current.track({
-          user_id: myInfoRef.current.userId,
-          display_name: myInfoRef.current.displayName,
-          avatar_url: myInfoRef.current.avatarUrl,
-          channel_id: activeChannelIdRef.current || '',
-          is_muted: isMutedRef.current,
-          is_deafened: isDeafenedRef.current,
-          has_screen: true,
-          space_id: activeSpaceIdRef.current || null
-        }).catch(() => {})
-      }
+      sendVoicePresence('update', { hasScreen: true })
 
       syncParticipants()
     } catch (err) {
       console.error('[LiveKit] Falha ao iniciar transmissão:', err)
     }
-  }, [stopScreenShare, syncParticipants])
+  }, [stopScreenShare, syncParticipants, sendVoicePresence])
 
   // Change input microphone device
   const changeInputDevice = useCallback(async (deviceId: string, noiseSuppression = true, echoCancellation = true) => {

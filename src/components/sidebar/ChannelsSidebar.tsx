@@ -396,7 +396,32 @@ export function ChannelsSidebar({
               })
               channelVoiceUsers = Array.from(map.values())
             } else {
-              channelVoiceUsers = (spaceVoiceUsers[ch.id] || []).filter(u => !user?.id || u.userId !== user.id)
+              const map = new Map<string, VoiceParticipant>()
+              const spUsers = spaceVoiceUsers[ch.id] || []
+              spUsers.forEach(p => {
+                if (p.userId && (!user?.id || p.userId !== user.id)) {
+                  map.set(p.userId, p)
+                }
+              })
+              if (presenceData) {
+                Object.values(presenceData).forEach((pres: any) => {
+                  if (pres && pres.voice_channel_id === ch.id && pres.user_id && (!user?.id || pres.user_id !== user.id)) {
+                    if (!map.has(pres.user_id)) {
+                      map.set(pres.user_id, {
+                        userId: pres.user_id,
+                        displayName: pres.display_name || 'Membro',
+                        avatarUrl: pres.avatar_url,
+                        isSpeaking: false,
+                        isMuted: !!pres.voice_is_muted,
+                        isDeafened: !!pres.voice_is_deafened,
+                        screenStream: undefined,
+                        isScreenSharing: !!pres.voice_has_screen
+                      })
+                    }
+                  }
+                })
+              }
+              channelVoiceUsers = Array.from(map.values())
             }
 
             return (
@@ -535,8 +560,28 @@ export function ChannelsSidebar({
                 }}
               >
                 <div className="server-header-card-content" style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
-                  <div className="server-avatar-squircle">
-                    {activeSpace.name.slice(0, 1).toUpperCase()}
+                  <div 
+                    className="server-avatar-squircle"
+                    style={{
+                      background: activeSpace.icon_url ? 'transparent' : undefined,
+                      overflow: 'hidden'
+                    }}
+                  >
+                    {activeSpace.icon_url ? (
+                      <img 
+                        src={activeSpace.icon_url} 
+                        alt={activeSpace.name} 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', borderRadius: 'inherit' }} 
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                          if (e.currentTarget.parentElement) {
+                            e.currentTarget.parentElement.style.background = ''
+                          }
+                        }}
+                      />
+                    ) : (
+                      activeSpace.name.slice(0, 1).toUpperCase()
+                    )}
                   </div>
                   <div className="server-header-info" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <h3 className="server-title" title={activeSpace.name} style={{ margin: 0, fontSize: '15px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
