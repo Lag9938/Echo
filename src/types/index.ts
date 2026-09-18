@@ -147,6 +147,8 @@ export interface MemberProfileModalProps {
     roleName?: string
     roleColor?: string
     roles?: ServerRole[]
+    bannerCustom?: string | null
+    bannerPreset?: string | null
   }
   onClose: () => void
   currentUser: User | null
@@ -162,6 +164,8 @@ export interface MemberProfileModalProps {
   isServerOwner: boolean
   avatarDecoration?: string | null
   profileEffect?: string | null
+  bannerCustom?: string | null
+  bannerPreset?: string | null
   onOpenDM: (targetId: string) => void
   onAdjustVolume?: (peer: VoiceParticipant) => void
   voicePeer?: VoiceParticipant

@@ -425,6 +425,8 @@ export function SettingsView({
       localStorage.setItem(`echo-pronouns-${userId}`, localPronouns)
       localStorage.setItem(`echo-banner-preset-${userId}`, localBannerPreset)
       localStorage.setItem(`echo-banner-custom-${userId}`, localBannerCustom)
+      localStorage.setItem('echo-banner-preset', localBannerPreset)
+      localStorage.setItem('echo-banner-custom', localBannerCustom)
       localStorage.setItem(`echo-avatar-frame-${userId}`, localAvatarFrame)
       localStorage.setItem(`echo-badge-${userId}`, localBadge)
       localStorage.setItem(`echo-presence-status-${userId}`, localPresenceStatus)
@@ -467,6 +469,7 @@ export function SettingsView({
 
       onProfileUpdate(localDisplayName, localAvatarUrl)
       onCustomStatusUpdate(localCustomStatus)
+      window.dispatchEvent(new Event('echo-profile-updated'))
       setProfileSavedToast(true)
       setTimeout(() => setProfileSavedToast(false), 3000)
     } catch (err: any) {

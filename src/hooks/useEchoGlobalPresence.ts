@@ -93,6 +93,8 @@ export function useEchoGlobalPresence({
             oldP.custom_status !== newP?.custom_status || 
             oldP.avatar_decoration !== newP?.avatar_decoration || 
             oldP.profile_effect !== newP?.profile_effect || 
+            oldP.banner_custom !== newP?.banner_custom ||
+            oldP.banner_preset !== newP?.banner_preset ||
             oldP.name_effect !== newP?.name_effect ||
             oldGameName !== newGameName ||
             oldGameStart !== newGameStart
@@ -129,6 +131,8 @@ export function useEchoGlobalPresence({
     const savedPresStatus = localStorage.getItem('echo-presence-status') || 'online'
     const savedDecoration = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
     const savedEffect = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
+    const savedBannerCustom = localStorage.getItem(`echo-banner-custom-${user.id}`) || localStorage.getItem('echo-banner-custom') || ''
+    const savedBannerPreset = localStorage.getItem(`echo-banner-preset-${user.id}`) || localStorage.getItem('echo-banner-preset') || 'synthwave'
     const currentGameData = myGamePresenceRef?.current !== undefined 
       ? myGamePresenceRef.current 
       : (myGamePresence !== undefined ? myGamePresence : (getMyGamePresence ? getMyGamePresence() : null))
@@ -144,6 +148,9 @@ export function useEchoGlobalPresence({
       presence_status: savedPresStatus,
       avatar_decoration: savedDecoration,
       profile_effect: savedEffect,
+      banner_custom: savedBannerCustom,
+      banner_preset: savedBannerPreset,
+      banner_url: savedBannerCustom,
       current_game: gameData,
       game_presence: gameData,
       voice_channel_id: voiceChanId,
@@ -160,6 +167,21 @@ export function useEchoGlobalPresence({
       trackMyPresenceRef.current()
     }
   }, [profileDisplayName, displayName, avatarDecoration, profileEffect, myGamePresence])
+
+  // Ouvir evento de atualização de perfil para re-sincronizar presença (incluindo banner)
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      if (presenceChannelRef.current) {
+        trackMyPresenceRef.current()
+      }
+    }
+    window.addEventListener('echo-profile-updated', handleProfileUpdate)
+    window.addEventListener('storage', handleProfileUpdate)
+    return () => {
+      window.removeEventListener('echo-profile-updated', handleProfileUpdate)
+      window.removeEventListener('storage', handleProfileUpdate)
+    }
+  }, [])
 
   // Re-sincroniza presença imediatamente ao detectar alteração de jogo
   useEffect(() => {

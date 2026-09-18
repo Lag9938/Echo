@@ -14,15 +14,42 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.33.9'
+export const APP_CURRENT_VERSION = '0.34.0'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.34.0',
+    title: 'Echo v0.34.0 - Suporte Total a Banners Animados (GIF) e Sincronização em Tempo Real',
+    date: '17 de Setembro de 2026',
+    tagline: 'Seus GIFs animados e banners personalizados agora brilham nos cards rápidos de membro e no perfil completo, com sincronização global entre todos os usuários.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '✨',
+        badge: 'COSMÉTICOS & PERFIL',
+        title: 'Banners Animados (GIF) nos Cards de Membro',
+        description: 'Ao passar o mouse sobre qualquer membro na lista lateral ou no chat, o card rápido agora exibe o banner customizado e roda GIFs animados em loop com enquadramento perfeito.'
+      },
+      {
+        icon: '🔄',
+        badge: 'SINCRONIZAÇÃO GLOBAL',
+        title: 'Banners Sincronizados em Tempo Real',
+        description: 'Os dados do seu banner e texturas são transmitidos instantaneamente para todos os membros conectados através do sistema de presença em tempo real.'
+      },
+      {
+        icon: '🖼️',
+        badge: 'VISUAL EXPANDIDO',
+        title: 'Área de Banner Proporcional e Elegante',
+        description: 'Altura aumentada de 46px para 68px nos popovers rápidos e 112px no perfil completo com sombreamento suave na base, dando visibilidade total à sua arte.'
+      }
+    ]
+  },
   {
     version: '0.33.9',
     title: 'Echo v0.33.9 - Detecção de Valorant, Menções com @, Mover Membros e Fim de Vazamentos de Áudio',
     date: '17 de Setembro de 2026',
     tagline: 'Detecção garantida de jogos com anti-cheat Vanguard, menções interativas no chat, movimentação de membros por arrastar e soltar e silenciamento 100% estanque.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🎯',

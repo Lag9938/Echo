@@ -193,6 +193,15 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
     const isSameAsName = rawCustomStatus && (rawCustomStatus.trim().toLowerCase() === member.user.display_name.trim().toLowerCase())
     const validCustomStatus = (rawCustomStatus && !isSameAsName) ? rawCustomStatus : null
 
+    const targetMemberId = member.user.id
+    const isSelf = targetMemberId === user.id
+    const memberBannerCustom = isSelf
+      ? (localStorage.getItem(`echo-banner-custom-${user.id}`) || localStorage.getItem('echo-banner-custom') || (member.user as any)?.banner_url || null)
+      : (presenceData[targetMemberId]?.banner_custom || (presenceData[targetMemberId] as any)?.banner_url || (member.user as any)?.banner_url || localStorage.getItem(`echo-banner-custom-${targetMemberId}`) || null)
+    const memberBannerPreset = isSelf
+      ? (localStorage.getItem(`echo-banner-preset-${user.id}`) || 'synthwave')
+      : (presenceData[targetMemberId]?.banner_preset || localStorage.getItem(`echo-banner-preset-${targetMemberId}`) || 'synthwave')
+
     return (
       <div 
         className={`member-card ${memberNameEffect && memberNameEffect !== 'none' ? 'has-name-effect' : ''}`}
@@ -211,7 +220,9 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
             user: member.user,
             roleName: memberRole?.name,
             roleColor: memberRole?.color,
-            roles: matchingRoles
+            roles: matchingRoles,
+            bannerCustom: memberBannerCustom,
+            bannerPreset: memberBannerPreset
           })
         }}
         onMouseEnter={(e) => {
@@ -233,6 +244,8 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
               userPresenceStatus,
               isOnline,
               customStatus: validCustomStatus,
+              bannerCustom: memberBannerCustom,
+              bannerPreset: memberBannerPreset,
               rect: {
                 top: rect.top,
                 left: rect.left,

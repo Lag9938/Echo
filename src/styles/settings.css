@@ -3377,7 +3377,7 @@
 }
 
 .member-profile-banner {
-  height: 96px;
+  height: 112px;
   position: relative;
   display: flex;
   justify-content: space-between;
@@ -3385,6 +3385,22 @@
   padding: 12px 14px;
   background-size: 180% 180%;
   animation: bannerGlow 10s ease infinite alternate;
+  overflow: hidden;
+}
+
+.member-profile-banner.has-custom-banner {
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  animation: none !important;
+}
+
+.member-profile-banner.has-custom-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 0%, rgba(11, 15, 25, 0.6) 100%);
+  pointer-events: none;
 }
 
 @keyframes bannerGlow {

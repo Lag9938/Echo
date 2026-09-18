@@ -35,6 +35,8 @@ export function MemberProfileModal({
   isServerOwner,
   avatarDecoration,
   profileEffect,
+  bannerCustom,
+  bannerPreset,
   onOpenDM,
   onAdjustVolume,
   voicePeer,
@@ -103,12 +105,21 @@ export function MemberProfileModal({
     <div className="screen-picker-overlay member-profile-overlay" onClick={onClose}>
       <div className="member-profile-card-modal" onClick={(e) => e.stopPropagation()}>
         <ProfileEffect effectId={profileEffect} />
-        {/* Banner with dynamic aurora mesh gradient & badges */}
+        {/* Banner with dynamic aurora mesh gradient, custom GIF/image, or texture */}
         <div 
-          className="member-profile-banner" 
-          style={{ 
-            background: `linear-gradient(135deg, ${roleColor}ee 0%, #1e1b4b 60%, #0b0f19 100%)` 
-          }}
+          className={`member-profile-banner ${bannerCustom ? 'has-custom-banner' : `texture-${bannerPreset || 'synthwave'}`}`} 
+          style={
+            bannerCustom
+              ? {
+                  backgroundImage: `url(${bannerCustom})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat'
+                }
+              : {
+                  background: `linear-gradient(135deg, ${roleColor}ee 0%, #1e1b4b 60%, #0b0f19 100%)`
+                }
+          }
         >
           <div className="member-profile-banner-badges">
             {isServerOwner && (

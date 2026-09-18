@@ -71,6 +71,18 @@ export function MemberProfileModalWrapper({
     ? profileEffect
     : (presenceData[inspectedMember.user.id]?.profile_effect || (inspectedMember.user as any).profile_effect || null)
 
+  const memberBannerCustom = inspectedMember.bannerCustom !== undefined
+    ? inspectedMember.bannerCustom
+    : (inspectedMember.user.id === user.id
+        ? (localStorage.getItem(`echo-banner-custom-${user.id}`) || localStorage.getItem('echo-banner-custom') || (inspectedMember.user as any)?.banner_url || null)
+        : (presenceData[inspectedMember.user.id]?.banner_custom || (presenceData[inspectedMember.user.id] as any)?.banner_url || (inspectedMember.user as any)?.banner_url || localStorage.getItem(`echo-banner-custom-${inspectedMember.user.id}`) || null))
+
+  const memberBannerPreset = inspectedMember.bannerPreset !== undefined
+    ? inspectedMember.bannerPreset
+    : (inspectedMember.user.id === user.id
+        ? (localStorage.getItem(`echo-banner-preset-${user.id}`) || 'synthwave')
+        : (presenceData[inspectedMember.user.id]?.banner_preset || localStorage.getItem(`echo-banner-preset-${inspectedMember.user.id}`) || 'synthwave'))
+
   return (
     <MemberProfileModal
       inspectedMember={inspectedMember}
@@ -88,6 +100,8 @@ export function MemberProfileModalWrapper({
       isServerOwner={isServerOwner}
       avatarDecoration={inspectedDeco}
       profileEffect={inspectedEffect}
+      bannerCustom={memberBannerCustom}
+      bannerPreset={memberBannerPreset}
       voicePeer={voicePeer}
       showToast={showToast}
       friendships={friendships}

@@ -26,6 +26,8 @@ export interface HoveredMemberPopoverData {
   activeGame?: string | null
   activeGameStartedAt?: number | null
   customStatus?: string | null
+  bannerCustom?: string | null
+  bannerPreset?: string | null
   [key: string]: any
 }
 
@@ -63,6 +65,14 @@ export function HoveredMemberPopover({
     ? currentUserAvatarDecoration
     : (presenceData[targetUserId]?.avatar_decoration || (hoveredMemberPopover.user as any).avatar_decoration || null)
 
+  const bannerCustom = isCurrentUser
+    ? (localStorage.getItem(`echo-banner-custom-${currentUserId}`) || localStorage.getItem('echo-banner-custom') || hoveredMemberPopover.bannerCustom || (hoveredMemberPopover.user as any)?.banner_url || null)
+    : (hoveredMemberPopover.bannerCustom || presenceData[targetUserId]?.banner_custom || (presenceData[targetUserId] as any)?.banner_url || (hoveredMemberPopover.user as any)?.banner_url || localStorage.getItem(`echo-banner-custom-${targetUserId}`) || null)
+
+  const bannerPreset = isCurrentUser
+    ? (localStorage.getItem(`echo-banner-preset-${currentUserId}`) || localStorage.getItem('echo-banner-preset') || 'synthwave')
+    : (hoveredMemberPopover.bannerPreset || presenceData[targetUserId]?.banner_preset || localStorage.getItem(`echo-banner-preset-${targetUserId}`) || 'synthwave')
+
   return (
     <div 
       className="member-hover-popover"
@@ -86,17 +96,28 @@ export function HoveredMemberPopover({
           user: hoveredMemberPopover.user,
           roleName: hoveredMemberPopover.roleName,
           roleColor: hoveredMemberPopover.roleColor,
-          roles: hoveredMemberPopover.roles
+          roles: hoveredMemberPopover.roles,
+          bannerCustom,
+          bannerPreset
         })
         setHoveredMemberPopover(null)
       }}
     >
       <ProfileEffect effectId={hoveredEffect} />
       <div 
-        className="hover-popover-banner" 
-        style={{ 
-          background: `linear-gradient(135deg, ${hoveredMemberPopover.roleColor || 'var(--accent-color, #00f2fe)'}aa, #1e1b4b)` 
-        }} 
+        className={`hover-popover-banner ${bannerCustom ? 'has-custom-banner' : `texture-${bannerPreset || 'synthwave'}`}`} 
+        style={
+          bannerCustom
+            ? {
+                backgroundImage: `url(${bannerCustom})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat'
+              }
+            : {
+                background: `linear-gradient(135deg, ${hoveredMemberPopover.roleColor || 'var(--accent-color, #00f2fe)'}aa, #1e1b4b)`
+              }
+        } 
       />
       <div className="hover-popover-body">
         <div className="hover-popover-avatar-wrap">
