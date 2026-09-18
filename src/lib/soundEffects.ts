@@ -1,11 +1,11 @@
 let audioCtx: AudioContext | null = null
 
 function getAudioContext(): AudioContext {
-  if (!audioCtx) {
+  if (!audioCtx || audioCtx.state === 'closed') {
     audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
   }
   if (audioCtx.state === 'suspended') {
-    audioCtx.resume()
+    audioCtx.resume().catch(() => {})
   }
   return audioCtx
 }

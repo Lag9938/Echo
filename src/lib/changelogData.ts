@@ -14,15 +14,60 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.34.0'
+export const APP_CURRENT_VERSION = '0.34.1'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.34.1',
+    title: 'Echo v0.34.1 - Novo Card de Membro, Notificações Nativas no Windows & GIFs Sincronizados',
+    date: '18 de Setembro de 2026',
+    tagline: 'Card flutuante de membros completamente reformulado com ações rápidas e bio, suporte completo a notificações nativas do Windows com redirecionamento ao clicar, e Soundboard Gamer 100% calibrada.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎴',
+        badge: 'INTERFACE & DESIGN',
+        title: 'Novo Card de Membro (Hover)',
+        description: 'Design moderno com badges em destaque (Dono do Espaço, cargos e status), pronomes, seção "Sobre Mim" (Bio) e botões de ação rápida para enviar mensagem ou abrir o perfil em 1 clique.'
+      },
+      {
+        icon: '🔔',
+        badge: 'NOTIFICAÇÕES DO WINDOWS',
+        title: 'Notificações Nativas com Redirecionamento',
+        description: 'O Echo agora emite notificações oficiais na Central de Ações do Windows 10/11 com som e ícone. Ao clicar na notificação (no Windows ou dentro do app), você é levado diretamente para a conversa de quem te enviou mensagem.'
+      },
+      {
+        icon: '📢',
+        badge: 'CORREÇÃO DE ÁUDIO',
+        title: 'Soundboard Gamer 100% Funcional',
+        description: 'Corrigido o sistema de sintetização e transmissão de efeitos sonoros (Buzina MLG, Vitória, Level Up, Bruh, etc.). Os áudios agora tocam imediatamente para quem aciona e transmitem via LiveKit com feedback tátil na interface.'
+      },
+      {
+        icon: '🌐',
+        badge: 'NUVEM & SINCRONIZAÇÃO',
+        title: 'Visibilidade Global de Banners (GIF)',
+        description: 'Banners personalizados agora persistem nas contas dos usuários no Supabase e carregam automaticamente para qualquer outro membro na barra lateral e perfil completo.'
+      },
+      {
+        icon: '⚡',
+        badge: 'PERFORMANCE',
+        title: 'Otimização Extrema de Consumo no Banco',
+        description: 'Os arquivos de imagem e GIF são armazenados no Storage com distribuição em CDN, armazenando apenas URLs leves no banco e protegendo o WebSocket de presença em tempo real.'
+      },
+      {
+        icon: '🎮',
+        badge: 'GAME PRESENCE',
+        title: 'Logos Oficiais de Jogos no Perfil (VALORANT, CS2, etc.)',
+        description: 'Substituído o ícone genérico de controle por logos vetoriais autênticos (com as cores e marcas oficiais da Riot, Valve, etc.) na modal de perfil, no card rápido e na lista de conversas.'
+      }
+    ]
+  },
   {
     version: '0.34.0',
     title: 'Echo v0.34.0 - Suporte Total a Banners Animados (GIF) e Sincronização em Tempo Real',
     date: '17 de Setembro de 2026',
     tagline: 'Seus GIFs animados e banners personalizados agora brilham nos cards rápidos de membro e no perfil completo, com sincronização global entre todos os usuários.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '✨',

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { SOUNDBOARD_SOUNDS } from '../../lib/soundEffects'
 
 export interface SoundboardModalProps {
@@ -7,7 +8,17 @@ export interface SoundboardModalProps {
 }
 
 export function SoundboardModal({ isOpen, onClose, onPlaySound }: SoundboardModalProps) {
+  const [playingId, setPlayingId] = useState<string | null>(null)
+
   if (!isOpen) return null
+
+  const handlePlay = (soundId: string) => {
+    setPlayingId(soundId)
+    onPlaySound(soundId)
+    setTimeout(() => {
+      setPlayingId(prev => (prev === soundId ? null : prev))
+    }, 600)
+  }
 
   return (
     <div 
@@ -48,8 +59,8 @@ export function SoundboardModal({ isOpen, onClose, onPlaySound }: SoundboardModa
             <button
               key={s.id}
               type="button"
-              className="soundboard-card"
-              onClick={() => onPlaySound(s.id)}
+              className={`soundboard-card ${playingId === s.id ? 'is-playing' : ''}`}
+              onClick={() => handlePlay(s.id)}
               title={`Tocar ${s.name}`}
               style={{ borderLeftColor: s.color }}
             >
@@ -85,7 +96,21 @@ export interface SoundboardToastProps {
 }
 
 export function SoundboardToast({ lastEvent }: SoundboardToastProps) {
-  if (!lastEvent || Date.now() - lastEvent.timestamp >= 3500) {
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    if (!lastEvent) {
+      setVisible(false)
+      return
+    }
+    setVisible(true)
+    const timer = setTimeout(() => {
+      setVisible(false)
+    }, 3500)
+    return () => clearTimeout(timer)
+  }, [lastEvent?.timestamp, lastEvent?.soundId])
+
+  if (!visible || !lastEvent) {
     return null
   }
 

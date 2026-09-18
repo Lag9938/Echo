@@ -11,8 +11,8 @@ export interface UseEchoDirectMessagesOptions {
   spaceMembers: any[]
   socialChannelRef: React.MutableRefObject<any>
   sfxVolume: number
-  showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend') => void
-  triggerDesktopNotification: (title: string, body: string) => void
+  showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend', onClickOrData?: any) => void
+  triggerDesktopNotification: (title: string, body: string, data?: any) => void
   setError: (err: string) => void
   setPage: (page: Page) => void
   setInspectedMember: (m: any) => void
@@ -273,10 +273,15 @@ export function useEchoDirectMessages({
   const handleNewDMPostgresChanges = useCallback((payload: any) => {
     const newMsg = payload.new as DirectMessage
     if (newMsg.sender_id === user.id || newMsg.receiver_id === user.id) {
+      const friendObj = friendships.find(f => f.user.id === newMsg.sender_id)
+      const senderName = friendObj?.user.display_name || 'Um amigo'
+
       if (newMsg.receiver_id === user.id && !document.hasFocus()) {
-        const friendObj = friendships.find(f => f.user.id === newMsg.sender_id)
-        const senderName = friendObj?.user.display_name || 'Um amigo'
-        triggerDesktopNotification(`Mensagem de ${senderName}`, newMsg.body || '')
+        triggerDesktopNotification(`Mensagem de ${senderName}`, newMsg.body || '', {
+          type: 'dm',
+          senderId: newMsg.sender_id,
+          senderName
+        })
       }
 
       if (selectedDMUserIdRef.current && (newMsg.sender_id === selectedDMUserIdRef.current || newMsg.receiver_id === selectedDMUserIdRef.current)) {
@@ -287,12 +292,18 @@ export function useEchoDirectMessages({
           const currentCount = prev[newMsg.sender_id] || 0
           return { ...prev, [newMsg.sender_id]: currentCount + 1 }
         })
-        const friendObj = friendships.find(f => f.user.id === newMsg.sender_id)
-        const senderName = friendObj?.user.display_name || 'Um amigo'
-        showToast(`Nova mensagem de ${senderName}`, newMsg.body.substring(0, 50) + (newMsg.body.length > 50 ? '...' : ''), 'message')
+        showToast(
+          `Nova mensagem de ${senderName}`, 
+          newMsg.body.substring(0, 50) + (newMsg.body.length > 50 ? '...' : ''), 
+          'message',
+          () => {
+            handleOpenDirectChat(newMsg.sender_id)
+            setPage('Amigos')
+          }
+        )
       }
     }
-  }, [user.id, friendships, triggerDesktopNotification, loadDirectMessages, playDmNotificationSound, sfxVolume, showToast])
+  }, [user.id, friendships, triggerDesktopNotification, loadDirectMessages, playDmNotificationSound, sfxVolume, showToast, handleOpenDirectChat, setPage])
 
   const handleDMBroadcast = useCallback((data: any) => {
     if (!data) return
@@ -302,13 +313,25 @@ export function useEchoDirectMessages({
         loadDirectMessages(data.senderId)
       } else {
         setUnreadDMs(prev => ({ ...prev, [data.senderId]: (prev[data.senderId] || 0) + 1 }))
-        showToast(`Mensagem de ${data.senderName}`, data.body.slice(0, 50), 'message')
+        showToast(
+          `Mensagem de ${data.senderName}`, 
+          data.body.slice(0, 50), 
+          'message',
+          () => {
+            handleOpenDirectChat(data.senderId)
+            setPage('Amigos')
+          }
+        )
         if (!document.hasFocus()) {
-          triggerDesktopNotification(`Mensagem de ${data.senderName}`, data.body)
+          triggerDesktopNotification(`Mensagem de ${data.senderName}`, data.body, {
+            type: 'dm',
+            senderId: data.senderId,
+            senderName: data.senderName
+          })
         }
       }
     }
-  }, [user.id, playDmNotificationSound, sfxVolume, loadDirectMessages, showToast, triggerDesktopNotification])
+  }, [user.id, playDmNotificationSound, sfxVolume, loadDirectMessages, showToast, triggerDesktopNotification, handleOpenDirectChat, setPage])
 
   const handleDMDeleteBroadcast = useCallback((data: any) => {
     if (!data) return

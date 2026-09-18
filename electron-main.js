@@ -29,6 +29,11 @@ if (process.defaultApp) {
   app.setAsDefaultProtocolClient('echo')
 }
 
+// Configuração essencial para notificações nativas no Windows (Action Center / Toasts)
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.echo.desktop')
+}
+
 // Armazena URL de convite recebida no arranque para repassar ao carregamento da janela
 let pendingInviteUrl = process.argv.find(arg => typeof arg === 'string' && (arg.startsWith('echo://') || arg.includes('/Echo/invite') || (arg.includes('/invite') && arg.includes('space=')))) || null
 
@@ -853,26 +858,34 @@ function createWindow() {
   })
 
   // Native Windows Notifications
-  ipcMain.handle('show-notification', (_event, { title, body }) => {
-    if (Notification.isSupported()) {
-      const appIconPath = path.join(__dirname, 'assets', 'echo-icon.png')
-      const notif = new Notification({
-        title: title || 'Echo',
-        body: body || '',
-        icon: fs.existsSync(appIconPath) ? appIconPath : undefined,
-        silent: false
-      })
-      notif.show()
-      notif.on('click', () => {
-        if (mainWindow) {
-          if (mainWindow.isMinimized()) mainWindow.restore()
-          mainWindow.show()
-          mainWindow.focus()
-        }
-      })
-      return { success: true }
+  ipcMain.handle('show-notification', (_event, { title, body, data } = {}) => {
+    try {
+      if (Notification.isSupported()) {
+        const appIconPath = path.join(__dirname, 'assets', 'echo-icon.png')
+        const notif = new Notification({
+          title: title || 'Echo',
+          body: body || '',
+          icon: fs.existsSync(appIconPath) ? appIconPath : undefined,
+          silent: false
+        })
+        notif.on('click', () => {
+          if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore()
+            mainWindow.show()
+            mainWindow.focus()
+            if (data) {
+              mainWindow.webContents.send('notification-clicked', data)
+            }
+          }
+        })
+        notif.show()
+        return { success: true }
+      }
+      return { success: false, error: 'Notifications not supported' }
+    } catch (err) {
+      console.warn('[Echo Notification] Error showing native notification:', err)
+      return { success: false, error: String(err) }
     }
-    return { success: false }
   })
 
   // LiveKit SFU Connection & Token Generation Handler (com tolerância a relógio descalibrado)

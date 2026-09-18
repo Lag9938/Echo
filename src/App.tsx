@@ -816,6 +816,41 @@ function Echo({ user }: { user: User }) {
     })
   }, [])
 
+  // Windows Native & Web notification click navigation
+  useEffect(() => {
+    const handleNotificationPayload = (data: any) => {
+      if (!data) return
+      if (data.type === 'dm' && data.senderId) {
+        handleOpenDirectChat(data.senderId)
+        setPage('Amigos')
+      } else if (data.type === 'channel' && data.channelId) {
+        const allChannels = Object.values(spaceChannelsRef.current).flat()
+        const targetCh = allChannels.find(c => c.id === data.channelId)
+        if (targetCh) {
+          if (targetCh.space_id) {
+            const sp = spaces.find(s => s.id === targetCh.space_id)
+            if (sp) setExpandedSpace(sp.id)
+          }
+          setSelectedChannel(targetCh)
+          setPage('Servidores')
+        }
+      }
+    }
+
+    if ((window as any).electronAPI?.onNotificationClicked) {
+      ;(window as any).electronAPI.onNotificationClicked(handleNotificationPayload)
+    }
+
+    const handleCustomClick = (e: any) => {
+      handleNotificationPayload(e.detail)
+    }
+    window.addEventListener('echo-notification-clicked', handleCustomClick)
+
+    return () => {
+      window.removeEventListener('echo-notification-clicked', handleCustomClick)
+    }
+  }, [handleOpenDirectChat, spaces])
+
   // Voice Session Refs & Hook (Phase 18)
   const selectedInputIdRef = useRef('')
   const selectedOutputIdRef = useRef('')
@@ -1150,7 +1185,7 @@ function Echo({ user }: { user: User }) {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('display_name, avatar_url, avatar_decoration, profile_effect, is_premium, premium_until, asaas_customer_id')
+          .select('display_name, avatar_url, avatar_decoration, profile_effect, is_premium, premium_until, asaas_customer_id, banner_url, banner_preset, bio, pronouns, custom_status')
           .eq('id', user.id)
           .single()
 
@@ -1166,6 +1201,20 @@ function Echo({ user }: { user: User }) {
             setProfileEffect(data.profile_effect)
             localStorage.setItem(`echo-profile-effect-${user.id}`, data.profile_effect)
             localStorage.setItem('echo-profile-effect', data.profile_effect)
+          }
+          if (data.banner_url) {
+            localStorage.setItem(`echo-banner-custom-${user.id}`, data.banner_url)
+            localStorage.setItem('echo-banner-custom', data.banner_url)
+          }
+          if (data.banner_preset) {
+            localStorage.setItem(`echo-banner-preset-${user.id}`, data.banner_preset)
+            localStorage.setItem('echo-banner-preset', data.banner_preset)
+          }
+          if (data.bio) {
+            localStorage.setItem(`echo-bio-${user.id}`, data.bio)
+          }
+          if (data.pronouns) {
+            localStorage.setItem(`echo-pronouns-${user.id}`, data.pronouns)
           }
 
           // Validação autoritativa de assinatura diretamente do Supabase
@@ -1425,7 +1474,10 @@ function Echo({ user }: { user: User }) {
           )
 
           if (!document.hasFocus() && !isSpaceMuted) {
-            triggerDesktopNotification('Nova mensagem', newMsg.body || '')
+            triggerDesktopNotification('Nova mensagem', newMsg.body || '', {
+              type: 'channel',
+              channelId: newMsg.channel_id
+            })
           }
         }
       })
@@ -2059,16 +2111,28 @@ function Echo({ user }: { user: User }) {
               setPage('Loja')
             }}
             customStatus={customStatus}
-            onProfileUpdate={(name, avatar) => {
+            onProfileUpdate={(name, avatar, bannerUrl, bannerPreset) => {
               setProfileDisplayName(name)
               setProfileAvatarUrl(avatar)
               updateLocalProfile(name, avatar)
               if (user) {
-                setSpaceMembers(prev => prev.map(m => (m?.user?.id === user.id || m?.id === user.id) ? { ...m, user: { ...(m.user || {}), display_name: name, avatar_url: avatar } } : m))
+                setSpaceMembers(prev => prev.map(m => (m?.user?.id === user.id || m?.id === user.id) ? { 
+                  ...m, 
+                  user: { 
+                    ...(m.user || {}), 
+                    display_name: name, 
+                    avatar_url: avatar,
+                    banner_url: bannerUrl !== undefined ? bannerUrl : (m.user as any)?.banner_url,
+                    banner_preset: bannerPreset !== undefined ? bannerPreset : (m.user as any)?.banner_preset
+                  } 
+                } : m))
                 if (presenceChannelRef.current) {
                   const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
                   const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
                   const gameData = presenceStatus === 'invisible' ? null : myGamePresence
+                  const rawBanner = bannerUrl || localStorage.getItem(`echo-banner-custom-${user.id}`) || ''
+                  const safeBanner = (rawBanner && !rawBanner.startsWith('data:') && rawBanner.length < 2048) ? rawBanner : ''
+                  const preset = bannerPreset || localStorage.getItem(`echo-banner-preset-${user.id}`) || 'synthwave'
                   presenceChannelRef.current.track({
                     user_id: user.id,
                     display_name: name,
@@ -2078,7 +2142,10 @@ function Echo({ user }: { user: User }) {
                     presence_status: presenceStatus,
                     current_game: gameData,
                     avatar_decoration: curDeco,
-                    profile_effect: curEff
+                    profile_effect: curEff,
+                    banner_custom: safeBanner,
+                    banner_preset: preset,
+                    banner_url: safeBanner
                   }).catch(() => {})
                 }
               }
@@ -2408,6 +2475,10 @@ function Echo({ user }: { user: User }) {
         currentUserProfileEffect={profileEffect}
         currentUserAvatarDecoration={avatarDecoration}
         presenceData={presenceData}
+        onOpenDM={(targetUserId) => {
+          handleOpenDirectChat(targetUserId)
+          setPage('Amigos')
+        }}
       />
 
       {/* Canal / Voice Channel Invite Modal (Discord-style) */}
@@ -2503,7 +2574,27 @@ function Echo({ user }: { user: User }) {
       />
 
       {/* Toast Notifications */}
-      <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
+      <ToastContainer 
+        toasts={toasts} 
+        onRemoveToast={removeToast}
+        onToastClick={(toast) => {
+          if (toast.data?.type === 'dm' && toast.data.senderId) {
+            handleOpenDirectChat(toast.data.senderId)
+            setPage('Amigos')
+          } else if (toast.data?.type === 'channel' && toast.data.channelId) {
+            const allChannels = Object.values(spaceChannelsRef.current).flat()
+            const targetCh = allChannels.find(c => c.id === toast.data.channelId)
+            if (targetCh) {
+              if (targetCh.space_id) {
+                const sp = spaces.find(s => s.id === targetCh.space_id)
+                if (sp) setExpandedSpace(sp.id)
+              }
+              setSelectedChannel(targetCh)
+              setPage('Servidores')
+            }
+          }
+        }}
+      />
 
       {/* Floating Picture-in-Picture Mini Player (Always on Top) */}
       {isPiPActive && activeScreenSharer && (

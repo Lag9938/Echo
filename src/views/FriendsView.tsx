@@ -623,7 +623,10 @@ export function FriendsView({
                         {isFriendTyping && isSelected ? (
                           <span style={{ color: '#00f2fe', fontWeight: 600 }}>Digitando...</span>
                         ) : conv.activeGame ? (
-                          <span>🎮 {conv.activeGame}</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <GameLogo gameName={conv.activeGame} size={13} />
+                            <span>{conv.activeGame}</span>
+                          </span>
                         ) : (
                           conv.status
                         )}

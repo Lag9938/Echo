@@ -9,8 +9,8 @@ export interface UseEchoFriendshipsOptions {
   displayName: string
   socialChannelRef: React.MutableRefObject<any>
   sfxVolume: number
-  showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend') => void
-  triggerDesktopNotification: (title: string, body: string) => void
+  showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend', onClickOrData?: any) => void
+  triggerDesktopNotification: (title: string, body: string, data?: any) => void
   setError: (err: string) => void
   setOnlineUsers: React.Dispatch<React.SetStateAction<Set<string>>>
   setPresenceData: React.Dispatch<React.SetStateAction<Record<string, any>>>

@@ -131,7 +131,8 @@ export function useEchoGlobalPresence({
     const savedPresStatus = localStorage.getItem('echo-presence-status') || 'online'
     const savedDecoration = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
     const savedEffect = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
-    const savedBannerCustom = localStorage.getItem(`echo-banner-custom-${user.id}`) || localStorage.getItem('echo-banner-custom') || ''
+    const rawBannerCustom = localStorage.getItem(`echo-banner-custom-${user.id}`) || localStorage.getItem('echo-banner-custom') || ''
+    const safeBannerUrl = (rawBannerCustom && !rawBannerCustom.startsWith('data:') && rawBannerCustom.length < 2048) ? rawBannerCustom : ''
     const savedBannerPreset = localStorage.getItem(`echo-banner-preset-${user.id}`) || localStorage.getItem('echo-banner-preset') || 'synthwave'
     const currentGameData = myGamePresenceRef?.current !== undefined 
       ? myGamePresenceRef.current 
@@ -148,9 +149,9 @@ export function useEchoGlobalPresence({
       presence_status: savedPresStatus,
       avatar_decoration: savedDecoration,
       profile_effect: savedEffect,
-      banner_custom: savedBannerCustom,
+      banner_custom: safeBannerUrl,
       banner_preset: savedBannerPreset,
-      banner_url: savedBannerCustom,
+      banner_url: safeBannerUrl,
       current_game: gameData,
       game_presence: gameData,
       voice_channel_id: voiceChanId,

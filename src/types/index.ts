@@ -114,6 +114,8 @@ export interface Toast {
   title: string;
   message: string;
   type?: 'info' | 'message' | 'friend';
+  data?: any;
+  onClick?: () => void;
 }
 
 export interface FriendshipRequest {
@@ -142,7 +144,20 @@ export interface SavedMessageItem {
 
 export interface MemberProfileModalProps {
   inspectedMember: {
-    user: { id: string; display_name: string; avatar_url?: string; avatar_decoration?: string | null; profile_effect?: string | null; is_premium?: boolean; premium_until?: string | null }
+    user: { 
+      id: string; 
+      display_name: string; 
+      avatar_url?: string; 
+      avatar_decoration?: string | null; 
+      profile_effect?: string | null; 
+      is_premium?: boolean; 
+      premium_until?: string | null;
+      banner_url?: string | null;
+      banner_preset?: string | null;
+      bio?: string | null;
+      pronouns?: string | null;
+      custom_status?: string | null;
+    }
     joined_at?: string
     roleName?: string
     roleColor?: string

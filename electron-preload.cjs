@@ -41,6 +41,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Windows Native Notifications API
   showNotification: (options) => ipcRenderer.invoke('show-notification', options),
+  onNotificationClicked: (callback) => {
+    ipcRenderer.removeAllListeners('notification-clicked')
+    ipcRenderer.on('notification-clicked', (_event, data) => callback(data))
+  },
 
   // LiveKit SFU API
   getLiveKitConnection: (params) => ipcRenderer.invoke('get-livekit-connection', params),

@@ -425,13 +425,19 @@ export function useEchoSpaceSettings({
     })
   }, [showToast])
 
-  const triggerDesktopNotification = useCallback((title: string, body: string) => {
+  const triggerDesktopNotification = useCallback((title: string, body: string, data?: any) => {
     if (presenceStatus === 'dnd') return
     try {
       if ((window as any).electronAPI?.showNotification) {
-        (window as any).electronAPI.showNotification({ title, body })
+        (window as any).electronAPI.showNotification({ title, body, data })
       } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-        new Notification(title, { body, icon: '/favicon.ico' })
+        const notif = new Notification(title, { body, icon: '/favicon.ico' })
+        if (data) {
+          notif.onclick = () => {
+            window.focus()
+            window.dispatchEvent(new CustomEvent('echo-notification-clicked', { detail: data }))
+          }
+        }
       }
     } catch (e) {
       console.warn('Failed to trigger desktop notification:', e)

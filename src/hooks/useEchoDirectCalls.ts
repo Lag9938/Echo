@@ -27,8 +27,8 @@ export interface UseEchoDirectCallsOptions {
   handleJoinVoice: (channelId: string, explicitSpaceId?: string) => Promise<void>
   leaveVoice: () => void
   setActiveVoiceChannelId: (channelId: string | null) => void
-  showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend') => void
-  triggerDesktopNotification: (title: string, body: string) => void
+  showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend', onClickOrData?: any) => void
+  triggerDesktopNotification: (title: string, body: string, data?: any) => void
   playLeaveSound: (volume: number) => void
 }
 

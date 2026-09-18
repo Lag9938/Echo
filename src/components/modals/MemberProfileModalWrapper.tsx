@@ -71,17 +71,17 @@ export function MemberProfileModalWrapper({
     ? profileEffect
     : (presenceData[inspectedMember.user.id]?.profile_effect || (inspectedMember.user as any).profile_effect || null)
 
-  const memberBannerCustom = inspectedMember.bannerCustom !== undefined
+  const memberBannerCustom = inspectedMember.bannerCustom !== undefined && inspectedMember.bannerCustom !== null
     ? inspectedMember.bannerCustom
-    : (inspectedMember.user.id === user.id
-        ? (localStorage.getItem(`echo-banner-custom-${user.id}`) || localStorage.getItem('echo-banner-custom') || (inspectedMember.user as any)?.banner_url || null)
-        : (presenceData[inspectedMember.user.id]?.banner_custom || (presenceData[inspectedMember.user.id] as any)?.banner_url || (inspectedMember.user as any)?.banner_url || localStorage.getItem(`echo-banner-custom-${inspectedMember.user.id}`) || null))
+    : ((inspectedMember.user as any)?.banner_url || (inspectedMember.user.id === user.id
+        ? (localStorage.getItem(`echo-banner-custom-${user.id}`) || localStorage.getItem('echo-banner-custom') || null)
+        : (presenceData[inspectedMember.user.id]?.banner_custom || (presenceData[inspectedMember.user.id] as any)?.banner_url || localStorage.getItem(`echo-banner-custom-${inspectedMember.user.id}`) || null)))
 
-  const memberBannerPreset = inspectedMember.bannerPreset !== undefined
+  const memberBannerPreset = inspectedMember.bannerPreset !== undefined && inspectedMember.bannerPreset !== null
     ? inspectedMember.bannerPreset
-    : (inspectedMember.user.id === user.id
+    : ((inspectedMember.user as any)?.banner_preset || (inspectedMember.user.id === user.id
         ? (localStorage.getItem(`echo-banner-preset-${user.id}`) || 'synthwave')
-        : (presenceData[inspectedMember.user.id]?.banner_preset || localStorage.getItem(`echo-banner-preset-${inspectedMember.user.id}`) || 'synthwave'))
+        : (presenceData[inspectedMember.user.id]?.banner_preset || localStorage.getItem(`echo-banner-preset-${inspectedMember.user.id}`) || 'synthwave')))
 
   return (
     <MemberProfileModal

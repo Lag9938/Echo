@@ -18,7 +18,7 @@ import { RnnoiseWorkletNode, loadRnnoise } from '@sapphi-red/web-noise-suppresso
 import rnnoiseWorkletPath from '@sapphi-red/web-noise-suppressor/rnnoiseWorklet.js?url'
 import rnnoiseWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise.wasm?url'
 import rnnoiseSimdWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise_simd.wasm?url'
-import { playJoinSound, playLeaveSound } from './soundEffects'
+import { playJoinSound, playLeaveSound, playSoundboardEffect } from './soundEffects'
 import { trackVoiceJoined, trackVoiceLeft, trackScreenShareStarted, trackScreenShareStopped } from './analytics'
 
 export type VoiceParticipant = {
@@ -1147,10 +1147,14 @@ export function useVoiceChannel(options?: {
           const str = new TextDecoder().decode(payload)
           const data = JSON.parse(str)
           if (data.type === 'soundboard') {
+            if (!isDeafenedRef.current) {
+              const vol = sfxVolumeRef.current !== undefined ? sfxVolumeRef.current : 0.6
+              playSoundboardEffect(data.soundId, vol)
+            }
             setLastSoundboardEvent({
               soundId: data.soundId,
-              userId: participant?.identity || '',
-              displayName: participant?.name || 'Membro',
+              userId: data.userId || participant?.identity || '',
+              displayName: data.displayName || participant?.name || 'Alguém',
               timestamp: Date.now()
             })
           } else if (data.type === 'profile_update') {
@@ -2015,6 +2019,20 @@ export function useVoiceChannel(options?: {
 
   // Soundboard via LiveKit Data Messaging (<10ms latency)
   const playSoundboard = useCallback((soundId: string) => {
+    // 1. Toca o efeito sonoro localmente para quem clicou ouvir de imediato
+    if (!isDeafenedRef.current) {
+      const vol = sfxVolumeRef.current !== undefined ? sfxVolumeRef.current : 0.6
+      playSoundboardEffect(soundId, vol)
+    }
+
+    setLastSoundboardEvent({
+      soundId,
+      userId: myInfoRef.current?.userId || '',
+      displayName: myInfoRef.current?.displayName || 'Você',
+      timestamp: Date.now()
+    })
+
+    // 2. Se estiver em chamada, transmite via LiveKit para os outros membros da sala
     const room = roomRef.current
     if (!room || !myInfoRef.current) return
     const payload = JSON.stringify({

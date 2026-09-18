@@ -613,6 +613,13 @@
   transform: scale(0.95);
 }
 
+.soundboard-card.is-playing {
+  border-color: var(--accent-color) !important;
+  background: rgba(99, 102, 241, 0.18) !important;
+  box-shadow: 0 0 16px rgba(99, 102, 241, 0.45);
+  transform: scale(1.04);
+}
+
 .soundboard-emoji {
   font-size: 28px;
 }

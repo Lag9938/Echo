@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { ProfileEffect } from '../ProfileEffect'
 import { AvatarDecoration } from '../AvatarDecoration'
+import { GameLogo, getGameBrandColor } from '../GameLogos'
 import { playSoundboardEffect } from '../../lib/soundEffects'
 import { copyToClipboard } from '../../lib/clipboard'
 import { formatGameDuration } from '../../lib/formatters'
 import {
   CrownIcon,
   MicIcon,
-  GamepadIcon,
   UserPlusIcon,
   UserCheckIcon,
   ZapIcon,
@@ -56,6 +56,7 @@ export function MemberProfileModal({
   const [personalNote, setPersonalNote] = useState<string>(() => {
     return localStorage.getItem(noteStorageKey) || ''
   })
+  const gameBrandColor = activeGame ? getGameBrandColor(activeGame) : '#4ade80'
 
   const handleNoteChange = (val: string) => {
     setPersonalNote(val)
@@ -135,9 +136,18 @@ export function MemberProfileModal({
               </span>
             )}
             {activeGame && (
-              <span className="member-banner-badge" style={{ background: 'rgba(59, 130, 246, 0.45)', borderColor: '#3b82f6' }}>
-                <GamepadIcon style={{ width: '12px', height: '12px' }} />
-                <span>Jogando</span>
+              <span 
+                className="member-banner-badge" 
+                style={{ 
+                  background: `${gameBrandColor}33`, 
+                  borderColor: `${gameBrandColor}88`,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+              >
+                <GameLogo gameName={activeGame} size={13} />
+                <span>{activeGame}</span>
               </span>
             )}
           </div>
@@ -255,19 +265,45 @@ export function MemberProfileModal({
 
           {/* Activity Presence Card */}
           {activeGame ? (
-            <div className="member-activity-card gaming">
-              <div className="member-activity-header">
+            <div 
+              className="member-activity-card gaming"
+              style={{
+                background: `linear-gradient(135deg, ${gameBrandColor}18 0%, ${gameBrandColor}05 100%)`,
+                borderColor: `${gameBrandColor}44`,
+                boxShadow: `0 4px 16px ${gameBrandColor}15`
+              }}
+            >
+              <div className="member-activity-header" style={{ color: gameBrandColor }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                  <GamepadIcon style={{ width: '13px', height: '13px' }} />
+                  <GameLogo gameName={activeGame} size={13} />
                   <span>Jogando Agora</span>
                 </span>
-                <span style={{ fontSize: '10px', background: 'rgba(34, 197, 94, 0.2)', padding: '2px 6px', borderRadius: '4px', color: '#4ade80' }}>
+                <span 
+                  style={{ 
+                    fontSize: '10px', 
+                    background: `${gameBrandColor}22`, 
+                    padding: '2px 6px', 
+                    borderRadius: '4px', 
+                    color: gameBrandColor,
+                    fontWeight: 700,
+                    border: `1px solid ${gameBrandColor}44`
+                  }}
+                >
                   AO VIVO
                 </span>
               </div>
               <div className="member-activity-body">
-                <div className="member-activity-icon-wrap" style={{ color: '#4ade80' }}>
-                  <GamepadIcon style={{ width: '20px', height: '20px' }} />
+                <div 
+                  className="member-activity-icon-wrap" 
+                  style={{ 
+                    background: `${gameBrandColor}18`,
+                    border: `1px solid ${gameBrandColor}33`,
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px'
+                  }}
+                >
+                  <GameLogo gameName={activeGame} size={24} />
                 </div>
                 <div>
                   <h4 className="member-activity-name">{activeGame}</h4>

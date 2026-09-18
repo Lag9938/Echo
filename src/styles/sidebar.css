@@ -1910,15 +1910,17 @@
 
 /* ── Member Hover Popover Card ─────────────────────────────────────────── */
 .member-hover-popover {
-  width: 260px;
-  background: var(--bg-secondary, #161822);
+  width: 285px;
+  background: rgba(22, 24, 34, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55), 0 0 1px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 1px rgba(255, 255, 255, 0.2);
   pointer-events: auto;
   animation: popoverFadeIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
-  cursor: pointer;
+  cursor: default;
 }
 
 @keyframes popoverFadeIn {
@@ -1927,7 +1929,7 @@
 }
 
 .hover-popover-banner {
-  height: 68px;
+  height: 74px;
   width: 100%;
   background-size: cover;
   background-position: center;
@@ -1941,7 +1943,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 30%, rgba(22, 24, 34, 0.65) 100%);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 30%, rgba(22, 24, 34, 0.75) 100%);
   pointer-events: none;
 }
 
@@ -1953,19 +1955,26 @@
   gap: 3px;
 }
 
-.hover-popover-avatar-wrap {
-  margin-top: -26px;
+.hover-popover-avatar-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: -24px;
   margin-bottom: 6px;
   position: relative;
-  width: 44px;
-  height: 44px;
   z-index: 3;
+}
+
+.hover-popover-avatar-wrap {
+  position: relative;
+  width: 46px;
+  height: 46px;
 }
 
 .hover-popover-avatar {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   border-radius: 12px;
   background: linear-gradient(135deg, var(--accent-color, #00f2fe), #6366f1);
   border: 3px solid var(--bg-secondary, #161822);
@@ -1984,6 +1993,67 @@
   border-radius: 9px;
 }
 
+.hover-popover-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.hover-popover-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2.5px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid;
+}
+
+.hover-popover-badge.creator {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #f59e0b;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+}
+
+.hover-popover-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid;
+}
+
+.hover-popover-status-pill.online {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.hover-popover-status-pill.idle {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.hover-popover-status-pill.dnd {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.hover-popover-status-pill.offline {
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.08);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
 .hover-popover-name-row {
   display: flex;
   align-items: center;
@@ -1993,9 +2063,15 @@
 
 .hover-popover-display-name {
   font-size: 14.5px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-primary);
   line-height: 1.2;
+}
+
+.hover-popover-pronouns {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .hover-popover-handle {
@@ -2027,13 +2103,40 @@
 
 .hover-popover-quote {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 4px 8px;
+  padding: 5px 8px;
   border-radius: 6px;
   font-style: italic;
+}
+
+.hover-popover-bio-section {
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.hover-popover-section-label {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 3px;
+}
+
+.hover-popover-bio-text {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .hover-popover-roles {
@@ -2073,20 +2176,49 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
-.hover-popover-footer-hint {
+.hover-popover-actions {
+  display: flex;
+  gap: 6px;
   margin-top: 8px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  text-align: center;
-  font-size: 10px;
-  color: var(--text-muted);
-  opacity: 0.7;
-  transition: opacity 0.15s, color 0.15s;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.member-hover-popover:hover .hover-popover-footer-hint {
-  opacity: 1;
-  color: var(--accent-color, #00f2fe);
+.hover-popover-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+
+.hover-popover-btn.primary {
+  background: var(--accent-color, #6366f1);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.hover-popover-btn.primary:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}
+
+.hover-popover-btn.secondary {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.hover-popover-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 

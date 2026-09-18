@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 
 interface GameLogoProps {
   gameName?: string | null
@@ -286,16 +286,10 @@ function renderInlineVector(key: string, size: number) {
 }
 
 /**
- * Returns crisp local SVG logos for popular games.
- * Loads the official file from `./assets/games/${key}.svg` with an authentic inline vector fallback.
+ * Returns crisp vector logos for popular games with zero network latency.
  */
 export function GameLogo({ gameName, size = 18, className = '', style }: GameLogoProps) {
   const key = getGameKey(gameName)
-  const [loadFailed, setLoadFailed] = useState(false)
-
-  useEffect(() => {
-    setLoadFailed(false)
-  }, [key])
 
   return (
     <span
@@ -311,24 +305,7 @@ export function GameLogo({ gameName, size = 18, className = '', style }: GameLog
       }}
       title={gameName || 'Jogo'}
     >
-      {!loadFailed ? (
-        <img
-          src={`./assets/games/${key}.svg`}
-          alt={gameName || key}
-          width={size}
-          height={size}
-          className="game-logo-img"
-          style={{
-            width: `${size}px`,
-            height: `${size}px`,
-            objectFit: 'contain',
-            display: 'block'
-          }}
-          onError={() => setLoadFailed(true)}
-        />
-      ) : (
-        renderInlineVector(key, size)
-      )}
+      {renderInlineVector(key, size)}
     </span>
   )
 }

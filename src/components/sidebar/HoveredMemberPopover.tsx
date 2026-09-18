@@ -2,7 +2,7 @@ import React from 'react'
 import { ProfileEffect } from '../ProfileEffect'
 import { AvatarDecoration } from '../AvatarDecoration'
 import { GameLogo } from '../GameLogos'
-import { VolumeIcon } from '../icons'
+import { VolumeIcon, CrownIcon, MessageSquareIcon, UserIcon } from '../icons'
 import { formatGameDuration } from '../../lib/formatters'
 
 export interface HoveredMemberPopoverData {
@@ -19,8 +19,11 @@ export interface HoveredMemberPopoverData {
   roleName?: string
   roleColor?: string
   roles?: any[]
+  isCreator?: boolean
+  bio?: string | null
+  pronouns?: string | null
   isVoiceUser?: boolean
-  userPresenceStatus?: string
+  userPresenceStatus?: 'online' | 'idle' | 'dnd' | 'offline' | string
   clanTag?: string | null
   clanTagColor?: string | null
   activeGame?: string | null
@@ -40,6 +43,7 @@ export interface HoveredMemberPopoverProps {
   currentUserProfileEffect?: string | null
   currentUserAvatarDecoration?: string | null
   presenceData: Record<string, any>
+  onOpenDM?: (userId: string) => void
 }
 
 export function HoveredMemberPopover({
@@ -50,7 +54,8 @@ export function HoveredMemberPopover({
   currentUserId,
   currentUserProfileEffect,
   currentUserAvatarDecoration,
-  presenceData
+  presenceData,
+  onOpenDM
 }: HoveredMemberPopoverProps) {
   if (!hoveredMemberPopover) return null
 
@@ -66,20 +71,45 @@ export function HoveredMemberPopover({
     : (presenceData[targetUserId]?.avatar_decoration || (hoveredMemberPopover.user as any).avatar_decoration || null)
 
   const bannerCustom = isCurrentUser
-    ? (localStorage.getItem(`echo-banner-custom-${currentUserId}`) || localStorage.getItem('echo-banner-custom') || hoveredMemberPopover.bannerCustom || (hoveredMemberPopover.user as any)?.banner_url || null)
-    : (hoveredMemberPopover.bannerCustom || presenceData[targetUserId]?.banner_custom || (presenceData[targetUserId] as any)?.banner_url || (hoveredMemberPopover.user as any)?.banner_url || localStorage.getItem(`echo-banner-custom-${targetUserId}`) || null)
+    ? ((hoveredMemberPopover.user as any)?.banner_url || hoveredMemberPopover.bannerCustom || localStorage.getItem(`echo-banner-custom-${currentUserId}`) || localStorage.getItem('echo-banner-custom') || null)
+    : (hoveredMemberPopover.bannerCustom || (hoveredMemberPopover.user as any)?.banner_url || (presenceData[targetUserId] as any)?.banner_url || presenceData[targetUserId]?.banner_custom || localStorage.getItem(`echo-banner-custom-${targetUserId}`) || null)
 
   const bannerPreset = isCurrentUser
-    ? (localStorage.getItem(`echo-banner-preset-${currentUserId}`) || localStorage.getItem('echo-banner-preset') || 'synthwave')
-    : (hoveredMemberPopover.bannerPreset || presenceData[targetUserId]?.banner_preset || localStorage.getItem(`echo-banner-preset-${targetUserId}`) || 'synthwave')
+    ? ((hoveredMemberPopover.user as any)?.banner_preset || hoveredMemberPopover.bannerPreset || localStorage.getItem(`echo-banner-preset-${currentUserId}`) || localStorage.getItem('echo-banner-preset') || 'synthwave')
+    : (hoveredMemberPopover.bannerPreset || (hoveredMemberPopover.user as any)?.banner_preset || (presenceData[targetUserId] as any)?.banner_preset || presenceData[targetUserId]?.banner_preset || localStorage.getItem(`echo-banner-preset-${targetUserId}`) || 'synthwave')
+
+  const isCreator = Boolean(hoveredMemberPopover.isCreator)
+  const bio = hoveredMemberPopover.bio || (hoveredMemberPopover.user as any)?.bio || null
+  const pronouns = hoveredMemberPopover.pronouns || (hoveredMemberPopover.user as any)?.pronouns || null
+
+  const status = hoveredMemberPopover.userPresenceStatus || 'offline'
+  const statusLabels: Record<string, string> = {
+    online: 'Online',
+    idle: 'Ausente',
+    dnd: 'Ocupado',
+    offline: 'Offline'
+  }
+  const statusLabel = statusLabels[status] || 'Offline'
+
+  const handleInspectFullProfile = () => {
+    setInspectedMember({
+      user: hoveredMemberPopover.user,
+      roleName: hoveredMemberPopover.roleName,
+      roleColor: hoveredMemberPopover.roleColor,
+      roles: hoveredMemberPopover.roles,
+      bannerCustom,
+      bannerPreset
+    })
+    setHoveredMemberPopover(null)
+  }
 
   return (
     <div 
       className="member-hover-popover"
       style={{
         position: 'fixed',
-        top: `${Math.min(Math.max(12, hoveredMemberPopover.rect.top - 16), window.innerHeight - 280)}px`,
-        left: `${Math.max(10, hoveredMemberPopover.rect.left - 275)}px`,
+        top: `${Math.min(Math.max(12, hoveredMemberPopover.rect.top - 16), window.innerHeight - 340)}px`,
+        left: `${Math.max(10, hoveredMemberPopover.rect.left - 295)}px`,
         zIndex: 1100
       }}
       onMouseEnter={() => {
@@ -91,17 +121,7 @@ export function HoveredMemberPopover({
           setHoveredMemberPopover(null)
         }, 120)
       }}
-      onClick={() => {
-        setInspectedMember({
-          user: hoveredMemberPopover.user,
-          roleName: hoveredMemberPopover.roleName,
-          roleColor: hoveredMemberPopover.roleColor,
-          roles: hoveredMemberPopover.roles,
-          bannerCustom,
-          bannerPreset
-        })
-        setHoveredMemberPopover(null)
-      }}
+      onClick={handleInspectFullProfile}
     >
       <ProfileEffect effectId={hoveredEffect} />
       <div 
@@ -120,18 +140,46 @@ export function HoveredMemberPopover({
         } 
       />
       <div className="hover-popover-body">
-        <div className="hover-popover-avatar-wrap">
-          <div className="hover-popover-avatar">
-            {hoveredMemberPopover.user.avatar_url ? (
-              <img src={hoveredMemberPopover.user.avatar_url} alt={hoveredMemberPopover.user.display_name} />
-            ) : (
-              hoveredMemberPopover.user.display_name.slice(0, 1).toUpperCase()
-            )}
-            {deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null}
+        {/* Top Avatar Bar with Badges on the right */}
+        <div className="hover-popover-avatar-bar">
+          <div className="hover-popover-avatar-wrap">
+            <div className="hover-popover-avatar">
+              {hoveredMemberPopover.user.avatar_url ? (
+                <img src={hoveredMemberPopover.user.avatar_url} alt={hoveredMemberPopover.user.display_name} />
+              ) : (
+                hoveredMemberPopover.user.display_name.slice(0, 1).toUpperCase()
+              )}
+              {deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null}
+            </div>
+            <span className={`member-status-dot ${hoveredMemberPopover.isVoiceUser ? 'voice-active' : status}`} />
           </div>
-          <span className={`member-status-dot ${hoveredMemberPopover.isVoiceUser ? 'voice-active' : hoveredMemberPopover.userPresenceStatus}`} />
+
+          <div className="hover-popover-badges">
+            {isCreator ? (
+              <span className="hover-popover-badge creator" title="Dono do Servidor">
+                <CrownIcon style={{ width: '12px', height: '12px' }} /> Dono
+              </span>
+            ) : hoveredMemberPopover.roleName ? (
+              <span 
+                className="hover-popover-badge role"
+                style={{ 
+                  color: hoveredMemberPopover.roleColor || '#00f2fe',
+                  borderColor: `${hoveredMemberPopover.roleColor || '#00f2fe'}55`,
+                  background: `${hoveredMemberPopover.roleColor || '#00f2fe'}18`
+                }}
+              >
+                <span className="role-dot" style={{ background: hoveredMemberPopover.roleColor || '#00f2fe' }} />
+                {hoveredMemberPopover.roleName}
+              </span>
+            ) : null}
+
+            <span className={`hover-popover-status-pill ${status}`}>
+              {statusLabel}
+            </span>
+          </div>
         </div>
 
+        {/* Name Row with Clan Tag & Pronouns */}
         <div className="hover-popover-name-row">
           <span className="hover-popover-display-name" style={{ color: hoveredMemberPopover.roleColor || 'var(--text-primary)' }}>
             {hoveredMemberPopover.user.display_name}
@@ -148,12 +196,18 @@ export function HoveredMemberPopover({
               [{hoveredMemberPopover.clanTag}]
             </span>
           )}
+          {pronouns && (
+            <span className="hover-popover-pronouns">
+              ({pronouns})
+            </span>
+          )}
         </div>
 
         <span className="hover-popover-handle">
           @{hoveredMemberPopover.user.display_name.toLowerCase().replace(/\s+/g, '')}
         </span>
 
+        {/* Activity: Game or Voice */}
         {hoveredMemberPopover.activeGame && (
           <div className="hover-popover-activity game">
             <GameLogo gameName={hoveredMemberPopover.activeGame} size={16} style={{ flexShrink: 0 }} />
@@ -171,12 +225,22 @@ export function HoveredMemberPopover({
           </div>
         )}
 
+        {/* Custom Status */}
         {hoveredMemberPopover.customStatus && (
           <div className="hover-popover-quote">
-            <span>{hoveredMemberPopover.customStatus}</span>
+            <span>"{hoveredMemberPopover.customStatus}"</span>
           </div>
         )}
 
+        {/* About Me / Bio */}
+        {bio && (
+          <div className="hover-popover-bio-section">
+            <span className="hover-popover-section-label">SOBRE MIM</span>
+            <p className="hover-popover-bio-text">{bio}</p>
+          </div>
+        )}
+
+        {/* Roles */}
         {hoveredMemberPopover.roles && hoveredMemberPopover.roles.length > 0 && (
           <div className="hover-popover-roles">
             <span className="hover-popover-roles-title">CARGOS</span>
@@ -194,8 +258,35 @@ export function HoveredMemberPopover({
           </div>
         )}
 
-        <div className="hover-popover-footer-hint">
-          <span>Clique para ver perfil completo</span>
+        {/* Quick Action Buttons */}
+        <div className="hover-popover-actions">
+          {!isCurrentUser && onOpenDM && (
+            <button 
+              type="button" 
+              className="hover-popover-btn primary"
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenDM(targetUserId)
+                setHoveredMemberPopover(null)
+              }}
+              title={`Enviar mensagem direta para ${hoveredMemberPopover.user.display_name}`}
+            >
+              <MessageSquareIcon style={{ width: '13px', height: '13px' }} />
+              <span>Mensagem</span>
+            </button>
+          )}
+          <button 
+            type="button" 
+            className="hover-popover-btn secondary"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleInspectFullProfile()
+            }}
+            title="Abrir perfil detalhado"
+          >
+            <UserIcon style={{ width: '13px', height: '13px' }} />
+            <span>Ver Perfil</span>
+          </button>
         </div>
       </div>
     </div>

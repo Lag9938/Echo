@@ -45,7 +45,8 @@ export interface ElectronAPI {
   onGlobalVoiceToggle: (callback: (action: 'toggle-mute' | 'toggle-deafen') => void) => void
 
   // Native Notifications
-  showNotification: (options: { title: string; body?: string }) => Promise<{ success: boolean }>
+  showNotification: (options: { title: string; body?: string; data?: any }) => Promise<{ success: boolean; error?: string }>
+  onNotificationClicked: (callback: (data: any) => void) => void
 
   // LiveKit SFU Connection & JWT Generation
   getLiveKitConnection: (params?: { room?: string; identity?: string; name?: string; avatarUrl?: string }) => Promise<LiveKitConnectionResult>

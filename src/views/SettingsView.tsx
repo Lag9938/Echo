@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { WhatsNewModal } from '../components/WhatsNewModal'
 import { AvatarDecoration } from '../components/AvatarDecoration'
@@ -120,7 +120,7 @@ export function SettingsView({
   onEquipNameEffect?: (id: string) => void
   initialTab?: 'profile' | 'subscription' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog'
   onOpenShop?: (targetTab?: 'decorations' | 'profile_effects' | 'auras' | 'finishes' | 'name_effects') => void
-  onProfileUpdate: (name: string, avatar: string) => void
+  onProfileUpdate: (name: string, avatar: string, bannerUrl?: string, bannerPreset?: string) => void
   onCustomStatusUpdate: (status: string) => void
   audioInputs: MediaDeviceInfo[]
   audioOutputs: MediaDeviceInfo[]
@@ -232,6 +232,40 @@ export function SettingsView({
   const [accountCreatedYear] = useState(() =>
     userCreatedAt ? new Date(userCreatedAt).getFullYear() : 2026
   )
+
+  // Carrega banner e informações estendidas do Supabase ao montar
+  useEffect(() => {
+    if (!supabase || !userId) return
+    async function loadRemoteProfile() {
+      if (!supabase) return
+      try {
+        const { data } = await supabase.from('profiles').select('banner_url, banner_preset, bio, pronouns, custom_status').eq('id', userId).single()
+        if (data) {
+          if (data.banner_url) {
+            setLocalBannerCustom(data.banner_url)
+            localStorage.setItem(`echo-banner-custom-${userId}`, data.banner_url)
+            localStorage.setItem('echo-banner-custom', data.banner_url)
+          }
+          if (data.banner_preset) {
+            setLocalBannerPreset(data.banner_preset)
+            localStorage.setItem(`echo-banner-preset-${userId}`, data.banner_preset)
+            localStorage.setItem('echo-banner-preset', data.banner_preset)
+          }
+          if (data.bio) {
+            setLocalBio(data.bio)
+            localStorage.setItem(`echo-bio-${userId}`, data.bio)
+          }
+          if (data.pronouns) {
+            setLocalPronouns(data.pronouns)
+            localStorage.setItem(`echo-pronouns-${userId}`, data.pronouns)
+          }
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar perfil remoto:', err)
+      }
+    }
+    loadRemoteProfile()
+  }, [userId])
 
   const badgesList = [
     { 
@@ -379,25 +413,36 @@ export function SettingsView({
   async function handleBannerUpload(file: File) {
     setUploadingBanner(true)
     try {
-      const reader = new FileReader()
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          setLocalBannerCustom(reader.result)
-        }
-      }
-      reader.readAsDataURL(file)
-
       if (supabase) {
-        const ext = file.name.split('.').pop()
+        const ext = file.name.split('.').pop() || 'png'
         const path = `banners/${userId}/${Date.now()}.${ext}`
-        const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file)
+        const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file, {
+          contentType: file.type,
+          upsert: true
+        })
         if (!uploadError) {
           const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
           if (urlData?.publicUrl) {
             setLocalBannerCustom(urlData.publicUrl)
+            localStorage.setItem(`echo-banner-custom-${userId}`, urlData.publicUrl)
+            localStorage.setItem('echo-banner-custom', urlData.publicUrl)
+            return
           }
+        } else {
+          console.warn('Banner upload to storage error, fallback to local reader:', uploadError)
         }
       }
+
+      // Fallback para preview local caso storage falhe ou offline
+      const reader = new FileReader()
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setLocalBannerCustom(reader.result)
+          localStorage.setItem(`echo-banner-custom-${userId}`, reader.result)
+          localStorage.setItem('echo-banner-custom', reader.result)
+        }
+      }
+      reader.readAsDataURL(file)
     } catch (err: any) {
       console.warn('Banner upload fallback to local data URL:', err)
     } finally {
@@ -442,7 +487,12 @@ export function SettingsView({
       const { error } = await supabase.from('profiles').upsert({
         id: userId,
         display_name: localDisplayName,
-        avatar_url: localAvatarUrl
+        avatar_url: localAvatarUrl,
+        banner_url: localBannerCustom,
+        banner_preset: localBannerPreset,
+        bio: localBio,
+        pronouns: localPronouns,
+        custom_status: localCustomStatus
       })
       if (error) throw error
 
@@ -467,7 +517,7 @@ export function SettingsView({
         socialKick: localSocialKick,
       })
 
-      onProfileUpdate(localDisplayName, localAvatarUrl)
+      onProfileUpdate(localDisplayName, localAvatarUrl, localBannerCustom, localBannerPreset)
       onCustomStatusUpdate(localCustomStatus)
       window.dispatchEvent(new Event('echo-profile-updated'))
       setProfileSavedToast(true)

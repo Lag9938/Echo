@@ -247,7 +247,7 @@ export function useEchoSpaces({
       try {
         const { data, error: queryError } = await supabase
           .from('space_members')
-          .select('role, user:profiles(id, display_name, avatar_url, avatar_decoration, profile_effect)')
+          .select('role, user:profiles(id, display_name, avatar_url, avatar_decoration, profile_effect, banner_url, banner_preset, bio, pronouns, custom_status)')
           .eq('space_id', spaceId)
 
         if (!queryError && data) {
@@ -275,7 +275,7 @@ export function useEchoSpaces({
             const uIds = directMembers.map((d: any) => d.user_id)
             const { data: profs } = await supabase
               .from('profiles')
-              .select('id, display_name, avatar_url, avatar_decoration, profile_effect')
+              .select('id, display_name, avatar_url, avatar_decoration, profile_effect, banner_url, banner_preset, bio, pronouns, custom_status')
               .in('id', uIds)
 
             const profMap = new Map((profs || []).map((p: any) => [p.id, p]))
@@ -295,7 +295,7 @@ export function useEchoSpaces({
         try {
           const { data: creatorProf } = await supabase
             .from('profiles')
-            .select('id, display_name, avatar_url, avatar_decoration, profile_effect')
+            .select('id, display_name, avatar_url, avatar_decoration, profile_effect, banner_url, banner_preset, bio, pronouns, custom_status')
             .eq('id', spObj.creator_id)
             .maybeSingle()
 
@@ -312,7 +312,15 @@ export function useEchoSpaces({
       if (user && !memberMap.has(user.id) && spObj?.creator_id === user.id) {
         const myMemberObj = {
           role: 'owner',
-          user: { id: user.id, display_name: profName || 'Membro', avatar_url: profAvatar },
+          user: { 
+            id: user.id, 
+            display_name: profName || 'Membro', 
+            avatar_url: profAvatar,
+            avatar_decoration: getAvatarDecoration ? getAvatarDecoration() : null,
+            profile_effect: getProfileEffect ? getProfileEffect() : null,
+            banner_url: localStorage.getItem(`echo-banner-custom-${user.id}`) || localStorage.getItem('echo-banner-custom') || null,
+            banner_preset: localStorage.getItem(`echo-banner-preset-${user.id}`) || localStorage.getItem('echo-banner-preset') || 'synthwave'
+          },
           space_id: spaceId
         }
         memberMap.set(user.id, myMemberObj)
