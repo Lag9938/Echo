@@ -149,7 +149,11 @@ async function scanRunningGames() {
     // 1. Escaneamento prioritário via tasklist.exe (0 dependências, funciona mesmo com Riot Vanguard)
     if (process.platform === 'win32') {
       try {
-        const { stdout } = await execFileAsync('tasklist.exe', ['/fo', 'csv', '/nh'], { timeout: 2500, windowsHide: true })
+        const tasklistCmd = process.env.SystemRoot 
+          ? path.join(process.env.SystemRoot, 'System32', 'tasklist.exe')
+          : 'tasklist.exe'
+        const exeToRun = fs.existsSync(tasklistCmd) ? tasklistCmd : 'tasklist.exe'
+        const { stdout } = await execFileAsync(exeToRun, ['/fo', 'csv', '/nh'], { timeout: 6000, windowsHide: true })
         if (stdout) {
           const lines = stdout.split(/\r?\n/)
           for (const line of lines) {
@@ -183,7 +187,7 @@ async function scanRunningGames() {
 
     if (helperPath) {
       try {
-        const { stdout } = await execFileAsync(helperPath, ['--get-active-game'], { timeout: 1500 })
+        const { stdout } = await execFileAsync(helperPath, ['--get-active-game'], { timeout: 4000 })
         if (stdout && stdout.trim().startsWith('{')) {
           const data = JSON.parse(stdout.trim())
           const fgMatched = matchGameProcess(data.foreground?.processName, data.foreground?.title)
@@ -207,12 +211,12 @@ async function scanRunningGames() {
       if (isNewGame) {
         activeGame = foundGame
         activeGameStartTime = Date.now()
+        mainWindow?.webContents.send('game-detected', {
+          name: activeGame.name,
+          icon: activeGame.icon,
+          startedAt: activeGameStartTime
+        })
       }
-      mainWindow?.webContents.send('game-detected', {
-        name: activeGame.name,
-        icon: activeGame.icon,
-        startedAt: activeGameStartTime
-      })
     } else {
       if (activeGame) {
         activeGame = null

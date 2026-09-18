@@ -185,9 +185,9 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
 
     const activeGameObj = member.user.id === user.id 
       ? (presenceStatus !== 'invisible' ? myGamePresence : null)
-      : (presenceData[member.user.id]?.game_presence || presenceData[member.user.id]?.current_game || null)
-    const activeGame = activeGameObj?.name || null
-    const activeGameStartedAt = activeGameObj?.startedAt || null
+      : (presenceData[member.user.id]?.game_presence || presenceData[member.user.id]?.current_game || (member.user as any)?.game_presence || (member.user as any)?.current_game || null)
+    const activeGame = typeof activeGameObj === 'string' ? activeGameObj : (activeGameObj?.name || null)
+    const activeGameStartedAt = typeof activeGameObj === 'object' ? (activeGameObj?.startedAt || null) : null
 
     const rawCustomStatus = presenceData[member.user.id]?.custom_status || (member.user as any)?.custom_status
     const isSameAsName = rawCustomStatus && (rawCustomStatus.trim().toLowerCase() === member.user.display_name.trim().toLowerCase())
@@ -338,6 +338,11 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
               <span className="member-game-title">Jogando {activeGame}</span>
               {activeGameStartedAt && (
                 <span className="member-game-time">• {formatGameDuration(activeGameStartedAt)}</span>
+              )}
+              {isVoiceUser && (
+                <span className="member-status-voice-sub" title="Em chamada de voz" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '4px', color: '#22c55e' }}>
+                  <VolumeIcon style={{ width: '10px', height: '10px' }} />
+                </span>
               )}
             </span>
           ) : validCustomStatus ? (

@@ -14,15 +14,42 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.34.1'
+export const APP_CURRENT_VERSION = '0.34.2'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.34.2',
+    title: 'Echo v0.34.2 - Correção Definitiva da Detecção e Transmissão de Jogos (VALORANT)',
+    date: '18 de Setembro de 2026',
+    tagline: 'Correção na sincronização global de jogos entre membros (mesmo em chamada de voz), caminho de escaneamento ultra-robusto no Windows e eliminação de conflitos de presença.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎮',
+        badge: 'GAME PRESENCE',
+        title: 'Sincronização de Jogos em Tempo Real entre Membros',
+        description: 'Corrigida a fusão de estados no Realtime do Supabase. O jogo do seu amigo (como VALORANT) agora aparece instantaneamente na barra de membros e no perfil, mesmo quando ele estiver conectado em um canal de voz.'
+      },
+      {
+        icon: '🛡️',
+        badge: 'SCANNER NATIVO',
+        title: 'Detecção Confiável no Windows (Vanguard / Riot)',
+        description: 'O escaneador de processos agora usa o caminho absoluto do System32 do Windows e tempos limite ampliados, garantindo a detecção precisa de jogos com anti-cheat como VALORANT e Counter-Strike 2.'
+      },
+      {
+        icon: '🔊',
+        badge: 'INTERFACE',
+        title: 'Status Híbrido: Jogo Ativo + Indicador de Voz',
+        description: 'Membros que estiverem jogando e conversando em chamada de voz agora exibem o título do jogo com a logo oficial acompanhados de um mini indicador de áudio.'
+      }
+    ]
+  },
   {
     version: '0.34.1',
     title: 'Echo v0.34.1 - Novo Card de Membro, Notificações Nativas no Windows & GIFs Sincronizados',
     date: '18 de Setembro de 2026',
     tagline: 'Card flutuante de membros completamente reformulado com ações rápidas e bio, suporte completo a notificações nativas do Windows com redirecionamento ao clicar, e Soundboard Gamer 100% calibrada.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🎴',

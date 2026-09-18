@@ -664,6 +664,18 @@ function Echo({ user }: { user: User }) {
   const activeVoiceChannelIdRef = useRef<string | null>(null)
   const activeVoiceSpaceIdRef = useRef<string | null>(null)
 
+  // Rich Presence: My active game via custom hook
+  const { myGamePresence } = useEchoGamePresence({
+    userId: user.id,
+    profileDisplayName,
+    avatarDecoration,
+    profileEffect,
+    nameEffect,
+    presenceStatus,
+    presenceChannelRef
+  })
+  myGamePresenceRef.current = myGamePresence
+
   // Global Online Presence Hook (Phase 19)
   const {
     presenceData,
@@ -677,6 +689,7 @@ function Echo({ user }: { user: User }) {
     displayName,
     avatarDecoration,
     profileEffect,
+    myGamePresence,
     myGamePresenceRef,
     presenceChannelRef,
     supabase,
@@ -1114,17 +1127,6 @@ function Echo({ user }: { user: User }) {
     setPttActive
   })
 
-  // Rich Presence: My active game via custom hook
-  const { myGamePresence } = useEchoGamePresence({
-    userId: user.id,
-    profileDisplayName,
-    avatarDecoration,
-    profileEffect,
-    nameEffect,
-    presenceStatus,
-    presenceChannelRef
-  })
-  myGamePresenceRef.current = myGamePresence
 
 
 

@@ -57,9 +57,9 @@ export function MemberProfileModalWrapper({
   const memberClanTagColor = localStorage.getItem(`echo-clan-tag-color-${inspectedMember.user.id}`) || (inspectedMember.user.id === user.id ? localStorage.getItem(`echo-clan-tag-color-${user.id}`) : '#00f2fe') || '#00f2fe'
   const activeGameObj = inspectedMember.user.id === user.id 
     ? (presenceStatus !== 'invisible' ? myGamePresence : null)
-    : (presenceData[inspectedMember.user.id]?.game_presence || presenceData[inspectedMember.user.id]?.current_game || null)
-  const activeGame = activeGameObj?.name || null
-  const activeGameStartedAt = activeGameObj?.startedAt || null
+    : (presenceData[inspectedMember.user.id]?.game_presence || presenceData[inspectedMember.user.id]?.current_game || (inspectedMember.user as any)?.game_presence || (inspectedMember.user as any)?.current_game || null)
+  const activeGame = typeof activeGameObj === 'string' ? activeGameObj : (activeGameObj?.name || null)
+  const activeGameStartedAt = typeof activeGameObj === 'object' ? (activeGameObj?.startedAt || null) : null
   const isVoiceUser = participants.some(p => p.userId === inspectedMember.user.id)
   const currentActiveSpace = spaces.find(s => s.id === expandedSpace) || spaces[0] || null
   const isServerOwner = currentActiveSpace?.creator_id === inspectedMember.user.id

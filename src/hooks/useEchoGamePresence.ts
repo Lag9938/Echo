@@ -37,7 +37,14 @@ export function useEchoGamePresence({
 
   useEffect(() => {
     const handleGame = (game: any) => {
-      setMyGamePresence(game)
+      setMyGamePresence(prev => {
+        const prevName = prev?.name || null
+        const newName = game?.name || null
+        if (prevName === newName && prev?.startedAt === game?.startedAt) {
+          return prev
+        }
+        return game
+      })
       try {
         if (game) {
           localStorage.setItem('echo-my-game-presence', JSON.stringify(game))
@@ -45,6 +52,7 @@ export function useEchoGamePresence({
           localStorage.removeItem('echo-my-game-presence')
         }
       } catch {}
+      window.dispatchEvent(new CustomEvent('echo-presence-refresh'))
     }
 
     if ((window as any).electronAPI?.onGameDetected) {
@@ -61,12 +69,15 @@ export function useEchoGamePresence({
 
   // Auto-broadcast game presence to Supabase presence channel
   useEffect(() => {
-    if (presenceChannelRef.current) {
+    if (presenceChannelRef && presenceChannelRef.current) {
       const savedStatus = presenceStatus === 'invisible' ? '' : (localStorage.getItem('echo-custom-status') || '')
       const gameData = presenceStatus === 'invisible' ? null : myGamePresence
       const curDeco = localStorage.getItem(`echo-avatar-decoration-${userId}`) || avatarDecoration || ''
       const curEff = localStorage.getItem(`echo-profile-effect-${userId}`) || profileEffect || ''
       const curNameEff = localStorage.getItem(`echo-name-effect-${userId}`) || nameEffect || 'resonance_cyan'
+      const rawBanner = localStorage.getItem(`echo-banner-custom-${userId}`) || localStorage.getItem('echo-banner-custom') || ''
+      const safeBanner = (rawBanner && !rawBanner.startsWith('data:') && rawBanner.length < 2048) ? rawBanner : ''
+      const preset = localStorage.getItem(`echo-banner-preset-${userId}`) || 'synthwave'
       presenceChannelRef.current.track({
         user_id: userId,
         display_name: profileDisplayName,
@@ -77,7 +88,10 @@ export function useEchoGamePresence({
         game_presence: gameData,
         avatar_decoration: curDeco,
         profile_effect: curEff,
-        name_effect: curNameEff
+        name_effect: curNameEff,
+        banner_custom: safeBanner,
+        banner_preset: preset,
+        banner_url: safeBanner
       }).catch(() => {})
     }
   }, [myGamePresence, presenceStatus, profileDisplayName, avatarDecoration, profileEffect, nameEffect, userId, presenceChannelRef])

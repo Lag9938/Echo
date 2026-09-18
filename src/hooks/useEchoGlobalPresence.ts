@@ -46,11 +46,23 @@ export function useEchoGlobalPresence({
     Object.keys(state).forEach(key => {
       const userPresence = state[key]
       if (userPresence && userPresence.length > 0) {
-        const p = userPresence[0] as any
-        pData[key] = p
-        const uid = p.user_id || key
-        pData[uid] = p
-        if (p.presence_status !== 'invisible') {
+        const merged: any = {}
+        for (const item of userPresence) {
+          Object.assign(merged, item)
+        }
+        if (!merged.current_game && !merged.game_presence) {
+          for (let i = userPresence.length - 1; i >= 0; i--) {
+            if (userPresence[i].current_game || userPresence[i].game_presence) {
+              merged.current_game = userPresence[i].current_game
+              merged.game_presence = userPresence[i].game_presence
+              break
+            }
+          }
+        }
+        const uid = merged.user_id || key
+        pData[key] = merged
+        pData[uid] = merged
+        if (merged.presence_status !== 'invisible') {
           online.add(key)
           online.add(uid)
         }
@@ -82,8 +94,8 @@ export function useEchoGlobalPresence({
         for (const k of nextKeys) {
           const oldP = prev[k]
           const newP = pData[k]
-          const oldGameName = oldP?.current_game?.name || oldP?.game_presence?.name || null
-          const newGameName = newP?.current_game?.name || newP?.game_presence?.name || null
+          const oldGameName = oldP?.current_game?.name || oldP?.game_presence?.name || (typeof oldP?.current_game === 'string' ? oldP.current_game : null)
+          const newGameName = newP?.current_game?.name || newP?.game_presence?.name || (typeof newP?.current_game === 'string' ? newP.current_game : null)
           const oldGameStart = oldP?.current_game?.startedAt || oldP?.game_presence?.startedAt || null
           const newGameStart = newP?.current_game?.startedAt || newP?.game_presence?.startedAt || null
 
@@ -134,12 +146,19 @@ export function useEchoGlobalPresence({
     const rawBannerCustom = localStorage.getItem(`echo-banner-custom-${user.id}`) || localStorage.getItem('echo-banner-custom') || ''
     const safeBannerUrl = (rawBannerCustom && !rawBannerCustom.startsWith('data:') && rawBannerCustom.length < 2048) ? rawBannerCustom : ''
     const savedBannerPreset = localStorage.getItem(`echo-banner-preset-${user.id}`) || localStorage.getItem('echo-banner-preset') || 'synthwave'
-    const currentGameData = myGamePresenceRef?.current !== undefined 
+    let currentGameData = myGamePresenceRef?.current !== undefined 
       ? myGamePresenceRef.current 
       : (myGamePresence !== undefined ? myGamePresence : (getMyGamePresence ? getMyGamePresence() : null))
+    if (!currentGameData) {
+      try {
+        const cached = localStorage.getItem('echo-my-game-presence')
+        if (cached) currentGameData = JSON.parse(cached)
+      } catch {}
+    }
     const gameData = savedPresStatus === 'invisible' ? null : currentGameData
     const voiceChanId = activeVoiceChannelIdRef?.current || null
     const voiceSpId = activeVoiceSpaceIdRef?.current || null
+    const curNameEff = localStorage.getItem(`echo-name-effect-${user.id}`) || 'resonance_cyan'
 
     await presenceChannel.track({
       user_id: user.id,
@@ -149,6 +168,7 @@ export function useEchoGlobalPresence({
       presence_status: savedPresStatus,
       avatar_decoration: savedDecoration,
       profile_effect: savedEffect,
+      name_effect: curNameEff,
       banner_custom: safeBannerUrl,
       banner_preset: savedBannerPreset,
       banner_url: safeBannerUrl,
@@ -199,8 +219,10 @@ export function useEchoGlobalPresence({
         handleGameChange()
       }
     }
+    window.addEventListener('echo-presence-refresh', handleGameChange)
     window.addEventListener('storage', storageHandler)
     return () => {
+      window.removeEventListener('echo-presence-refresh', handleGameChange)
       window.removeEventListener('storage', storageHandler)
     }
   }, [])
