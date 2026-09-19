@@ -153,7 +153,7 @@ async function scanRunningGames() {
           ? path.join(process.env.SystemRoot, 'System32', 'tasklist.exe')
           : 'tasklist.exe'
         const exeToRun = fs.existsSync(tasklistCmd) ? tasklistCmd : 'tasklist.exe'
-        const { stdout } = await execFileAsync(exeToRun, ['/fo', 'csv', '/nh'], { timeout: 6000, windowsHide: true })
+        const { stdout } = await execFileAsync(exeToRun, ['/fo', 'csv', '/nh'], { timeout: 6000, windowsHide: true, maxBuffer: 10 * 1024 * 1024 })
         if (stdout) {
           const lines = stdout.split(/\r?\n/)
           for (const line of lines) {
@@ -169,6 +169,25 @@ async function scanRunningGames() {
           }
         }
       } catch (e) {}
+
+      // Fallback secundário no Windows via PowerShell caso tasklist seja restrito ou falhe
+      if (!foundGame) {
+        try {
+          const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', 'Get-Process | Select-Object -ExpandProperty ProcessName'], { timeout: 4000, windowsHide: true, maxBuffer: 10 * 1024 * 1024 })
+          if (stdout) {
+            const names = stdout.split(/\r?\n/)
+            for (const name of names) {
+              const trimmed = name.trim()
+              if (!trimmed) continue
+              const matched = matchGameProcess(trimmed)
+              if (matched) {
+                foundGame = matched
+                break
+              }
+            }
+          }
+        } catch (e) {}
+      }
     }
 
     // 2. Se nenhum jogo foi detectado por tasklist ou para verificar jogo em primeiro plano ativo:
@@ -211,17 +230,21 @@ async function scanRunningGames() {
       if (isNewGame) {
         activeGame = foundGame
         activeGameStartTime = Date.now()
-        mainWindow?.webContents.send('game-detected', {
+      }
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('game-detected', {
           name: activeGame.name,
           icon: activeGame.icon,
-          startedAt: activeGameStartTime
+          startedAt: activeGameStartTime || Date.now()
         })
       }
     } else {
       if (activeGame) {
         activeGame = null
         activeGameStartTime = null
-        mainWindow?.webContents.send('game-detected', null)
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('game-detected', null)
+        }
       }
     }
   } catch (err) {}
@@ -567,6 +590,18 @@ function createWindow() {
     return false
   })
 
+  // Handler para verificar jogo ativo sob demanda pelo renderer
+  ipcMain.handle('check-active-game', async () => {
+    await scanRunningGames()
+    if (activeGame) {
+      return {
+        name: activeGame.name,
+        icon: activeGame.icon,
+        startedAt: activeGameStartTime || Date.now()
+      }
+    }
+    return null
+  })
 
   // Handler para capturar telas e janelas do sistema operacional com WGC e alta definição
   ipcMain.handle('get-sources', async () => {
@@ -1210,6 +1245,11 @@ function createWindow() {
       mainWindow.loadFile('dist/index.html')
     })
   }
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    setTimeout(scanRunningGames, 600)
+  })
+
   if (!shouldStartHidden) {
     mainWindow.show()
   }

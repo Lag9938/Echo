@@ -220,9 +220,9 @@ export function TextChannelView({
   const [gifSearchQuery, setGifSearchQuery] = useState('')
   const [showStickerPicker, setShowStickerPicker] = useState(false)
 
-  const handleSendSticker = async (url: string) => {
+  const handleSendSticker = async (url: string, name?: string) => {
     if (selectedChannel && supabase) {
-      await postChannelMessage(selectedChannel.id, '', url, 'sticker')
+      await postChannelMessage(selectedChannel.id, name ? `[Sticker: ${name}]` : 'Sticker', url, 'sticker')
       setShowStickerPicker(false)
     }
   }
@@ -1010,7 +1010,7 @@ export function TextChannelView({
                                               }}
                                               loading="lazy"
                                             />
-                                            {displayedBody && displayedBody !== 'Sticker' && !displayedBody.startsWith('http') && (
+                                            {displayedBody && displayedBody !== 'Sticker' && !displayedBody.startsWith('[Sticker') && !displayedBody.startsWith('http') && (
                                               <p>{formatMessageText(displayedBody, profileDisplayName, serverEmojis)}</p>
                                             )}
                                           </div>

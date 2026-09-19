@@ -198,7 +198,7 @@ export function FriendsView({
   blockedUserIds?: Set<string>
   onBlockUser?: (targetId: string, targetName: string) => Promise<void> | void
   onUnblockUser?: (targetId: string, targetName: string) => Promise<void> | void
-  onSendDMSticker?: (url: string) => void
+  onSendDMSticker?: (url: string, name?: string) => void
   groupChats?: GroupChat[]
   selectedGroupId?: string | null
   setSelectedGroupId?: (id: string | null) => void
@@ -1062,8 +1062,8 @@ export function FriendsView({
           {showGroupStickerPicker && (
             <div style={{ position: 'relative', width: '100%' }}>
               <StickerPicker
-                onSelectSticker={(url) => {
-                  onSendGroupMessage?.(currentActiveGroup.id, '', url, 'sticker')
+                onSelectSticker={(url, name) => {
+                  onSendGroupMessage?.(currentActiveGroup.id, name ? `[Sticker: ${name}]` : 'Sticker', url, 'sticker')
                   setShowGroupStickerPicker(false)
                 }}
                 onClose={() => setShowGroupStickerPicker(false)}
@@ -1542,8 +1542,8 @@ export function FriendsView({
               {showDMStickerPicker && (
                 <div style={{ position: 'relative', width: '100%' }}>
                   <StickerPicker
-                    onSelectSticker={(url) => {
-                      if (onSendDMSticker) onSendDMSticker(url)
+                    onSelectSticker={(url, name) => {
+                      if (onSendDMSticker) onSendDMSticker(url, name)
                       setShowDMStickerPicker(false)
                     }}
                     onClose={() => setShowDMStickerPicker(false)}

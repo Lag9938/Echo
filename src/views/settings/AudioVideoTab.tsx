@@ -10,7 +10,6 @@ import {
   ColoredPushToTalkIcon,
   ColoredVolumeSpeakerIcon
 } from '../../components/ColoredIcons'
-import { GlobalShortcutRecorder } from './GlobalShortcutRecorder'
 
 export interface AudioVideoTabProps {
   audioInputs: MediaDeviceInfo[]
@@ -42,11 +41,9 @@ export interface AudioVideoTabProps {
   onPttKeyChange?: (val: string) => void
   onToggleOverlay?: () => void
   muteShortcut?: string
-  onMuteShortcutChange?: (key: string) => void
   deafenShortcut?: string
-  onDeafenShortcutChange?: (key: string) => void
   aiDenoiseShortcut?: string
-  onAiDenoiseShortcutChange?: (key: string) => void
+  onNavigateToKeybinds?: () => void
 }
 
 export function AudioVideoTab({
@@ -79,11 +76,9 @@ export function AudioVideoTab({
   onPttKeyChange,
   onToggleOverlay,
   muteShortcut,
-  onMuteShortcutChange,
   deafenShortcut,
-  onDeafenShortcutChange,
   aiDenoiseShortcut,
-  onAiDenoiseShortcutChange
+  onNavigateToKeybinds
 }: AudioVideoTabProps) {
   // Push-to-Talk settings
   const [prevPttModeSetting, setPrevPttModeSetting] = useState(pttModeSetting)
@@ -106,34 +101,16 @@ export function AudioVideoTab({
     setLocalPttKey(pttKey)
   }
 
-  // Global In-Game Hotkeys state
-  const [localMuteKey, setLocalMuteKey] = useState<string>(() =>
+  // Global In-Game Hotkeys state (read-only in audio tab; edited in Keybinds tab)
+  const [localMuteKey] = useState<string>(() =>
     muteShortcut || localStorage.getItem('echo-shortcut-mute') || 'F8'
   )
-  const [localDeafenKey, setLocalDeafenKey] = useState<string>(() =>
+  const [localDeafenKey] = useState<string>(() =>
     deafenShortcut || localStorage.getItem('echo-shortcut-deafen') || 'F9'
   )
-  const [localAiDenoiseKey, setLocalAiDenoiseKey] = useState<string>(() =>
+  const [localAiDenoiseKey] = useState<string>(() =>
     aiDenoiseShortcut || localStorage.getItem('echo-shortcut-ai-denoise') || 'F7'
   )
-
-  const handleMuteKeyChange = (key: string) => {
-    localStorage.setItem('echo-shortcut-mute', key)
-    setLocalMuteKey(key)
-    onMuteShortcutChange?.(key)
-  }
-
-  const handleDeafenKeyChange = (key: string) => {
-    localStorage.setItem('echo-shortcut-deafen', key)
-    setLocalDeafenKey(key)
-    onDeafenShortcutChange?.(key)
-  }
-
-  const handleAiDenoiseKeyChange = (key: string) => {
-    localStorage.setItem('echo-shortcut-ai-denoise', key)
-    setLocalAiDenoiseKey(key)
-    onAiDenoiseShortcutChange?.(key)
-  }
 
   // Mic test state
   const [testingMic, setTestingMic] = useState(false)
@@ -493,64 +470,54 @@ export function AudioVideoTab({
           </div>
         )}
 
-        {/* Atalhos Globais In-Game Card */}
-        <div style={{ marginTop: '20px', background: 'var(--bg-secondary)', padding: '18px 20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span>Atalhos Globais de Teclado (In-Game)</span>
-              </h4>
-              <span style={{ fontSize: '10px', background: 'rgba(0, 242, 254, 0.15)', color: '#00f2fe', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
-                TELA CHEIA & IN-GAME
+        {/* Link para a Nova Aba Dedicada de Teclas de Atalho */}
+        <div style={{
+          marginTop: '20px',
+          background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.08), rgba(79, 70, 229, 0.08))',
+          padding: '16px 20px',
+          borderRadius: '12px',
+          border: '1px solid rgba(0, 242, 254, 0.25)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '16px',
+          flexWrap: 'wrap'
+        }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                ⌨️ Teclas de Atalho Globais (In-Game)
+              </span>
+              <span style={{ fontSize: '10px', background: 'var(--accent-color, #00f2fe)', color: '#000', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                NOVA ABA DEDICADA
               </span>
             </div>
-            <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>
-              ✓ Suporta Teclados 60%, TKL e 100%
-            </span>
+            <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+              Configurações de Push-to-Talk, Mudo ({localMuteKey}), Deafen ({localDeafenKey}), Filtro de Ruído IA ({localAiDenoiseKey}) e atalhos globais agora possuem uma aba própria na barra lateral.
+            </p>
           </div>
-
-          <p style={{ margin: '0 0 10px 0', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-            Controle seu microfone, silencie os amigos ou alterne o filtro de ruído durante qualquer partida sem precisar de Alt+Tab.
-          </p>
-
-          <div style={{ background: 'rgba(0, 242, 254, 0.05)', border: '1px solid rgba(0, 242, 254, 0.2)', borderRadius: '8px', padding: '10px 12px', marginBottom: '16px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-            <strong>Gravação de Tecla Personalizada:</strong> Clique em <strong>"Gravar Tecla"</strong> e pressione qualquer tecla ou combinação no seu teclado (como <code>Alt+M</code>, <code>Ctrl+M</code>, <code>Insert</code>, <code>Delete</code>, <code>Pause</code>, etc.). Usuários de teclados 60% podem usar combinações com <code>Alt</code> ou <code>Ctrl</code> para máxima praticidade!
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {/* Mutar Microfone */}
-            <GlobalShortcutRecorder
-              label="Mutar / Desmutar Microfone"
-              description="Alterna o microfone entre mudo e aberto em tempo real"
-              value={localMuteKey}
-              defaultValue="F8"
-              actionKey="toggle-mute"
-              popularPresets={['F8', 'Alt+M', 'Ctrl+Shift+M', 'Insert', 'Pause', 'PageDown']}
-              onChange={handleMuteKeyChange}
-            />
-
-            {/* Silenciar Áudio dos Outros (Deafen) */}
-            <GlobalShortcutRecorder
-              label="Silenciar Fone (Deafen)"
-              description="Silencia o som de todos os membros do canal para foco no jogo"
-              value={localDeafenKey}
-              defaultValue="F9"
-              actionKey="toggle-deafen"
-              popularPresets={['F9', 'Alt+D', 'Ctrl+Shift+D', 'Delete', 'End', 'PageUp']}
-              onChange={handleDeafenKeyChange}
-            />
-
-            {/* Alternar Supressão de Ruído */}
-            <GlobalShortcutRecorder
-              label="Filtro de Ruído IA"
-              description="Alterna o algoritmo RNNoise de inteligência artificial instantaneamente"
-              value={localAiDenoiseKey}
-              defaultValue="F7"
-              actionKey="toggle-ai-denoise"
-              popularPresets={['F7', 'Alt+N', 'Ctrl+Shift+N', 'Home', 'ScrollLock']}
-              onChange={handleAiDenoiseKeyChange}
-            />
-          </div>
+          {onNavigateToKeybinds && (
+            <button
+              onClick={onNavigateToKeybinds}
+              style={{
+                background: 'var(--accent-color, #00f2fe)',
+                color: '#000',
+                border: 'none',
+                padding: '9px 18px',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '13px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease',
+                flexShrink: 0
+              }}
+            >
+              Abrir Teclas de Atalho →
+            </button>
+          )}
         </div>
 
         {/* Mini Overlay de Voz Gamer (Always-on-Top) */}

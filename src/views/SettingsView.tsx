@@ -11,7 +11,7 @@ import {
   BadgeCrownIcon, BadgeFounderIcon, BadgeStreamerIcon, BadgeVeteranIcon,
   BadgeVipIcon, CameraIcon, FolderIcon, KickIcon,
   PaletteIcon, SaveIcon, SteamIcon,
-  TwitchIcon, WindowsIcon, YoutubeIcon, ShieldIcon
+  TwitchIcon, WindowsIcon, YoutubeIcon, ShieldIcon, KeyboardIcon
 } from '../components/icons'
 import {
   ColoredBackpackIcon
@@ -19,6 +19,7 @@ import {
 import { AppearanceTab } from './settings/AppearanceTab'
 import { WindowsTab } from './settings/WindowsTab'
 import { AudioVideoTab } from './settings/AudioVideoTab'
+import { KeybindsTab } from './settings/KeybindsTab'
 import { SubscriptionTab } from './settings/SubscriptionTab'
 import { PhotoAdjustModal } from '../components/modals/PhotoAdjustModal'
 
@@ -121,7 +122,7 @@ export function SettingsView({
   onEquipAvatarFrame?: (id: string) => void
   onEquipCardFinish?: (id: string) => void
   onEquipNameEffect?: (id: string) => void
-  initialTab?: 'profile' | 'subscription' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog' | 'privacy'
+  initialTab?: 'profile' | 'subscription' | 'inventory' | 'audio' | 'keybinds' | 'appearance' | 'windows' | 'changelog' | 'privacy'
   onOpenShop?: (targetTab?: 'decorations' | 'profile_effects' | 'auras' | 'finishes' | 'name_effects') => void
   onProfileUpdate: (name: string, avatar: string, bannerUrl?: string, bannerPreset?: string) => void
   onCustomStatusUpdate: (status: string) => void
@@ -187,7 +188,7 @@ export function SettingsView({
   onUnblockUser?: (targetId: string, targetName: string) => Promise<void> | void
 }) {
   const [prevInitialTab, setPrevInitialTab] = useState(initialTab)
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'subscription' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog' | 'privacy'>(initialTab || 'profile')
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'subscription' | 'inventory' | 'audio' | 'keybinds' | 'appearance' | 'windows' | 'changelog' | 'privacy'>(initialTab || 'profile')
 
   if (initialTab && initialTab !== prevInitialTab) {
     setPrevInitialTab(initialTab)
@@ -619,6 +620,13 @@ export function SettingsView({
             >
               <MicIcon className="menu-icon" style={{ width: '17px', height: '17px' }} />
               <span>Voz e Áudio</span>
+            </button>
+            <button 
+              className={`menu-item ${activeSettingsTab === 'keybinds' ? 'active' : ''}`}
+              onClick={() => setActiveSettingsTab('keybinds')}
+            >
+              <KeyboardIcon className="menu-icon" style={{ width: '17px', height: '17px' }} />
+              <span>Teclas de Atalho</span>
             </button>
             <button 
               className={`menu-item ${activeSettingsTab === 'windows' ? 'active' : ''}`}
@@ -1393,11 +1401,25 @@ export function SettingsView({
             onPttKeyChange={onPttKeyChange}
             onToggleOverlay={onToggleOverlay}
             muteShortcut={muteShortcut}
+            deafenShortcut={deafenShortcut}
+            aiDenoiseShortcut={aiDenoiseShortcut}
+            onNavigateToKeybinds={() => setActiveSettingsTab('keybinds')}
+          />
+        )}
+
+        {activeSettingsTab === 'keybinds' && (
+          <KeybindsTab
+            pttModeSetting={pttModeSetting}
+            onPttModeChange={onPttModeChange}
+            pttKey={pttKey}
+            onPttKeyChange={onPttKeyChange}
+            muteShortcut={muteShortcut}
             onMuteShortcutChange={onMuteShortcutChange}
             deafenShortcut={deafenShortcut}
             onDeafenShortcutChange={onDeafenShortcutChange}
             aiDenoiseShortcut={aiDenoiseShortcut}
             onAiDenoiseShortcutChange={onAiDenoiseShortcutChange}
+            onToggleOverlay={onToggleOverlay}
           />
         )}
 

@@ -14,15 +14,41 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.34.3'
+export const APP_CURRENT_VERSION = '0.34.4'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.34.4',
+    title: 'Echo v0.34.4 - Figurinhas Locais Instantâneas, Detecção de Jogos Robusta & Nova Aba Teclas de Atalho',
+    date: '19 de Setembro de 2026',
+    tagline: 'Figurinhas 100% locais sem falhas de conexão, sincronização precisa de status de jogos (VALORANT) e nova aba dedicada de Teclas de Atalho na barra lateral.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎨',
+        badge: 'STICKERS LOCAIS',
+        title: 'Figurinhas 100% Locais & Instantâneas',
+        description: 'Zero links externos ou problemas de carregamento! Todos os 36 stickers dos pacotes Echo Vibes, Gaming e Memes BR agora são renderizados localmente em alta resolução vetorial animada, garantindo envio imediato em servidores, DMs e grupos.'
+      },
+      {
+        icon: '⌨️',
+        badge: 'NOVA ABA',
+        title: 'Aba Dedicada: Teclas de Atalho',
+        description: 'Seus atalhos globais agora têm uma seção exclusiva e organizada na barra lateral de configurações. Configure Push-to-Talk, Mudo (F8), Deafen (F9), Filtro de Ruído IA (F7) e Mini Overlay Gamer, com suporte total a teclados 60%, TKL e 100%.'
+      },
+      {
+        icon: '🎯',
+        badge: 'ATIVIDADE',
+        title: 'Presença e Detecção do VALORANT e Jogos',
+        description: 'Correção crítica no canal de comunicação do Electron para leitura de processos ativos. Agora, mesmo em chamadas de voz e sob o Riot Vanguard, a atividade "Jogando VALORANT" é atualizada e visível para todos os amigos no servidor.'
+      }
+    ]
+  },
   {
     version: '0.34.3',
     title: 'Echo v0.34.3 - Transmissão a 60 FPS Grátis, Group DMs e Stickers',
     date: '19 de Setembro de 2026',
     tagline: 'Transmissão de tela e jogos a 60 FPS liberada 100% gratuita para todos os usuários, criação de grupos diretos sem servidor, figurinhas animadas e bloqueio de membros indesejados.',
-    isLatest: true,
     highlights: [
       {
         icon: '⚡',

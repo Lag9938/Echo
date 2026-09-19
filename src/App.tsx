@@ -2149,7 +2149,7 @@ function Echo({ user }: { user: User }) {
             blockedUserIds={blockedUserIds}
             onBlockUser={blockUser}
             onUnblockUser={unblockUser}
-            onSendDMSticker={(url) => sendDirectMessage('', url, 'sticker')}
+            onSendDMSticker={(url, name) => sendDirectMessage(name ? `[Sticker: ${name}]` : 'Sticker', url, 'sticker')}
             groupChats={groupChats}
             selectedGroupId={selectedGroupId}
             setSelectedGroupId={setSelectedGroupId}

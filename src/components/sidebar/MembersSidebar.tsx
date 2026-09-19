@@ -183,9 +183,18 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
     const memberClanTag = localStorage.getItem(`echo-clan-tag-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-${user.id}`) : null)
     const memberClanTagColor = localStorage.getItem(`echo-clan-tag-color-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-color-${user.id}`) : '#00f2fe') || '#00f2fe'
 
-    const activeGameObj = member.user.id === user.id 
+    const targetMemberId = member.user?.id || member.id || member.user_id
+    const activeGameObj = targetMemberId === user.id 
       ? (presenceStatus !== 'invisible' ? myGamePresence : null)
-      : (presenceData[member.user.id]?.game_presence || presenceData[member.user.id]?.current_game || (member.user as any)?.game_presence || (member.user as any)?.current_game || null)
+      : (presenceData[targetMemberId]?.game_presence || 
+         presenceData[targetMemberId]?.current_game || 
+         presenceData[member.user?.id]?.game_presence || 
+         presenceData[member.user?.id]?.current_game || 
+         presenceData[member.id]?.game_presence || 
+         presenceData[member.id]?.current_game || 
+         (member.user as any)?.game_presence || 
+         (member.user as any)?.current_game || 
+         null)
     const activeGame = typeof activeGameObj === 'string' ? activeGameObj : (activeGameObj?.name || null)
     const activeGameStartedAt = typeof activeGameObj === 'object' ? (activeGameObj?.startedAt || null) : null
 
@@ -193,7 +202,6 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
     const isSameAsName = rawCustomStatus && (rawCustomStatus.trim().toLowerCase() === member.user.display_name.trim().toLowerCase())
     const validCustomStatus = (rawCustomStatus && !isSameAsName) ? rawCustomStatus : null
 
-    const targetMemberId = member.user.id
     const isSelf = targetMemberId === user.id
     const memberBannerCustom = isSelf
       ? ((member.user as any)?.banner_url || localStorage.getItem(`echo-banner-custom-${user.id}`) || localStorage.getItem('echo-banner-custom') || null)
