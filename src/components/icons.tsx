@@ -906,4 +906,42 @@ export function KeyIcon({ className, style }: { className?: string; style?: Reac
   )
 }
 
+export function XIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  )
+}
+
+export function BanIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+    </svg>
+  )
+}
+
+export function StickerIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15.5 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3Z"/>
+      <path d="M15 3v6h6"/>
+      <circle cx="10" cy="13" r="1.5"/>
+      <path d="m14 13-2.5 2.5-1-1"/>
+    </svg>
+  )
+}
+
+export function LogOutGroupIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  )
+}
 

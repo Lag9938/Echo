@@ -20,6 +20,7 @@ export interface UseEchoDirectMessagesOptions {
   setKnownProfiles: React.Dispatch<React.SetStateAction<Record<string, any>>>
   playDmNotificationSound: (volume: number) => void
   supabase: any
+  blockedUserIds?: Set<string>
 }
 
 export function useEchoDirectMessages({
@@ -38,7 +39,8 @@ export function useEchoDirectMessages({
   setHoveredMemberPopover,
   setKnownProfiles,
   playDmNotificationSound,
-  supabase
+  supabase,
+  blockedUserIds
 }: UseEchoDirectMessagesOptions) {
   const [directMessages, setDirectMessages] = useState<DirectMessage[]>([])
   const [selectedDMUserId, setSelectedDMUserId] = useState<string | null>(null)
@@ -157,6 +159,11 @@ export function useEchoDirectMessages({
   const sendDirectMessage = useCallback(async (body: string, attachmentUrl?: string, attachmentType?: string) => {
     if (!supabase || !selectedDMUserId || !user) return
 
+    if (blockedUserIds?.has(selectedDMUserId)) {
+      showToast('Usuário Bloqueado', 'Você bloqueou este usuário. Desbloqueie-o para enviar mensagens.', 'info')
+      return
+    }
+
     const now = Date.now()
     const trimmedBody = body.trim()
 
@@ -242,6 +249,10 @@ export function useEchoDirectMessages({
   }, [supabase, user, directMessages, showToast, socialChannelRef, selectedDMUserId])
 
   const handleOpenDirectChat = useCallback((targetId: string, targetProfile?: { id: string; display_name: string; avatar_url?: string }) => {
+    if (blockedUserIds?.has(targetId)) {
+      showToast('Usuário Bloqueado', 'Você bloqueou este usuário. Desbloqueie-o para conversar.', 'info')
+      return
+    }
     setInspectedMember(null)
     setHoveredMemberPopover(null)
     if (targetProfile) {
@@ -268,10 +279,11 @@ export function useEchoDirectMessages({
       return next
     })
     loadDirectMessages(targetId)
-  }, [setInspectedMember, setHoveredMemberPopover, setKnownProfiles, spaceMembers, setPage, loadDirectMessages])
+  }, [setInspectedMember, setHoveredMemberPopover, setKnownProfiles, spaceMembers, setPage, loadDirectMessages, blockedUserIds, showToast])
 
   const handleNewDMPostgresChanges = useCallback((payload: any) => {
     const newMsg = payload.new as DirectMessage
+    if (blockedUserIds?.has(newMsg.sender_id)) return
     if (newMsg.sender_id === user.id || newMsg.receiver_id === user.id) {
       const friendObj = friendships.find(f => f.user.id === newMsg.sender_id)
       const senderName = friendObj?.user.display_name || 'Um amigo'
@@ -307,6 +319,7 @@ export function useEchoDirectMessages({
 
   const handleDMBroadcast = useCallback((data: any) => {
     if (!data) return
+    if (blockedUserIds?.has(data.senderId)) return
     if (data.receiverId === user.id) {
       playDmNotificationSound(sfxVolume)
       if (selectedDMUserIdRef.current === data.senderId) {
@@ -331,7 +344,7 @@ export function useEchoDirectMessages({
         }
       }
     }
-  }, [user.id, playDmNotificationSound, sfxVolume, loadDirectMessages, showToast, triggerDesktopNotification, handleOpenDirectChat, setPage])
+  }, [user.id, playDmNotificationSound, sfxVolume, loadDirectMessages, showToast, triggerDesktopNotification, handleOpenDirectChat, setPage, blockedUserIds])
 
   const handleDMDeleteBroadcast = useCallback((data: any) => {
     if (!data) return
@@ -358,6 +371,7 @@ export function useEchoDirectMessages({
 
   const handleDMTypingBroadcast = useCallback((data: any) => {
     if (!data) return
+    if (blockedUserIds?.has(data.senderId)) return
     if (data.receiverId === user.id && selectedDMUserIdRef.current === data.senderId) {
       setIsFriendTyping(true)
       if (dmTypingTimeoutRef.current) clearTimeout(dmTypingTimeoutRef.current)
@@ -365,7 +379,7 @@ export function useEchoDirectMessages({
         setIsFriendTyping(false)
       }, 3500)
     }
-  }, [user.id])
+  }, [user.id, blockedUserIds])
 
   return {
     directMessages,

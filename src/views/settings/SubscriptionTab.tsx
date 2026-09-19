@@ -332,8 +332,8 @@ export function SubscriptionTab({
 
               <div style={{ fontSize: '12px', color: 'var(--text-secondary, #94a3b8)', marginTop: '4px' }}>
                 {isPremiumUser
-                  ? 'Todos os recursos de alta performance (60 FPS, distintivo VIP e temas) estão liberados para sua conta.'
-                  : 'Sua conta está limitada a 30 FPS na transmissão de tela e temas padrão.'}
+                  ? 'Todos os recursos exclusivos (distintivo VIP, temas especiais e suporte prioritário) estão liberados para sua conta.'
+                  : 'Apoie o Echo para desbloquear o distintivo VIP exclusivo, temas premium e apoiar o desenvolvimento.'}
               </div>
             </div>
           </div>
@@ -513,7 +513,7 @@ export function SubscriptionTab({
                 Pagamento Confirmado!
               </h3>
               <p style={{ fontSize: '12px', color: 'var(--text-secondary, #94a3b8)', margin: 0 }}>
-                Sua conta foi atualizada para Echo Pro. A transmissão a 60 FPS já está desbloqueada!
+                Sua conta foi atualizada para Echo Pro. Seu distintivo VIP e temas exclusivos já estão desbloqueados!
               </p>
             </div>
           ) : pixData ? (
@@ -750,10 +750,10 @@ export function SubscriptionTab({
               <ColoredLightningIcon size={20} />
             </div>
             <div style={{ fontSize: '14px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>
-              Transmissão a 60 FPS
+              Apoiador Oficial Echo
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-secondary, #94a3b8)', lineHeight: '1.4' }}>
-              Transmita seus jogos e telas com ultra fluidez a 60 quadros por segundo e aceleração de hardware nativa.
+              Ajude a manter a infraestrutura de servidores de alta fidelidade e receba acesso antecipado a novidades exclusivas.
             </div>
           </div>
 

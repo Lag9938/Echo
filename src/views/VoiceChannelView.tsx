@@ -201,8 +201,8 @@ export function VoiceChannelView({
   handleQualityChange,
   screenFps,
   handleFpsChange,
-  isPremiumUser = false,
-  onOpenSubscription,
+  isPremiumUser: _isPremiumUser = false,
+  onOpenSubscription: _onOpenSubscription,
   activeSharingSource: _activeSharingSource,
   peerScreenVolumes,
   setPeerScreenVolumes,
@@ -822,41 +822,15 @@ export function VoiceChannelView({
                                     <div className="dropdown-divider" />
                                     <div className="dropdown-section">
                                       <span className="section-title">FPS</span>
-                                      {([15, 30, 60] as const).map(fps => {
-                                        const is60 = fps === 60
-                                        const is60Locked = is60 && !isPremiumUser
-                                        return (
-                                          <button 
-                                            key={fps} 
-                                            title={is60Locked ? '60 FPS exclusivo para assinantes Echo Pro' : undefined}
-                                            className={`dropdown-option ${screenFps === fps ? 'selected' : ''} ${is60Locked ? 'pro-locked' : ''}`}
-                                            style={is60Locked ? { color: '#fbbf24', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' } : undefined}
-                                            onClick={() => {
-                                              if (is60Locked) {
-                                                onOpenSubscription?.()
-                                              } else {
-                                                handleFpsChange(fps)
-                                              }
-                                            }}
-                                          >
-                                            <span>{fps} FPS</span>
-                                            {is60 && (
-                                              <span style={{
-                                                fontSize: '10px',
-                                                fontWeight: 800,
-                                                padding: '1px 5px',
-                                                borderRadius: '4px',
-                                                background: isPremiumUser ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                                                border: isPremiumUser ? '1px solid #10b981' : '1px solid #f59e0b',
-                                                color: isPremiumUser ? '#34d399' : '#fbbf24',
-                                                letterSpacing: '0.04em'
-                                              }}>
-                                                PRO
-                                              </span>
-                                            )}
-                                          </button>
-                                        )
-                                      })}
+                                      {([15, 30, 60] as const).map(fps => (
+                                        <button 
+                                          key={fps} 
+                                          className={`dropdown-option ${screenFps === fps ? 'selected' : ''}`}
+                                          onClick={() => handleFpsChange(fps)}
+                                        >
+                                          <span>{fps} FPS</span>
+                                        </button>
+                                      ))}
                                     </div>
                                   </div>
                                 )}

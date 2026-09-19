@@ -18,8 +18,6 @@ export interface ScreenSource {
   isMinimized?: boolean
 }
 
-import { useEffect } from 'react'
-
 export function ScreenPickerModal({
   isOpen,
   onClose,
@@ -34,8 +32,8 @@ export function ScreenPickerModal({
   setScreenQuality,
   screenFps,
   setScreenFps,
-  isPremiumUser = false,
-  onOpenSubscription
+  isPremiumUser: _isPremiumUser = false,
+  onOpenSubscription: _onOpenSubscription
 }: {
   isOpen: boolean
   onClose: () => void
@@ -53,12 +51,6 @@ export function ScreenPickerModal({
   isPremiumUser?: boolean
   onOpenSubscription?: () => void
 }) {
-  useEffect(() => {
-    if (isOpen && !isPremiumUser && screenFps === 60) {
-      setScreenFps(30)
-    }
-  }, [isOpen, isPremiumUser, screenFps, setScreenFps])
-
   if (!isOpen) return null
 
   return (
@@ -175,10 +167,6 @@ export function ScreenPickerModal({
                   className={`source-card ${isSelected ? 'selected' : ''}`} 
                   onClick={() => {
                     setSelectedPickerSourceId(source.id)
-                    const isGame = source.isGame === true || (source.name || '').toLowerCase().includes('(jogo)')
-                    if (!isGame && screenPickerTab !== 'screens' && screenFps === 60) {
-                      setScreenFps(30)
-                    }
                   }}
                   onDoubleClick={() => selectScreenSource(source.id)}
                 >
@@ -255,57 +243,22 @@ export function ScreenPickerModal({
           <div className="picker-quality-col">
             <span className="picker-section-label">TAXA DE QUADROS</span>
             <div className="picker-chips-row">
-              {([15, 30, 60] as const).map(f => {
-                const is60 = f === 60
-                const isLocked = is60 && !isPremiumUser
-                return (
-                  <button
-                    key={f}
-                    type="button"
-                    title={isLocked ? '60 FPS exclusivo para assinantes Echo Pro' : undefined}
-                    className={`picker-config-chip ${screenFps === f ? 'active' : ''} ${is60 ? 'fps-60' : ''} ${isLocked ? 'pro-locked' : ''}`}
-                    onClick={() => {
-                      if (isLocked) {
-                        onOpenSubscription?.()
-                      } else {
-                        setScreenFps(f)
-                      }
-                    }}
-                  >
-                    {is60 ? (
-                      <>
-                        <ColoredLightningIcon size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} /> 60 FPS
-                        <span 
-                          className="pro-badge-tag"
-                          title={isPremiumUser ? 'Assinatura Echo Pro Ativa (clique para gerenciar)' : '60 FPS exclusivo para assinantes Echo Pro'}
-                          style={{
-                            marginLeft: 6,
-                            fontSize: '10px',
-                            fontWeight: 800,
-                            padding: '1px 6px',
-                            borderRadius: '6px',
-                            background: isPremiumUser ? 'rgba(16, 185, 129, 0.25)' : 'linear-gradient(135deg, rgba(245, 158, 11, 0.35), rgba(217, 119, 6, 0.35))',
-                            border: isPremiumUser ? '1px solid #10b981' : '1px solid #f59e0b',
-                            color: isPremiumUser ? '#34d399' : '#fbbf24',
-                            letterSpacing: '0.05em',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            cursor: 'pointer'
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onOpenSubscription?.()
-                          }}
-                        >
-                          PRO
-                        </span>
-                      </>
-                    ) : (
-                      `${f} FPS`
-                    )}
-                  </button>
-                )
-              })}
+              {([15, 30, 60] as const).map(f => (
+                <button
+                  key={f}
+                  type="button"
+                  className={`picker-config-chip ${screenFps === f ? 'active' : ''} ${f === 60 ? 'fps-60' : ''}`}
+                  onClick={() => setScreenFps(f)}
+                >
+                  {f === 60 ? (
+                    <>
+                      <ColoredLightningIcon size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} /> 60 FPS
+                    </>
+                  ) : (
+                    `${f} FPS`
+                  )}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -321,9 +274,6 @@ export function ScreenPickerModal({
             onClick={() => {
               const targetId = selectedPickerSourceId || (screenSources[0]?.id)
               if (targetId) {
-                if (!isPremiumUser && screenFps === 60) {
-                  setScreenFps(30)
-                }
                 selectScreenSource(targetId)
               }
             }}

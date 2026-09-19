@@ -63,20 +63,6 @@ export function useEchoScreenShare({
     return () => clearInterval(interval)
   }, [showScreenPicker])
 
-  // Intelligent FPS Lock for Screen Picker
-  const currentSelectedPickerSource = screenSources.find(s => s.id === selectedPickerSourceId)
-  const isPickerGameOrScreen = screenPickerTab === 'screens' || 
-    currentSelectedPickerSource?.type === 'screen' || 
-    currentSelectedPickerSource?.id?.startsWith('screen:') || 
-    currentSelectedPickerSource?.isGame === true || 
-    (currentSelectedPickerSource?.name || '').toLowerCase().includes('(jogo)')
-
-  useEffect(() => {
-    if (showScreenPicker && !isPickerGameOrScreen && screenFps === 60) {
-      setScreenFps(30)
-    }
-  }, [showScreenPicker, isPickerGameOrScreen, screenFps])
-
   function getQualityDimensions(quality: '720p' | '1080p' | 'native') {
     if (quality === '720p') return { w: 1280, h: 720 }
     if (quality === '1080p') return { w: 1920, h: 1080 }
@@ -160,20 +146,10 @@ export function useEchoScreenShare({
     setScreenShareViewMode('focus')
     const { w, h } = getQualityDimensions(screenQuality)
     const targetSource = screenSources.find(s => s.id === sourceId)
-    const isGameOrScreen = screenPickerTab === 'screens' || 
-      targetSource?.type === 'screen' || 
-      targetSource?.id?.startsWith('screen:') || 
-      targetSource?.isGame === true || 
-      (targetSource?.name || '').toLowerCase().includes('(jogo)')
-
-    const effectiveFps = (!isGameOrScreen && screenFps === 60) ? 30 : screenFps
-    if (effectiveFps !== screenFps) {
-      setScreenFps(effectiveFps)
-    }
     setActiveSharingSource(targetSource || null)
-    await startScreenShare(sourceId, w, h, effectiveFps)
+    await startScreenShare(sourceId, w, h, screenFps)
     playScreenStartSound(sfxVolume)
-  }, [screenSources, screenPickerTab, screenFps, screenQuality, user.id, setIsWatchingStreams, setSelectedScreenSharerUserId, setScreenShareViewMode, startScreenShare, playScreenStartSound, sfxVolume])
+  }, [screenSources, screenFps, screenQuality, user.id, setIsWatchingStreams, setSelectedScreenSharerUserId, setScreenShareViewMode, startScreenShare, playScreenStartSound, sfxVolume])
 
   return {
     screenQuality,

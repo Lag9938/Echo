@@ -188,7 +188,46 @@ export interface MemberProfileModalProps {
   friendships?: FriendshipRequest[]
   onAddFriend?: (targetUserId: string, targetName: string) => Promise<void>
   onAcceptFriend?: (friendshipId: string) => Promise<void>
+  onBlockUser?: (targetId: string, targetName: string) => Promise<void>
+  onUnblockUser?: (targetId: string, targetName: string) => Promise<void>
+  blockedUserIds?: Set<string>
 }
 
 export type Page = 'Amigos' | 'Mensagens' | 'Servidores' | 'Descobrir' | 'Configurações' | 'Loja'
 
+// ── GROUP DMs ──────────────────────────────────────────────
+
+export interface GroupChatMember {
+  id: string
+  group_chat_id: string
+  user_id: string
+  joined_at: string
+  profile?: {
+    display_name: string
+    avatar_url?: string
+    avatar_decoration?: string | null
+  }
+}
+
+export interface GroupChat {
+  id: string
+  name: string
+  creator_id: string
+  avatar_url?: string | null
+  created_at: string
+  members?: GroupChatMember[]
+}
+
+export interface GroupMessage {
+  id: string
+  group_chat_id: string
+  sender_id: string
+  body: string
+  attachment_url?: string
+  attachment_type?: string
+  created_at: string
+  profile?: {
+    display_name: string
+    avatar_url?: string
+  }
+}

@@ -11,7 +11,7 @@ import {
   BadgeCrownIcon, BadgeFounderIcon, BadgeStreamerIcon, BadgeVeteranIcon,
   BadgeVipIcon, CameraIcon, FolderIcon, KickIcon,
   PaletteIcon, SaveIcon, SteamIcon,
-  TwitchIcon, WindowsIcon, YoutubeIcon
+  TwitchIcon, WindowsIcon, YoutubeIcon, ShieldIcon
 } from '../components/icons'
 import {
   ColoredBackpackIcon
@@ -21,6 +21,7 @@ import { WindowsTab } from './settings/WindowsTab'
 import { AudioVideoTab } from './settings/AudioVideoTab'
 import { SubscriptionTab } from './settings/SubscriptionTab'
 import { PhotoAdjustModal } from '../components/modals/PhotoAdjustModal'
+
 
 export function SettingsView({
   userId,
@@ -100,7 +101,9 @@ export function SettingsView({
   onSimulateSubscription,
   onResetSubscription,
   userEmail,
-  onSubscriptionSuccess
+  onSubscriptionSuccess,
+  blockedProfiles = [],
+  onUnblockUser
 }: {
   userId: string
   userCreatedAt?: string
@@ -118,7 +121,7 @@ export function SettingsView({
   onEquipAvatarFrame?: (id: string) => void
   onEquipCardFinish?: (id: string) => void
   onEquipNameEffect?: (id: string) => void
-  initialTab?: 'profile' | 'subscription' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog'
+  initialTab?: 'profile' | 'subscription' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog' | 'privacy'
   onOpenShop?: (targetTab?: 'decorations' | 'profile_effects' | 'auras' | 'finishes' | 'name_effects') => void
   onProfileUpdate: (name: string, avatar: string, bannerUrl?: string, bannerPreset?: string) => void
   onCustomStatusUpdate: (status: string) => void
@@ -180,9 +183,11 @@ export function SettingsView({
   onResetSubscription?: () => void
   userEmail?: string
   onSubscriptionSuccess?: () => void
+  blockedProfiles?: Array<{ id: string; display_name: string; avatar_url?: string }>
+  onUnblockUser?: (targetId: string, targetName: string) => Promise<void> | void
 }) {
   const [prevInitialTab, setPrevInitialTab] = useState(initialTab)
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'subscription' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog'>(initialTab || 'profile')
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'subscription' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog' | 'privacy'>(initialTab || 'profile')
 
   if (initialTab && initialTab !== prevInitialTab) {
     setPrevInitialTab(initialTab)
@@ -628,6 +633,13 @@ export function SettingsView({
             >
               <SparklesIcon className="menu-icon" style={{ width: '17px', height: '17px' }} />
               <span>Novidades & Versões</span>
+            </button>
+            <button 
+              className={`menu-item ${activeSettingsTab === 'privacy' ? 'active' : ''}`}
+              onClick={() => setActiveSettingsTab('privacy')}
+            >
+              <ShieldIcon className="menu-icon" style={{ width: '17px', height: '17px' }} />
+              <span>Privacidade & Bloqueios</span>
             </button>
 
             {onSignOut && (
@@ -1410,6 +1422,101 @@ export function SettingsView({
         {activeSettingsTab === 'changelog' && (
           <div className="settings-content-card" style={{ padding: '0', background: 'transparent', border: 'none', boxShadow: 'none' }}>
             <WhatsNewModal isOpen={true} isEmbedded={true} />
+          </div>
+        )}
+
+        {activeSettingsTab === 'privacy' && (
+          <div className="settings-content-card" style={{ padding: '24px 32px' }}>
+            <div style={{ marginBottom: 20 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#fff', margin: '0 0 6px 0' }}>Privacidade & Bloqueios</h2>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
+                Gerencie os usuários que você bloqueou no Echo. Usuários bloqueados não podem enviar mensagens diretas para você nem interagir no privado.
+              </p>
+            </div>
+
+            <div style={{ marginTop: 20 }}>
+              <h3 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
+                Usuários Bloqueados ({blockedProfiles.length})
+              </h3>
+
+              {blockedProfiles.length === 0 ? (
+                <div style={{
+                  padding: '36px 20px',
+                  background: 'var(--bg-secondary)',
+                  borderRadius: 10,
+                  border: '1px solid var(--border-color)',
+                  textAlign: 'center',
+                  color: 'var(--text-muted)'
+                }}>
+                  <p style={{ margin: 0, fontSize: 13 }}>Nenhum usuário bloqueado no momento.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {blockedProfiles.map(p => (
+                    <div
+                      key={p.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 14px',
+                        background: 'var(--bg-secondary)',
+                        borderRadius: 8,
+                        border: '1px solid var(--border-color)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        {p.avatar_url ? (
+                          <img src={p.avatar_url} alt={p.display_name} style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: '50%',
+                            background: 'var(--bg-tertiary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#fff',
+                            fontWeight: 700,
+                            fontSize: 13
+                          }}>
+                            {p.display_name?.slice(0, 1)?.toUpperCase() || '?'}
+                          </div>
+                        )}
+                        <div>
+                          <span style={{ color: '#fff', fontWeight: 600, fontSize: 13.5, display: 'block' }}>
+                            {p.display_name}
+                          </span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+                            ID: {p.id.slice(0, 8)}...
+                          </span>
+                        </div>
+                      </div>
+
+                      {onUnblockUser && (
+                        <button
+                          type="button"
+                          onClick={() => onUnblockUser(p.id, p.display_name)}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: 6,
+                            background: 'rgba(234, 179, 8, 0.15)',
+                            border: '1px solid rgba(234, 179, 8, 0.4)',
+                            color: '#facc15',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Desbloquear
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

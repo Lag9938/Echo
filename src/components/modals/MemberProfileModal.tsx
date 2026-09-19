@@ -15,7 +15,8 @@ import {
   MessageSquareIcon,
   VolumeIcon,
   LockIcon,
-  ClockIcon
+  ClockIcon,
+  BanIcon
 } from '../icons'
 import type { MemberProfileModalProps } from '../../types'
 
@@ -43,7 +44,10 @@ export function MemberProfileModal({
   showToast,
   friendships = [],
   onAddFriend,
-  onAcceptFriend
+  onAcceptFriend,
+  onBlockUser,
+  onUnblockUser,
+  blockedUserIds
 }: MemberProfileModalProps) {
   const [pokeCount, setPokeCount] = useState(0)
   const [isPoking, setIsPoking] = useState(false)
@@ -479,6 +483,33 @@ export function MemberProfileModal({
                 <VolumeIcon />
                 <span>Ajustar Volume</span>
               </button>
+            )}
+
+            {/* Block / Unblock */}
+            {!isMe && onBlockUser && onUnblockUser && (
+              blockedUserIds?.has(memberId) ? (
+                <button
+                  type="button"
+                  className="member-profile-action-btn secondary"
+                  onClick={() => onUnblockUser(memberId, inspectedMember.user.display_name)}
+                  style={{ borderColor: 'rgba(234,179,8,0.4)', color: '#facc15' }}
+                  title="Desbloquear este usuário"
+                >
+                  <BanIcon style={{ width: '15px', height: '15px' }} />
+                  <span>Desbloquear</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="member-profile-action-btn secondary"
+                  onClick={() => onBlockUser(memberId, inspectedMember.user.display_name)}
+                  style={{ borderColor: 'rgba(239,68,68,0.4)', color: '#f87171' }}
+                  title="Bloquear este usuário"
+                >
+                  <BanIcon style={{ width: '15px', height: '15px' }} />
+                  <span>Bloquear</span>
+                </button>
+              )
             )}
           </div>
 

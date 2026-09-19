@@ -23,6 +23,9 @@ export interface MemberProfileModalWrapperProps {
   onAcceptFriend: (friendshipId: string) => Promise<void>
   handleOpenDirectChat: (targetId: string, targetUser: any) => void
   setVolumeControlUser: (user: any) => void
+  onBlockUser?: (targetId: string, targetName: string) => Promise<void>
+  onUnblockUser?: (targetId: string, targetName: string) => Promise<void>
+  blockedUserIds?: Set<string>
 }
 
 export function MemberProfileModalWrapper({
@@ -44,7 +47,10 @@ export function MemberProfileModalWrapper({
   onAddFriend,
   onAcceptFriend,
   handleOpenDirectChat,
-  setVolumeControlUser
+  setVolumeControlUser,
+  onBlockUser,
+  onUnblockUser,
+  blockedUserIds
 }: MemberProfileModalWrapperProps) {
   if (!inspectedMember) return null
 
@@ -114,6 +120,9 @@ export function MemberProfileModalWrapper({
         setVolumeControlUser(peer)
         onClose()
       }}
+      onBlockUser={onBlockUser}
+      onUnblockUser={onUnblockUser}
+      blockedUserIds={blockedUserIds}
     />
   )
 }

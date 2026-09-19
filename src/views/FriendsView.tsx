@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback, type FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
-import type { DirectMessage, FriendshipRequest, Page } from '../types'
+import type { DirectMessage, FriendshipRequest, Page, GroupChat, GroupMessage } from '../types'
 import { formatGameDuration } from '../lib/formatters'
 import { AvatarDecoration } from '../components/AvatarDecoration'
 import { GameLogo } from '../components/GameLogos'
@@ -31,11 +31,16 @@ import {
   UserPlusIcon,
   UsersIcon,
   VoiceMessageIcon,
-  ZoomInIcon
+  ZoomInIcon,
+  StickerIcon,
+  LogOutGroupIcon,
+  BanIcon
 } from '../components/icons'
 import { openExternalUrl } from '../lib/openExternal'
 import { useUIStore } from '../stores/useUIStore'
 import { formatMessageText } from '../lib/messageFormatter'
+import { StickerPicker } from '../components/StickerPicker'
+import { CreateGroupChatModal } from '../components/modals/CreateGroupChatModal'
 
 export function FriendsView({
   friendships,
@@ -102,7 +107,28 @@ export function FriendsView({
   onToggleSaveDM,
   isMessageSaved,
   isFriendTyping = false,
-  notifyDMTyping
+  notifyDMTyping,
+  // Blocked users
+  blockedUserIds,
+  onBlockUser,
+  onUnblockUser,
+  // Stickers
+  onSendDMSticker,
+  // Group DMs
+  groupChats = [],
+  selectedGroupId = null,
+  setSelectedGroupId,
+  groupMessages = {},
+  groupDraft = '',
+  setGroupDraft,
+  groupTypingUsers = {},
+  unreadGroups = {},
+  onCreateGroupChat,
+  onSendGroupMessage,
+  onLeaveGroupChat,
+  onOpenGroup,
+  notifyGroupTyping,
+  onDeleteGroupMessage
 }: {
   friendships: FriendshipRequest[]
   friendTab: 'online' | 'all' | 'pending' | 'add'
@@ -169,6 +195,24 @@ export function FriendsView({
   isMessageSaved?: (msgId: string) => boolean
   isFriendTyping?: boolean
   notifyDMTyping?: (targetFriendId: string) => void
+  blockedUserIds?: Set<string>
+  onBlockUser?: (targetId: string, targetName: string) => Promise<void> | void
+  onUnblockUser?: (targetId: string, targetName: string) => Promise<void> | void
+  onSendDMSticker?: (url: string) => void
+  groupChats?: GroupChat[]
+  selectedGroupId?: string | null
+  setSelectedGroupId?: (id: string | null) => void
+  groupMessages?: Record<string, GroupMessage[]>
+  groupDraft?: string
+  setGroupDraft?: (val: string) => void
+  groupTypingUsers?: Record<string, string[]>
+  unreadGroups?: Record<string, number>
+  onCreateGroupChat?: (name: string, memberIds: string[]) => Promise<string | null>
+  onSendGroupMessage?: (groupId: string, body: string, attachmentUrl?: string, attachmentType?: string) => Promise<void>
+  onLeaveGroupChat?: (groupId: string) => Promise<void>
+  onOpenGroup?: (groupId: string) => void
+  notifyGroupTyping?: (groupId: string) => void
+  onDeleteGroupMessage?: (messageId: string, groupId: string) => Promise<void>
 }) {
   const openLightbox = useUIStore((s) => s.openLightbox)
   const dmFileRef = useRef<HTMLInputElement>(null)
@@ -184,6 +228,11 @@ export function FriendsView({
   // Staged clipboard paste image for DMs
   const [pendingDMPastedFile, setPendingDMPastedFile] = useState<File | null>(null)
   const [pendingDMImagePreview, setPendingDMImagePreview] = useState<string | null>(null)
+
+  // Stickers & Groups Modal States
+  const [showDMStickerPicker, setShowDMStickerPicker] = useState(false)
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false)
+  const [showGroupStickerPicker, setShowGroupStickerPicker] = useState(false)
 
   const removePendingDMImage = useCallback(() => {
     setPendingDMPastedFile(null)
@@ -295,9 +344,14 @@ export function FriendsView({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  const acceptedFriends = friendships.filter(f => f.status === 'accepted')
+  const nonBlockedFriendships = useMemo(() => {
+    if (!blockedUserIds || blockedUserIds.size === 0) return friendships
+    return friendships.filter(f => !blockedUserIds.has(f.user.id))
+  }, [friendships, blockedUserIds])
+
+  const acceptedFriends = nonBlockedFriendships.filter(f => f.status === 'accepted')
   const onlineFriends = acceptedFriends.filter(f => onlineUsers.has(f.user.id))
-  const pendingRequests = friendships.filter(f => f.status === 'pending')
+  const pendingRequests = nonBlockedFriendships.filter(f => f.status === 'pending')
 
   // Helper to check if friend is gaming
   const isFriendGaming = (friendUserId: string) => {
@@ -347,6 +401,12 @@ export function FriendsView({
       dmMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [selectedDMUserId, directMessages.length])
+
+  // Resolve active group info
+  const currentActiveGroup = useMemo(() => {
+    if (!selectedGroupId) return null
+    return groupChats.find(g => g.id === selectedGroupId) || null
+  }, [selectedGroupId, groupChats])
 
   // Resolve active DM target user info across friendships, knownProfiles, and spaceMembers
   const dmUser = useMemo(() => {
@@ -422,7 +482,7 @@ export function FriendsView({
     const addedIds = new Set<string>()
 
     const resolveUserData = (userId: string) => {
-      if (!userId || addedIds.has(userId) || userId === user.id) return
+      if (!userId || addedIds.has(userId) || userId === user.id || blockedUserIds?.has(userId)) return
       addedIds.add(userId)
 
       const friend = friendships.find(f => f.user.id === userId && f.status === 'accepted')
@@ -571,16 +631,104 @@ export function FriendsView({
           </div>
         </div>
 
-        {/* Título da Seção: Mensagens Diretas */}
-        <div className="dm-section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px 4px 12px' }}>
-          <span>Mensagens Diretas</span>
-          <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
-            {filteredConversations.length}
-          </span>
-        </div>
-
         {/* Lista de Conversas com Scroll */}
         <div className="friends-sidebar-scrollable" style={{ flex: 1, overflowY: 'auto', padding: '4px 6px 12px 6px' }}>
+          {/* Seção: Grupos */}
+          <div className="dm-section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 4px 8px' }}>
+            <span>Grupos</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                {groupChats.length}
+              </span>
+              {onCreateGroupChat && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowCreateGroupModal(true)
+                  }}
+                  title="Criar novo grupo"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--accent-color, #00f2fe)',
+                    cursor: 'pointer',
+                    padding: '2px 4px',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <PlusIcon style={{ width: '13px', height: '13px' }} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {groupChats.length > 0 && (
+            <div className="dm-sidebar-list" style={{ marginBottom: '10px' }}>
+              {groupChats.map(group => {
+                const isSelected = selectedGroupId === group.id
+                const unreadCount = unreadGroups[group.id] || 0
+                const typingUsers = groupTypingUsers[group.id] || []
+                return (
+                  <div
+                    key={group.id}
+                    className={`dm-list-item ${isSelected ? 'active' : ''}`}
+                    onClick={() => {
+                      onCloseDM()
+                      onOpenGroup?.(group.id)
+                    }}
+                    title={`Abrir grupo ${group.name}`}
+                  >
+                    <div className="dm-item-avatar-wrapper">
+                      {group.avatar_url ? (
+                        <img src={group.avatar_url} alt={group.name} />
+                      ) : (
+                        <div style={{
+                          width: '100%',
+                          height: '100%',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, var(--accent-color, #00f2fe) 0%, #3b82f6 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 700,
+                          fontSize: '12px',
+                          color: '#000'
+                        }}>
+                          <UsersIcon style={{ width: '13px', height: '13px' }} />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="dm-item-text">
+                      <span className="dm-item-name">{group.name}</span>
+                      <span className="dm-item-sub">
+                        {typingUsers.length > 0 ? (
+                          <span style={{ color: '#00f2fe', fontWeight: 600 }}>Digitando...</span>
+                        ) : (
+                          `${group.members?.length || 0} membros`
+                        )}
+                      </span>
+                    </div>
+
+                    {unreadCount > 0 && (
+                      <span className="dm-unread-badge">{unreadCount}</span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Título da Seção: Mensagens Diretas */}
+          <div className="dm-section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 4px 8px' }}>
+            <span>Mensagens Diretas</span>
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
+              {filteredConversations.length}
+            </span>
+          </div>
           {filteredConversations.length > 0 ? (
             <div className="dm-sidebar-list">
               {filteredConversations.map(conv => {
@@ -589,7 +737,10 @@ export function FriendsView({
                   <div
                     key={conv.id}
                     className={`dm-list-item ${isSelected ? 'active' : ''}`}
-                    onClick={() => onOpenDM(conv.id)}
+                    onClick={() => {
+                      setSelectedGroupId?.(null)
+                      onOpenDM(conv.id)
+                    }}
                     title={`Abrir conversa com ${conv.display_name}`}
                   >
                     <div className="dm-item-avatar-wrapper">
@@ -678,8 +829,249 @@ export function FriendsView({
         />
       </aside>
 
-      {/* 2. Center Content Area: Full DM Chat if active, otherwise Friends Hub */}
-      {selectedDMUserId && dmUser ? (
+      {/* 2. Center Content Area: Full Group Chat if active, otherwise DM Chat or Friends Hub */}
+      {selectedGroupId && currentActiveGroup ? (
+        <section className="dm-full-chat group-full-chat">
+          {/* Header */}
+          <div className="dm-full-header">
+            <div className="dm-full-header-left">
+              {!showSidebar && (
+                <button
+                  type="button"
+                  className="dm-back-to-friends-btn"
+                  onClick={() => setShowSidebar(true)}
+                  title="Mostrar barra de conversas"
+                  style={{ marginRight: '6px' }}
+                >
+                  <PanelLeftIcon style={{ width: '15px', height: '15px' }} />
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="dm-back-to-friends-btn"
+                onClick={() => setSelectedGroupId?.(null)}
+                title="Voltar para a lista de amigos"
+              >
+                ←
+              </button>
+
+              <div className="dm-header-avatar-wrap">
+                <div style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, var(--accent-color, #00f2fe) 0%, #3b82f6 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#000',
+                  fontWeight: 700
+                }}>
+                  <UsersIcon style={{ width: 17, height: 17 }} />
+                </div>
+              </div>
+
+              <div className="dm-header-info">
+                <div className="dm-header-name-row">
+                  <span className="dm-header-display-name">{currentActiveGroup.name}</span>
+                </div>
+                <span className="dm-header-status-text">
+                  {currentActiveGroup.members?.length || 0} membros
+                  {currentActiveGroup.members && currentActiveGroup.members.length > 0 && (
+                    <span> • {currentActiveGroup.members.map(m => m.profile?.display_name || 'Membro').slice(0, 3).join(', ')}{currentActiveGroup.members.length > 3 ? ` +${currentActiveGroup.members.length - 3}` : ''}</span>
+                  )}
+                </span>
+              </div>
+            </div>
+
+            <div className="dm-full-header-right">
+              {onLeaveGroupChat && (
+                <button
+                  type="button"
+                  className="dm-header-action-btn"
+                  onClick={() => onLeaveGroupChat(currentActiveGroup.id)}
+                  title="Sair do Grupo"
+                  style={{ color: '#f87171' }}
+                >
+                  <LogOutGroupIcon style={{ width: 17, height: 17 }} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Group Messages List */}
+          <div
+            className="dm-messages-viewport"
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '16px 20px',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            {(groupMessages[currentActiveGroup.id] || []).length === 0 ? (
+              <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <UsersIcon style={{ width: 36, height: 36, opacity: 0.35, marginBottom: 8 }} />
+                <h4 style={{ color: '#fff', margin: '0 0 4px 0' }}>{currentActiveGroup.name}</h4>
+                <p style={{ fontSize: 13, margin: 0 }}>Este é o início do grupo. Envie uma mensagem!</p>
+              </div>
+            ) : (
+              (groupMessages[currentActiveGroup.id] || []).map((gMsg) => {
+                const isSent = gMsg.sender_id === user.id
+                const isSticker = Boolean(gMsg.attachment_url && gMsg.attachment_type === 'sticker')
+                const isImage = Boolean(gMsg.attachment_url && (gMsg.attachment_type === 'image' || gMsg.attachment_type?.startsWith('image')))
+                const isOtherFile = Boolean(gMsg.attachment_url && !isImage && !isSticker)
+                const senderName = gMsg.profile?.display_name || (isSent ? profileDisplayName : 'Membro')
+
+                return (
+                  <div
+                    key={gMsg.id}
+                    className={`dm-message-row ${isSent ? 'dm-sent' : 'dm-received'}`}
+                  >
+                    <div className="dm-message-container">
+                      {isSent && onDeleteGroupMessage && (
+                        <div className="dm-actions-toolbar">
+                          <button
+                            type="button"
+                            className="dm-delete-btn"
+                            onClick={() => onDeleteGroupMessage(gMsg.id, currentActiveGroup.id)}
+                            title="Excluir mensagem"
+                          >
+                            <TrashIcon style={{ width: 12, height: 12 }} />
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="dm-message-content">
+                        {!isSent && (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-color, #00f2fe)', marginBottom: 2 }}>
+                            {senderName}
+                          </span>
+                        )}
+
+                        {/* Sticker */}
+                        {isSticker && (
+                          <div style={{ padding: '4px 0' }}>
+                            <img
+                              src={gMsg.attachment_url}
+                              alt="sticker"
+                              style={{ width: 128, height: 128, objectFit: 'contain', display: 'block', borderRadius: 8 }}
+                              loading="lazy"
+                            />
+                            <span className="dm-time" style={{ display: 'block', marginTop: 3, fontSize: 10, opacity: 0.6 }}>
+                              {new Date(gMsg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Image */}
+                        {isImage && (
+                          <div className="dm-media-card" onClick={() => openLightbox(gMsg.attachment_url!)}>
+                            <div className="dm-media-viewport">
+                              <img src={gMsg.attachment_url} alt="anexo" className="dm-media-img" loading="lazy" />
+                              <span className="dm-media-time">
+                                {new Date(gMsg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Text / File */}
+                        {(gMsg.body || isOtherFile) && !isSticker && !isImage && (
+                          <div className="dm-bubble">
+                            {isOtherFile ? (
+                              <a
+                                href={gMsg.attachment_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="dm-attachment-file"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  openExternalUrl(gMsg.attachment_url)
+                                }}
+                              >
+                                <PaperclipIcon style={{ width: 12, height: 12, display: 'inline-block', verticalAlign: 'middle', marginRight: 4 }} />
+                                <span>{gMsg.body || 'Arquivo'}</span>
+                              </a>
+                            ) : (
+                              <div className="dm-text-body" style={{ wordBreak: 'break-word', lineHeight: 1.45 }}>
+                                {formatMessageText(gMsg.body, profileDisplayName)}
+                              </div>
+                            )}
+                            <span className="dm-time">
+                              {new Date(gMsg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          {/* Group Typing Indicator */}
+          {groupTypingUsers[currentActiveGroup.id]?.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 20px', fontSize: 12, color: '#38bdf8' }}>
+              <span><strong>{groupTypingUsers[currentActiveGroup.id].join(', ')}</strong> digitando...</span>
+            </div>
+          )}
+
+          {/* Group Compose Form */}
+          <form
+            className="dm-full-compose"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (!groupDraft.trim()) return
+              onSendGroupMessage?.(currentActiveGroup.id, groupDraft.trim())
+              setGroupDraft?.('')
+            }}
+          >
+            <button
+              type="button"
+              className="dm-attach-btn"
+              onClick={() => setShowGroupStickerPicker(prev => !prev)}
+              title="Figurinhas (Stickers)"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: showGroupStickerPicker ? 'var(--accent-color, #00f2fe)' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
+            >
+              <StickerIcon style={{ width: 16, height: 16 }} />
+            </button>
+            <input
+              id="group-message-input"
+              value={groupDraft}
+              onChange={(e) => {
+                setGroupDraft?.(e.target.value)
+                notifyGroupTyping?.(currentActiveGroup.id)
+              }}
+              placeholder={`Mensagem em ${currentActiveGroup.name}…`}
+              autoFocus
+            />
+            <button
+              type="submit"
+              disabled={!groupDraft.trim()}
+              className="dm-send-btn"
+              title="Enviar mensagem para o grupo"
+            >
+              <SendIcon style={{ width: 16, height: 16 }} />
+            </button>
+          </form>
+
+          {showGroupStickerPicker && (
+            <div style={{ position: 'relative', width: '100%' }}>
+              <StickerPicker
+                onSelectSticker={(url) => {
+                  onSendGroupMessage?.(currentActiveGroup.id, '', url, 'sticker')
+                  setShowGroupStickerPicker(false)
+                }}
+                onClose={() => setShowGroupStickerPicker(false)}
+              />
+            </div>
+          )}
+        </section>
+      ) : selectedDMUserId && dmUser ? (
         <section className="dm-full-chat">
           {/* Header */}
           <div className="dm-full-header">
@@ -754,6 +1146,27 @@ export function FriendsView({
                 <PhoneIcon style={{ width: '15px', height: '15px' }} />
                 <span>Chamada de Voz</span>
               </button>
+
+              {onBlockUser && (
+                <button
+                  type="button"
+                  className="dm-header-action-btn danger"
+                  onClick={async () => {
+                    const isBlocked = blockedUserIds?.has(dmUser.id)
+                    if (isBlocked) {
+                      await onUnblockUser?.(dmUser.id, dmUser.display_name)
+                    } else {
+                      if (window.confirm(`Tem certeza que deseja bloquear @${dmUser.display_name}?`)) {
+                        await onBlockUser(dmUser.id, dmUser.display_name)
+                        onCloseDM()
+                      }
+                    }
+                  }}
+                  title={blockedUserIds?.has(dmUser.id) ? "Desbloquear Usuário" : "Bloquear Usuário"}
+                >
+                  <BanIcon style={{ width: '15px', height: '15px' }} />
+                </button>
+              )}
 
               <button
                 type="button"
@@ -854,8 +1267,9 @@ export function FriendsView({
                 const isSent = msg.sender_id === user.id
                 const isImage = Boolean(msg.attachment_url && msg.attachment_type === 'image')
                 const isAudio = Boolean(msg.attachment_url && msg.attachment_type === 'audio')
-                const isOtherFile = Boolean(msg.attachment_url && !isImage && !isAudio)
-                const hasLink = Boolean(!isAudio && !isOtherFile && msg.body && /(https?:\/\/[^\s]+)/i.test(msg.body))
+                const isSticker = Boolean(msg.attachment_url && msg.attachment_type === 'sticker')
+                const isOtherFile = Boolean(msg.attachment_url && !isImage && !isAudio && !isSticker)
+                const hasLink = Boolean(!isAudio && !isOtherFile && !isSticker && msg.body && /(https?:\/\/[^\s]+)/i.test(msg.body))
                 const hasText = Boolean(
                   msg.body &&
                   (!isImage || (
@@ -896,6 +1310,27 @@ export function FriendsView({
 
                       {/* Content Column (Stacked vertically) */}
                       <div className="dm-message-content">
+                        {/* 0. Sticker Media */}
+                        {isSticker && (
+                          <div className="dm-sticker-wrap" style={{ padding: '4px 0' }}>
+                            <img
+                              src={msg.attachment_url}
+                              alt="sticker"
+                              style={{
+                                width: 128,
+                                height: 128,
+                                objectFit: 'contain',
+                                display: 'block',
+                                borderRadius: 8
+                              }}
+                              loading="lazy"
+                            />
+                            <span className="dm-time" style={{ display: 'block', marginTop: 3, fontSize: '10px', opacity: 0.6 }}>
+                              {new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        )}
+
                         {/* 1. Image Media Card */}
                         {isImage && (
                           <div
@@ -1078,6 +1513,15 @@ export function FriendsView({
                     <VoiceMessageIcon style={{ width: '16px', height: '16px' }} />
                   </button>
                 )}
+                <button
+                  type="button"
+                  className="dm-attach-btn"
+                  onClick={() => setShowDMStickerPicker(prev => !prev)}
+                  title="Figurinhas (Stickers)"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: showDMStickerPicker ? 'var(--accent-color, #00f2fe)' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
+                >
+                  <StickerIcon style={{ width: '16px', height: '16px' }} />
+                </button>
                 <input 
                   id="dm-message-input"
                   value={dmDraft} 
@@ -1095,6 +1539,17 @@ export function FriendsView({
                   <SendIcon style={{ width: '16px', height: '16px' }} />
                 </button>
               </form>
+              {showDMStickerPicker && (
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <StickerPicker
+                    onSelectSticker={(url) => {
+                      if (onSendDMSticker) onSendDMSticker(url)
+                      setShowDMStickerPicker(false)
+                    }}
+                    onClose={() => setShowDMStickerPicker(false)}
+                  />
+                </div>
+              )}
             </>
           )}
         </section>
@@ -1293,6 +1748,20 @@ export function FriendsView({
                               <UserIcon style={{ width: '16px', height: '16px' }} />
                             </button>
                           )}
+                          {onBlockUser && (
+                            <button 
+                              type="button" 
+                              className="friend-quick-btn danger" 
+                              onClick={() => {
+                                if (window.confirm(`Tem certeza que deseja bloquear @${friend.user.display_name}?`)) {
+                                  onBlockUser(friend.user.id, friend.user.display_name)
+                                }
+                              }} 
+                              title="Bloquear Usuário"
+                            >
+                              <BanIcon style={{ width: '15px', height: '15px' }} />
+                            </button>
+                          )}
                           <button 
                             type="button" 
                             className="friend-quick-btn danger" 
@@ -1409,6 +1878,20 @@ export function FriendsView({
                               title="Ver Perfil Completo"
                             >
                               <UserIcon style={{ width: '16px', height: '16px' }} />
+                            </button>
+                          )}
+                          {onBlockUser && (
+                            <button 
+                              type="button" 
+                              className="friend-quick-btn danger" 
+                              onClick={() => {
+                                if (window.confirm(`Tem certeza que deseja bloquear @${friend.user.display_name}?`)) {
+                                  onBlockUser(friend.user.id, friend.user.display_name)
+                                }
+                              }} 
+                              title="Bloquear Usuário"
+                            >
+                              <BanIcon style={{ width: '15px', height: '15px' }} />
                             </button>
                           )}
                           <button 
@@ -1606,6 +2089,13 @@ export function FriendsView({
       </section>
       )}
 
+      {showCreateGroupModal && onCreateGroupChat && (
+        <CreateGroupChatModal
+          onClose={() => setShowCreateGroupModal(false)}
+          onCreateGroup={onCreateGroupChat}
+          acceptedFriends={acceptedFriends}
+        />
+      )}
     </section>
   )
 }

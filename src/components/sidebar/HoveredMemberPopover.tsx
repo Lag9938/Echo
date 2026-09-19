@@ -2,7 +2,7 @@ import React from 'react'
 import { ProfileEffect } from '../ProfileEffect'
 import { AvatarDecoration } from '../AvatarDecoration'
 import { GameLogo } from '../GameLogos'
-import { VolumeIcon, CrownIcon, MessageSquareIcon, UserIcon } from '../icons'
+import { VolumeIcon, CrownIcon, MessageSquareIcon, UserIcon, BanIcon } from '../icons'
 import { formatGameDuration } from '../../lib/formatters'
 
 export interface HoveredMemberPopoverData {
@@ -44,6 +44,9 @@ export interface HoveredMemberPopoverProps {
   currentUserAvatarDecoration?: string | null
   presenceData: Record<string, any>
   onOpenDM?: (userId: string) => void
+  onBlockUser?: (targetId: string, targetName: string) => Promise<void> | void
+  onUnblockUser?: (targetId: string, targetName: string) => Promise<void> | void
+  blockedUserIds?: Set<string>
 }
 
 export function HoveredMemberPopover({
@@ -55,7 +58,10 @@ export function HoveredMemberPopover({
   currentUserProfileEffect,
   currentUserAvatarDecoration,
   presenceData,
-  onOpenDM
+  onOpenDM,
+  onBlockUser,
+  onUnblockUser,
+  blockedUserIds
 }: HoveredMemberPopoverProps) {
   if (!hoveredMemberPopover) return null
 
@@ -287,6 +293,39 @@ export function HoveredMemberPopover({
             <UserIcon style={{ width: '13px', height: '13px' }} />
             <span>Ver Perfil</span>
           </button>
+          {!isCurrentUser && onBlockUser && onUnblockUser && (
+            blockedUserIds?.has(targetUserId) ? (
+              <button
+                type="button"
+                className="hover-popover-btn secondary"
+                style={{ borderColor: 'rgba(234,179,8,0.4)', color: '#facc15' }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onUnblockUser(targetUserId, hoveredMemberPopover.user.display_name)
+                  setHoveredMemberPopover(null)
+                }}
+                title="Desbloquear este usuário"
+              >
+                <BanIcon style={{ width: '13px', height: '13px' }} />
+                <span>Desbloquear</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="hover-popover-btn secondary"
+                style={{ borderColor: 'rgba(239,68,68,0.4)', color: '#f87171' }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onBlockUser(targetUserId, hoveredMemberPopover.user.display_name)
+                  setHoveredMemberPopover(null)
+                }}
+                title="Bloquear este usuário"
+              >
+                <BanIcon style={{ width: '13px', height: '13px' }} />
+                <span>Bloquear</span>
+              </button>
+            )
+          )}
         </div>
       </div>
     </div>

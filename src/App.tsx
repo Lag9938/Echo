@@ -71,9 +71,11 @@ import { useEchoSpaceSettings } from './hooks/useEchoSpaceSettings'
 import { useEchoRolesAndPermissions } from './hooks/useEchoRolesAndPermissions'
 import { useEchoServerEmojis } from './hooks/useEchoServerEmojis'
 import { useEchoPinnedMessages } from './hooks/useEchoPinnedMessages'
+import { useEchoBlockedUsers } from './hooks/useEchoBlockedUsers'
+import { useEchoGroupChats } from './hooks/useEchoGroupChats'
 
-import type { Space, Channel, Message, DirectMessage, FriendshipRequest, SavedMessageItem, Page, Toast, RolePermissions, ServerRole, ServerAuditLog, ServerEmoji, PinnedMessage } from './types'
-export type { Space, Channel, Message, DirectMessage, FriendshipRequest, SavedMessageItem, Page, Toast, RolePermissions, ServerRole, ServerAuditLog, ServerEmoji, PinnedMessage }
+import type { Space, Channel, Message, DirectMessage, FriendshipRequest, SavedMessageItem, Page, Toast, RolePermissions, ServerRole, ServerAuditLog, ServerEmoji, PinnedMessage, GroupChat, GroupMessage } from './types'
+export type { Space, Channel, Message, DirectMessage, FriendshipRequest, SavedMessageItem, Page, Toast, RolePermissions, ServerRole, ServerAuditLog, ServerEmoji, PinnedMessage, GroupChat, GroupMessage }
 
 /* ── Modern SVG Icons for Call Controls ──────────────── */
 
@@ -729,6 +731,21 @@ function Echo({ user }: { user: User }) {
     supabase
   })
 
+  // Blocked Users Hook
+  const {
+    blockedUserIds,
+    blockedProfiles,
+    loadBlockedUsers,
+    blockUser,
+    unblockUser
+  } = useEchoBlockedUsers({
+    user,
+    supabase,
+    showToast,
+    removeFriendship,
+    friendships
+  })
+
   // Direct Messages Hook
   const {
     directMessages,
@@ -768,8 +785,41 @@ function Echo({ user }: { user: User }) {
     setHoveredMemberPopover,
     setKnownProfiles,
     playDmNotificationSound,
-    supabase
+    supabase,
+    blockedUserIds
   })
+
+  // Group Chats Hook
+  const {
+    groupChats,
+    selectedGroupId,
+    setSelectedGroupId,
+    groupMessages,
+    groupDraft,
+    setGroupDraft,
+    groupTypingUsers,
+    unreadGroups,
+    loadGroupChats,
+    sendGroupMessage,
+    createGroupChat,
+    leaveGroupChat,
+    handleOpenGroup,
+    handleGroupMessageBroadcast,
+    handleGroupTypingBroadcast,
+    notifyGroupTyping,
+    deleteGroupMessage
+  } = useEchoGroupChats({
+    user,
+    profileDisplayName,
+    supabase,
+    socialChannelRef,
+    showToast,
+    triggerDesktopNotification,
+    setKnownProfiles,
+    playDmNotificationSound,
+    sfxVolume
+  })
+
   // Channel Messages Hook
   const {
     messages,
@@ -836,6 +886,9 @@ function Echo({ user }: { user: User }) {
       if (data.type === 'dm' && data.senderId) {
         handleOpenDirectChat(data.senderId)
         setPage('Amigos')
+      } else if (data.type === 'group' && data.groupId) {
+        handleOpenGroup(data.groupId)
+        setPage('Amigos')
       } else if (data.type === 'channel' && data.channelId) {
         const allChannels = Object.values(spaceChannelsRef.current).flat()
         const targetCh = allChannels.find(c => c.id === data.channelId)
@@ -862,7 +915,7 @@ function Echo({ user }: { user: User }) {
     return () => {
       window.removeEventListener('echo-notification-clicked', handleCustomClick)
     }
-  }, [handleOpenDirectChat, spaces])
+  }, [handleOpenDirectChat, handleOpenGroup, spaces])
 
   // Voice Session Refs & Hook (Phase 18)
   const selectedInputIdRef = useRef('')
@@ -1454,6 +1507,8 @@ function Echo({ user }: { user: User }) {
   useEffect(() => {
     loadSpaces()
     loadFriendships()
+    loadBlockedUsers()
+    loadGroupChats()
     loadAudioDevices()
 
     const client = supabase
@@ -1564,6 +1619,12 @@ function Echo({ user }: { user: User }) {
       .on('broadcast', { event: 'dm-typing' }, (payload: any) => {
         handleDMTypingBroadcast(payload?.payload)
       })
+      .on('broadcast', { event: 'group-message' }, (payload: any) => {
+        handleGroupMessageBroadcast(payload?.payload)
+      })
+      .on('broadcast', { event: 'group-typing' }, (payload: any) => {
+        handleGroupTypingBroadcast(payload?.payload)
+      })
       .on('broadcast', { event: 'voice-moderation' }, (payload: any) => {
         const data = payload?.payload
         if (data?.targetUserId === user?.id) {
@@ -1586,12 +1647,13 @@ function Echo({ user }: { user: User }) {
       supabase?.removeChannel(liveFriendships)
       supabase?.removeChannel(socialChannel)
     }
-  }, [handleFriendshipPostgresChanges, handleFriendEvent, handleDMBroadcast, handleDMDeleteBroadcast, handleCallEvent, handleDMTypingBroadcast, supabase, user])
+  }, [handleFriendshipPostgresChanges, handleFriendEvent, handleDMBroadcast, handleDMDeleteBroadcast, handleCallEvent, handleDMTypingBroadcast, handleGroupMessageBroadcast, handleGroupTypingBroadcast, supabase, user])
 
   // Resilient background sync interval (every 60 seconds)
   useEffect(() => {
     const syncInterval = setInterval(() => {
       loadFriendships()
+      loadGroupChats()
       if (selectedDMUserIdRef.current) {
         loadDirectMessages(selectedDMUserIdRef.current)
       }
@@ -1600,7 +1662,7 @@ function Echo({ user }: { user: User }) {
     return () => {
       clearInterval(syncInterval)
     }
-  }, [loadFriendships, loadDirectMessages, selectedDMUserIdRef])
+  }, [loadFriendships, loadGroupChats, loadDirectMessages, selectedDMUserIdRef])
 
   useEffect(() => {
     if (selectedChannel) {
@@ -2084,6 +2146,24 @@ function Echo({ user }: { user: User }) {
             isMessageSaved={isMessageSaved}
             isFriendTyping={isFriendTyping}
             notifyDMTyping={notifyDMTyping}
+            blockedUserIds={blockedUserIds}
+            onBlockUser={blockUser}
+            onUnblockUser={unblockUser}
+            onSendDMSticker={(url) => sendDirectMessage('', url, 'sticker')}
+            groupChats={groupChats}
+            selectedGroupId={selectedGroupId}
+            setSelectedGroupId={setSelectedGroupId}
+            groupMessages={groupMessages}
+            groupDraft={groupDraft}
+            setGroupDraft={setGroupDraft}
+            groupTypingUsers={groupTypingUsers}
+            unreadGroups={unreadGroups}
+            onCreateGroupChat={createGroupChat}
+            onSendGroupMessage={sendGroupMessage}
+            onLeaveGroupChat={leaveGroupChat}
+            onOpenGroup={handleOpenGroup}
+            notifyGroupTyping={notifyGroupTyping}
+            onDeleteGroupMessage={deleteGroupMessage}
           />
         </ErrorBoundary>
       </div>
@@ -2259,6 +2339,8 @@ function Echo({ user }: { user: User }) {
             onDeafenShortcutChange={setDeafenShortcut}
             aiDenoiseShortcut={aiDenoiseShortcut}
             onAiDenoiseShortcutChange={setAiDenoiseShortcut}
+            blockedProfiles={blockedProfiles}
+            onUnblockUser={unblockUser}
           />
         </Suspense>
       </ErrorBoundary>
@@ -2465,6 +2547,9 @@ function Echo({ user }: { user: User }) {
         onAcceptFriend={acceptFriendRequest}
         handleOpenDirectChat={handleOpenDirectChat}
         setVolumeControlUser={setVolumeControlUser}
+        blockedUserIds={blockedUserIds}
+        onBlockUser={blockUser}
+        onUnblockUser={unblockUser}
       />
 
       {/* Member Hover Popover Card */}
@@ -2481,6 +2566,9 @@ function Echo({ user }: { user: User }) {
           handleOpenDirectChat(targetUserId)
           setPage('Amigos')
         }}
+        blockedUserIds={blockedUserIds}
+        onBlockUser={blockUser}
+        onUnblockUser={unblockUser}
       />
 
       {/* Canal / Voice Channel Invite Modal (Discord-style) */}
@@ -2582,6 +2670,9 @@ function Echo({ user }: { user: User }) {
         onToastClick={(toast) => {
           if (toast.data?.type === 'dm' && toast.data.senderId) {
             handleOpenDirectChat(toast.data.senderId)
+            setPage('Amigos')
+          } else if (toast.data?.type === 'group' && toast.data.groupId) {
+            handleOpenGroup(toast.data.groupId)
             setPage('Amigos')
           } else if (toast.data?.type === 'channel' && toast.data.channelId) {
             const allChannels = Object.values(spaceChannelsRef.current).flat()

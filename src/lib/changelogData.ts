@@ -14,15 +14,47 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.34.2'
+export const APP_CURRENT_VERSION = '0.34.3'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.34.3',
+    title: 'Echo v0.34.3 - Transmissão a 60 FPS Grátis, Group DMs e Stickers',
+    date: '19 de Setembro de 2026',
+    tagline: 'Transmissão de tela e jogos a 60 FPS liberada 100% gratuita para todos os usuários, criação de grupos diretos sem servidor, figurinhas animadas e bloqueio de membros indesejados.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '⚡',
+        badge: '60 FPS LIVRE',
+        title: 'Transmissão a 60 FPS Totalmente Gratuita',
+        description: 'Fim do paywall! Transmita telas, janelas e qualquer jogo a 60 quadros por segundo com máxima fluidez e aceleração de hardware nativa sem precisar de assinatura ou pagamento.'
+      },
+      {
+        icon: '👥',
+        badge: 'GROUP DMs',
+        title: 'Conversas em Grupo sem Criar Servidor',
+        description: 'Agora você pode reunir até 10 amigos em um único chat privado diretamente da aba Amigos! Conte com histórico persistente, indicador de digitação em grupo e opção de sair a qualquer momento.'
+      },
+      {
+        icon: '🎨',
+        badge: 'STICKERS',
+        title: 'Pacotes de Figurinhas Animadas',
+        description: 'Chegaram os Stickers ao Echo! Três pacotes exclusivos: Echo Vibes, Gaming e Memes BR. Envie figurinhas animadas de alta resolução nos canais de texto de servidores, DMs e grupos.'
+      },
+      {
+        icon: '🚫',
+        badge: 'PRIVACIDADE',
+        title: 'Bloqueio Completo de Usuários',
+        description: 'Bloqueie usuários indesejados pelo perfil ou card hover. Mensagens e broadcasts de pessoas bloqueadas são instantaneamente ocultados. Você pode desbloqueá-los a qualquer momento em Configurações > Privacidade & Bloqueios.'
+      }
+    ]
+  },
   {
     version: '0.34.2',
     title: 'Echo v0.34.2 - Correção Definitiva da Detecção e Transmissão de Jogos (VALORANT)',
     date: '18 de Setembro de 2026',
     tagline: 'Correção na sincronização global de jogos entre membros (mesmo em chamada de voz), caminho de escaneamento ultra-robusto no Windows e eliminação de conflitos de presença.',
-    isLatest: true,
     highlights: [
       {
         icon: '🎮',

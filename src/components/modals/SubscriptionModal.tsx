@@ -387,8 +387,8 @@ export function SubscriptionModal({
             lineHeight: '1.4'
           }}>
             {isPremiumUser 
-              ? 'Sua conta possui acesso ilimitado aos recursos PRO (60 FPS, temas e insígnia VIP).'
-              : 'Desbloqueie recursos avançados de transmissão e personalização.'}
+              ? 'Sua conta possui acesso ilimitado aos recursos PRO (distintivo VIP, temas especiais e suporte prioritário).'
+              : 'Desbloqueie recursos avançados de personalização e apoie o projeto.'}
           </p>
         </div>
 
@@ -424,10 +424,10 @@ export function SubscriptionModal({
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: '13px', fontWeight: '700', color: '#fff' }}>
-                    Transmissão 60 FPS Desbloqueada
+                    Apoiador VIP Ativo
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary, #94a3b8)', marginTop: '2px' }}>
-                    Você pode selecionar 60 quadros por segundo em qualquer compartilhamento de tela.
+                    Você possui todos os benefícios exclusivos de apoiador desbloqueados.
                   </div>
                 </div>
               </div>
@@ -485,7 +485,7 @@ export function SubscriptionModal({
               gap: '8px',
               marginBottom: '16px'
             }}>
-              {/* Perk 1: 60 FPS Streaming */}
+              {/* Perk 1: Echo Official Supporter */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -510,7 +510,7 @@ export function SubscriptionModal({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '13px', fontWeight: '700', color: '#fff' }}>
-                      Transmissão a 60 FPS
+                      Apoiador Oficial Echo
                     </span>
                     <span style={{
                       fontSize: '9px',
@@ -522,11 +522,11 @@ export function SubscriptionModal({
                       border: '1px solid rgba(245, 158, 11, 0.35)',
                       color: '#fbbf24'
                     }}>
-                      60 FPS
+                      VIP
                     </span>
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary, #94a3b8)', marginTop: '2px' }}>
-                    Transmita suas telas e jogos com 60 quadros por segundo e ultra fluidez.
+                    Ajude a manter nossos servidores de alta fidelidade e receba novidades antecipadas.
                   </div>
                 </div>
               </div>
@@ -775,7 +775,7 @@ export function SubscriptionModal({
                   Pagamento Confirmado!
                 </h3>
                 <p style={{ fontSize: '12px', color: 'var(--text-secondary, #94a3b8)', margin: 0 }}>
-                  Sua conta foi atualizada para Echo Pro. A transmissão a 60 FPS já está desbloqueada!
+                  Sua conta foi atualizada para Echo Pro. Seu distintivo VIP e temas exclusivos já estão desbloqueados!
                 </p>
               </div>
             ) : pixData ? (

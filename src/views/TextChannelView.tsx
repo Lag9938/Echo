@@ -21,10 +21,12 @@ import {
   StarIcon,
   TrashIcon,
   UsersIcon,
-  VoiceMessageIcon
+  VoiceMessageIcon,
+  StickerIcon
 } from '../components/icons'
 import { openExternalUrl } from '../lib/openExternal'
 import { useUIStore } from '../stores/useUIStore'
+import { StickerPicker } from '../components/StickerPicker'
 
 export const DEFAULT_EMOJIS = [
   '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
@@ -216,6 +218,14 @@ export function TextChannelView({
   const [emojiPickerTab, setEmojiPickerTab] = useState<'default' | 'server'>('default')
   const [showGifPicker, setShowGifPicker] = useState(false)
   const [gifSearchQuery, setGifSearchQuery] = useState('')
+  const [showStickerPicker, setShowStickerPicker] = useState(false)
+
+  const handleSendSticker = async (url: string) => {
+    if (selectedChannel && supabase) {
+      await postChannelMessage(selectedChannel.id, '', url, 'sticker')
+      setShowStickerPicker(false)
+    }
+  }
 
   // Staged clipboard paste image state
   const [pendingPastedFile, setPendingPastedFile] = useState<File | null>(null)
@@ -986,6 +996,24 @@ export function TextChannelView({
                                               <p>{formatMessageText(displayedBody, profileDisplayName, serverEmojis)}</p>
                                             )}
                                           </div>
+                                        ) : message.attachment_url && message.attachment_type === 'sticker' ? (
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                            <img
+                                              src={message.attachment_url}
+                                              alt="sticker"
+                                              style={{
+                                                width: '128px',
+                                                height: '128px',
+                                                objectFit: 'contain',
+                                                display: 'block',
+                                                borderRadius: '8px'
+                                              }}
+                                              loading="lazy"
+                                            />
+                                            {displayedBody && displayedBody !== 'Sticker' && !displayedBody.startsWith('http') && (
+                                              <p>{formatMessageText(displayedBody, profileDisplayName, serverEmojis)}</p>
+                                            )}
+                                          </div>
                                         ) : message.attachment_url && message.attachment_type === 'audio' ? (
                                           <ModernVoiceNotePlayer
                                             audioUrl={message.attachment_url}
@@ -996,7 +1024,7 @@ export function TextChannelView({
                                             onChangeSpeed={handleChangeVoiceSpeed}
                                             activeAudioRef={voiceNoteAudioRef}
                                           />
-                                        ) : message.attachment_url && !message.attachment_type?.startsWith('image') && message.attachment_type !== 'audio' ? (
+                                        ) : message.attachment_url && !message.attachment_type?.startsWith('image') && message.attachment_type !== 'audio' && message.attachment_type !== 'sticker' ? (
                                           <a
                                             href={message.attachment_url}
                                             target="_blank"
@@ -1259,18 +1287,40 @@ export function TextChannelView({
                                 <button 
                                   type="button" 
                                   className={`composer-action-btn ${showGifPicker ? 'active' : ''}`} 
-                                  onClick={() => setShowGifPicker(!showGifPicker)} 
+                                  onClick={() => {
+                                    setShowGifPicker(!showGifPicker)
+                                    setShowStickerPicker(false)
+                                    setShowEmojiPicker(false)
+                                  }} 
                                   title="Escolher GIF Gamer"
                                   style={{ fontWeight: 800, fontSize: '11px', letterSpacing: '0.5px' }}
                                 >
                                   GIF
                                 </button>
 
+                                {/* Sticker Picker Button */}
+                                <button 
+                                  type="button" 
+                                  className={`composer-action-btn ${showStickerPicker ? 'active' : ''}`} 
+                                  onClick={() => {
+                                    setShowStickerPicker(!showStickerPicker)
+                                    setShowGifPicker(false)
+                                    setShowEmojiPicker(false)
+                                  }} 
+                                  title="Figurinhas (Stickers)"
+                                >
+                                  <StickerIcon style={{ width: '15px', height: '15px' }} />
+                                </button>
+
                                 {/* Emoji Picker Button */}
                                 <button 
                                   type="button" 
                                   className={`composer-action-btn ${showEmojiPicker ? 'active' : ''}`} 
-                                  onClick={() => setShowEmojiPicker(!showEmojiPicker)} 
+                                  onClick={() => {
+                                    setShowEmojiPicker(!showEmojiPicker)
+                                    setShowGifPicker(false)
+                                    setShowStickerPicker(false)
+                                  }} 
                                   title="Escolher Emoji"
                                 >
                                   <SmileIcon style={{ width: '15px', height: '15px' }} />
@@ -1432,6 +1482,14 @@ export function TextChannelView({
                                     )}
                                   </div>
                                 </div>
+                              )}
+
+                              {/* Sticker Picker Popover */}
+                              {showStickerPicker && (
+                                <StickerPicker
+                                  onSelectSticker={handleSendSticker}
+                                  onClose={() => setShowStickerPicker(false)}
+                                />
                               )}
                               </form>
                             </>
