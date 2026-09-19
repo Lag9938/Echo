@@ -14,15 +14,41 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.35.0'
+export const APP_CURRENT_VERSION = '0.35.1'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.35.1',
+    title: 'Echo v0.35.1 - Correção Crítica de Inicialização & Otimização de Processos',
+    date: '19 de Setembro de 2026',
+    tagline: 'Correção imediata na inicialização do aplicativo, blindagem do canal de comunicação principal e encerramento limpo para evitar processos travados em segundo plano.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🚀',
+        badge: 'CORREÇÃO CRÍTICA',
+        title: 'Inicialização 100% Estável',
+        description: 'Corrigido o conflito de registro de canal no Electron que impedia a janela do aplicativo de abrir após a atualização. Abertura imediata e fluida garantida.'
+      },
+      {
+        icon: '🛡️',
+        badge: 'ANTIVÍRUS & PERFORMANCE',
+        title: 'Zero Falsos Positivos de Antivírus',
+        description: 'Eliminada a chamada redundante de processos em segundo plano, garantindo que o Windows Defender e outros antivírus não bloqueiem a execução do Echo.'
+      },
+      {
+        icon: '⚡',
+        badge: 'INSTÂNCIA ÚNICA',
+        title: 'Restauração Confiável da Janela',
+        description: 'Se o aplicativo estiver aberto em segundo plano ou minimizado na bandeja, clicar no ícone da área de trabalho restaura e foca a janela instantaneamente sem travar.'
+      }
+    ]
+  },
   {
     version: '0.35.0',
     title: 'Echo v0.35.0 - Crie suas Figurinhas a partir de Fotos (WhatsApp Style)',
     date: '19 de Setembro de 2026',
     tagline: 'Fim dos stickers padrões estáticos! Crie figurinhas personalizadas enviando fotos, memes ou GIFs diretamente do seu computador, igualzinho no WhatsApp.',
-    isLatest: true,
     highlights: [
       {
         icon: '📸',

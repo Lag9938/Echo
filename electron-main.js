@@ -12,13 +12,48 @@ import { AccessToken } from 'livekit-server-sdk'
 
 const execFileAsync = promisify(execFile)
 
+process.on('uncaughtException', (err) => {
+  console.error('[Echo Main] Uncaught Exception:', err)
+})
+process.on('unhandledRejection', (reason) => {
+  console.warn('[Echo Main] Unhandled Rejection:', reason)
+})
+
 const isDevelopment = !app.isPackaged
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Handler seguro para registro de IPC sem risco de erro de duplicidade
+function safeHandle(channel, handler) {
+  try {
+    ipcMain.removeHandler(channel)
+  } catch (e) {}
+  ipcMain.handle(channel, handler)
+}
+
+// Armazena URL de convite recebida no arranque para repassar ao carregamento da janela
+let pendingInviteUrl = process.argv.find(arg => typeof arg === 'string' && (arg.startsWith('echo://') || arg.includes('/Echo/invite') || (arg.includes('/invite') && arg.includes('space=')))) || null
 
 // Single instance lock & deep-linking protocol registration
 const gotTheLock = app.requestSingleInstanceLock()
 if (!gotTheLock) {
   app.quit()
+} else {
+  app.on('second-instance', (_event, commandLine) => {
+    const inviteArg = commandLine.find(arg => typeof arg === 'string' && (arg.startsWith('echo://') || arg.includes('/Echo/invite') || (arg.includes('/invite') && arg.includes('space='))))
+    if (inviteArg) {
+      pendingInviteUrl = inviteArg
+    }
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.show()
+      mainWindow.focus()
+      if (inviteArg) {
+        mainWindow.webContents.send('deep-link-invite', inviteArg)
+      }
+    } else {
+      createWindow()
+    }
+  })
 }
 
 if (process.defaultApp) {
@@ -33,9 +68,6 @@ if (process.defaultApp) {
 if (process.platform === 'win32') {
   app.setAppUserModelId('com.echo.desktop')
 }
-
-// Armazena URL de convite recebida no arranque para repassar ao carregamento da janela
-let pendingInviteUrl = process.argv.find(arg => typeof arg === 'string' && (arg.startsWith('echo://') || arg.includes('/Echo/invite') || (arg.includes('/invite') && arg.includes('space=')))) || null
 
 if (isDevelopment) {
   try {
@@ -141,19 +173,22 @@ function matchGameProcess(procName, windowTitle = '') {
 let activeGame = null
 let activeGameStartTime = null
 let gameScanInterval = null
+let isScanningGames = false
 
 async function scanRunningGames() {
+  if (isScanningGames) return
+  isScanningGames = true
   try {
     let foundGame = null
 
-    // 1. Escaneamento prioritário via tasklist.exe (0 dependências, funciona mesmo com Riot Vanguard)
+    // 1. Escaneamento prioritário via tasklist.exe (0 dependências externas, nativo do Windows, seguro contra antivírus)
     if (process.platform === 'win32') {
       try {
         const tasklistCmd = process.env.SystemRoot 
           ? path.join(process.env.SystemRoot, 'System32', 'tasklist.exe')
           : 'tasklist.exe'
         const exeToRun = fs.existsSync(tasklistCmd) ? tasklistCmd : 'tasklist.exe'
-        const { stdout } = await execFileAsync(exeToRun, ['/fo', 'csv', '/nh'], { timeout: 6000, windowsHide: true, maxBuffer: 10 * 1024 * 1024 })
+        const { stdout } = await execFileAsync(exeToRun, ['/fo', 'csv', '/nh'], { timeout: 4000, windowsHide: true, maxBuffer: 5 * 1024 * 1024 })
         if (stdout) {
           const lines = stdout.split(/\r?\n/)
           for (const line of lines) {
@@ -169,25 +204,6 @@ async function scanRunningGames() {
           }
         }
       } catch (e) {}
-
-      // Fallback secundário no Windows via PowerShell caso tasklist seja restrito ou falhe
-      if (!foundGame) {
-        try {
-          const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', 'Get-Process | Select-Object -ExpandProperty ProcessName'], { timeout: 4000, windowsHide: true, maxBuffer: 10 * 1024 * 1024 })
-          if (stdout) {
-            const names = stdout.split(/\r?\n/)
-            for (const name of names) {
-              const trimmed = name.trim()
-              if (!trimmed) continue
-              const matched = matchGameProcess(trimmed)
-              if (matched) {
-                foundGame = matched
-                break
-              }
-            }
-          }
-        } catch (e) {}
-      }
     }
 
     // 2. Se nenhum jogo foi detectado por tasklist ou para verificar jogo em primeiro plano ativo:
@@ -247,7 +263,10 @@ async function scanRunningGames() {
         }
       }
     }
-  } catch (err) {}
+  } catch (err) {
+  } finally {
+    isScanningGames = false
+  }
 }
 
 // Hardware Acceleration & High-Performance Screen Capture for Games (Zero FPS drop in Valorant, CS2, etc.)
@@ -543,10 +562,10 @@ function createWindow() {
   })
 
   // Window Management Handlers (Custom Frameless Controls)
-  ipcMain.handle('window-minimize', () => {
+  safeHandle('window-minimize', () => {
     if (mainWindow) mainWindow.minimize()
   })
-  ipcMain.handle('window-maximize', () => {
+  safeHandle('window-maximize', () => {
     if (!mainWindow) return
     if (mainWindow.isMaximized()) {
       mainWindow.unmaximize()
@@ -554,27 +573,27 @@ function createWindow() {
       mainWindow.maximize()
     }
   })
-  ipcMain.handle('window-close', () => {
+  safeHandle('window-close', () => {
     if (mainWindow) mainWindow.close()
   })
-  ipcMain.handle('app-quit', () => {
+  safeHandle('app-quit', () => {
     isQuitting = true
     app.quit()
   })
-  ipcMain.handle('window-is-maximized', () => {
+  safeHandle('window-is-maximized', () => {
     return mainWindow ? mainWindow.isMaximized() : false
   })
-  ipcMain.handle('window-set-fullscreen', (_event, flag) => {
+  safeHandle('window-set-fullscreen', (_event, flag) => {
     if (!mainWindow) return false
     mainWindow.setFullScreen(Boolean(flag))
     return mainWindow.isFullScreen()
   })
-  ipcMain.handle('window-is-fullscreen', () => {
+  safeHandle('window-is-fullscreen', () => {
     return mainWindow ? mainWindow.isFullScreen() : false
   })
 
   // Handler para abrir links externos (YouTube, links do chat, etc.) no navegador padrão
-  ipcMain.handle('shell:openExternal', async (_event, url) => {
+  safeHandle('shell:openExternal', async (_event, url) => {
     if (typeof url === 'string') {
       const trimmed = url.trim()
       if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('mailto:')) {
@@ -590,21 +609,8 @@ function createWindow() {
     return false
   })
 
-  // Handler para verificar jogo ativo sob demanda pelo renderer
-  ipcMain.handle('check-active-game', async () => {
-    await scanRunningGames()
-    if (activeGame) {
-      return {
-        name: activeGame.name,
-        icon: activeGame.icon,
-        startedAt: activeGameStartTime || Date.now()
-      }
-    }
-    return null
-  })
-
   // Handler para capturar telas e janelas do sistema operacional com WGC e alta definição
-  ipcMain.handle('get-sources', async () => {
+  safeHandle('get-sources', async () => {
     let sources = []
     try {
       sources = await desktopCapturer.getSources({
@@ -688,7 +694,7 @@ function createWindow() {
   })
 
   // Handler para desminimizar / restaurar janela antes de iniciar a captura
-  ipcMain.handle('restore-window', async (_event, sourceId) => {
+  safeHandle('restore-window', async (_event, sourceId) => {
     if (!sourceId || typeof sourceId !== 'string') return
     const parts = sourceId.split(':')
     if (parts[0] === 'window' && parts[1]) {
@@ -704,7 +710,7 @@ function createWindow() {
   })
 
   // Handlers para captura de áudio nativa por processo (Windows WASAPI Loopback estilo Discord)
-  ipcMain.handle('start-process-audio-capture', async (_event, sourceId) => {
+  safeHandle('start-process-audio-capture', async (_event, sourceId) => {
     stopAudioCapture()
     if (!sourceId || typeof sourceId !== 'string') {
       return { success: false, reason: 'Invalid sourceId' }
@@ -801,30 +807,30 @@ function createWindow() {
     }
   })
 
-  ipcMain.handle('stop-process-audio-capture', async () => {
+  safeHandle('stop-process-audio-capture', async () => {
     stopAudioCapture()
     return { success: true }
   })
 
   // Rich Presence: check active game manually
-  ipcMain.handle('check-active-game', async () => {
+  safeHandle('check-active-game', async () => {
     await scanRunningGames()
     return activeGame ? { name: activeGame.name, icon: activeGame.icon, startedAt: activeGameStartTime } : null
   })
 
   // Mini Game Overlay Window Handlers
-  ipcMain.handle('toggle-overlay', () => {
+  safeHandle('toggle-overlay', () => {
     return toggleOverlayWindow()
   })
 
-  ipcMain.handle('open-overlay', () => {
+  safeHandle('open-overlay', () => {
     if (!overlayWindow || overlayWindow.isDestroyed() || !overlayWindow.isVisible()) {
       return toggleOverlayWindow()
     }
     return true
   })
 
-  ipcMain.handle('close-overlay', () => {
+  safeHandle('close-overlay', () => {
     if (overlayWindow && !overlayWindow.isDestroyed()) {
       overlayWindow.close()
       overlayWindow = null
@@ -832,14 +838,14 @@ function createWindow() {
     return true
   })
 
-  ipcMain.handle('is-overlay-open', () => {
+  safeHandle('is-overlay-open', () => {
     return Boolean(overlayWindow && !overlayWindow.isDestroyed() && overlayWindow.isVisible())
   })
 
   // Global Shortcut Handlers (Push-to-Talk, Global Mute & Deafen Toggles)
   const registeredShortcuts = new Map()
 
-  ipcMain.handle('register-global-ptt', (_event, shortcutKey) => {
+  safeHandle('register-global-ptt', (_event, shortcutKey) => {
     try {
       if (registeredShortcuts.has('ptt')) {
         globalShortcut.unregister(registeredShortcuts.get('ptt'))
@@ -861,7 +867,7 @@ function createWindow() {
     }
   })
 
-  ipcMain.handle('unregister-global-ptt', () => {
+  safeHandle('unregister-global-ptt', () => {
     if (registeredShortcuts.has('ptt')) {
       globalShortcut.unregister(registeredShortcuts.get('ptt'))
       registeredShortcuts.delete('ptt')
@@ -869,7 +875,7 @@ function createWindow() {
     return { success: true }
   })
 
-  ipcMain.handle('register-global-voice-shortcut', (_event, { action, shortcutKey }) => {
+  safeHandle('register-global-voice-shortcut', (_event, { action, shortcutKey }) => {
     try {
       if (registeredShortcuts.has(action)) {
         globalShortcut.unregister(registeredShortcuts.get(action))
@@ -888,7 +894,7 @@ function createWindow() {
     }
   })
 
-  ipcMain.handle('unregister-global-voice-shortcut', (_event, action) => {
+  safeHandle('unregister-global-voice-shortcut', (_event, action) => {
     if (registeredShortcuts.has(action)) {
       globalShortcut.unregister(registeredShortcuts.get(action))
       registeredShortcuts.delete(action)
@@ -897,7 +903,7 @@ function createWindow() {
   })
 
   // Native Windows Notifications
-  ipcMain.handle('show-notification', (_event, { title, body, data } = {}) => {
+  safeHandle('show-notification', (_event, { title, body, data } = {}) => {
     try {
       if (Notification.isSupported()) {
         const appIconPath = path.join(__dirname, 'assets', 'echo-icon.png')
@@ -928,7 +934,7 @@ function createWindow() {
   })
 
   // LiveKit SFU Connection & Token Generation Handler (com tolerância a relógio descalibrado)
-  ipcMain.handle('get-livekit-connection', async (_event, params = {}) => {
+  safeHandle('get-livekit-connection', async (_event, params = {}) => {
     try {
       const { room, identity, name, avatarUrl } = params || {}
       let livekitUrl = process.env.LIVEKIT_URL || 'wss://137-131-144-255.sslip.io'
@@ -970,14 +976,14 @@ function createWindow() {
   })
 
   // Retorna qualquer URL de convite recebida no arranque para o frontend
-  ipcMain.handle('get-initial-invite-url', () => {
+  safeHandle('get-initial-invite-url', () => {
     const url = pendingInviteUrl
     pendingInviteUrl = null
     return url
   })
 
   // Asaas Payments & Subscriptions Integration (Echo Pro Monetization)
-  ipcMain.handle('asaas-get-checkout-url', () => {
+  safeHandle('asaas-get-checkout-url', () => {
     return {
       success: true,
       url: 'https://www.asaas.com/c/1gt86ha34vf8us16',
@@ -988,7 +994,7 @@ function createWindow() {
     }
   })
 
-  ipcMain.handle('asaas-create-pix-charge', async (_event, params = {}) => {
+  safeHandle('asaas-create-pix-charge', async (_event, params = {}) => {
     try {
       const { name, email, cpfCnpj, value = 9.90 } = params
       const envPath = path.join(__dirname, '.env')
@@ -1077,7 +1083,7 @@ function createWindow() {
     }
   })
 
-  ipcMain.handle('asaas-check-payment-status', async (_event, paymentId) => {
+  safeHandle('asaas-check-payment-status', async (_event, paymentId) => {
     try {
       if (!paymentId) return { success: false, error: 'ID de pagamento ausente.' }
       const envPath = path.join(__dirname, '.env')
@@ -1107,7 +1113,7 @@ function createWindow() {
   })
 
   // Windows / System Auto-Start at Login (Discord Style - Default Enabled)
-  ipcMain.handle('get-autostart-settings', () => {
+  safeHandle('get-autostart-settings', () => {
     try {
       const autostartConfigFile = path.join(app.getPath('userData'), 'autostart_preference.json')
       const settings = app.getLoginItemSettings()
@@ -1122,7 +1128,7 @@ function createWindow() {
     }
   })
 
-  ipcMain.handle('set-autostart-settings', (_event, { openAtLogin, openAsHidden }) => {
+  safeHandle('set-autostart-settings', (_event, { openAtLogin, openAsHidden }) => {
     try {
       const willOpen = Boolean(openAtLogin)
       const isHidden = Boolean(openAsHidden)
@@ -1162,15 +1168,25 @@ function createWindow() {
   // Handler para instalar atualização quando o usuário decidir
   ipcMain.on('install-update', () => {
     isQuitting = true
+    if (gameScanInterval) clearInterval(gameScanInterval)
     if (tray) {
       try { tray.destroy() } catch (e) {}
+      tray = null
     }
-    // true, true => isSilent: true (sem tela de instalador externo), isForceRunAfter: true (reabre o app automaticamente)
-    autoUpdater.quitAndInstall(true, true)
+    stopAudioCapture()
+    if (livekitProcess) {
+      try { livekitProcess.kill() } catch (e) {}
+      livekitProcess = null
+    }
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      try { mainWindow.destroy() } catch (e) {}
+    }
+    // isSilent: false, isForceRunAfter: true => garante que o instalador do Windows mostre progresso e feche processos sem travar silenciosamente
+    autoUpdater.quitAndInstall(false, true)
   })
 
   // Handler para forçar verificação de atualizações sob demanda
-  ipcMain.handle('check-for-updates', async () => {
+  safeHandle('check-for-updates', async () => {
     if (!isDevelopment) {
       try {
         const result = await autoUpdater.checkForUpdates()
@@ -1250,6 +1266,15 @@ function createWindow() {
     setTimeout(scanRunningGames, 600)
   })
 
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error('Falha ao carregar conteúdo da janela:', errorCode, errorDescription, validatedURL)
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      setTimeout(() => {
+        mainWindow.loadFile('dist/index.html').catch(() => {})
+      }, 1000)
+    }
+  })
+
   if (!shouldStartHidden) {
     mainWindow.show()
   }
@@ -1317,21 +1342,6 @@ app.whenReady().then(() => {
   }
 
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
-
-  app.on('second-instance', (event, commandLine) => {
-    const inviteArg = commandLine.find(arg => typeof arg === 'string' && (arg.startsWith('echo://') || arg.includes('/Echo/invite') || (arg.includes('/invite') && arg.includes('space='))))
-    if (inviteArg) {
-      pendingInviteUrl = inviteArg
-    }
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.show()
-      mainWindow.focus()
-      if (inviteArg && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('deep-link-invite', inviteArg)
-      }
-    }
-  })
 
   app.on('open-url', (event, url) => {
     event.preventDefault()
