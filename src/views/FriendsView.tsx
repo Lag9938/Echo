@@ -1062,6 +1062,7 @@ export function FriendsView({
           {showGroupStickerPicker && (
             <div style={{ position: 'relative', width: '100%' }}>
               <StickerPicker
+                userId={user.id}
                 onSelectSticker={(url, name) => {
                   onSendGroupMessage?.(currentActiveGroup.id, name ? `[Sticker: ${name}]` : 'Sticker', url, 'sticker')
                   setShowGroupStickerPicker(false)
@@ -1542,6 +1543,7 @@ export function FriendsView({
               {showDMStickerPicker && (
                 <div style={{ position: 'relative', width: '100%' }}>
                   <StickerPicker
+                    userId={user.id}
                     onSelectSticker={(url, name) => {
                       if (onSendDMSticker) onSendDMSticker(url, name)
                       setShowDMStickerPicker(false)

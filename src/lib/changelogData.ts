@@ -14,15 +14,41 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.34.4'
+export const APP_CURRENT_VERSION = '0.35.0'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.35.0',
+    title: 'Echo v0.35.0 - Crie suas Figurinhas a partir de Fotos (WhatsApp Style)',
+    date: '19 de Setembro de 2026',
+    tagline: 'Fim dos stickers padrões estáticos! Crie figurinhas personalizadas enviando fotos, memes ou GIFs diretamente do seu computador, igualzinho no WhatsApp.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '📸',
+        badge: 'CRIADOR DE STICKERS',
+        title: 'Crie Figurinhas com Qualquer Foto',
+        description: 'Clique em "+ Criar Figurinha" ou arraste qualquer foto, meme ou imagem do seu computador. O Echo redimensiona e otimiza automaticamente em alta definição, salvando em sua biblioteca pessoal e enviando imediatamente.'
+      },
+      {
+        icon: '🗑️',
+        badge: 'BIBLIOTECA PESSOAL',
+        title: 'Gerencie sua Coleção Pessoal',
+        description: 'Todas as suas figurinhas criadas ficam salvas na sua biblioteca para você usar quando quiser em canais, DMs e grupos. Passe o mouse sobre qualquer figurinha para excluí-la facilmente pelo botão "✕".'
+      },
+      {
+        icon: '📥',
+        badge: 'DRAG & DROP',
+        title: 'Arrastar e Soltar Imagens',
+        description: 'Arraste uma foto da sua pasta ou da área de trabalho diretamente para dentro do seletor de figurinhas para transformá-la instantaneamente em figurinha no chat!'
+      }
+    ]
+  },
   {
     version: '0.34.4',
     title: 'Echo v0.34.4 - Figurinhas Locais Instantâneas, Detecção de Jogos Robusta & Nova Aba Teclas de Atalho',
     date: '19 de Setembro de 2026',
     tagline: 'Figurinhas 100% locais sem falhas de conexão, sincronização precisa de status de jogos (VALORANT) e nova aba dedicada de Teclas de Atalho na barra lateral.',
-    isLatest: true,
     highlights: [
       {
         icon: '🎨',

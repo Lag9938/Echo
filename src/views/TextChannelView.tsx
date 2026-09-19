@@ -1487,6 +1487,7 @@ export function TextChannelView({
                               {/* Sticker Picker Popover */}
                               {showStickerPicker && (
                                 <StickerPicker
+                                  userId={user?.id}
                                   onSelectSticker={handleSendSticker}
                                   onClose={() => setShowStickerPicker(false)}
                                 />
