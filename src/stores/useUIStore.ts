@@ -1,11 +1,14 @@
 import { create } from 'zustand'
-import type { Page, Toast } from '../types'
+import type { Page, Toast, FriendshipRequest } from '../types'
 
 export interface UIState {
   page: Page
   theme: string
   topbarPinned: boolean
   isTopbarVisible: boolean
+  presenceStatus: 'online' | 'idle' | 'dnd' | 'invisible'
+  friendships: FriendshipRequest[]
+  blockedUserIds: Set<string>
 
   // Modais
   showAddSpaceModal: boolean
@@ -25,6 +28,15 @@ export interface UIState {
   setTheme: (theme: string) => void
   setTopbarPinned: (pinned: boolean) => void
   setIsTopbarVisible: (visible: boolean) => void
+  setPresenceStatus: (status: 'online' | 'idle' | 'dnd' | 'invisible') => void
+  setFriendships: (
+    friendships:
+      | FriendshipRequest[]
+      | ((prev: FriendshipRequest[]) => FriendshipRequest[])
+  ) => void
+  setBlockedUserIds: (
+    ids: Set<string> | ((prev: Set<string>) => Set<string>)
+  ) => void
   setShowAddSpaceModal: (show: boolean) => void
   setAddSpaceModalTab: (tab: 'options' | 'create' | 'join') => void
   setShowSavedMessagesModal: (show: boolean) => void
@@ -43,6 +55,9 @@ export const useUIStore = create<UIState>((set) => ({
   theme: 'dark-theme',
   topbarPinned: typeof window !== 'undefined' ? localStorage.getItem('echo-topbar-pinned') === 'true' : true,
   isTopbarVisible: true,
+  presenceStatus: typeof window !== 'undefined' ? ((localStorage.getItem('echo-presence-status') as any) || 'online') : 'online',
+  friendships: [],
+  blockedUserIds: new Set<string>(),
 
   showAddSpaceModal: false,
   addSpaceModalTab: 'options',
@@ -59,6 +74,26 @@ export const useUIStore = create<UIState>((set) => ({
   setTheme: (theme) => set({ theme }),
   setTopbarPinned: (topbarPinned) => set({ topbarPinned }),
   setIsTopbarVisible: (isTopbarVisible) => set({ isTopbarVisible }),
+  setPresenceStatus: (presenceStatus) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('echo-presence-status', presenceStatus)
+    }
+    set({ presenceStatus })
+  },
+  setFriendships: (friendshipsOrUpdater) =>
+    set((state) => ({
+      friendships:
+        typeof friendshipsOrUpdater === 'function'
+          ? friendshipsOrUpdater(state.friendships)
+          : friendshipsOrUpdater
+    })),
+  setBlockedUserIds: (idsOrUpdater) =>
+    set((state) => ({
+      blockedUserIds:
+        typeof idsOrUpdater === 'function'
+          ? idsOrUpdater(state.blockedUserIds)
+          : idsOrUpdater
+    })),
   setShowAddSpaceModal: (showAddSpaceModal) => set({ showAddSpaceModal }),
   setAddSpaceModalTab: (addSpaceModalTab) => set({ addSpaceModalTab }),
   setShowSavedMessagesModal: (showSavedMessagesModal) => set({ showSavedMessagesModal }),

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, memo } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { VoiceParticipant } from '../lib/useVoiceChannel'
 import type { Space, Channel, Message, PinnedMessage, ServerEmoji, RolePermissions, ServerRole } from '../types'
@@ -9,6 +9,7 @@ import { AvatarDecoration } from '../components/AvatarDecoration'
 import { ModernVoiceNotePlayer } from '../components/chat/ModernVoiceNotePlayer'
 import { ChatLinkEmbed } from '../components/chat/ChatLinkEmbed'
 import { formatMessageText } from '../lib/messageFormatter'
+import { CommunityBadge } from '../components/CommunityBadge'
 import {
   BrainIcon,
   GridIcon,
@@ -35,19 +36,20 @@ import {
 } from '../components/icons'
 import { openExternalUrl } from '../lib/openExternal'
 import { useUIStore } from '../stores/useUIStore'
+import { useSpacesStore } from '../stores/useSpacesStore'
 
 export interface VoiceChannelViewProps {
   currentSpace: Space | null
   selectedChannel: Channel
-  spaceChannels: Record<string, Channel[]>
-  spaceVoiceUsers: Record<string, any[]>
+  spaceChannels?: Record<string, Channel[]>
+  spaceVoiceUsers?: Record<string, any[]>
   user: User
   profileDisplayName: string
   profileAvatarUrl: string
   avatarDecoration?: string | null
   presenceData: Record<string, any>
   onlineUsers: Set<string>
-  presenceStatus: 'online' | 'idle' | 'dnd' | 'invisible'
+  presenceStatus?: 'online' | 'idle' | 'dnd' | 'invisible'
   myGamePresence?: { name: string; icon: string; startedAt: number } | null
   nameEffect?: string | null
   serverRoles: ServerRole[]
@@ -57,7 +59,7 @@ export interface VoiceChannelViewProps {
   setInspectedMember: (val: any) => void
   setHoveredMemberPopover: (val: any) => void
   hoverTimeoutRef: React.MutableRefObject<any>
-  spaceMembers: any[]
+  spaceMembers?: any[]
   activeVoiceChannelId: string | null
   isConnected: boolean
   participants: VoiceParticipant[]
@@ -142,107 +144,114 @@ export interface VoiceChannelViewProps {
   setShowScreenMenu: React.Dispatch<React.SetStateAction<boolean>>
 }
 
-export function VoiceChannelView({
-  currentSpace,
-  selectedChannel,
-  spaceChannels,
-  spaceVoiceUsers,
-  user,
-  profileDisplayName,
-  profileAvatarUrl,
-  avatarDecoration,
-  presenceData,
-  onlineUsers,
-  presenceStatus,
-  myGamePresence,
-  nameEffect,
-  serverRoles,
-  memberRoleMap,
-  getUserHighestRole,
-  setSpaceForAddMembers,
-  setInspectedMember,
-  setHoveredMemberPopover,
-  hoverTimeoutRef,
-  spaceMembers,
-  activeVoiceChannelId,
-  isConnected,
-  participants,
-  handleJoinVoice,
-  handleLeaveVoice,
-  isMuted,
-  handleToggleMute,
-  isDeafened,
-  handleToggleDeafen,
-  isAiDenoiseEnabled,
-  toggleAiDenoise,
-  isPttMode,
-  isPttActive,
-  pttKey,
-  setShowSoundboardModal,
-  isRecordingCall,
-  startCallRecording,
-  stopCallRecording,
-  recordingDuration,
-  setVolumeControlUser,
-  activeScreenSharers,
-  activeScreenSharer,
-  setSelectedScreenSharerUserId,
-  screenShareViewMode,
-  setScreenShareViewMode,
-  isWatchingStreams,
-  setIsWatchingStreams,
-  isPiPActive,
-  setIsPiPActive,
-  localScreenStream,
-  handleStopScreenShare,
-  openScreenPicker,
-  forceOpenScreenPicker,
-  screenQuality,
-  handleQualityChange,
-  screenFps,
-  handleFpsChange,
-  isPremiumUser: _isPremiumUser = false,
-  onOpenSubscription: _onOpenSubscription,
-  activeSharingSource: _activeSharingSource,
-  peerScreenVolumes,
-  setPeerScreenVolumes,
-  screenAudioSyncDelayMs,
-  changeScreenAudioSyncDelay,
-  screenShareContainerRef,
-  isScreenFullScreen,
-  toggleScreenFullScreen,
-  messages,
-  send,
-  draft,
-  setDraft,
-  handleChatFileUpload,
-  isUploading,
-  canUserDo,
-  isMessageSaved,
-  toggleSaveMessage,
-  handleDeleteMessage,
-  activePlayingVoiceNote,
-  handleToggleVoicePlay,
-  voiceNotePlaySpeed,
-  handleChangeVoiceSpeed,
-  voiceNoteAudioRef,
-  serverEmojis,
-  pinnedMessages,
-  togglePinMessage,
-  messagesEndRef,
-  showVoiceChat,
-  setShowVoiceChat,
-  showMembersList,
-  setShowMembersList,
-  showPinnedMessagesPanel,
-  setShowPinnedMessagesPanel,
-  showSearchInput,
-  setShowSearchInput,
-  searchQuery,
-  setSearchQuery,
-  showScreenMenu,
-  setShowScreenMenu
-}: VoiceChannelViewProps) {
+export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChannelViewProps) {
+  const storeSpaceMembers = useSpacesStore((s) => s.spaceMembers)
+  const storeSpaceChannels = useSpacesStore((s) => s.spaceChannels)
+  const storeSpaceVoiceUsers = useSpacesStore((s) => s.spaceVoiceUsers)
+  const storePresenceStatus = useUIStore((s) => s.presenceStatus)
+
+  const spaceMembers = props.spaceMembers ?? storeSpaceMembers
+  const spaceChannels = props.spaceChannels ?? storeSpaceChannels
+  const spaceVoiceUsers = props.spaceVoiceUsers ?? storeSpaceVoiceUsers
+  const presenceStatus = props.presenceStatus ?? storePresenceStatus
+
+  const {
+    currentSpace,
+    selectedChannel,
+    user,
+    profileDisplayName,
+    profileAvatarUrl,
+    avatarDecoration,
+    presenceData,
+    onlineUsers,
+    myGamePresence,
+    nameEffect,
+    serverRoles,
+    memberRoleMap,
+    getUserHighestRole,
+    setSpaceForAddMembers,
+    setInspectedMember,
+    setHoveredMemberPopover,
+    hoverTimeoutRef,
+    activeVoiceChannelId,
+    isConnected,
+    participants,
+    handleJoinVoice,
+    handleLeaveVoice,
+    isMuted,
+    handleToggleMute,
+    isDeafened,
+    handleToggleDeafen,
+    isAiDenoiseEnabled,
+    toggleAiDenoise,
+    isPttMode,
+    isPttActive,
+    pttKey,
+    setShowSoundboardModal,
+    isRecordingCall,
+    startCallRecording,
+    stopCallRecording,
+    recordingDuration,
+    setVolumeControlUser,
+    activeScreenSharers,
+    activeScreenSharer,
+    setSelectedScreenSharerUserId,
+    screenShareViewMode,
+    setScreenShareViewMode,
+    isWatchingStreams,
+    setIsWatchingStreams,
+    isPiPActive,
+    setIsPiPActive,
+    localScreenStream,
+    handleStopScreenShare,
+    openScreenPicker,
+    forceOpenScreenPicker,
+    screenQuality,
+    handleQualityChange,
+    screenFps,
+    handleFpsChange,
+    isPremiumUser: _isPremiumUser = false,
+    onOpenSubscription: _onOpenSubscription,
+    activeSharingSource: _activeSharingSource,
+    peerScreenVolumes,
+    setPeerScreenVolumes,
+    screenAudioSyncDelayMs,
+    changeScreenAudioSyncDelay,
+    screenShareContainerRef,
+    isScreenFullScreen,
+    toggleScreenFullScreen,
+    messages,
+    send,
+    draft,
+    setDraft,
+    handleChatFileUpload,
+    isUploading,
+    canUserDo,
+    isMessageSaved,
+    toggleSaveMessage,
+    handleDeleteMessage,
+    activePlayingVoiceNote,
+    handleToggleVoicePlay,
+    voiceNotePlaySpeed,
+    handleChangeVoiceSpeed,
+    voiceNoteAudioRef,
+    serverEmojis,
+    pinnedMessages,
+    togglePinMessage,
+    messagesEndRef,
+    showVoiceChat,
+    setShowVoiceChat,
+    showMembersList,
+    setShowMembersList,
+    showPinnedMessagesPanel,
+    setShowPinnedMessagesPanel,
+    showSearchInput,
+    setShowSearchInput,
+    searchQuery,
+    setSearchQuery,
+    showScreenMenu,
+    setShowScreenMenu
+  } = props
   const openLightbox = useUIStore((s) => s.openLightbox)
   const [pendingVoicePastedFile, setPendingVoicePastedFile] = useState<File | null>(null)
   const [pendingVoiceImagePreview, setPendingVoiceImagePreview] = useState<string | null>(null)
@@ -879,6 +888,9 @@ export function VoiceChannelView({
                                 const isMentioned = message.author_id !== user.id && message.body.toLowerCase().includes(`@${profileDisplayName.toLowerCase()}`)
                                 const canManageMsg = currentSpace && (canUserDo(currentSpace.id, user.id, 'manageMessages') || currentSpace.creator_id === user.id)
                                 const isSelf = message.author_id === user.id
+                                const authorBadge = isSelf
+                                  ? (localStorage.getItem(`echo-show-badge-${user.id}`) !== 'false' ? (localStorage.getItem(`echo-badge-${user.id}`) || 'owner') : 'none')
+                                  : (presenceData[message.author_id]?.badge || localStorage.getItem(`echo-badge-${message.author_id}`) || null)
                                 const resolvedAuthorName = isSelf
                                   ? (profileDisplayName || (user.user_metadata as any)?.display_name || message.profile?.display_name || 'Você')
                                   : (presenceData[message.author_id]?.display_name || spaceMembers.find(m => (m?.user?.id === message.author_id || m?.id === message.author_id))?.user?.display_name || message.profile?.display_name || 'Membro')
@@ -929,6 +941,9 @@ export function VoiceChannelView({
                                     <div className="msg-body">
                                       <div className="msg-meta">
                                         <strong>{resolvedAuthorName}</strong>
+                                        {authorBadge && authorBadge !== 'none' && (
+                                          <CommunityBadge badgeId={authorBadge} size={13} />
+                                        )}
                                         <time className="msg-time" title={new Date(message.created_at).toLocaleString('pt-BR')}>
                                           {new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                         </time>
@@ -1126,6 +1141,6 @@ export function VoiceChannelView({
                       hoverTimeoutRef={hoverTimeoutRef}
                     />
 </div>
-                </div>
+                  </div>
   )
-}
+})

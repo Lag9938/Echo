@@ -3,6 +3,7 @@ import { ProfileEffect } from '../ProfileEffect'
 import { AvatarDecoration } from '../AvatarDecoration'
 import { GameLogo } from '../GameLogos'
 import { VolumeIcon, CrownIcon, MessageSquareIcon, UserIcon, BanIcon } from '../icons'
+import { CommunityBadge } from '../CommunityBadge'
 import { formatGameDuration } from '../../lib/formatters'
 
 export interface HoveredMemberPopoverData {
@@ -31,6 +32,7 @@ export interface HoveredMemberPopoverData {
   customStatus?: string | null
   bannerCustom?: string | null
   bannerPreset?: string | null
+  badge?: string | null
   [key: string]: any
 }
 
@@ -88,6 +90,10 @@ export function HoveredMemberPopover({
   const bio = hoveredMemberPopover.bio || (hoveredMemberPopover.user as any)?.bio || null
   const pronouns = hoveredMemberPopover.pronouns || (hoveredMemberPopover.user as any)?.pronouns || null
 
+  const memberBadge = isCurrentUser
+    ? (localStorage.getItem(`echo-show-badge-${currentUserId}`) !== 'false' ? (localStorage.getItem(`echo-badge-${currentUserId}`) || (isCreator ? 'owner' : 'early')) : 'none')
+    : (hoveredMemberPopover.badge || (presenceData[targetUserId] as any)?.badge || localStorage.getItem(`echo-badge-${targetUserId}`) || (isCreator ? 'owner' : null))
+
   const status = hoveredMemberPopover.userPresenceStatus || 'offline'
   const statusLabels: Record<string, string> = {
     online: 'Online',
@@ -114,8 +120,8 @@ export function HoveredMemberPopover({
       className="member-hover-popover"
       style={{
         position: 'fixed',
-        top: `${Math.min(Math.max(12, hoveredMemberPopover.rect.top - 16), window.innerHeight - 340)}px`,
-        left: `${Math.max(10, hoveredMemberPopover.rect.left - 295)}px`,
+        top: `${Math.min(Math.max(12, hoveredMemberPopover.rect.top - 20), window.innerHeight - 360)}px`,
+        left: `${Math.max(10, hoveredMemberPopover.rect.left - 330)}px`,
         zIndex: 1100
       }}
       onMouseEnter={() => {
@@ -140,11 +146,11 @@ export function HoveredMemberPopover({
                 backgroundPosition: 'center',
                 backgroundRepeat: 'no-repeat'
               }
-            : {
-                background: `linear-gradient(135deg, ${hoveredMemberPopover.roleColor || 'var(--accent-color, #00f2fe)'}aa, #1e1b4b)`
-              }
+            : undefined
         } 
-      />
+      >
+        <div className="hover-popover-banner-fade" />
+      </div>
       <div className="hover-popover-body">
         {/* Top Avatar Bar with Badges on the right */}
         <div className="hover-popover-avatar-bar">
@@ -161,6 +167,10 @@ export function HoveredMemberPopover({
           </div>
 
           <div className="hover-popover-badges">
+            {memberBadge && memberBadge !== 'none' && (
+              <CommunityBadge badgeId={memberBadge} size={13} showLabel />
+            )}
+
             {isCreator ? (
               <span className="hover-popover-badge creator" title="Dono do Servidor">
                 <CrownIcon style={{ width: '12px', height: '12px' }} /> Dono
@@ -180,6 +190,7 @@ export function HoveredMemberPopover({
             ) : null}
 
             <span className={`hover-popover-status-pill ${status}`}>
+              <span className={`status-mini-bullet ${status}`} />
               {statusLabel}
             </span>
           </div>
@@ -190,6 +201,9 @@ export function HoveredMemberPopover({
           <span className="hover-popover-display-name" style={{ color: hoveredMemberPopover.roleColor || 'var(--text-primary)' }}>
             {hoveredMemberPopover.user.display_name}
           </span>
+          {memberBadge && memberBadge !== 'none' && (
+            <CommunityBadge badgeId={memberBadge} size={15} />
+          )}
           {hoveredMemberPopover.clanTag && (
             <span 
               className="member-clan-tag" 
@@ -269,7 +283,7 @@ export function HoveredMemberPopover({
           {!isCurrentUser && onOpenDM && (
             <button 
               type="button" 
-              className="hover-popover-btn primary"
+              className="hover-popover-btn primary full-width"
               onClick={(e) => {
                 e.stopPropagation()
                 onOpenDM(targetUserId)
@@ -278,12 +292,12 @@ export function HoveredMemberPopover({
               title={`Enviar mensagem direta para ${hoveredMemberPopover.user.display_name}`}
             >
               <MessageSquareIcon style={{ width: '13px', height: '13px' }} />
-              <span>Mensagem</span>
+              <span>Enviar Mensagem</span>
             </button>
           )}
           <button 
             type="button" 
-            className="hover-popover-btn secondary"
+            className={`hover-popover-btn secondary ${isCurrentUser || !onBlockUser ? 'full-width' : ''}`}
             onClick={(e) => {
               e.stopPropagation()
               handleInspectFullProfile()
@@ -297,8 +311,7 @@ export function HoveredMemberPopover({
             blockedUserIds?.has(targetUserId) ? (
               <button
                 type="button"
-                className="hover-popover-btn secondary"
-                style={{ borderColor: 'rgba(234,179,8,0.4)', color: '#facc15' }}
+                className="hover-popover-btn warning"
                 onClick={(e) => {
                   e.stopPropagation()
                   onUnblockUser(targetUserId, hoveredMemberPopover.user.display_name)
@@ -312,8 +325,7 @@ export function HoveredMemberPopover({
             ) : (
               <button
                 type="button"
-                className="hover-popover-btn secondary"
-                style={{ borderColor: 'rgba(239,68,68,0.4)', color: '#f87171' }}
+                className="hover-popover-btn danger"
                 onClick={(e) => {
                   e.stopPropagation()
                   onBlockUser(targetUserId, hoveredMemberPopover.user.display_name)

@@ -47,6 +47,8 @@ export interface ElectronAPI {
   // Native Notifications
   showNotification: (options: { title: string; body?: string; data?: any }) => Promise<{ success: boolean; error?: string }>
   onNotificationClicked: (callback: (data: any) => void) => void
+  flashFrame?: (flag: boolean) => Promise<{ success: boolean }>
+  setBadgeCount?: (count: number) => Promise<{ success: boolean; count?: number }>
 
   // LiveKit SFU Connection & JWT Generation
   getLiveKitConnection: (params?: { room?: string; identity?: string; name?: string; avatarUrl?: string }) => Promise<LiveKitConnectionResult>

@@ -1,17 +1,6 @@
-import type { CSSProperties } from 'react'
-import {
-  SoundwaveOrbDecoration,
-  FireStormDecoration,
-  CyberHudDecoration,
-  QuantumVortexDecoration,
-  PrismaticCrownDecoration,
-  CelestialHaloDecoration,
-  GhostfireDecoration,
-  NekoCyberDecoration,
-  HexShieldDecoration,
-  HeartHarmonyDecoration,
-  AstralKitsuneDecoration
-} from './HighTierDecorations'
+import { lazy, Suspense, type CSSProperties } from 'react'
+
+const HighTierDecorationRenderer = lazy(() => import('./HighTierDecorations'))
 
 export interface DecorationMetadata {
   id: string
@@ -194,35 +183,6 @@ export function AvatarDecoration({ decorationId, className = '', style }: Avatar
 
   const normalizedId = DECORATION_ALIASES[decorationId] || decorationId
 
-  const renderVectorGraphic = () => {
-    switch (normalizedId) {
-      case 'soundwave_orb':
-        return <SoundwaveOrbDecoration />
-      case 'fire_storm':
-        return <FireStormDecoration />
-      case 'cyber_hud':
-        return <CyberHudDecoration />
-      case 'quantum_vortex':
-        return <QuantumVortexDecoration />
-      case 'prismatic_crown':
-        return <PrismaticCrownDecoration />
-      case 'celestial_halo':
-        return <CelestialHaloDecoration />
-      case 'ghostfire':
-        return <GhostfireDecoration />
-      case 'neko_cyber':
-        return <NekoCyberDecoration />
-      case 'hex_shield':
-        return <HexShieldDecoration />
-      case 'heart_harmony':
-        return <HeartHarmonyDecoration />
-      case 'astral_kitsune':
-        return <AstralKitsuneDecoration />
-      default:
-        return <SoundwaveOrbDecoration />
-    }
-  }
-
   return (
     <div
       className={`echo-avatar-decoration-wrap deco-${normalizedId} ${className}`}
@@ -238,7 +198,9 @@ export function AvatarDecoration({ decorationId, className = '', style }: Avatar
       }}
       aria-hidden="true"
     >
-      {renderVectorGraphic()}
+      <Suspense fallback={null}>
+        <HighTierDecorationRenderer id={normalizedId} />
+      </Suspense>
     </div>
   )
 }

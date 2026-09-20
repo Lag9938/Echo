@@ -22,6 +22,15 @@ export default defineConfig({
             if (id.includes('@supabase')) {
               return 'vendor-supabase'
             }
+            if (id.includes('lottie-web')) {
+              return 'vendor-lottie'
+            }
+            if (id.includes('posthog-js')) {
+              return 'vendor-analytics'
+            }
+            if (id.includes('@tanstack/react-virtual')) {
+              return 'vendor-tanstack'
+            }
             if (id.includes('react') || id.includes('react-dom')) {
               return 'vendor-react'
             }

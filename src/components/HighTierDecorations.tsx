@@ -1267,3 +1267,41 @@ export function AstralKitsuneDecoration({ className = '', style }: DecorationPro
   )
 }
 
+export interface HighTierDecorationRendererProps {
+  id: string
+  className?: string
+  style?: React.CSSProperties
+}
+
+export function HighTierDecorationRenderer({ id, className = '', style }: HighTierDecorationRendererProps) {
+  switch (id) {
+    case 'soundwave_orb':
+      return <SoundwaveOrbDecoration className={className} style={style} />
+    case 'fire_storm':
+      return <FireStormDecoration className={className} style={style} />
+    case 'cyber_hud':
+      return <CyberHudDecoration className={className} style={style} />
+    case 'quantum_vortex':
+      return <QuantumVortexDecoration className={className} style={style} />
+    case 'prismatic_crown':
+      return <PrismaticCrownDecoration className={className} style={style} />
+    case 'celestial_halo':
+      return <CelestialHaloDecoration className={className} style={style} />
+    case 'ghostfire':
+      return <GhostfireDecoration className={className} style={style} />
+    case 'neko_cyber':
+      return <NekoCyberDecoration className={className} style={style} />
+    case 'hex_shield':
+      return <HexShieldDecoration className={className} style={style} />
+    case 'heart_harmony':
+      return <HeartHarmonyDecoration className={className} style={style} />
+    case 'astral_kitsune':
+      return <AstralKitsuneDecoration className={className} style={style} />
+    default:
+      return <SoundwaveOrbDecoration className={className} style={style} />
+  }
+}
+
+export default HighTierDecorationRenderer
+
+

@@ -147,20 +147,28 @@ export function SubscriptionModal({
 
     pollTimerRef.current = setInterval(async () => {
       try {
-        if ((window as any).electronAPI?.asaasCheckPaymentStatus) {
+        let isPaid = false
+        if (supabase) {
+          const { data } = await supabase.functions.invoke('asaas-payment', {
+            body: { action: 'check-status', paymentId: pixData.paymentId }
+          })
+          if (data && data.isPaid) isPaid = true
+        } else if ((window as any).electronAPI?.asaasCheckPaymentStatus) {
           const res = await (window as any).electronAPI.asaasCheckPaymentStatus(pixData.paymentId)
-          if (res && res.isPaid) {
-            trackProActivated(30)
-            setPaymentSuccess(true)
-            if (pollTimerRef.current) clearInterval(pollTimerRef.current)
-            setTimeout(() => {
-              if (onSubscriptionSuccess) {
-                onSubscriptionSuccess()
-              } else {
-                onSimulateSubscription()
-              }
-            }, 1600)
-          }
+          if (res && res.isPaid) isPaid = true
+        }
+
+        if (isPaid) {
+          trackProActivated(30)
+          setPaymentSuccess(true)
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+          setTimeout(() => {
+            if (onSubscriptionSuccess) {
+              onSubscriptionSuccess()
+            } else {
+              onSimulateSubscription()
+            }
+          }, 1600)
         }
       } catch (err) {
         console.warn('[SubscriptionModal] Polling error:', err)
@@ -226,22 +234,36 @@ export function SubscriptionModal({
     setPixLoading(true)
 
     try {
-      if (!(window as any).electronAPI?.asaasCreatePixCharge) {
-        throw new Error('Geração de Pix disponível no aplicativo desktop.')
-      }
-
       const cleanCpf = cpfCnpj.replace(/\D/g, '')
       if (cleanCpf.length < 11) {
         throw new Error('Informe um CPF válido (11 dígitos).')
       }
 
-      const res = await (window as any).electronAPI.asaasCreatePixCharge({
-        name: fullName.trim() || 'Usuário Echo',
-        email: userEmail.trim(),
-        cpfCnpj: cleanCpf,
-        value: 9.90,
-        userId: userId
-      })
+      let res: any = null
+      if (supabase) {
+        const { data, error } = await supabase.functions.invoke('asaas-payment', {
+          body: {
+            action: 'create-pix',
+            name: fullName.trim() || 'Usuário Echo',
+            email: userEmail?.trim() || '',
+            cpfCnpj: cleanCpf,
+            value: 9.90,
+            userId: userId
+          }
+        })
+        if (error || !data || !data.success) {
+          throw new Error(data?.error || error?.message || 'Não foi possível gerar a cobrança Pix.')
+        }
+        res = data
+      } else if ((window as any).electronAPI?.asaasCreatePixCharge) {
+        res = await (window as any).electronAPI.asaasCreatePixCharge({
+          name: fullName.trim() || 'Usuário Echo',
+          email: userEmail?.trim() || '',
+          cpfCnpj: cleanCpf,
+          value: 9.90,
+          userId: userId
+        })
+      }
 
       if (!res || !res.success) {
         throw new Error(res?.error || 'Não foi possível gerar a cobrança Pix. Verifique os dados inseridos.')

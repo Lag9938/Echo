@@ -3,7 +3,7 @@
   "description": "Comunidades e conversas em tempo real.",
   "author": "Echo Lobby",
   "private": true,
-  "version": "0.35.1",
+  "version": "0.35.2",
   "main": "electron-main.js",
   "type": "module",
   "scripts": {
@@ -14,6 +14,9 @@
     "dist": "npm run build && electron-builder --win",
     "store:package": "powershell -ExecutionPolicy Bypass -File scripts/generate-store-assets.ps1 && npm run build && electron-builder --win dir --x64 && node scripts/create-store-package.cjs",
     "lint": "oxlint",
+    "audit:css": "node scripts/audit-css.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -30,6 +33,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
@@ -38,9 +42,11 @@
     "electron": "^44.0.0",
     "electron-builder": "^26.15.3",
     "electron-windows-store": "^2.1.0",
+    "happy-dom": "^20.14.5",
     "oxlint": "^1.79.0",
     "typescript": "~6.0.2",
     "vite": "^8.2.2",
+    "vitest": "^5.0.1",
     "wait-on": "^9.1.0"
   },
   "build": {
@@ -58,6 +64,7 @@
     "files": [
       "dist/**/*",
       "assets/**/*",
+      "electron/**/*",
       "electron-main.js",
       "electron-preload.cjs",
       "package.json"

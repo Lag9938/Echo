@@ -66,10 +66,21 @@
 .topbar-center-dock,
 .topbar-center-zone,
 .topbar-right-zone,
+.topbar-actions-group,
+.topbar-server-item-wrap,
+.topbar-server-btn,
+.topbar-icon-btn,
+.topbar-win-btn,
 .topbar button,
 .topbar a,
 .topbar input {
-  -webkit-app-region: no-drag;
+  -webkit-app-region: no-drag !important;
+}
+
+.topbar-icon-btn *,
+.topbar-server-btn *,
+.topbar-win-btn * {
+  -webkit-app-region: no-drag !important;
 }
 
 /* Zone 1: Left (Brand + Amigos / DMs) */
@@ -142,12 +153,14 @@
   transition: all 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
   overflow: hidden;
+  transform-origin: center;
+  -webkit-app-region: no-drag !important;
 }
 .topbar-server-btn:hover {
   border-radius: 17px;
-  border-color: rgba(0, 242, 254, 0.5);
+  border-color: rgba(0, 242, 254, 0.6);
   transform: translateY(-2px) scale(1.08);
-  box-shadow: 0 6px 18px rgba(0, 242, 254, 0.35);
+  box-shadow: 0 6px 18px rgba(0, 242, 254, 0.4);
 }
 .topbar-server-btn:active {
   transform: translateY(0) scale(0.92);
@@ -455,10 +468,13 @@
   box-shadow: 0 3px 12px rgba(0, 242, 254, 0.2);
 }
 .topbar-server-add-btn svg {
+  transform-box: fill-box;
+  transform-origin: center;
+  overflow: visible;
   transition: transform 0.26s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .topbar-server-add-btn:hover svg {
-  transform: rotate(90deg);
+  transform: rotate(90deg) scale(1.1);
 }
 .topbar-server-add-btn:active {
   transform: scale(0.94);
@@ -581,19 +597,20 @@
   border: 1px solid transparent;
   color: var(--text-secondary, #949ba4);
   cursor: pointer;
-  transition: all 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
   padding: 0;
   position: relative;
+  -webkit-app-region: no-drag !important;
 }
 .topbar-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.18);
   color: #ffffff;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px) scale(1.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 .topbar-icon-btn:active {
-  transform: scale(0.86);
+  transform: scale(0.88);
   transition-duration: 0.06s;
   filter: brightness(1.15);
 }
@@ -637,6 +654,8 @@
 .topbar-icon-svg {
   display: block;
   flex-shrink: 0;
+  overflow: visible !important;
+  pointer-events: none !important;
 }
 
 /* ── 0. Micro-Animação: Amigos (Balões Duplos de Conversa Fluidos - Opção B) ── */
@@ -647,11 +666,13 @@
 
 .bubble-back {
   opacity: 0.65;
+  transform-box: view-box;
   transform-origin: 8px 6px;
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease, stroke 0.2s ease;
 }
 
 .bubble-front {
+  transform-box: view-box;
   transform-origin: 17px 14px;
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), stroke 0.2s ease;
 }
@@ -682,6 +703,7 @@
 
 /* ── 1. Micro-Animação: Bússola (Descobrir) ── */
 .compass-needle {
+  transform-box: view-box;
   transform-origin: 12px 12px;
   transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), fill-opacity 0.3s ease;
 }
@@ -705,10 +727,13 @@
 
 /* ── 2. Micro-Animação: Loja (Store Bag & Wiggle) ── */
 .icon-store {
+  transform-box: fill-box;
+  transform-origin: center;
+  overflow: visible;
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
 }
 .topbar-icon-btn:hover .icon-store {
-  animation: topbar-store-bounce 0.52s ease forwards;
+  animation: topbar-store-bounce 0.52s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   color: #ff5e98;
 }
 .topbar-icon-btn.active .icon-store {
@@ -739,6 +764,9 @@
 
 /* ── 3. Micro-Animação: Salvos (Star Pop & Glow) ── */
 .icon-star {
+  transform-box: fill-box;
+  transform-origin: center;
+  overflow: visible;
   transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease, color 0.2s ease;
 }
 .topbar-icon-btn:hover .icon-star {
@@ -778,7 +806,9 @@
 
 /* ── 4. Micro-Animação: Ajustes (Gear Spin) ── */
 .icon-gear {
+  transform-box: fill-box;
   transform-origin: center;
+  overflow: visible;
   transition: transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
 }
 .topbar-icon-btn:hover .icon-gear {
@@ -798,6 +828,9 @@
 
 /* ── 5. Micro-Animação: Pin (Tilt Spring) ── */
 .icon-pin {
+  transform-box: fill-box;
+  transform-origin: center;
+  overflow: visible;
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
 }
 .topbar-pin-btn:hover .icon-pin {

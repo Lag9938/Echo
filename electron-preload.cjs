@@ -20,8 +20,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Rich Presence Game Detection API
   onGameDetected: (callback) => {
-    ipcRenderer.removeAllListeners('game-detected')
-    ipcRenderer.on('game-detected', (_event, game) => callback(game))
+    const handler = (_event, game) => callback(game)
+    ipcRenderer.on('game-detected', handler)
+    return () => ipcRenderer.removeListener('game-detected', handler)
   },
   checkActiveGame: () => ipcRenderer.invoke('check-active-game'),
 
@@ -45,6 +46,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeAllListeners('notification-clicked')
     ipcRenderer.on('notification-clicked', (_event, data) => callback(data))
   },
+  flashFrame: (flag) => ipcRenderer.invoke('flash-frame', flag),
+  setBadgeCount: (count) => ipcRenderer.invoke('set-badge-count', count),
 
   // LiveKit SFU API
   getLiveKitConnection: (params) => ipcRenderer.invoke('get-livekit-connection', params),

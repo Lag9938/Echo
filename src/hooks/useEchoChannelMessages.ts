@@ -2,6 +2,13 @@ import { useState, useRef, useEffect, useCallback, type FormEvent } from 'react'
 import type { User, RealtimeChannel } from '@supabase/supabase-js'
 import type { Message, Channel, Space, RolePermissions } from '../types'
 import { trackMessageSent } from '../lib/analytics'
+import {
+  generateTempMessageId,
+  createAntiSpamState,
+  validateMessageAntiSpam,
+  toggleEmojiReactionCore,
+  shouldSendTypingNotification
+} from './useEchoMessagesCore'
 
 export interface UseEchoChannelMessagesOptions {
   user: User
@@ -15,6 +22,7 @@ export interface UseEchoChannelMessagesOptions {
   showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend') => void
   setError: (err: string) => void
   playDmNotificationSound: (volume: number) => void
+  triggerDesktopNotification?: (title: string, body: string, data?: any) => void
   supabase: any
 }
 
@@ -30,6 +38,7 @@ export function useEchoChannelMessages({
   showToast,
   setError,
   playDmNotificationSound,
+  triggerDesktopNotification,
   supabase
 }: UseEchoChannelMessagesOptions) {
   const [messages, setMessages] = useState<Message[]>([])
@@ -58,10 +67,8 @@ export function useEchoChannelMessages({
   const activeChannelIdRef = useRef<string | null>(selectedChannel?.id || null)
   activeChannelIdRef.current = selectedChannel?.id || null
 
-  // Anti-Spam & Rate-Limiting refs
-  const recentMsgTimestampsRef = useRef<number[]>([])
-  const lastMsgTextRef = useRef<string>('')
-  const lastMsgSentTimeRef = useRef<number>(0)
+  // Anti-Spam & Rate-Limiting ref
+  const antiSpamRef = useRef(createAntiSpamState())
 
   // Slowmode timer
   useEffect(() => {
@@ -323,41 +330,7 @@ export function useEchoChannelMessages({
 
   // Toggle emoji reactions — persiste no Supabase e atualiza localmente de forma otimista
   function toggleReaction(messageId: string, emoji: string) {
-    setMessageReactions(prev => {
-      const msgReactions = prev[messageId] ? { ...prev[messageId] } : {}
-      const userList = msgReactions[emoji] ? [...msgReactions[emoji]] : []
-      const alreadyReacted = userList.includes(user.id)
-      if (alreadyReacted) {
-        const filtered = userList.filter(id => id !== user.id)
-        if (filtered.length === 0) {
-          delete msgReactions[emoji]
-        } else {
-          msgReactions[emoji] = filtered
-        }
-        // Remove do banco de dados
-        if (supabase) {
-          supabase.from('message_reactions')
-            .delete()
-            .eq('message_id', messageId)
-            .eq('user_id', user.id)
-            .eq('emoji', emoji)
-            .then(({ error }: any) => { if (error) console.warn('reaction delete error:', error) })
-        }
-      } else {
-        msgReactions[emoji] = [...userList, user.id]
-        // Salva no banco de dados
-        if (supabase) {
-          supabase.from('message_reactions')
-            .upsert({ message_id: messageId, user_id: user.id, emoji }, { onConflict: 'message_id,user_id,emoji' })
-            .then(({ error }: any) => { if (error) console.warn('reaction upsert error:', error) })
-        }
-      }
-      const next = { ...prev, [messageId]: msgReactions }
-      try {
-        localStorage.setItem('echo-message-reactions', JSON.stringify(next))
-      } catch {}
-      return next
-    })
+    setMessageReactions(prev => toggleEmojiReactionCore(prev, messageId, emoji, user.id, supabase))
   }
 
   // Optimistic message sender with real-time broadcast and DB persistence
@@ -371,7 +344,7 @@ export function useEchoChannelMessages({
   ) {
     if (!supabase || !user) return
 
-    const tempId = existingTempId || `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const tempId = existingTempId || generateTempMessageId('temp')
     const nowIso = new Date().toISOString()
 
     const optimisticMsg: Message = {
@@ -519,21 +492,11 @@ export function useEchoChannelMessages({
       }
     }
 
-    const now = Date.now()
     const trimmedDraft = draft.trim()
-
-    // Proteção Anti-Flood / Rate Limiting (Máximo 4 mensagens em 4 segundos) - Ativo para todos
-    recentMsgTimestampsRef.current = recentMsgTimestampsRef.current.filter(t => now - t < 4000)
-    if (recentMsgTimestampsRef.current.length >= 4) {
-      setSlowmodeCooldown(4)
-      showToast('Calma aí!', 'Você está enviando mensagens rápido demais. Aguarde 4s.', 'info')
-      return
-    }
-
-    // Proteção Anti-Spam de repetição consecutiva (em menos de 2s) - Ativo para todos
-    if (trimmedDraft === lastMsgTextRef.current && (now - lastMsgSentTimeRef.current) < 2000) {
-      setSlowmodeCooldown(2)
-      showToast('Spam Detectado', 'Evite enviar a mesma mensagem repetidamente.', 'info')
+    const antiSpam = validateMessageAntiSpam(antiSpamRef.current, trimmedDraft)
+    if (!antiSpam.allowed) {
+      if (antiSpam.cooldownSeconds) setSlowmodeCooldown(antiSpam.cooldownSeconds)
+      if (antiSpam.toastTitle && antiSpam.toastMessage) showToast(antiSpam.toastTitle, antiSpam.toastMessage, 'info')
       return
     }
 
@@ -545,10 +508,6 @@ export function useEchoChannelMessages({
       finalBody = `> @${authorName}: "${quoteSnippet}"\n${finalBody}`
       setReplyingToMessage(null)
     }
-
-    recentMsgTimestampsRef.current.push(now)
-    lastMsgTextRef.current = trimmedDraft
-    lastMsgSentTimeRef.current = now
 
     setDraft('')
     if (selectedChannel.slowmode_seconds && selectedChannel.slowmode_seconds > 0 && !isImmuneToSlowmode) {
@@ -607,10 +566,32 @@ export function useEchoChannelMessages({
         return updated
       })
 
-      // Alerta sonoro caso o usuário seja mencionado
+      // Alerta sonoro e notificação no Windows caso o usuário seja mencionado
       if (user && payload.author_id !== user.id) {
-        if (payload.body && profileDisplayName && payload.body.toLowerCase().includes(`@${profileDisplayName.toLowerCase()}`)) {
+        const myName = (profileDisplayName || displayName || '').toLowerCase()
+        const bodyLower = (payload.body || '').toLowerCase()
+        const isMentioned = 
+          (myName && (bodyLower.includes(`@${myName}`) || bodyLower.includes(`@${user.id}`))) ||
+          bodyLower.includes('@everyone') ||
+          bodyLower.includes('@here')
+
+        if (isMentioned) {
           playDmNotificationSound(sfxVolume)
+          const isAppBlurred = typeof document !== 'undefined' && !document.hasFocus()
+          if (isAppBlurred) {
+            const author = payload.profile?.display_name || payload.authorName || 'Alguém'
+            const channelName = selectedChannel?.name ? `#${selectedChannel.name}` : 'canal'
+            if (triggerDesktopNotification) {
+              triggerDesktopNotification(
+                `@${author} mencionou você em ${channelName}`,
+                payload.body || '',
+                { type: 'channel', channelId: selectedChannel?.id }
+              )
+            }
+            if (typeof (window as any).electronAPI?.flashFrame === 'function') {
+              ;(window as any).electronAPI.flashFrame(true)
+            }
+          }
         }
       }
     })
@@ -678,9 +659,7 @@ export function useEchoChannelMessages({
   // Broadcast typing indicator with 2s debounce
   const notifyTyping = useCallback(() => {
     if (!channelBroadcastRef.current || !user) return
-    const now = Date.now()
-    if (now - lastTypingSentRef.current < 2000) return
-    lastTypingSentRef.current = now
+    if (!shouldSendTypingNotification(lastTypingSentRef, 2000)) return
     channelBroadcastRef.current.send({
       type: 'broadcast',
       event: 'typing',

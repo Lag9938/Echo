@@ -1123,3 +1123,6 @@ export function EchoCanvasDecoration({ decorationId, className = '' }: EchoCanva
     />
   )
 }
+
+export default EchoCanvasDecoration
+

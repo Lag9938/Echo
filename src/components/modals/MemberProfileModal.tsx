@@ -18,6 +18,7 @@ import {
   ClockIcon,
   BanIcon
 } from '../icons'
+import { CommunityBadge } from '../CommunityBadge'
 import type { MemberProfileModalProps } from '../../types'
 
 export function MemberProfileModal({
@@ -61,6 +62,10 @@ export function MemberProfileModal({
     return localStorage.getItem(noteStorageKey) || ''
   })
   const gameBrandColor = activeGame ? getGameBrandColor(activeGame) : '#4ade80'
+
+  const memberBadge = isMe
+    ? (localStorage.getItem(`echo-show-badge-${currentUser?.id}`) !== 'false' ? (localStorage.getItem(`echo-badge-${currentUser?.id}`) || (isServerOwner ? 'owner' : 'early')) : 'none')
+    : ((inspectedMember as any).badge || (inspectedMember.user as any)?.badge || localStorage.getItem(`echo-badge-${memberId}`) || (isServerOwner ? 'owner' : null))
 
   const handleNoteChange = (val: string) => {
     setPersonalNote(val)
@@ -226,6 +231,9 @@ export function MemberProfileModal({
           <div className="member-profile-header-info">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <h3 className="member-profile-display-name">{inspectedMember.user.display_name}</h3>
+              {memberBadge && memberBadge !== 'none' && (
+                <CommunityBadge badgeId={memberBadge} size={15} showLabel />
+              )}
               {memberClanTag && (
                 <span 
                   className="member-clan-tag" 

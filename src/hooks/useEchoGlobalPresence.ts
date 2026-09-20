@@ -108,6 +108,7 @@ export function useEchoGlobalPresence({
             oldP.banner_custom !== newP?.banner_custom ||
             oldP.banner_preset !== newP?.banner_preset ||
             oldP.name_effect !== newP?.name_effect ||
+            oldP.badge !== newP?.badge ||
             oldGameName !== newGameName ||
             oldGameStart !== newGameStart
           ) {
@@ -146,19 +147,16 @@ export function useEchoGlobalPresence({
     const rawBannerCustom = localStorage.getItem(`echo-banner-custom-${user.id}`) || localStorage.getItem('echo-banner-custom') || ''
     const safeBannerUrl = (rawBannerCustom && !rawBannerCustom.startsWith('data:') && rawBannerCustom.length < 2048) ? rawBannerCustom : ''
     const savedBannerPreset = localStorage.getItem(`echo-banner-preset-${user.id}`) || localStorage.getItem('echo-banner-preset') || 'synthwave'
-    let currentGameData = myGamePresenceRef?.current !== undefined 
+    const currentGameData = myGamePresenceRef?.current !== undefined 
       ? myGamePresenceRef.current 
       : (myGamePresence !== undefined ? myGamePresence : (getMyGamePresence ? getMyGamePresence() : null))
-    if (!currentGameData) {
-      try {
-        const cached = localStorage.getItem('echo-my-game-presence')
-        if (cached) currentGameData = JSON.parse(cached)
-      } catch {}
-    }
-    const gameData = savedPresStatus === 'invisible' ? null : currentGameData
+    const gameData = savedPresStatus === 'invisible' ? null : (currentGameData || null)
     const voiceChanId = activeVoiceChannelIdRef?.current || null
     const voiceSpId = activeVoiceSpaceIdRef?.current || null
     const curNameEff = localStorage.getItem(`echo-name-effect-${user.id}`) || 'resonance_cyan'
+    const curRawBadge = localStorage.getItem(`echo-badge-${user.id}`) || 'owner'
+    const curShowBadge = localStorage.getItem(`echo-show-badge-${user.id}`) !== 'false'
+    const curActiveBadge = curShowBadge ? curRawBadge : 'none'
 
     await presenceChannel.track({
       user_id: user.id,
@@ -169,6 +167,7 @@ export function useEchoGlobalPresence({
       avatar_decoration: savedDecoration,
       profile_effect: savedEffect,
       name_effect: curNameEff,
+      badge: curActiveBadge,
       banner_custom: safeBannerUrl,
       banner_preset: savedBannerPreset,
       banner_url: safeBannerUrl,

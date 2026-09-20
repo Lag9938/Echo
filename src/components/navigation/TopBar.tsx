@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, memo } from 'react'
 import type { Space, Channel, Page, SavedMessageItem } from '../../types'
 import { Brand } from './Brand'
 import { WindowControls } from './WindowControls'
@@ -11,62 +11,83 @@ import {
   PlusIcon,
   VolumeIcon
 } from '../icons'
+import { useSpacesStore } from '../../stores/useSpacesStore'
+import { useUIStore } from '../../stores/useUIStore'
 
 export interface TopBarProps {
-  isTopbarVisible: boolean
-  showTopbar: () => void
-  hideTopbar: (delay?: number) => void
-  page: Page
-  setPage: (page: Page) => void
-  pendingFriendCount: number
-  unreadDMs: Record<string, number>
-  spaces: Space[]
-  expandedSpace: string | null
-  setExpandedSpace: (id: string | null) => void
-  spaceChannels: Record<string, Channel[]>
-  loadChannelsForSpace: (spaceId: string) => void
-  selectedChannel: Channel | null
-  setSelectedChannel: (ch: Channel | null) => void
-  unreadChannels: Set<string>
-  spaceVoiceUsers: Record<string, any[]>
-  activeVoiceChannelId: string | null
-  participants: any[]
-  setAddSpaceModalTab: (tab: 'options' | 'create' | 'join') => void
-  setShowAddSpaceModal: (val: boolean) => void
-  savedMessages: SavedMessageItem[]
-  setShowSavedMessagesModal: (val: boolean) => void
-  topbarPinned: boolean
-  setTopbarPinned: React.Dispatch<React.SetStateAction<boolean>>
+  isTopbarVisible?: boolean
+  showTopbar?: () => void
+  hideTopbar?: (delay?: number) => void
+  page?: Page
+  setPage?: (page: Page) => void
+  pendingFriendCount?: number
+  unreadDMs?: Record<string, number>
+  spaces?: Space[]
+  expandedSpace?: string | null
+  setExpandedSpace?: (id: string | null) => void
+  spaceChannels?: Record<string, Channel[]>
+  loadChannelsForSpace?: (spaceId: string) => Promise<any> | void
+  selectedChannel?: Channel | null
+  setSelectedChannel?: (ch: Channel | null) => void
+  unreadChannels?: Set<string>
+  spaceVoiceUsers?: Record<string, any[]>
+  activeVoiceChannelId?: string | null
+  participants?: any[]
+  setAddSpaceModalTab?: (tab: 'options' | 'create' | 'join') => void
+  setShowAddSpaceModal?: (val: boolean) => void
+  savedMessages?: SavedMessageItem[]
+  setShowSavedMessagesModal?: (val: boolean) => void
+  topbarPinned?: boolean
+  setTopbarPinned?: React.Dispatch<React.SetStateAction<boolean>>
   currentUserId: string
 }
 
-export function TopBar({
-  isTopbarVisible,
-  showTopbar,
-  hideTopbar,
-  page,
-  setPage,
-  pendingFriendCount,
-  unreadDMs,
-  spaces,
-  expandedSpace,
-  setExpandedSpace,
-  spaceChannels,
-  loadChannelsForSpace,
-  selectedChannel,
-  setSelectedChannel,
-  unreadChannels,
-  spaceVoiceUsers,
-  activeVoiceChannelId,
-  participants,
-  setAddSpaceModalTab,
-  setShowAddSpaceModal,
-  savedMessages,
-  setShowSavedMessagesModal,
-  topbarPinned,
-  setTopbarPinned,
-  currentUserId
-}: TopBarProps) {
+export const TopBar = memo(function TopBar(props: TopBarProps) {
+  const storePage = useUIStore((s) => s.page)
+  const storeSetPage = useUIStore((s) => s.setPage)
+  const storeSpaces = useSpacesStore((s) => s.spaces)
+  const storeExpandedSpace = useSpacesStore((s) => s.expandedSpace)
+  const storeSetExpandedSpace = useSpacesStore((s) => s.setExpandedSpace)
+  const storeSpaceChannels = useSpacesStore((s) => s.spaceChannels)
+  const storeSelectedChannel = useSpacesStore((s) => s.selectedChannel)
+  const storeSetSelectedChannel = useSpacesStore((s) => s.setSelectedChannel)
+  const storeUnreadChannels = useSpacesStore((s) => s.unreadChannels)
+  const storeSpaceVoiceUsers = useSpacesStore((s) => s.spaceVoiceUsers)
+  const storeTopbarPinned = useUIStore((s) => s.topbarPinned)
+  const storeSetTopbarPinned = useUIStore((s) => s.setTopbarPinned)
+  const storeIsTopbarVisible = useUIStore((s) => s.isTopbarVisible)
+  const storeSetShowAddSpaceModal = useUIStore((s) => s.setShowAddSpaceModal)
+  const storeSetAddSpaceModalTab = useUIStore((s) => s.setAddSpaceModalTab)
+  const storeSetShowSavedMessagesModal = useUIStore((s) => s.setShowSavedMessagesModal)
+
+  const page = props.page ?? storePage
+  const setPage = props.setPage ?? storeSetPage
+  const spaces = props.spaces ?? storeSpaces
+  const expandedSpace = props.expandedSpace !== undefined ? props.expandedSpace : storeExpandedSpace
+  const setExpandedSpace = props.setExpandedSpace ?? storeSetExpandedSpace
+  const spaceChannels = props.spaceChannels ?? storeSpaceChannels
+  const selectedChannel = props.selectedChannel !== undefined ? props.selectedChannel : storeSelectedChannel
+  const setSelectedChannel = props.setSelectedChannel ?? storeSetSelectedChannel
+  const unreadChannels = props.unreadChannels ?? storeUnreadChannels
+  const spaceVoiceUsers = props.spaceVoiceUsers ?? storeSpaceVoiceUsers
+  const topbarPinned = props.topbarPinned !== undefined ? props.topbarPinned : storeTopbarPinned
+  const setTopbarPinned = props.setTopbarPinned ?? storeSetTopbarPinned
+  const isTopbarVisible = props.isTopbarVisible !== undefined ? props.isTopbarVisible : storeIsTopbarVisible
+  const setShowAddSpaceModal = props.setShowAddSpaceModal ?? storeSetShowAddSpaceModal
+  const setAddSpaceModalTab = props.setAddSpaceModalTab ?? storeSetAddSpaceModalTab
+  const setShowSavedMessagesModal = props.setShowSavedMessagesModal ?? storeSetShowSavedMessagesModal
+
+  const {
+    showTopbar = () => {},
+    hideTopbar = () => {},
+    pendingFriendCount = 0,
+    unreadDMs = {},
+    loadChannelsForSpace = () => {},
+    activeVoiceChannelId = null,
+    participants = [],
+    savedMessages = [],
+    currentUserId
+  } = props
   const serversTrackRef = useRef<HTMLDivElement>(null)
 
   const handleServersWheel = (e: React.WheelEvent) => {
@@ -170,7 +191,13 @@ export function TopBar({
                       // Se os canais ainda não estão no estado local, não deixe o canal anterior ativo
                       setSelectedChannel(null)
                     }
-                    await loadChannelsForSpace(space.id)
+                    const loadedChs = await loadChannelsForSpace(space.id)
+                    if (!firstCh && Array.isArray(loadedChs) && loadedChs.length > 0) {
+                      const nextCh = loadedChs.find(c => c.type === 'text') || loadedChs[0]
+                      if (nextCh) {
+                        setSelectedChannel(nextCh)
+                      }
+                    }
                   }}
                   style={{ background: space.icon_url ? 'transparent' : getServerGradient(space.name) }}
                   title={space.name}
@@ -257,7 +284,13 @@ export function TopBar({
               } else if (selectedChannel && selectedChannel.space_id !== space.id) {
                 setSelectedChannel(null)
               }
-              await loadChannelsForSpace(space.id)
+              const loadedChs = await loadChannelsForSpace(space.id)
+              if (!firstCh && Array.isArray(loadedChs) && loadedChs.length > 0) {
+                const nextCh = loadedChs.find(c => c.type === 'text') || loadedChs[0]
+                if (nextCh) {
+                  setSelectedChannel(nextCh)
+                }
+              }
             }}
             onMouseEnter={() => {
               showTopbar()
@@ -417,11 +450,9 @@ export function TopBar({
             type="button"
             className={`topbar-icon-btn topbar-pin-btn ${topbarPinned ? 'pinned' : ''}`}
             onClick={() => {
-              setTopbarPinned(prev => {
-                const next = !prev
-                localStorage.setItem('echo-topbar-pinned', String(next))
-                return next
-              })
+              const next = !topbarPinned
+              localStorage.setItem('echo-topbar-pinned', String(next))
+              setTopbarPinned(next)
             }}
             title={topbarPinned ? "Barra superior fixada (clique para ocultar automaticamente)" : "Fixar barra superior aberta"}
             data-tooltip={topbarPinned ? "Desafixar" : "Fixar Topbar"}
@@ -442,4 +473,4 @@ export function TopBar({
       </div>
     </header>
   )
-}
+})

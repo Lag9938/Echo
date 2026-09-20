@@ -1,0 +1,250 @@
+import { memo } from 'react'
+import type { User } from '@supabase/supabase-js'
+import type { Space, ServerRole, RolePermissions } from '../../../types'
+import {
+  CrownIcon,
+  UserMinusIcon
+} from '../../icons'
+
+export interface SpaceMembersTabProps {
+  editingSpace: Space
+  editingSpaceMembers: any[]
+  loadingEditingMembers: boolean
+  memberSearchQuery: string
+  setMemberSearchQuery: (q: string) => void
+  selectedMemberId: string | null
+  setSelectedMemberId: (id: string | null) => void
+  user: User
+  getUserHighestRole: (spaceId: string, userId: string) => ServerRole | null
+  memberRoleMap: Record<string, string[]>
+  serverRoles: ServerRole[]
+  canUserDo: (spaceId: string, userId: string, perm: keyof RolePermissions) => boolean
+  toggleMemberRole: (spaceId: string, targetUserId: string, roleId: string) => void
+  handleRoleChange: (memberUserId: string, newRole: 'owner' | 'moderator' | 'member', memberName: string) => void
+  handleKickMember: (memberId: string, memberName: string) => void
+}
+
+export const SpaceMembersTab = memo(function SpaceMembersTab({
+  editingSpace,
+  editingSpaceMembers,
+  loadingEditingMembers,
+  memberSearchQuery,
+  setMemberSearchQuery,
+  selectedMemberId,
+  setSelectedMemberId,
+  user,
+  getUserHighestRole,
+  memberRoleMap,
+  serverRoles,
+  canUserDo,
+  toggleMemberRole,
+  handleRoleChange,
+  handleKickMember
+}: SpaceMembersTabProps) {
+  return (
+    <div className="space-settings-tab-pane">
+      <div className="space-settings-pane-header">
+        <h2>Integrantes do Espaço</h2>
+        <p>Total de {editingSpaceMembers.length} integrante(s) cadastrados no espaço <strong>{editingSpace.name}</strong>.</p>
+      </div>
+
+      <div className="members-search-wrapper">
+        <input 
+          type="text"
+          value={memberSearchQuery}
+          onChange={(e) => setMemberSearchQuery(e.target.value)}
+          placeholder="Buscar integrantes no espaço..."
+          className="members-search-input"
+        />
+      </div>
+
+      {loadingEditingMembers ? (
+        <div className="members-loading-state" style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+          Carregando lista de membros...
+        </div>
+      ) : (
+        <div className="space-settings-members-list-full">
+          {editingSpaceMembers
+            .filter(m => !memberSearchQuery.trim() || m.user?.display_name?.toLowerCase().includes(memberSearchQuery.toLowerCase().trim()))
+            .map(member => {
+              const isOwner = member.user?.id === editingSpace.creator_id
+              const isSelf = member.user?.id === user.id
+              const highestRole = member.user?.id ? getUserHighestRole(editingSpace.id, member.user.id) : null
+              const assignedRoleIds = memberRoleMap[member.user?.id] || []
+              const assignedRoles = serverRoles.filter(r => assignedRoleIds.includes(r.id))
+              const canKick = (editingSpace.creator_id === user.id && !isOwner && !isSelf) || (canUserDo(editingSpace.id, user.id, 'kickMembers') && !isOwner && !isSelf)
+
+              const isSelected = selectedMemberId === member.user?.id
+
+              return (
+                <div key={member.user?.id} style={{ marginBottom: '8px' }}>
+                  <div 
+                    className={`settings-member-item-full ${isSelected ? 'selected' : ''}`}
+                    onClick={() => setSelectedMemberId(isSelected ? null : member.user?.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 16px', background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px solid var(--border-color)' }}
+                  >
+                    <div className="settings-member-avatar-full">
+                      {member.user?.avatar_url ? (
+                        <img src={member.user.avatar_url} alt={member.user.display_name} />
+                      ) : (
+                        <span>{(member.user?.display_name || '?')[0].toUpperCase()}</span>
+                      )}
+                    </div>
+                    
+                    <div className="settings-member-info-full" style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="settings-member-name-full" style={{ color: highestRole?.color || 'var(--text-primary)', fontWeight: 700, fontSize: '14px' }}>
+                          {member.user?.display_name}
+                        </span>
+                        {isSelf && <span className="self-tag">(Você)</span>}
+                      </div>
+                      <span className="settings-member-joined" style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                        {member.joined_at ? `Entrou em ${new Date(member.joined_at).toLocaleDateString('pt-BR')}` : 'Membro'}
+                      </span>
+                    </div>
+
+                    {/* Cargos Badges */}
+                    <div className="settings-member-role-badges" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                      {isOwner && (
+                        <span className="role-badge role-owner" style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', border: '1px solid rgba(234, 179, 8, 0.3)', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <CrownIcon /> Dono
+                        </span>
+                      )}
+
+                      {assignedRoles.map(r => (
+                        <span 
+                          key={r.id}
+                          style={{ 
+                            background: `${r.color}22`, 
+                            color: r.color, 
+                            border: `1px solid ${r.color}66`, 
+                            padding: '3px 8px', 
+                            borderRadius: '6px', 
+                            fontSize: '11px', 
+                            fontWeight: 700, 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: '4px' 
+                          }}
+                        >
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: r.color }} />
+                          {r.name}
+                        </span>
+                      ))}
+                    </div>
+
+                    <span className={`member-row-manage-pill ${isSelected ? 'active' : ''}`}>
+                      {isSelected ? 'Gerenciando ▴' : 'Opções ▾'}
+                    </span>
+                  </div>
+
+                  {/* Painel de Gestão do Integrante ao Clicar na Linha */}
+                  {isSelected && (
+                    <div className="member-management-panel" onClick={e => e.stopPropagation()}>
+                      <div className="member-mgmt-header">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className="member-mgmt-title">Gerenciar {member.user?.display_name}</span>
+                          {isSelf && <span className="self-tag">(Você)</span>}
+                        </div>
+                        <button 
+                          type="button" 
+                          className="member-mgmt-close-btn"
+                          onClick={() => setSelectedMemberId(null)}
+                          title="Fechar opções"
+                        >
+                          ✕ Fechar
+                        </button>
+                      </div>
+
+                      {/* Atribuição de Cargos do Espaço */}
+                      <div className="member-mgmt-section">
+                        <label className="member-mgmt-label">Cargos do Espaço</label>
+                        <div className="member-mgmt-roles-grid">
+                          {serverRoles.filter(r => r.id !== 'role-owner').map(r => {
+                            const hasRole = assignedRoleIds.includes(r.id)
+                            return (
+                              <button
+                                key={r.id}
+                                type="button"
+                                className={`member-mgmt-role-pill ${hasRole ? 'active' : ''}`}
+                                style={{
+                                  borderColor: hasRole ? r.color : 'var(--border-color)',
+                                  color: hasRole ? r.color : 'var(--text-secondary)',
+                                  background: hasRole ? `${r.color}22` : 'rgba(255, 255, 255, 0.04)'
+                                }}
+                                onClick={() => toggleMemberRole(editingSpace.id, member.user?.id, r.id)}
+                              >
+                                <span className="role-pill-check">{hasRole ? '✓' : '＋'}</span>
+                                <span className="role-pill-dot" style={{ background: r.color }} />
+                                <span>{r.name}</span>
+                              </button>
+                            )
+                          })}
+                          {serverRoles.filter(r => r.id !== 'role-owner').length === 0 && (
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Nenhum cargo personalizado criado neste espaço.</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Permissão Básica / Moderação */}
+                      <div className="member-mgmt-section">
+                        <label className="member-mgmt-label">Cargo Básico</label>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            className={`member-mgmt-role-pill ${member.role === 'member' && !isOwner ? 'active' : ''}`}
+                            onClick={() => handleRoleChange(member.user?.id, 'member', member.user?.display_name)}
+                            disabled={isOwner}
+                          >
+                            <span>Membro</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`member-mgmt-role-pill ${member.role === 'moderator' ? 'active' : ''}`}
+                            onClick={() => handleRoleChange(member.user?.id, 'moderator', member.user?.display_name)}
+                            disabled={isOwner}
+                          >
+                            <span>Moderador</span>
+                          </button>
+
+                          {editingSpace.creator_id === user.id && !isOwner && (
+                            <button
+                              type="button"
+                              className="member-mgmt-role-pill"
+                              style={{ color: '#eab308', borderColor: 'rgba(234, 179, 8, 0.4)' }}
+                              onClick={() => handleRoleChange(member.user?.id, 'owner', member.user?.display_name)}
+                            >
+                              <span>👑 Transferir Posse</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Zona de Moderação / Expulsar */}
+                      {canKick && (
+                        <div className="member-mgmt-danger-zone">
+                          <button 
+                            type="button" 
+                            className="member-mgmt-kick-btn"
+                            onClick={() => handleKickMember(member.user?.id, member.user?.display_name)}
+                          >
+                            <UserMinusIcon style={{ width: '14px', height: '14px' }} />
+                            <span>Expulsar {member.user?.display_name} do Espaço</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          {editingSpaceMembers.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '13.5px' }}>
+              Nenhum membro encontrado.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+})

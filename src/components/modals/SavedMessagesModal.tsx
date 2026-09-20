@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { StarIcon } from '../icons'
+import { StarIcon, LinkChainIcon, ImageIcon, FileTextIcon, PinIcon, PaperclipIcon } from '../icons'
 import type { SavedMessageItem } from '../../types'
 import { openExternalUrl } from '../../lib/openExternal'
 import { useUIStore } from '../../stores/useUIStore'
@@ -96,28 +96,37 @@ export function SavedMessagesModal({
               className={`saved-tab-btn ${activeTab === 'all' ? 'active' : ''}`}
               onClick={() => setActiveTab('all')}
             >
-              Todas <span className="tab-count">{savedMessages.length}</span>
+              <span>Todas</span> <span className="tab-count">{savedMessages.length}</span>
             </button>
             <button
               type="button"
               className={`saved-tab-btn ${activeTab === 'links' ? 'active' : ''}`}
               onClick={() => setActiveTab('links')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              🔗 Links <span className="tab-count">{linksCount}</span>
+              <LinkChainIcon style={{ width: 14, height: 14 }} />
+              <span>Links</span>
+              <span className="tab-count">{linksCount}</span>
             </button>
             <button
               type="button"
               className={`saved-tab-btn ${activeTab === 'media' ? 'active' : ''}`}
               onClick={() => setActiveTab('media')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              🖼️ Mídias & Áudios <span className="tab-count">{mediaCount}</span>
+              <ImageIcon style={{ width: 14, height: 14 }} />
+              <span>Mídias & Áudios</span>
+              <span className="tab-count">{mediaCount}</span>
             </button>
             <button
               type="button"
               className={`saved-tab-btn ${activeTab === 'text' ? 'active' : ''}`}
               onClick={() => setActiveTab('text')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              📝 Textos <span className="tab-count">{textCount}</span>
+              <FileTextIcon style={{ width: 14, height: 14 }} />
+              <span>Textos</span>
+              <span className="tab-count">{textCount}</span>
             </button>
           </div>
         </div>
@@ -125,12 +134,27 @@ export function SavedMessagesModal({
         <div className="saved-messages-list">
           {filteredMessages.length === 0 ? (
             <div className="saved-empty-state">
-              <div className="saved-empty-star">⭐</div>
+              <div 
+                className="saved-empty-star-badge" 
+                style={{ 
+                  width: 54, 
+                  height: 54, 
+                  borderRadius: '50%', 
+                  background: 'rgba(245, 158, 11, 0.12)', 
+                  border: '1px solid rgba(245, 158, 11, 0.35)', 
+                  display: 'grid', 
+                  placeItems: 'center', 
+                  margin: '0 auto 14px auto',
+                  boxShadow: '0 0 24px rgba(245, 158, 11, 0.25)' 
+                }}
+              >
+                <StarIcon style={{ width: 26, height: 26, color: '#fbbf24', fill: '#fbbf24' }} />
+              </div>
               <h4>Nenhuma mensagem favoritada</h4>
               <p>
                 {searchQuery
                   ? 'Nenhum resultado encontrado para a pesquisa.'
-                  : 'Passe o mouse sobre qualquer mensagem em um canal ou conversa privada e clique na estrela (⭐) para guardar aqui.'}
+                  : 'Passe o mouse sobre qualquer mensagem em um canal ou conversa privada e clique na estrela para guardar aqui.'}
               </p>
             </div>
           ) : (
@@ -152,8 +176,10 @@ export function SavedMessagesModal({
                         className="saved-source-tag"
                         onClick={() => onJumpToMessage(item)}
                         title="Ir para o canal ou conversa"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                       >
-                        📍 {item.sourceName}
+                        <PinIcon style={{ width: 11, height: 11 }} />
+                        <span>{item.sourceName}</span>
                       </button>
                     </div>
                   </div>
@@ -222,12 +248,14 @@ export function SavedMessagesModal({
                         href={item.attachmentUrl}
                         target="_blank"
                         rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                         onClick={(e) => {
                           e.preventDefault()
                           openExternalUrl(item.attachmentUrl)
                         }}
                       >
-                        📎 Baixar arquivo anexo
+                        <PaperclipIcon style={{ width: 13, height: 13 }} />
+                        <span>Baixar arquivo anexo</span>
                       </a>
                     </div>
                   )}

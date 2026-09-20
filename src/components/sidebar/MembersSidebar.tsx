@@ -6,6 +6,8 @@ import { GameLogo } from '../GameLogos'
 import { AvatarDecoration } from '../AvatarDecoration'
 import { formatGameDuration } from '../../lib/formatters'
 import { NAME_EFFECTS } from '../../lib/cosmeticsData'
+import { CommunityBadge } from '../CommunityBadge'
+import { useSpacesStore } from '../../stores/useSpacesStore'
 
 const AVATAR_GRADIENTS = [
   'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)',   // Cyan / Blue
@@ -32,11 +34,11 @@ function getMemberAvatarBackground(userId: string, name: string): string {
 export interface MembersSidebarProps {
   isVisible: boolean
   currentSpace: Space | null
-  spaceMembers: any[]
-  spaceChannels: Record<string, Channel[]>
+  spaceMembers?: any[]
+  spaceChannels?: Record<string, Channel[]>
   activeVoiceChannelId: string | null
   participants: any[]
-  spaceVoiceUsers: Record<string, any[]>
+  spaceVoiceUsers?: Record<string, any[]>
   onlineUsers: Set<string>
   presenceData: Record<string, any>
   user: User
@@ -55,11 +57,11 @@ export interface MembersSidebarProps {
 
 const MembersSidebarInner = React.memo(function MembersSidebarInner({
   currentSpace,
-  spaceMembers,
-  spaceChannels,
+  spaceMembers = [],
+  spaceChannels = {},
   activeVoiceChannelId,
   participants,
-  spaceVoiceUsers,
+  spaceVoiceUsers = {},
   onlineUsers,
   presenceData,
   user,
@@ -74,7 +76,12 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
   setInspectedMember,
   setHoveredMemberPopover,
   hoverTimeoutRef
-}: Omit<MembersSidebarProps, 'isVisible'> & { currentSpace: NonNullable<MembersSidebarProps['currentSpace']> }) {
+}: Omit<MembersSidebarProps, 'isVisible' | 'spaceMembers' | 'spaceChannels' | 'spaceVoiceUsers'> & {
+  currentSpace: NonNullable<MembersSidebarProps['currentSpace']>
+  spaceMembers: any[]
+  spaceChannels: Record<string, Channel[]>
+  spaceVoiceUsers: Record<string, any[]>
+}) {
 
   const [searchQuery, setSearchQuery] = React.useState('')
   const [isSearchOpen, setIsSearchOpen] = React.useState(false)
@@ -132,9 +139,12 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
       } else {
         const pres = presenceData[m.user.id]
         if (pres?.presence_status === 'invisible') return false
+        if (m.user?.presence_status === 'invisible') return false
       }
       return (
         onlineUsers.has(m.user.id) ||
+        Boolean(presenceData[m.user.id]) ||
+        Boolean(m.user?.current_game || m.user?.game_presence) ||
         (isCurrentCallInThisSpace && participants.some(p => p.userId === m.user.id)) ||
         voiceUsers.some(p => p.userId === m.user.id)
       )
@@ -161,17 +171,23 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
     if (isMe) {
       effectiveStatus = presenceStatus
     } else {
-      const explicitPres = presenceData[member.user.id]?.presence_status
-      if (explicitPres) {
+      const explicitPres = presenceData[member.user.id]?.presence_status || member.user?.presence_status
+      if (explicitPres && explicitPres !== 'offline') {
         effectiveStatus = explicitPres
-      } else if (onlineUsers.has(member.user.id) || isVoiceUserRaw) {
+      } else if (onlineUsers.has(member.user.id) || isVoiceUserRaw || Boolean(presenceData[member.user.id]?.current_game) || Boolean(member.user?.current_game)) {
         effectiveStatus = 'online'
       } else {
         effectiveStatus = 'offline'
       }
     }
 
-    const isOnline = effectiveStatus !== 'invisible' && (onlineUsers.has(member.user.id) || isVoiceUserRaw || isMe)
+    const isOnline = effectiveStatus !== 'invisible' && (
+      onlineUsers.has(member.user.id) ||
+      isVoiceUserRaw ||
+      isMe ||
+      Boolean(presenceData[member.user.id]) ||
+      Boolean(member.user?.current_game || member.user?.game_presence)
+    )
     const userPresenceStatus = isOnline ? (effectiveStatus === 'offline' ? 'online' : effectiveStatus) : 'offline'
     // Membros offline ou invisíveis NUNCA devem exibir o badge de voz "Em chamada" na barra de membros
     const isVoiceUser = isOnline && isVoiceUserRaw
@@ -212,6 +228,10 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
 
     const memberBio = (member.user as any)?.bio || (presenceData[member.user.id] as any)?.bio || null
     const memberPronouns = (member.user as any)?.pronouns || (presenceData[member.user.id] as any)?.pronouns || null
+
+    const memberBadge = isMe
+      ? (localStorage.getItem(`echo-show-badge-${user.id}`) !== 'false' ? (localStorage.getItem(`echo-badge-${user.id}`) || (isCreator ? 'owner' : 'early')) : 'none')
+      : (presenceData[member.user.id]?.badge || localStorage.getItem(`echo-badge-${member.user.id}`) || (isCreator ? 'owner' : null))
 
     return (
       <div 
@@ -260,6 +280,7 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
               customStatus: validCustomStatus,
               bannerCustom: memberBannerCustom,
               bannerPreset: memberBannerPreset,
+              badge: memberBadge,
               rect: {
                 top: rect.top,
                 left: rect.left,
@@ -302,6 +323,10 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
             >
               {member.user.display_name}
             </span>
+
+            {memberBadge && memberBadge !== 'none' && (
+              <CommunityBadge badgeId={memberBadge} size={14} />
+            )}
 
             {memberNameEffect && memberNameEffect !== 'none' && (
               <span className="name-soundwave-indicator" title={memberNameMeta?.name || 'Aura Sonora'}>
@@ -629,6 +654,23 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
 })
 
 export const MembersSidebar = React.memo(function MembersSidebar(props: MembersSidebarProps) {
+  const storeSpaceMembers = useSpacesStore((s) => s.spaceMembers)
+  const storeSpaceChannels = useSpacesStore((s) => s.spaceChannels)
+  const storeSpaceVoiceUsers = useSpacesStore((s) => s.spaceVoiceUsers)
+
   if (!props.isVisible || !props.currentSpace) return null
-  return <MembersSidebarInner {...props} currentSpace={props.currentSpace} />
+
+  const spaceMembers = props.spaceMembers ?? storeSpaceMembers
+  const spaceChannels = props.spaceChannels ?? storeSpaceChannels
+  const spaceVoiceUsers = props.spaceVoiceUsers ?? storeSpaceVoiceUsers
+
+  return (
+    <MembersSidebarInner
+      {...props}
+      currentSpace={props.currentSpace}
+      spaceMembers={spaceMembers}
+      spaceChannels={spaceChannels}
+      spaceVoiceUsers={spaceVoiceUsers}
+    />
+  )
 })

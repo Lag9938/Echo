@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, lazy, Suspense } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
 import type { FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
@@ -9,22 +9,19 @@ import { useEchoDesktopShell } from './hooks/useEchoDesktopShell'
 import { useEchoGlobalPresence } from './hooks/useEchoGlobalPresence'
 import './App.css'
 import {
-  playFriendRequestSound, 
-  playFriendAcceptSound, 
-  playDmNotificationSound, 
-  playLeaveSound, 
-  playScreenStartSound, 
+  playFriendRequestSound,
+  playFriendAcceptSound,
+  playDmNotificationSound,
+  playLeaveSound,
+  playScreenStartSound,
   playScreenStopSound
 } from './lib/soundEffects'
-import { WhatsNewModal } from './components/WhatsNewModal'
-import { APP_CURRENT_VERSION } from './lib/changelogData'
+import { APP_CURRENT_VERSION } from './lib/version'
 import { initAnalytics, identifyUser, resetUser, trackAppOpened } from './lib/analytics'
-import { EchoShop } from './components/EchoShop'
 
-import { ChannelInviteModal } from './components/modals/ChannelInviteModal'
-import { SpaceAddMembersModal } from './components/modals/SpaceAddMembersModal'
-import { SavedMessagesModal } from './components/modals/SavedMessagesModal'
-import { ImageLightboxModal } from './components/modals/ImageLightboxModal'
+import { ModalManager } from './components/modals/ModalManager'
+import { useSpacesStore } from './stores/useSpacesStore'
+import { useUIStore } from './stores/useUIStore'
 import { useEchoAfkDetector } from './hooks/useEchoAfkDetector'
 import { useEchoToasts } from './hooks/useEchoToasts'
 import { useEchoSavedMessages } from './hooks/useEchoSavedMessages'
@@ -34,31 +31,21 @@ import { useEchoPtt } from './hooks/useEchoPtt'
 import { useEchoGamePresence } from './hooks/useEchoGamePresence'
 import { UpdateBanner } from './components/common/UpdateBanner'
 import { VoiceReconnectBanner } from './components/voice/VoiceReconnectBanner'
-import { MemberProfileModalWrapper } from './components/modals/MemberProfileModalWrapper'
-import { ConfirmModal } from './components/modals/ConfirmModal'
-import { VolumeControlModal } from './components/modals/VolumeControlModal'
-import { AddSpaceModal } from './components/modals/AddSpaceModal'
-import { ScreenPickerModal } from './components/modals/ScreenPickerModal'
-import { SoundboardModal, SoundboardToast } from './components/modals/SoundboardModal'
-import { AfkPromptModal, AfkDisconnectedModal } from './components/modals/AfkModals'
-import { IncomingCallModal } from './components/modals/IncomingCallModal'
-import { HoveredMemberPopover } from './components/sidebar/HoveredMemberPopover'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
 
 import { TopBar } from './components/navigation/TopBar'
 import { WindowControls } from './components/navigation/WindowControls'
 import { ChannelsSidebar } from './components/sidebar/ChannelsSidebar'
-import { VoiceChannelView } from './views/VoiceChannelView'
-import { TextChannelView } from './views/TextChannelView'
 import { VoiceMiniOverlay } from './components/voice/VoiceMiniOverlay'
-import { FriendsView } from './views/FriendsView'
 import { EchoFloatingMiniPlayer } from './components/streaming/EchoFloatingMiniPlayer'
 
 // Lazy-loaded heavy views and modals for instant initial bundle loading
+const VoiceChannelView = lazy(() => import('./views/VoiceChannelView').then(m => ({ default: m.VoiceChannelView })))
+const TextChannelView = lazy(() => import('./views/TextChannelView').then(m => ({ default: m.TextChannelView })))
+const FriendsView = lazy(() => import('./views/FriendsView').then(m => ({ default: m.FriendsView })))
 const SettingsView = lazy(() => import('./views/SettingsView').then(m => ({ default: m.SettingsView })))
-const SpaceStudioModal = lazy(() => import('./components/modals/SpaceStudioModal').then(m => ({ default: m.SpaceStudioModal })))
 const SubscriptionModal = lazy(() => import('./components/modals/SubscriptionModal').then(m => ({ default: m.SubscriptionModal })))
-const CommandPaletteModal = lazy(() => import('./components/modals/CommandPaletteModal').then(m => ({ default: m.CommandPaletteModal })))
+const EchoShop = lazy(() => import('./components/EchoShop').then(m => ({ default: m.EchoShop })))
 import { useEchoDirectCalls } from './hooks/useEchoDirectCalls'
 import { useEchoScreenShare } from './hooks/useEchoScreenShare'
 import { useEchoVoiceNotes } from './hooks/useEchoVoiceNotes'
@@ -76,62 +63,6 @@ import { useEchoGroupChats } from './hooks/useEchoGroupChats'
 
 import type { Space, Channel, Message, DirectMessage, FriendshipRequest, SavedMessageItem, Page, Toast, RolePermissions, ServerRole, ServerAuditLog, ServerEmoji, PinnedMessage, GroupChat, GroupMessage } from './types'
 export type { Space, Channel, Message, DirectMessage, FriendshipRequest, SavedMessageItem, Page, Toast, RolePermissions, ServerRole, ServerAuditLog, ServerEmoji, PinnedMessage, GroupChat, GroupMessage }
-
-/* ── Modern SVG Icons for Call Controls ──────────────── */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 import {
   ColoredRocketIcon,
@@ -180,24 +111,6 @@ export {
   ColoredPushToTalkIcon,
   ColoredVolumeSpeakerIcon
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 function MainApp() {
   const isMock = typeof window !== 'undefined' && window.location.search.includes('mock=true')
@@ -267,25 +180,30 @@ export default function App() {
   return <MainApp />
 }
 
-
 function Echo({ user }: { user: User }) {
   const displayName = (user.user_metadata.display_name as string | undefined) || user.email?.split('@')[0] || 'Você'
   const [presenceStatus, setPresenceStatus] = useState<'online' | 'idle' | 'dnd' | 'invisible'>(() => (localStorage.getItem('echo-presence-status') as any) || 'online')
   const [page, setPage] = useState<Page>('Servidores')
+  useEffect(() => {
+    useUIStore.getState().setPage(page)
+  }, [page])
   const [error, setError] = useState('')
   const [addSpaceModalTab, setAddSpaceModalTab] = useState<'options' | 'create' | 'join'>('options')
 
   const { toasts, showToast, removeToast } = useEchoToasts()
   const [knownProfiles, setKnownProfiles] = useState<Record<string, { id: string; display_name: string; avatar_url?: string }>>({})
+  useEffect(() => {
+    useSpacesStore.getState().setKnownProfiles(knownProfiles)
+  }, [knownProfiles])
   const [channelForInvite, setChannelForInvite] = useState<{ channel: Channel; space: Space } | null>(null)
-  const [confirmModalConfig, setConfirmModalConfig] = useState<{ 
-    isOpen: boolean; 
-    title: string; 
-    message: string; 
-    confirmText?: string; 
-    cancelText?: string; 
-    isDanger?: boolean; 
-    onConfirm: () => void 
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    isDanger?: boolean;
+    onConfirm: () => void
   } | null>(null)
 
   const socialChannelRef = useRef<any>(null)
@@ -356,6 +274,7 @@ function Echo({ user }: { user: User }) {
     displayName,
     getAvatarDecoration: () => avatarDecorationRef.current,
     getProfileEffect: () => profileEffectRef.current,
+    getMyGamePresence: () => myGamePresenceRef.current,
     setPage,
     showToast,
     setError,
@@ -444,7 +363,7 @@ function Echo({ user }: { user: User }) {
     supabase
   })
   addAuditLogRef.current = addAuditLog
-  
+
   // Roles & Permissions Hook
   const {
     serverRoles,
@@ -532,8 +451,13 @@ function Echo({ user }: { user: User }) {
   const [showVoiceChat, setShowVoiceChat] = useState(false)
   const [customStatus, setCustomStatus] = useState(() => localStorage.getItem('echo-custom-status') || '')
   const [unreadChannels, setUnreadChannels] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    useSpacesStore.getState().setUnreadChannels(unreadChannels)
+  }, [unreadChannels])
   const selectedChannelRef = useRef(selectedChannel)
   const mutedSpacesRef = useRef(mutedSpaces)
+  const userRef = useRef(user)
+  userRef.current = user
   const presenceChannelRef = useRef<any>(null)
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [noiseSuppressionEnabled, setNoiseSuppressionEnabled] = useState(() => localStorage.getItem('echo-noise-suppression') !== 'false')
@@ -544,6 +468,8 @@ function Echo({ user }: { user: User }) {
     const val = localStorage.getItem('echo-sfx-volume')
     return val !== null ? parseFloat(val) : 0.5
   })
+  const sfxVolumeRef = useRef(sfxVolume)
+  sfxVolumeRef.current = sfxVolume
 
   // Auto-update state
   const [updateStatus, setUpdateStatus] = useState<'idle' | 'downloading' | 'ready'>('idle')
@@ -603,6 +529,7 @@ function Echo({ user }: { user: User }) {
       const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || avatarDecoration || ''
       const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || profileEffect || ''
       const curNameEff = localStorage.getItem(`echo-name-effect-${user.id}`) || nameEffect || 'resonance_cyan'
+      const curBadge = localStorage.getItem(`echo-show-badge-${user.id}`) !== 'false' ? (localStorage.getItem(`echo-badge-${user.id}`) || 'owner') : 'none'
       await presenceChannelRef.current.track({
         user_id: user.id,
         display_name: profileDisplayName,
@@ -612,7 +539,8 @@ function Echo({ user }: { user: User }) {
         current_game: gameData,
         avatar_decoration: curDeco,
         profile_effect: curEff,
-        name_effect: curNameEff
+        name_effect: curNameEff,
+        badge: curBadge
       })
     }
   }
@@ -639,7 +567,6 @@ function Echo({ user }: { user: User }) {
       }
     }
   }, [])
-
 
   // Local profile states
   const [profileDisplayName, setProfileDisplayName] = useState(displayName)
@@ -858,6 +785,7 @@ function Echo({ user }: { user: User }) {
     showToast,
     setError,
     playDmNotificationSound,
+    triggerDesktopNotification,
     supabase
   })
   setMessagesRef.current = setMessages
@@ -925,11 +853,11 @@ function Echo({ user }: { user: User }) {
   const activeSharingSourceRef = useRef<any>(null)
   const setActiveSharingSourceRef = useRef<((src: any) => void) | null>(null)
 
-  const { 
-    participants, 
-    isMuted, 
+  const {
+    participants,
+    isMuted,
     isDeafened,
-    isConnected, 
+    isConnected,
     localScreenStream,
     rtcStats,
     isPttMode,
@@ -937,7 +865,7 @@ function Echo({ user }: { user: User }) {
     lastSoundboardEvent,
     isRecordingCall,
     recordingDuration,
-    leaveVoice, 
+    leaveVoice,
     startScreenShare,
     stopScreenShare,
     changeInputDevice,
@@ -974,7 +902,7 @@ function Echo({ user }: { user: User }) {
     serverMuteParticipant,
     disconnectParticipant,
     moveParticipant
-  } = useEchoVoiceSession({ 
+  } = useEchoVoiceSession({
     user,
     profileDisplayName,
     profileAvatarUrl,
@@ -1002,6 +930,10 @@ function Echo({ user }: { user: User }) {
     supabase,
     presenceData
   })
+
+  useEffect(() => {
+    useSpacesStore.getState().setSpaceVoiceUsers(spaceVoiceUsers)
+  }, [spaceVoiceUsers])
   handleJoinVoiceRef.current = handleJoinVoice
   const handleLeaveVoiceRef = useRef(handleLeaveVoice)
   handleLeaveVoiceRef.current = handleLeaveVoice
@@ -1113,7 +1045,6 @@ function Echo({ user }: { user: User }) {
     return seen !== APP_CURRENT_VERSION
   })
 
-
   // In-App & Custom Invite Event Listener (Tratamento interno 100% no app sem abrir navegador)
   useEffect(() => {
     const handleInAppInviteEvent = (e: any) => {
@@ -1167,7 +1098,6 @@ function Echo({ user }: { user: User }) {
     }
   }, [user?.id])
 
-
   // Push-to-Talk settings via custom hook
   const {
     pttKey,
@@ -1179,10 +1109,6 @@ function Echo({ user }: { user: User }) {
     setPttMode,
     setPttActive
   })
-
-
-
-
 
   // Saved Messages State & Handlers via custom hook
   const {
@@ -1206,11 +1132,8 @@ function Echo({ user }: { user: User }) {
     setPage
   })
 
-
-
-
   // Chat Features: Reply, Reactions, Voice Notes, GIFs
-  
+
   // Voice Notes Hook
   const {
     isVoiceNoteRecording,
@@ -1274,7 +1197,7 @@ function Echo({ user }: { user: User }) {
 
           // Validação autoritativa de assinatura diretamente do Supabase
           const hasActivePro = Boolean(
-            data.is_premium && 
+            data.is_premium &&
             (!data.premium_until || new Date(data.premium_until).getTime() > Date.now())
           )
 
@@ -1334,7 +1257,7 @@ function Echo({ user }: { user: User }) {
   const {
     handleToggleOverlay,
     topbarPinned,
-    setTopbarPinned,
+    setTopbarPinned: _setTopbarPinned,
     showTopbar,
     hideTopbar,
     isTopbarVisible,
@@ -1361,6 +1284,10 @@ function Echo({ user }: { user: User }) {
     page,
     updateScreenSubscriptions
   })
+
+  useEffect(() => {
+    useUIStore.getState().setTopbarPinned(topbarPinned)
+  }, [topbarPinned])
 
   const handleWatchUserStream = useCallback((channel: Channel, userId: string) => {
     setSelectedChannel(channel)
@@ -1414,7 +1341,6 @@ function Echo({ user }: { user: User }) {
   activeSharingSourceRef.current = activeSharingSource
   setActiveSharingSourceRef.current = setActiveSharingSource
 
-
   // ── Inactivity / AFK Tracker via custom hook ──
   const {
     showAfkPrompt,
@@ -1457,7 +1383,6 @@ function Echo({ user }: { user: User }) {
   noiseSuppressionEnabledRef.current = noiseSuppressionEnabled
   echoCancellationEnabledRef.current = echoCancellationEnabled
 
-
   const screenShareVideoRef = useRef<HTMLVideoElement | null>(null)
   const screenShareContainerRef = useRef<HTMLDivElement | null>(null)
 
@@ -1474,10 +1399,6 @@ function Echo({ user }: { user: User }) {
       }
     }
   }, [activeScreenSharer?.screenStream, selectedChannel, page])
-
-
-
-
 
   // 1v1 Direct Voice Calling Hook
   const {
@@ -1503,7 +1424,6 @@ function Echo({ user }: { user: User }) {
     playLeaveSound
   })
 
-
   useEffect(() => {
     loadSpaces()
     loadFriendships()
@@ -1513,28 +1433,56 @@ function Echo({ user }: { user: User }) {
 
     const client = supabase
     if (!client) return
-    
-    // Setup global realtime messages listener to detect unread messages
+
+    // Setup global realtime messages listener to detect unread messages and mentions
     const globalMessagesChannel = client.channel('global-messages')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const newMsg = payload.new as any
-        if (newMsg && newMsg.channel_id !== selectedChannelRef.current?.id) {
+        if (!newMsg || newMsg.author_id === userRef.current?.id) return
+
+        const isCurrentChannel = newMsg.channel_id === selectedChannelRef.current?.id
+        const isAppFocused = typeof document !== 'undefined' && document.hasFocus()
+
+        if (!isCurrentChannel) {
           setUnreadChannels(prev => {
             if (prev.has(newMsg.channel_id)) return prev
             const next = new Set(prev)
             next.add(newMsg.channel_id)
             return next
           })
-          
-          const isSpaceMuted = Object.entries(spaceChannelsRef.current).some(([sId, chList]) => 
-            mutedSpacesRef.current.has(sId) && chList.some(c => c.id === newMsg.channel_id)
-          )
+        }
 
-          if (!document.hasFocus() && !isSpaceMuted) {
-            triggerDesktopNotification('Nova mensagem', newMsg.body || '', {
-              type: 'channel',
-              channelId: newMsg.channel_id
-            })
+        const isSpaceMuted = Object.entries(spaceChannelsRef.current).some(([sId, chList]) =>
+          mutedSpacesRef.current.has(sId) && chList.some(c => c.id === newMsg.channel_id)
+        )
+
+        // Verifica se o usuário foi mencionado
+        const myName = (profileDisplayNameRef.current || userRef.current?.user_metadata?.display_name || '').toLowerCase()
+        const myId = (userRef.current?.id || '').toLowerCase()
+        const bodyLower = (newMsg.body || '').toLowerCase()
+        const isMentioned = 
+          (myName && bodyLower.includes(`@${myName}`)) ||
+          (myId && bodyLower.includes(`@${myId}`)) ||
+          bodyLower.includes('@everyone') ||
+          bodyLower.includes('@here')
+
+        // Se o app não estiver em foco e (for mencionado OU for mensagem em outro canal não mutado)
+        if (!isAppFocused && (isMentioned || (!isSpaceMuted && !isCurrentChannel))) {
+          const chObj = Object.values(spaceChannelsRef.current).flat().find(c => c.id === newMsg.channel_id)
+          const chName = chObj?.name ? `#${chObj.name}` : 'canal'
+          const title = isMentioned ? `Mencionado em ${chName}` : `Nova mensagem em ${chName}`
+
+          triggerDesktopNotification(title, newMsg.body || '', {
+            type: 'channel',
+            channelId: newMsg.channel_id
+          })
+
+          if (typeof (window as any).electronAPI?.flashFrame === 'function') {
+            ;(window as any).electronAPI.flashFrame(true)
+          }
+
+          if (isMentioned) {
+            playDmNotificationSound(sfxVolumeRef.current)
           }
         }
       })
@@ -1545,6 +1493,28 @@ function Echo({ user }: { user: User }) {
     }
   }, [])
 
+  // Sincronização do contador de não lidos com o ícone do aplicativo e parada do flash da barra ao focar
+  useEffect(() => {
+    const unreadDMsCount = Object.values(unreadDMs || {}).reduce((acc: number, val: any) => acc + (Number(val) || 0), 0)
+    const unreadGroupsCount = Object.values(unreadGroups || {}).reduce((acc: number, val: any) => acc + (Number(val) || 0), 0)
+    const unreadChannelsCount = unreadChannels.size
+    const total = unreadDMsCount + unreadGroupsCount + unreadChannelsCount
+
+    if (typeof (window as any).electronAPI?.setBadgeCount === 'function') {
+      ;(window as any).electronAPI.setBadgeCount(total)
+    }
+  }, [unreadDMs, unreadGroups, unreadChannels])
+
+  useEffect(() => {
+    const handleFocus = () => {
+      if (typeof (window as any).electronAPI?.flashFrame === 'function') {
+        ;(window as any).electronAPI.flashFrame(false)
+      }
+    }
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [])
+
   useEffect(() => {
     selectedChannelRef.current = selectedChannel
   }, [selectedChannel])
@@ -1552,7 +1522,6 @@ function Echo({ user }: { user: User }) {
   useEffect(() => {
     mutedSpacesRef.current = mutedSpaces
   }, [mutedSpaces])
-
 
   // Listen for realtime direct messages and show notifications (Realtime Broadcast + Database)
   useEffect(() => {
@@ -1585,7 +1554,7 @@ function Echo({ user }: { user: User }) {
           if (updated.avatar_url) setProfileAvatarUrl(updated.avatar_url)
           if (updated.is_premium !== undefined) {
             const hasActivePro = Boolean(
-              updated.is_premium && 
+              updated.is_premium &&
               (!updated.premium_until || new Date(updated.premium_until).getTime() > Date.now())
             )
             setIsPremiumUser(hasActivePro)
@@ -1673,13 +1642,216 @@ function Echo({ user }: { user: User }) {
     }
   }, [selectedChannel?.id])
 
-
   useEffect(() => {
     ;(window as any).__resetEchoPro = handleResetSubscription
   }, [handleResetSubscription])
 
-  const currentSpace = spaces.find(s => s.id === expandedSpace) || getSpaceForChannel(selectedChannel) || spaces[0] || null
+  const currentSpace = useMemo(() => {
+    return spaces.find(s => s.id === expandedSpace) || getSpaceForChannel(selectedChannel) || spaces[0] || null
+  }, [spaces, expandedSpace, selectedChannel, getSpaceForChannel])
 
+  const isServerOwner = useMemo(() => {
+    return spaces.some(s => s.creator_id === user.id)
+  }, [spaces, user.id])
+
+  const handleOpenDM = useCallback((friendId: string) => {
+    setSelectedDMUserId(friendId)
+    setUnreadDMs(prev => {
+      if (!prev[friendId]) return prev
+      const next = { ...prev }
+      delete next[friendId]
+      return next
+    })
+    loadDirectMessages(friendId)
+  }, [setSelectedDMUserId, setUnreadDMs, loadDirectMessages])
+
+  const handleOpenDMAndNavigate = useCallback((targetUserId: string) => {
+    handleOpenDM(targetUserId)
+    setPage('Amigos')
+  }, [handleOpenDM, setPage])
+
+  const handleCloseDM = useCallback(() => {
+    setSelectedDMUserId(null)
+    setDirectMessages([])
+  }, [setSelectedDMUserId, setDirectMessages])
+
+  const handleSendDMForm = useCallback(async (e: FormEvent) => {
+    e.preventDefault()
+    const trimmed = dmDraft.trim()
+    if (!trimmed) return
+    await sendDirectMessage(trimmed)
+  }, [dmDraft, sendDirectMessage])
+
+  const handleUploadDMFile = useCallback(async (file: File, caption?: string) => {
+    if (!supabase) return
+    setIsUploading(true)
+    const rawExt = file.name && file.name.includes('.') ? file.name.split('.').pop() : (file.type.split('/')[1] || 'png')
+    const ext = (rawExt || 'png').replace(/[^a-zA-Z0-9]/g, '')
+    const path = `dm/${user.id}/${Date.now()}.${ext}`
+    const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file)
+    if (uploadError) { setError(uploadError.message); setIsUploading(false); return }
+    const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
+    const fileType = file.type.startsWith('image/') ? 'image' : 'file'
+    const messageText = caption && caption.trim() ? caption.trim() : (dmDraft.trim() || file.name || 'Imagem')
+    await sendDirectMessage(messageText, urlData.publicUrl, fileType)
+    setIsUploading(false)
+  }, [user.id, dmDraft, sendDirectMessage, setError, setIsUploading])
+
+  const handleRemoveRecentDM = useCallback((dmId: string) => {
+    setRecentDMUserIds(prev => prev.filter(id => id !== dmId))
+    if (selectedDMUserIdRef.current === dmId) {
+      setSelectedDMUserId(null)
+      setDirectMessages([])
+    }
+  }, [setRecentDMUserIds, setSelectedDMUserId, setDirectMessages, selectedDMUserIdRef])
+
+  const handleStartVoiceNoteDM = useCallback(() => {
+    startVoiceNoteRecording('dm')
+  }, [startVoiceNoteRecording])
+
+  const handleToggleSaveDM = useCallback((msg: any, targetUser: any) => {
+    toggleSaveMessage(msg, 'dm', {
+      sourceName: `@${targetUser.display_name}`,
+      dmUserId: targetUser.id
+    })
+  }, [toggleSaveMessage])
+
+  const handleSendDMSticker = useCallback((url: string, name?: string) => {
+    sendDirectMessage(name ? `[Sticker: ${name}]` : 'Sticker', url, 'sticker')
+  }, [sendDirectMessage])
+
+  const handleSignOut = useCallback(() => {
+    supabase?.auth.signOut()
+  }, [])
+
+  const handleInspectMember = useCallback((member: any) => {
+    setInspectedMember(member)
+  }, [setInspectedMember])
+
+  const handleOpenWhatsNew = useCallback(() => {
+    setShowWhatsNewModal(true)
+  }, [setShowWhatsNewModal])
+
+  const handleOpenSubscription = useCallback(() => {
+    setShowSubscriptionModal(true)
+  }, [setShowSubscriptionModal])
+
+  const handleCloseSubscription = useCallback(() => {
+    setShowSubscriptionModal(false)
+  }, [setShowSubscriptionModal])
+
+  const handleOpenShopFromSettings = useCallback((targetTab?: any) => {
+    if (targetTab) setShopInitialTab(targetTab)
+    setPage('Loja')
+  }, [setShopInitialTab, setPage])
+
+  const handleProfileUpdate = useCallback((name: string, avatar: string, bannerUrl?: string, bannerPreset?: string) => {
+    setProfileDisplayName(name)
+    setProfileAvatarUrl(avatar)
+    updateLocalProfile(name, avatar)
+    if (user) {
+      setSpaceMembers(prev => prev.map(m => (m?.user?.id === user.id || m?.id === user.id) ? {
+        ...m,
+        user: {
+          ...(m.user || {}),
+          display_name: name,
+          avatar_url: avatar,
+          banner_url: bannerUrl !== undefined ? bannerUrl : (m.user as any)?.banner_url,
+          banner_preset: bannerPreset !== undefined ? bannerPreset : (m.user as any)?.banner_preset
+        }
+      } : m))
+      if (presenceChannelRef.current) {
+        const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
+        const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
+        const gameData = presenceStatus === 'invisible' ? null : myGamePresence
+        const rawBanner = bannerUrl || localStorage.getItem(`echo-banner-custom-${user.id}`) || ''
+        const safeBanner = (rawBanner && !rawBanner.startsWith('data:') && rawBanner.length < 2048) ? rawBanner : ''
+        const curBadge = localStorage.getItem(`echo-show-badge-${user.id}`) !== 'false' ? (localStorage.getItem(`echo-badge-${user.id}`) || 'owner') : 'none'
+        const preset = bannerPreset || localStorage.getItem(`echo-banner-preset-${user.id}`) || 'synthwave'
+        presenceChannelRef.current.track({
+          user_id: user.id,
+          display_name: name,
+          avatar_url: avatar,
+          online_at: new Date().toISOString(),
+          custom_status: customStatus,
+          presence_status: presenceStatus,
+          current_game: gameData,
+          avatar_decoration: curDeco,
+          profile_effect: curEff,
+          banner_custom: safeBanner,
+          banner_preset: preset,
+          banner_url: safeBanner,
+          badge: curBadge
+        }).catch(() => {})
+      }
+    }
+  }, [user, updateLocalProfile, setSpaceMembers, avatarDecoration, profileEffect, presenceStatus, myGamePresence, customStatus])
+
+  const handleCustomStatusUpdate = useCallback(async (status: string) => {
+    setCustomStatus(status)
+    localStorage.setItem('echo-custom-status', status)
+    if (presenceChannelRef.current) {
+      const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
+      const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
+      const curBadge = localStorage.getItem(`echo-show-badge-${user.id}`) !== 'false' ? (localStorage.getItem(`echo-badge-${user.id}`) || 'owner') : 'none'
+      const gameData = presenceStatus === 'invisible' ? null : myGamePresence
+      await presenceChannelRef.current.track({
+        user_id: user.id,
+        display_name: profileDisplayName,
+        online_at: new Date().toISOString(),
+        custom_status: status,
+        presence_status: presenceStatus,
+        current_game: gameData,
+        avatar_decoration: curDeco,
+        profile_effect: curEff,
+        badge: curBadge
+      })
+    }
+  }, [user.id, avatarDecoration, profileEffect, presenceStatus, myGamePresence, profileDisplayName])
+
+  const handleNoiseSuppressionChange = useCallback((val: boolean) => {
+    setNoiseSuppressionEnabled(val)
+    localStorage.setItem('echo-noise-suppression', val ? 'true' : 'false')
+    if (activeVoiceChannelId) {
+      changeInputDevice(selectedInputId, val, echoCancellationEnabled)
+    }
+  }, [activeVoiceChannelId, changeInputDevice, selectedInputId, echoCancellationEnabled])
+
+  const handleEchoCancellationChange = useCallback((val: boolean) => {
+    setEchoCancellationEnabled(val)
+    localStorage.setItem('echo-echo-cancellation', val ? 'true' : 'false')
+    if (activeVoiceChannelId) {
+      changeInputDevice(selectedInputId, noiseSuppressionEnabled, val)
+    }
+  }, [activeVoiceChannelId, changeInputDevice, selectedInputId, noiseSuppressionEnabled])
+
+  const handleSfxVolumeChange = useCallback((val: number) => {
+    setSfxVolume(val)
+    localStorage.setItem('echo-sfx-volume', val.toString())
+  }, [])
+
+  const handleNoiseGateEnabledChange = useCallback((val: boolean) => {
+    setNoiseGateEnabled(val)
+    localStorage.setItem('echo-noise-gate-enabled', val ? 'true' : 'false')
+  }, [])
+
+  const handleNoiseGateThresholdChange = useCallback((val: number) => {
+    setNoiseGateThreshold(val)
+    localStorage.setItem('echo-noise-gate-threshold', val.toString())
+  }, [])
+
+  const handleToggleSpatialAudio = useCallback((val: boolean) => {
+    setSpatialAudioEnabledState(val)
+    localStorage.setItem('echo-spatial-audio-enabled', val ? 'true' : 'false')
+  }, [setSpatialAudioEnabledState])
+
+  const handleResetAllPans = useCallback(() => {
+    setUserStereoPans({})
+    localStorage.removeItem('echo-user-stereo-pans')
+    participants.forEach(p => {
+      changePeerPan(p.userId, 0)
+    })
+  }, [setUserStereoPans, participants, changePeerPan])
 
   return (
     <main className="echo-app">
@@ -1693,7 +1865,7 @@ function Echo({ user }: { user: User }) {
       <Suspense fallback={null}>
         <SubscriptionModal
           isOpen={showSubscriptionModal}
-          onClose={() => setShowSubscriptionModal(false)}
+          onClose={handleCloseSubscription}
           onSimulateSubscription={handleSimulateSubscription}
           isPremiumUser={isPremiumUser}
           onResetSubscription={handleResetSubscription}
@@ -1706,7 +1878,7 @@ function Echo({ user }: { user: User }) {
 
       {/* Sensor de proximidade no topo da tela para disparar a abertura suave da barra */}
       {!topbarPinned && !isTopbarVisible && !showSpaceSettingsModal && (
-        <div 
+        <div
           className="topbar-hover-sensor"
           onMouseEnter={showTopbar}
         />
@@ -1722,13 +1894,10 @@ function Echo({ user }: { user: User }) {
       />
 
       <TopBar
-        isTopbarVisible={isTopbarVisible}
         showTopbar={showTopbar}
         hideTopbar={hideTopbar}
         page={page}
         setPage={setPage}
-        pendingFriendCount={pendingFriendCount}
-        unreadDMs={unreadDMs}
         spaces={spaces}
         expandedSpace={expandedSpace}
         setExpandedSpace={setExpandedSpace}
@@ -1745,12 +1914,15 @@ function Echo({ user }: { user: User }) {
         savedMessages={savedMessages}
         setShowSavedMessagesModal={setShowSavedMessagesModal}
         topbarPinned={topbarPinned}
-        setTopbarPinned={setTopbarPinned}
+        setTopbarPinned={_setTopbarPinned}
+        isTopbarVisible={isTopbarVisible}
+        pendingFriendCount={pendingFriendCount}
+        unreadDMs={unreadDMs}
         currentUserId={user.id}
       />
 
-      <section 
-        className="workspace" 
+      <section
+        className="workspace"
         style={{ display: page === 'Servidores' ? undefined : 'none' }}
       >
         {/* 2. CHANNELS SIDEBAR FOR ACTIVE SERVER (240px) */}
@@ -1758,6 +1930,12 @@ function Echo({ user }: { user: User }) {
           <ChannelsSidebar
             spaces={spaces}
             expandedSpace={expandedSpace}
+            spaceChannels={spaceChannels}
+            selectedChannel={selectedChannel}
+            setSelectedChannel={setSelectedChannel}
+            spaceMembers={spaceMembers}
+            spaceVoiceUsers={spaceVoiceUsers}
+            unreadChannels={unreadChannels}
             user={user}
             profileDisplayName={profileDisplayName}
             profileAvatarUrl={profileAvatarUrl}
@@ -1769,7 +1947,7 @@ function Echo({ user }: { user: User }) {
             toggleTheme={toggleTheme}
             setPage={setPage}
             setShowWhatsNewModal={setShowWhatsNewModal}
-            onSignOut={() => supabase?.auth.signOut()}
+            onSignOut={handleSignOut}
             myGamePresence={myGamePresence}
             avatarDecoration={avatarDecoration}
             setAddSpaceModalTab={setAddSpaceModalTab}
@@ -1796,11 +1974,6 @@ function Echo({ user }: { user: User }) {
             channelSearchInputRef={channelSearchInputRef}
             collapsedCategories={collapsedCategories}
             toggleCategoryCollapse={toggleCategoryCollapse}
-            spaceChannels={spaceChannels}
-            unreadChannels={unreadChannels}
-            selectedChannel={selectedChannel}
-            setSelectedChannel={setSelectedChannel}
-            spaceVoiceUsers={spaceVoiceUsers}
             activeVoiceChannelId={activeVoiceChannelId}
             participants={participants}
             handleJoinVoice={handleJoinVoice}
@@ -1823,7 +1996,6 @@ function Echo({ user }: { user: User }) {
             recordingDuration={recordingDuration}
             canUserDo={canUserDo}
             setVolumeControlUser={setVolumeControlUser}
-            spaceMembers={spaceMembers}
             isConnected={isConnected}
             showToast={showToast}
             newChannelIsPrivate={newChannelIsPrivate}
@@ -1833,13 +2005,8 @@ function Echo({ user }: { user: User }) {
             serverRoles={serverRoles}
             memberRoleMap={memberRoleMap}
             onWatchStream={handleWatchUserStream}
-            onInspectMember={(member) => setInspectedMember(member)}
-            onOpenDM={(targetUserId: string) => {
-              setSelectedDMUserId(targetUserId)
-              setUnreadDMs(prev => { const next = { ...prev }; delete next[targetUserId]; return next })
-              loadDirectMessages(targetUserId)
-              setPage('Amigos')
-            }}
+            onInspectMember={handleInspectMember}
+            onOpenDM={handleOpenDMAndNavigate}
             presenceData={presenceData}
             moveParticipant={handleMoveParticipant}
             serverMuteParticipant={handleServerMute}
@@ -1856,7 +2023,8 @@ function Echo({ user }: { user: User }) {
             {selectedChannel && (!expandedSpace || selectedChannel.space_id === expandedSpace) ? (
               selectedChannel.type === 'text' ? (
                 <ErrorBoundary name="Chat de Texto">
-                  <TextChannelView
+                  <Suspense fallback={<div className="loading-screen"><div className="loader" /><span>Carregando chat…</span></div>}>
+                    <TextChannelView
                     currentSpace={currentSpace}
                     selectedChannel={selectedChannel}
                     messages={messages}
@@ -1911,15 +2079,11 @@ function Echo({ user }: { user: User }) {
                     setShowMembersList={setShowMembersList}
                     pinnedMessages={pinnedMessages}
                     togglePinMessage={togglePinMessage}
-                    spaceMembers={spaceMembers}
-                    spaceChannels={spaceChannels}
                     activeVoiceChannelId={activeVoiceChannelId}
                     participants={participants}
-                    spaceVoiceUsers={spaceVoiceUsers}
-                    presenceStatus={presenceStatus}
                     myGamePresence={myGamePresence}
                     setSpaceForAddMembers={setSpaceForAddMembers}
-                    setInspectedMember={setInspectedMember}
+                    setInspectedMember={handleInspectMember}
                     setHoveredMemberPopover={setHoveredMemberPopover}
                     hoverTimeoutRef={hoverTimeoutRef}
                     postChannelMessage={postChannelMessage}
@@ -1931,31 +2095,29 @@ function Echo({ user }: { user: User }) {
                     typingUsers={typingUsers}
                     notifyTyping={notifyTyping}
                   />
+                  </Suspense>
                 </ErrorBoundary>
               ) : (
                 <ErrorBoundary name="Canal de Voz">
-                  <VoiceChannelView
+                  <Suspense fallback={<div className="loading-screen"><div className="loader" /><span>Carregando canal de voz…</span></div>}>
+                    <VoiceChannelView
                     currentSpace={currentSpace}
                     selectedChannel={selectedChannel}
-                    spaceChannels={spaceChannels}
-                    spaceVoiceUsers={spaceVoiceUsers}
                     user={user}
                     profileDisplayName={profileDisplayName}
                     profileAvatarUrl={profileAvatarUrl}
                     avatarDecoration={avatarDecoration}
                     presenceData={presenceData}
                     onlineUsers={onlineUsers}
-                    presenceStatus={presenceStatus}
                     myGamePresence={myGamePresence}
                     nameEffect={nameEffect}
                     serverRoles={serverRoles}
                     memberRoleMap={memberRoleMap}
                     getUserHighestRole={getUserHighestRole}
                     setSpaceForAddMembers={setSpaceForAddMembers}
-                    setInspectedMember={setInspectedMember}
+                    setInspectedMember={handleInspectMember}
                     setHoveredMemberPopover={setHoveredMemberPopover}
                     hoverTimeoutRef={hoverTimeoutRef}
-                    spaceMembers={spaceMembers}
                     activeVoiceChannelId={activeVoiceChannelId}
                     isConnected={isConnected}
                     participants={participants}
@@ -1994,7 +2156,7 @@ function Echo({ user }: { user: User }) {
                     screenFps={screenFps}
                     handleFpsChange={handleFpsChange}
                     isPremiumUser={isPremiumUser}
-                    onOpenSubscription={() => setShowSubscriptionModal(true)}
+                    onOpenSubscription={handleOpenSubscription}
                     activeSharingSource={activeSharingSource}
                     peerScreenVolumes={peerScreenVolumes}
                     setPeerScreenVolumes={setPeerScreenVolumes}
@@ -2035,6 +2197,7 @@ function Echo({ user }: { user: User }) {
                     showScreenMenu={showScreenMenu}
                     setShowScreenMenu={setShowScreenMenu}
                   />
+                  </Suspense>
                 </ErrorBoundary>
               )
             ) : (
@@ -2049,8 +2212,8 @@ function Echo({ user }: { user: User }) {
 
       <div style={{ display: page === 'Amigos' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}>
         <ErrorBoundary name="Amigos">
-          <FriendsView 
-            friendships={friendships}
+          <Suspense fallback={<div className="loading-screen"><div className="loader" /><span>Carregando amigos…</span></div>}>
+            <FriendsView
             friendTab={friendTab}
             setFriendTab={setFriendTab}
             friendSearchQuery={friendSearchQuery}
@@ -2067,47 +2230,22 @@ function Echo({ user }: { user: User }) {
             dmDraft={dmDraft}
             setDmDraft={setDmDraft}
             unreadDMs={unreadDMs}
-            onOpenDM={(friendId: string) => {
-              setSelectedDMUserId(friendId)
-              setUnreadDMs(prev => { const next = { ...prev }; delete next[friendId]; return next })
-              loadDirectMessages(friendId)
-            }}
-            onSendDM={async (e: FormEvent) => {
-              e.preventDefault()
-              if (!dmDraft.trim()) return
-              await sendDirectMessage(dmDraft.trim())
-            }}
-            onCloseDM={() => { setSelectedDMUserId(null); setDirectMessages([]) }}
+            onOpenDM={handleOpenDM}
+            onSendDM={handleSendDMForm}
+            onCloseDM={handleCloseDM}
             isUploading={isUploading}
-            onUploadFile={async (file: File, caption?: string) => {
-              if (!supabase) return
-              setIsUploading(true)
-              const rawExt = file.name && file.name.includes('.') ? file.name.split('.').pop() : (file.type.split('/')[1] || 'png')
-              const ext = (rawExt || 'png').replace(/[^a-zA-Z0-9]/g, '')
-              const path = `dm/${user.id}/${Date.now()}.${ext}`
-              const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file)
-              if (uploadError) { setError(uploadError.message); setIsUploading(false); return }
-              const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
-              const fileType = file.type.startsWith('image/') ? 'image' : 'file'
-              const messageText = caption && caption.trim() ? caption.trim() : (dmDraft.trim() || file.name || 'Imagem')
-              await sendDirectMessage(messageText, urlData.publicUrl, fileType)
-              setIsUploading(false)
-            }}
+            onUploadFile={handleUploadDMFile}
             profileDisplayName={profileDisplayName}
             profileAvatarUrl={profileAvatarUrl}
             myGamePresence={myGamePresence}
-            theme={theme}
             toggleTheme={toggleTheme}
-            setPage={setPage}
-            onSignOut={() => supabase?.auth.signOut()}
-            presenceStatus={presenceStatus}
+            onSignOut={handleSignOut}
             showStatusMenu={showStatusMenu}
             setShowStatusMenu={setShowStatusMenu}
             updatePresenceStatus={updatePresenceStatus}
-            spaceMembers={spaceMembers}
             showToast={showToast}
-            onInspectMember={(member) => setInspectedMember(member)}
-            onOpenWhatsNew={() => setShowWhatsNewModal(true)}
+            onInspectMember={handleInspectMember}
+            onOpenWhatsNew={handleOpenWhatsNew}
             avatarDecoration={avatarDecoration}
             onStartCall={startDirectCall}
             activeDirectCall={activeDirectCall}
@@ -2116,17 +2254,10 @@ function Echo({ user }: { user: User }) {
             isDeafened={isDeafened}
             toggleMute={handleToggleMute}
             toggleDeafen={handleToggleDeafen}
-            knownProfiles={knownProfiles}
             recentDMUserIds={recentDMUserIds}
-            onRemoveRecentDM={(dmId) => {
-              setRecentDMUserIds(prev => prev.filter(id => id !== dmId))
-              if (selectedDMUserId === dmId) {
-                setSelectedDMUserId(null)
-                setDirectMessages([])
-              }
-            }}
+            onRemoveRecentDM={handleRemoveRecentDM}
             onAddFriend={sendFriendRequestToUser}
-            onStartVoiceNote={() => startVoiceNoteRecording('dm')}
+            onStartVoiceNote={handleStartVoiceNoteDM}
             onStopVoiceNote={stopVoiceNoteRecording}
             onCancelVoiceNote={cancelVoiceNoteRecording}
             isVoiceNoteRecording={isVoiceNoteRecording}
@@ -2137,19 +2268,13 @@ function Echo({ user }: { user: User }) {
             voiceNoteAudioRef={voiceNoteAudioRef}
             handleToggleVoicePlay={handleToggleVoicePlay}
             onDeleteDM={handleDeleteDM}
-            onToggleSaveDM={(msg, targetUser) => {
-              toggleSaveMessage(msg, 'dm', {
-                sourceName: `@${targetUser.display_name}`,
-                dmUserId: targetUser.id
-              })
-            }}
+            onToggleSaveDM={handleToggleSaveDM}
             isMessageSaved={isMessageSaved}
             isFriendTyping={isFriendTyping}
             notifyDMTyping={notifyDMTyping}
-            blockedUserIds={blockedUserIds}
             onBlockUser={blockUser}
             onUnblockUser={unblockUser}
-            onSendDMSticker={(url, name) => sendDirectMessage(name ? `[Sticker: ${name}]` : 'Sticker', url, 'sticker')}
+            onSendDMSticker={handleSendDMSticker}
             groupChats={groupChats}
             selectedGroupId={selectedGroupId}
             setSelectedGroupId={setSelectedGroupId}
@@ -2165,16 +2290,17 @@ function Echo({ user }: { user: User }) {
             notifyGroupTyping={notifyGroupTyping}
             onDeleteGroupMessage={deleteGroupMessage}
           />
+          </Suspense>
         </ErrorBoundary>
       </div>
 
       <div style={{ display: page === 'Configurações' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}>
         <ErrorBoundary name="Configurações">
           <Suspense fallback={null}>
-            <SettingsView 
+            <SettingsView
               userId={user.id}
             userCreatedAt={user.created_at}
-            isServerOwner={spaces.some(s => s.creator_id === user.id)}
+            isServerOwner={isServerOwner}
             currentDisplayName={profileDisplayName}
             currentAvatarUrl={profileAvatarUrl}
             avatarDecoration={avatarDecoration}
@@ -2188,69 +2314,10 @@ function Echo({ user }: { user: User }) {
             onEquipCardFinish={handleEquipCardFinish}
             onEquipNameEffect={handleEquipNameEffect}
             initialTab={settingsInitialTab}
-            onOpenShop={(targetTab) => {
-              if (targetTab) setShopInitialTab(targetTab)
-              setPage('Loja')
-            }}
+            onOpenShop={handleOpenShopFromSettings}
             customStatus={customStatus}
-            onProfileUpdate={(name, avatar, bannerUrl, bannerPreset) => {
-              setProfileDisplayName(name)
-              setProfileAvatarUrl(avatar)
-              updateLocalProfile(name, avatar)
-              if (user) {
-                setSpaceMembers(prev => prev.map(m => (m?.user?.id === user.id || m?.id === user.id) ? { 
-                  ...m, 
-                  user: { 
-                    ...(m.user || {}), 
-                    display_name: name, 
-                    avatar_url: avatar,
-                    banner_url: bannerUrl !== undefined ? bannerUrl : (m.user as any)?.banner_url,
-                    banner_preset: bannerPreset !== undefined ? bannerPreset : (m.user as any)?.banner_preset
-                  } 
-                } : m))
-                if (presenceChannelRef.current) {
-                  const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
-                  const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
-                  const gameData = presenceStatus === 'invisible' ? null : myGamePresence
-                  const rawBanner = bannerUrl || localStorage.getItem(`echo-banner-custom-${user.id}`) || ''
-                  const safeBanner = (rawBanner && !rawBanner.startsWith('data:') && rawBanner.length < 2048) ? rawBanner : ''
-                  const preset = bannerPreset || localStorage.getItem(`echo-banner-preset-${user.id}`) || 'synthwave'
-                  presenceChannelRef.current.track({
-                    user_id: user.id,
-                    display_name: name,
-                    avatar_url: avatar,
-                    online_at: new Date().toISOString(),
-                    custom_status: customStatus,
-                    presence_status: presenceStatus,
-                    current_game: gameData,
-                    avatar_decoration: curDeco,
-                    profile_effect: curEff,
-                    banner_custom: safeBanner,
-                    banner_preset: preset,
-                    banner_url: safeBanner
-                  }).catch(() => {})
-                }
-              }
-            }}
-            onCustomStatusUpdate={async (status) => {
-              setCustomStatus(status)
-              localStorage.setItem('echo-custom-status', status)
-              if (presenceChannelRef.current) {
-                const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
-                const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
-                const gameData = presenceStatus === 'invisible' ? null : myGamePresence
-                await presenceChannelRef.current.track({
-                  user_id: user.id,
-                  display_name: profileDisplayName,
-                  online_at: new Date().toISOString(),
-                  custom_status: status,
-                  presence_status: presenceStatus,
-                  current_game: gameData,
-                  avatar_decoration: curDeco,
-                  profile_effect: curEff
-                })
-              }
-            }}
+            onProfileUpdate={handleProfileUpdate}
+            onCustomStatusUpdate={handleCustomStatusUpdate}
             audioInputs={audioInputs}
             audioOutputs={audioOutputs}
             selectedInputId={selectedInputId}
@@ -2265,7 +2332,7 @@ function Echo({ user }: { user: User }) {
             showStatusMenu={showStatusMenu}
             setShowStatusMenu={setShowStatusMenu}
             updatePresenceStatus={updatePresenceStatus}
-            onOpenWhatsNew={() => setShowWhatsNewModal(true)}
+            onOpenWhatsNew={handleOpenWhatsNew}
             myGamePresence={myGamePresence}
             theme={theme}
             toggleTheme={toggleTheme}
@@ -2276,50 +2343,20 @@ function Echo({ user }: { user: User }) {
             userEmail={user?.email || ''}
             onSubscriptionSuccess={handleSimulateSubscription}
             setPage={setPage}
-            onSignOut={() => supabase?.auth.signOut()}
+            onSignOut={handleSignOut}
             noiseSuppressionEnabled={noiseSuppressionEnabled}
             echoCancellationEnabled={echoCancellationEnabled}
-            onNoiseSuppressionChange={(val) => {
-              setNoiseSuppressionEnabled(val)
-              localStorage.setItem('echo-noise-suppression', val ? 'true' : 'false')
-              if (activeVoiceChannelId) {
-                changeInputDevice(selectedInputId, val, echoCancellationEnabled)
-              }
-            }}
-            onEchoCancellationChange={(val) => {
-              setEchoCancellationEnabled(val)
-              localStorage.setItem('echo-echo-cancellation', val ? 'true' : 'false')
-              if (activeVoiceChannelId) {
-                changeInputDevice(selectedInputId, noiseSuppressionEnabled, val)
-              }
-            }}
+            onNoiseSuppressionChange={handleNoiseSuppressionChange}
+            onEchoCancellationChange={handleEchoCancellationChange}
             sfxVolume={sfxVolume}
-            onSfxVolumeChange={(val) => {
-              setSfxVolume(val)
-              localStorage.setItem('echo-sfx-volume', val.toString())
-            }}
+            onSfxVolumeChange={handleSfxVolumeChange}
             noiseGateEnabled={noiseGateEnabled}
             noiseGateThreshold={noiseGateThreshold}
-            onNoiseGateEnabledChange={(val) => {
-              setNoiseGateEnabled(val)
-              localStorage.setItem('echo-noise-gate-enabled', val ? 'true' : 'false')
-            }}
-            onNoiseGateThresholdChange={(val) => {
-              setNoiseGateThreshold(val)
-              localStorage.setItem('echo-noise-gate-threshold', val.toString())
-            }}
+            onNoiseGateEnabledChange={handleNoiseGateEnabledChange}
+            onNoiseGateThresholdChange={handleNoiseGateThresholdChange}
             spatialAudioEnabled={spatialAudioEnabled}
-            onToggleSpatialAudio={(val) => {
-              setSpatialAudioEnabledState(val)
-              localStorage.setItem('echo-spatial-audio-enabled', val ? 'true' : 'false')
-            }}
-            onResetAllPans={() => {
-              setUserStereoPans({})
-              localStorage.removeItem('echo-user-stereo-pans')
-              participants.forEach(p => {
-                changePeerPan(p.userId, 0)
-              })
-            }}
+            onToggleSpatialAudio={handleToggleSpatialAudio}
+            onResetAllPans={handleResetAllPans}
             isAiDenoiseEnabled={isAiDenoiseEnabled}
             onToggleAiDenoise={toggleAiDenoise}
             customAccentColor={customAccentColor}
@@ -2351,35 +2388,71 @@ function Echo({ user }: { user: User }) {
       </div>
 
       <div style={{ display: page === 'Loja' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}>
-        <EchoShop
-          userId={user.id}
-          displayName={profileDisplayName || displayName}
-          avatarUrl={profileAvatarUrl}
-          currentDecoration={avatarDecoration}
-          currentProfileEffect={profileEffect}
-          currentAvatarFrame={avatarFrame}
-          currentCardFinish={cardFinish}
-          currentNameEffect={nameEffect}
-          onEquipDecoration={handleEquipDecoration}
-          onEquipProfileEffect={handleEquipProfileEffect}
-          onEquipAvatarFrame={handleEquipAvatarFrame}
-          onEquipCardFinish={handleEquipCardFinish}
-          onEquipNameEffect={handleEquipNameEffect}
-          initialTab={shopInitialTab}
-          onOpenInventory={() => {
-            setSettingsInitialTab('inventory')
-            setPage('Configurações')
-          }}
-          onClose={() => setPage('Servidores')}
-        />
+        <ErrorBoundary name="Loja">
+          <Suspense fallback={<div className="empty-main"><div className="loader" /><span>Carregando Loja…</span></div>}>
+            <EchoShop
+              userId={user.id}
+              displayName={profileDisplayName || displayName}
+              avatarUrl={profileAvatarUrl}
+              currentDecoration={avatarDecoration}
+              currentProfileEffect={profileEffect}
+              currentAvatarFrame={avatarFrame}
+              currentCardFinish={cardFinish}
+              currentNameEffect={nameEffect}
+              onEquipDecoration={handleEquipDecoration}
+              onEquipProfileEffect={handleEquipProfileEffect}
+              onEquipAvatarFrame={handleEquipAvatarFrame}
+              onEquipCardFinish={handleEquipCardFinish}
+              onEquipNameEffect={handleEquipNameEffect}
+              initialTab={shopInitialTab}
+              onOpenInventory={() => {
+                setSettingsInitialTab('inventory')
+                setPage('Configurações')
+              }}
+              onClose={() => setPage('Servidores')}
+            />
+          </Suspense>
+        </ErrorBoundary>
       </div>
 
-
-
-      {/* Create/Join Space Modal (Discord-Style) */}
-      <AddSpaceModal
-        isOpen={showAddSpaceModal}
-        onClose={() => setShowAddSpaceModal(false)}
+      {/* Centralized Modal Manager (Discord & Echo Modals) */}
+      <ErrorBoundary name="Gerenciador de Modais">
+        <ModalManager
+        user={user}
+        displayName={displayName}
+        profileDisplayName={profileDisplayName}
+        profileEffect={profileEffect}
+        avatarDecoration={avatarDecoration}
+        onlineUsers={onlineUsers}
+        participants={participants}
+        presenceData={presenceData}
+        presenceStatus={presenceStatus}
+        myGamePresence={myGamePresence}
+        spaces={spaces}
+        expandedSpace={expandedSpace}
+        setExpandedSpace={setExpandedSpace}
+        selectedChannel={selectedChannel}
+        setSelectedChannel={setSelectedChannel}
+        spaceChannels={spaceChannels}
+        spaceMembers={spaceMembers}
+        activeVoiceChannel={activeVoiceChannel}
+        activeVoiceChannelId={activeVoiceChannelId}
+        isMuted={isMuted}
+        isDeafened={isDeafened}
+        handleToggleMute={handleToggleMute}
+        handleToggleDeafen={handleToggleDeafen}
+        handleJoinVoice={handleJoinVoice}
+        showToast={showToast}
+        friendships={friendships}
+        sendFriendRequestToUser={sendFriendRequestToUser}
+        acceptFriendRequest={acceptFriendRequest}
+        handleOpenDirectChat={handleOpenDirectChat}
+        blockedUserIds={blockedUserIds}
+        blockUser={blockUser}
+        unblockUser={unblockUser}
+        setPage={setPage}
+        showAddSpaceModal={showAddSpaceModal}
+        setShowAddSpaceModal={setShowAddSpaceModal}
         addSpaceModalTab={addSpaceModalTab}
         setAddSpaceModalTab={setAddSpaceModalTab}
         newSpace={newSpace}
@@ -2390,12 +2463,8 @@ function Echo({ user }: { user: User }) {
         setJoinSpaceCode={setJoinSpaceCode}
         joining={joining}
         joinSpace={joinSpace}
-      />
-
-      {/* Discord-Style Go Live 2.0 Screen Selection Modal */}
-      <ScreenPickerModal
-        isOpen={showScreenPicker}
-        onClose={() => setShowScreenPicker(false)}
+        showScreenPicker={showScreenPicker}
+        setShowScreenPicker={setShowScreenPicker}
         screenSources={screenSources}
         setScreenSources={setScreenSources}
         screenPickerTab={screenPickerTab}
@@ -2408,264 +2477,124 @@ function Echo({ user }: { user: User }) {
         screenFps={screenFps}
         setScreenFps={setScreenFps}
         isPremiumUser={isPremiumUser}
-        onOpenSubscription={() => setShowSubscriptionModal(true)}
-      />
-
-      {/* Echo Space Studio Deck (Modern Non-Discord Settings Architecture) */}
-      <Suspense fallback={null}>
-        <SpaceStudioModal
-          isOpen={showSpaceSettingsModal}
-          onClose={() => setShowSpaceSettingsModal(false)}
-          editingSpace={editingSpace}
-          user={user}
-          profileDisplayName={profileDisplayName}
-          displayName={displayName}
-          serverRoles={serverRoles}
-          serverEmojis={serverEmojis}
-          serverAuditLogs={serverAuditLogs}
-          editingSpaceMembers={editingSpaceMembers}
-          loadingEditingMembers={loadingEditingMembers}
-          memberRoleMap={memberRoleMap}
-          spaceChannels={spaceChannels}
-          mutedSpaces={mutedSpaces}
-          toggleMuteSpace={toggleMuteSpace}
-          activeSpaceTab={activeSpaceTab}
-          setActiveSpaceTab={setActiveSpaceTab}
-          editingSpaceName={editingSpaceName}
-          setEditingSpaceName={setEditingSpaceName}
-          editingSpaceDescription={editingSpaceDescription}
-          setEditingSpaceDescription={setEditingSpaceDescription}
-          editingSpaceIconUrl={editingSpaceIconUrl}
-          setEditingSpaceIconUrl={setEditingSpaceIconUrl}
-          editingSpaceBannerUrl={editingSpaceBannerUrl}
-          setEditingSpaceBannerUrl={setEditingSpaceBannerUrl}
-          editingSpaceBannerTheme={editingSpaceBannerTheme}
-          setEditingSpaceBannerTheme={setEditingSpaceBannerTheme}
-          editingSpaceWelcomeChannelId={editingSpaceWelcomeChannelId}
-          setEditingSpaceWelcomeChannelId={setEditingSpaceWelcomeChannelId}
-          uploadingSpaceIcon={uploadingSpaceIcon}
-          uploadingSpaceBanner={uploadingSpaceBanner}
-          memberSearchQuery={memberSearchQuery}
-          setMemberSearchQuery={setMemberSearchQuery}
-          selectedRoleId={selectedRoleId}
-          setSelectedRoleId={setSelectedRoleId}
-          selectedMemberId={selectedMemberId}
-          setSelectedMemberId={setSelectedMemberId}
-          newEmojiName={newEmojiName}
-          setNewEmojiName={setNewEmojiName}
-          uploadingEmoji={uploadingEmoji}
-          editingChannelSettingsId={editingChannelSettingsId}
-          setEditingChannelSettingsId={setEditingChannelSettingsId}
-          setShowNewChannel={setShowNewChannel}
-          setNewChannelCategory={setNewChannelCategory}
-          setNewChannelName={setNewChannelName}
-          setNewChannelTopic={setNewChannelTopic}
-          handleSpaceIconUpload={handleSpaceIconUpload}
-          handleRemoveSpaceIcon={handleRemoveSpaceIcon}
-          handleSpaceBannerUpload={handleSpaceBannerUpload}
-          handleRemoveSpaceBanner={handleRemoveSpaceBanner}
-          handleSaveSpaceSettings={handleSaveSpaceSettings}
-          handleCreateRole={handleCreateRole}
-          handleUpdateRole={handleUpdateRole}
-          handleDeleteRole={handleDeleteRole}
-          moveRole={moveRole}
-          handleCreateEmoji={handleCreateEmoji}
-          handleDeleteEmoji={handleDeleteEmoji}
-          moveChannel={moveChannel}
-          updateChannelSettings={updateChannelSettings}
-          renameChannel={renameChannel}
-          deleteChannel={deleteChannel}
-          getUserHighestRole={getUserHighestRole}
-          canUserDo={canUserDo}
-          toggleMemberRole={toggleMemberRole}
-          handleRoleChange={handleRoleChange}
-          handleKickMember={handleKickMember}
-          handleDeleteSpace={handleDeleteSpace}
-          loadSpaceEmojis={loadSpaceEmojis}
-          loadEditingSpaceMembers={loadEditingSpaceMembers}
-          showToast={showToast}
-        />
-      </Suspense>
-
-      {/* User Volume & 3D Spatial Audio Positioning Modal */}
-      {(() => {
-        const currentSpaceId = activeVoiceChannel?.space_id || selectedChannel?.space_id || expandedSpace || undefined
-        const currentSpace = spaces.find(s => s.id === currentSpaceId)
-        const isSpaceOwner = currentSpace ? currentSpace.creator_id === user.id : false
-        const availableVoiceChannels = currentSpaceId && spaceChannels[currentSpaceId]
-          ? spaceChannels[currentSpaceId].filter(c => c.type === 'voice' && c.id !== activeVoiceChannelId)
-          : []
-
-        return (
-          <VolumeControlModal
-            volumeControlUser={volumeControlUser}
-            onClose={() => setVolumeControlUser(null)}
-            userVolumes={userVolumes}
-            setUserVolumes={setUserVolumes}
-            userStereoPans={userStereoPans}
-            setUserStereoPans={setUserStereoPans}
-            changePeerPan={changePeerPan}
-            spatialAudioEnabled={spatialAudioEnabled}
-            setSpatialAudioEnabledState={setSpatialAudioEnabledState}
-            participants={participants}
-            currentUserId={user.id}
-            spaceId={currentSpaceId}
-            isSpaceOwner={isSpaceOwner}
-            canUserDo={canUserDo}
-            availableVoiceChannels={availableVoiceChannels}
-            serverMuteParticipant={handleServerMute}
-            disconnectParticipant={handleDisconnectParticipant}
-            moveParticipant={handleMoveParticipant}
-          />
-        )
-      })()}
-
-      {/* Custom Confirmation Modal */}
-      <ConfirmModal
-        config={confirmModalConfig}
-        onClose={() => setConfirmModalConfig(null)}
-      />
-
-      {/* Member Profile Card Modal */}
-      <MemberProfileModalWrapper
-        inspectedMember={inspectedMember}
-        onClose={() => setInspectedMember(null)}
-        user={user}
-        onlineUsers={onlineUsers}
-        participants={participants}
-        presenceData={presenceData}
-        presenceStatus={presenceStatus}
-        myGamePresence={myGamePresence}
-        spaces={spaces}
-        expandedSpace={expandedSpace}
-        avatarDecoration={avatarDecoration}
-        profileEffect={profileEffect}
-        activeVoiceChannel={activeVoiceChannel}
-        showToast={showToast}
-        friendships={friendships}
-        onAddFriend={sendFriendRequestToUser}
-        onAcceptFriend={acceptFriendRequest}
-        handleOpenDirectChat={handleOpenDirectChat}
+        setShowSubscriptionModal={setShowSubscriptionModal}
+        showSpaceSettingsModal={showSpaceSettingsModal}
+        setShowSpaceSettingsModal={setShowSpaceSettingsModal}
+        editingSpace={editingSpace}
+        serverRoles={serverRoles}
+        serverEmojis={serverEmojis}
+        serverAuditLogs={serverAuditLogs}
+        editingSpaceMembers={editingSpaceMembers}
+        loadingEditingMembers={loadingEditingMembers}
+        memberRoleMap={memberRoleMap}
+        mutedSpaces={mutedSpaces}
+        toggleMuteSpace={toggleMuteSpace}
+        activeSpaceTab={activeSpaceTab}
+        setActiveSpaceTab={setActiveSpaceTab}
+        editingSpaceName={editingSpaceName}
+        setEditingSpaceName={setEditingSpaceName}
+        editingSpaceDescription={editingSpaceDescription}
+        setEditingSpaceDescription={setEditingSpaceDescription}
+        editingSpaceIconUrl={editingSpaceIconUrl}
+        setEditingSpaceIconUrl={setEditingSpaceIconUrl}
+        editingSpaceBannerUrl={editingSpaceBannerUrl}
+        setEditingSpaceBannerUrl={setEditingSpaceBannerUrl}
+        editingSpaceBannerTheme={editingSpaceBannerTheme}
+        setEditingSpaceBannerTheme={setEditingSpaceBannerTheme}
+        editingSpaceWelcomeChannelId={editingSpaceWelcomeChannelId}
+        setEditingSpaceWelcomeChannelId={setEditingSpaceWelcomeChannelId}
+        uploadingSpaceIcon={uploadingSpaceIcon}
+        uploadingSpaceBanner={uploadingSpaceBanner}
+        memberSearchQuery={memberSearchQuery}
+        setMemberSearchQuery={setMemberSearchQuery}
+        selectedRoleId={selectedRoleId}
+        setSelectedRoleId={setSelectedRoleId}
+        selectedMemberId={selectedMemberId}
+        setSelectedMemberId={setSelectedMemberId}
+        newEmojiName={newEmojiName}
+        setNewEmojiName={setNewEmojiName}
+        uploadingEmoji={uploadingEmoji}
+        editingChannelSettingsId={editingChannelSettingsId}
+        setEditingChannelSettingsId={setEditingChannelSettingsId}
+        setShowNewChannel={setShowNewChannel}
+        setNewChannelCategory={setNewChannelCategory}
+        setNewChannelName={setNewChannelName}
+        setNewChannelTopic={setNewChannelTopic}
+        handleSpaceIconUpload={handleSpaceIconUpload}
+        handleRemoveSpaceIcon={handleRemoveSpaceIcon}
+        handleSpaceBannerUpload={handleSpaceBannerUpload}
+        handleRemoveSpaceBanner={handleRemoveSpaceBanner}
+        handleSaveSpaceSettings={handleSaveSpaceSettings}
+        handleCreateRole={handleCreateRole}
+        handleUpdateRole={handleUpdateRole}
+        handleDeleteRole={handleDeleteRole}
+        moveRole={moveRole}
+        handleCreateEmoji={handleCreateEmoji}
+        handleDeleteEmoji={handleDeleteEmoji}
+        moveChannel={moveChannel}
+        updateChannelSettings={updateChannelSettings}
+        renameChannel={renameChannel}
+        deleteChannel={deleteChannel}
+        getUserHighestRole={getUserHighestRole}
+        canUserDo={canUserDo}
+        toggleMemberRole={toggleMemberRole}
+        handleRoleChange={handleRoleChange}
+        handleKickMember={handleKickMember}
+        handleDeleteSpace={handleDeleteSpace}
+        loadSpaceEmojis={loadSpaceEmojis}
+        loadEditingSpaceMembers={loadEditingSpaceMembers}
+        volumeControlUser={volumeControlUser}
         setVolumeControlUser={setVolumeControlUser}
-        blockedUserIds={blockedUserIds}
-        onBlockUser={blockUser}
-        onUnblockUser={unblockUser}
-      />
-
-      {/* Member Hover Popover Card */}
-      <HoveredMemberPopover
+        userVolumes={userVolumes}
+        setUserVolumes={setUserVolumes}
+        userStereoPans={userStereoPans}
+        setUserStereoPans={setUserStereoPans}
+        changePeerPan={changePeerPan}
+        spatialAudioEnabled={spatialAudioEnabled}
+        setSpatialAudioEnabledState={setSpatialAudioEnabledState}
+        handleServerMute={handleServerMute}
+        handleDisconnectParticipant={handleDisconnectParticipant}
+        handleMoveParticipant={handleMoveParticipant}
+        confirmModalConfig={confirmModalConfig}
+        setConfirmModalConfig={setConfirmModalConfig}
+        inspectedMember={inspectedMember}
+        setInspectedMember={setInspectedMember}
         hoveredMemberPopover={hoveredMemberPopover}
         setHoveredMemberPopover={setHoveredMemberPopover}
-        setInspectedMember={setInspectedMember}
         hoverTimeoutRef={hoverTimeoutRef}
-        currentUserId={user.id}
-        currentUserProfileEffect={profileEffect}
-        currentUserAvatarDecoration={avatarDecoration}
-        presenceData={presenceData}
-        onOpenDM={(targetUserId) => {
-          handleOpenDirectChat(targetUserId)
-          setPage('Amigos')
-        }}
-        blockedUserIds={blockedUserIds}
-        onBlockUser={blockUser}
-        onUnblockUser={unblockUser}
-      />
-
-      {/* Canal / Voice Channel Invite Modal (Discord-style) */}
-      {channelForInvite && (
-        <ChannelInviteModal
-          channel={channelForInvite.channel}
-          space={channelForInvite.space}
-          onClose={() => setChannelForInvite(null)}
-          friendships={friendships}
-          onSendDMInvite={async (friendUserId, inviteMessage) => {
-            if (!supabase || !user) return
-            await supabase.from('direct_messages').insert({
-              sender_id: user.id,
-              receiver_id: friendUserId,
-              body: inviteMessage
-            })
-            socialChannelRef.current?.send({
-              type: 'broadcast',
-              event: 'dm-event',
-              payload: {
-                receiverId: friendUserId,
-                senderId: user.id,
-                senderName: profileDisplayName || displayName || 'Amigo',
-                body: inviteMessage
-              }
-            })
-          }}
-          showToast={showToast}
-        />
-      )}
-
-      {/* Modal de Convidar / Adicionar Amigos ao Espaço */}
-      {spaceForAddMembers && (
-        <SpaceAddMembersModal
-          space={spaceForAddMembers}
-          onClose={() => setSpaceForAddMembers(null)}
-          friendships={friendships}
-          spaceMembers={spaceMembers}
-          onlineUsers={onlineUsers}
-          onAddMember={async (friend) => {
-            return await handleAddMemberToSpace(spaceForAddMembers.id, friend)
-          }}
-          showToast={showToast}
-        />
-      )}
-
-      {/* Soundboard Modal & Toast */}
-      <SoundboardModal
-        isOpen={showSoundboardModal}
-        onClose={() => setShowSoundboardModal(false)}
-        onPlaySound={playSoundboard}
-      />
-      <SoundboardToast lastEvent={lastSoundboardEvent} />
-
-      {/* O que há de novo / Novidades das Versões Modal */}
-      <WhatsNewModal 
-        isOpen={showWhatsNewModal} 
-        onClose={() => setShowWhatsNewModal(false)} 
-      />
-
-      {/* Mensagens Salvas com Estrela Modal */}
-      <SavedMessagesModal 
-        isOpen={showSavedMessagesModal}
-        onClose={() => setShowSavedMessagesModal(false)}
+        channelForInvite={channelForInvite}
+        setChannelForInvite={setChannelForInvite}
+        socialChannelRef={socialChannelRef}
+        spaceForAddMembers={spaceForAddMembers}
+        setSpaceForAddMembers={setSpaceForAddMembers}
+        handleAddMemberToSpace={handleAddMemberToSpace}
+        showSoundboardModal={showSoundboardModal}
+        setShowSoundboardModal={setShowSoundboardModal}
+        playSoundboard={playSoundboard}
+        lastSoundboardEvent={lastSoundboardEvent}
+        showWhatsNewModal={showWhatsNewModal}
+        setShowWhatsNewModal={setShowWhatsNewModal}
+        showSavedMessagesModal={showSavedMessagesModal}
+        setShowSavedMessagesModal={setShowSavedMessagesModal}
         savedMessages={savedMessages}
-        onUnstar={(msgId) => {
-          setSavedMessages(prev => prev.filter(m => m.id !== msgId))
-          showToast('Estrela removida', 'Mensagem removida dos seus itens salvos.', 'info')
-        }}
-        onJumpToMessage={handleJumpToSavedMessage}
-      />
-
-      {/* Visualizador de Imagens em Tela Cheia (Lightbox) */}
-      <ImageLightboxModal />
-
-      {/* AFK Modals */}
-      <AfkPromptModal
-        isOpen={showAfkPrompt}
+        setSavedMessages={setSavedMessages}
+        handleJumpToSavedMessage={handleJumpToSavedMessage}
+        showAfkPrompt={showAfkPrompt}
         afkCountdown={afkCountdown}
-        onStay={handleAfkStay}
+        handleAfkStay={handleAfkStay}
+        showAfkDisconnectedModal={showAfkDisconnectedModal}
+        setShowAfkDisconnectedModal={setShowAfkDisconnectedModal}
+        lastAfkChannelRef={lastAfkChannelRef}
+        lastActivityRef={lastActivityRef}
+        incomingCall={incomingCall}
+        acceptIncomingCall={acceptIncomingCall}
+        rejectIncomingCall={rejectIncomingCall}
       />
-      <AfkDisconnectedModal
-        isOpen={showAfkDisconnectedModal}
-        onClose={() => setShowAfkDisconnectedModal(false)}
-        canReconnect={!!lastAfkChannelRef.current?.channelId}
-        onReconnect={() => {
-          if (lastAfkChannelRef.current?.channelId) {
-            handleJoinVoice(lastAfkChannelRef.current.channelId, lastAfkChannelRef.current.spaceId)
-          }
-          setShowAfkDisconnectedModal(false)
-          lastActivityRef.current = Date.now()
-        }}
-      />
+      </ErrorBoundary>
 
       {/* Toast Notifications */}
-      <ToastContainer 
-        toasts={toasts} 
+      <ToastContainer
+        toasts={toasts}
         onRemoveToast={removeToast}
         onToastClick={(toast) => {
           if (toast.data?.type === 'dm' && toast.data.senderId) {
@@ -2691,69 +2620,32 @@ function Echo({ user }: { user: User }) {
 
       {/* Floating Picture-in-Picture Mini Player (Always on Top) */}
       {isPiPActive && activeScreenSharer && (
-        <EchoFloatingMiniPlayer
-          activeScreenSharers={activeScreenSharers}
-          activeScreenSharer={activeScreenSharer}
-          onSelectSharer={(uid) => {
-            setSelectedScreenSharerUserId(uid)
-          }}
-          peerScreenVolumes={peerScreenVolumes}
-          setPeerScreenVolumes={setPeerScreenVolumes}
-          onClose={() => setIsPiPActive(false)}
-          onExpand={() => {
-            setIsPiPActive(false)
-            if (activeVoiceChannelId) {
-              const allChannels = Object.values(spaceChannels).flat()
-              const ch = allChannels.find(c => c.id === activeVoiceChannelId)
-              if (ch) {
-                setSelectedChannel(ch)
-                setPage('Servidores')
-                setIsWatchingStreams(true)
-                setScreenShareViewMode('focus')
+        <ErrorBoundary name="Mini Player">
+          <EchoFloatingMiniPlayer
+            activeScreenSharers={activeScreenSharers}
+            activeScreenSharer={activeScreenSharer}
+            onSelectSharer={(uid) => {
+              setSelectedScreenSharerUserId(uid)
+            }}
+            peerScreenVolumes={peerScreenVolumes}
+            setPeerScreenVolumes={setPeerScreenVolumes}
+            onClose={() => setIsPiPActive(false)}
+            onExpand={() => {
+              setIsPiPActive(false)
+              if (activeVoiceChannelId) {
+                const allChannels = Object.values(spaceChannels).flat()
+                const ch = allChannels.find(c => c.id === activeVoiceChannelId)
+                if (ch) {
+                  setSelectedChannel(ch)
+                  setPage('Servidores')
+                  setIsWatchingStreams(true)
+                  setScreenShareViewMode('focus')
+                }
               }
-            }
-          }}
-        />
+            }}
+          />
+        </ErrorBoundary>
       )}
-
-      {/* 1v1 Incoming Direct Call Modal */}
-      <IncomingCallModal
-        incomingCall={incomingCall}
-        onAccept={acceptIncomingCall}
-        onReject={rejectIncomingCall}
-      />
-
-      {/* Global Command Palette (Ctrl+K / Cmd+K Spotlight) */}
-      <Suspense fallback={null}>
-        <CommandPaletteModal
-          spaces={spaces}
-          channels={Object.values(spaceChannels).flat()}
-          friendships={friendships}
-          isMuted={isMuted}
-          isDeafened={isDeafened}
-          toggleMute={handleToggleMute}
-          toggleDeafen={handleToggleDeafen}
-          onSelectSpace={(spaceId) => {
-            setExpandedSpace(spaceId)
-            setPage('Servidores')
-          }}
-          onSelectChannel={(ch) => {
-            setSelectedChannel(ch)
-            setExpandedSpace(ch.space_id)
-            setPage('Servidores')
-            if (ch.type === 'voice') {
-              handleJoinVoice(ch.id, ch.space_id)
-            }
-          }}
-          onSelectFriend={(friendId) => {
-            handleOpenDirectChat(friendId)
-            setPage('Amigos')
-          }}
-          setPage={setPage}
-          setShowSpaceStudio={setShowSpaceSettingsModal}
-          setShowSoundboard={setShowSoundboardModal}
-        />
-      </Suspense>
     </main>
   )
 }
@@ -2767,3 +2659,4 @@ function Placeholder({ page }: { page: Exclude<Page, 'Servidores' | 'Amigos' | '
     </section>
   )
 }
+

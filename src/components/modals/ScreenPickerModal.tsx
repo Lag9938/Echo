@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import {
   ColoredRocketIcon,
   ColoredRefreshIcon,
@@ -51,6 +52,17 @@ export function ScreenPickerModal({
   isPremiumUser?: boolean
   onOpenSubscription?: () => void
 }) {
+  const selectedSource = screenSources.find(s => s.id === selectedPickerSourceId)
+  const isScreenTab = screenPickerTab === 'screens' || selectedSource?.type === 'screen' || Boolean(selectedPickerSourceId?.startsWith('screen:'))
+  const isGame = Boolean(selectedSource?.isGame || (selectedSource?.name || '').toLowerCase().includes('(jogo)'))
+  const is60Allowed = isScreenTab || isGame
+
+  useEffect(() => {
+    if (isOpen && !is60Allowed && screenFps === 60) {
+      setScreenFps(30)
+    }
+  }, [isOpen, is60Allowed, screenFps, setScreenFps])
+
   if (!isOpen) return null
 
   return (
@@ -167,6 +179,11 @@ export function ScreenPickerModal({
                   className={`source-card ${isSelected ? 'selected' : ''}`} 
                   onClick={() => {
                     setSelectedPickerSourceId(source.id)
+                    const isThisGame = Boolean(source.isGame || (source.name || '').toLowerCase().includes('(jogo)'))
+                    const isThisScreen = screenPickerTab === 'screens' || source.type === 'screen' || source.id.startsWith('screen:')
+                    if (!isThisGame && !isThisScreen && screenFps === 60) {
+                      setScreenFps(30)
+                    }
                   }}
                   onDoubleClick={() => selectScreenSource(source.id)}
                 >
@@ -241,24 +258,45 @@ export function ScreenPickerModal({
           </div>
 
           <div className="picker-quality-col">
-            <span className="picker-section-label">TAXA DE QUADROS</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+              <span className="picker-section-label">TAXA DE QUADROS</span>
+              {!is60Allowed && (
+                <span style={{ fontSize: '10.5px', color: '#fca5a5', fontWeight: 600 }}>
+                  🔒 60 FPS restrito a Jogos e Telas
+                </span>
+              )}
+            </div>
             <div className="picker-chips-row">
-              {([15, 30, 60] as const).map(f => (
-                <button
-                  key={f}
-                  type="button"
-                  className={`picker-config-chip ${screenFps === f ? 'active' : ''} ${f === 60 ? 'fps-60' : ''}`}
-                  onClick={() => setScreenFps(f)}
-                >
-                  {f === 60 ? (
-                    <>
-                      <ColoredLightningIcon size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} /> 60 FPS
-                    </>
-                  ) : (
-                    `${f} FPS`
-                  )}
-                </button>
-              ))}
+              {([15, 30, 60] as const).map(f => {
+                const is60 = f === 60
+                const isLocked = is60 && !is60Allowed
+                return (
+                  <button
+                    key={f}
+                    type="button"
+                    disabled={isLocked}
+                    className={`picker-config-chip ${screenFps === f ? 'active' : ''} ${is60 ? 'fps-60' : ''} ${isLocked ? 'locked' : ''}`}
+                    onClick={() => {
+                      if (!isLocked) setScreenFps(f)
+                    }}
+                    title={isLocked ? "60 FPS liberado apenas para Jogos e Telas Inteiras (economiza recursos do sistema em navegadores e planilhas)" : undefined}
+                    style={isLocked ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
+                  >
+                    {is60 ? (
+                      <>
+                        <ColoredLightningIcon size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} /> 60 FPS
+                        {isLocked && (
+                          <span style={{ marginLeft: 5, fontSize: '9px', opacity: 0.8, textTransform: 'uppercase' }}>
+                            Jogos/Telas
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      `${f} FPS`
+                    )}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>

@@ -17,6 +17,7 @@ export interface UnifiedUserProfileFooterProps {
   onSignOut?: () => void
   myGamePresence?: { name: string; icon?: string; startedAt?: number } | null
   avatarDecoration?: string | null
+  userId?: string
 }
 
 export function UnifiedUserProfileFooter({

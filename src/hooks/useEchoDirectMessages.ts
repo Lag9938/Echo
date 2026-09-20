@@ -2,6 +2,11 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { DirectMessage, FriendshipRequest, Page } from '../types'
 import { trackMessageSent } from '../lib/analytics'
+import {
+  createAntiSpamState,
+  validateMessageAntiSpam,
+  shouldSendTypingNotification
+} from './useEchoMessagesCore'
 
 export interface UseEchoDirectMessagesOptions {
   user: User
@@ -51,10 +56,8 @@ export function useEchoDirectMessages({
   const dmTypingTimeoutRef = useRef<any>(null)
   const lastDMTypingSentRef = useRef<number>(0)
 
-  // Anti-Spam & Rate-Limiting refs
-  const recentDmTimestampsRef = useRef<number[]>([])
-  const lastDmTextRef = useRef<string>('')
-  const lastDmSentTimeRef = useRef<number>(0)
+  // Anti-Spam & Rate-Limiting ref
+  const antiSpamRef = useRef(createAntiSpamState())
 
   const [recentDMUserIds, setRecentDMUserIds] = useState<string[]>(() => {
     try {
@@ -164,25 +167,12 @@ export function useEchoDirectMessages({
       return
     }
 
-    const now = Date.now()
     const trimmedBody = body.trim()
-
-    // Proteção Anti-Flood / Rate Limiting (Máximo 4 mensagens em 4 segundos)
-    recentDmTimestampsRef.current = recentDmTimestampsRef.current.filter(t => now - t < 4000)
-    if (recentDmTimestampsRef.current.length >= 4) {
-      showToast('Calma aí!', 'Você está enviando mensagens rápido demais. Aguarde alguns segundos.', 'info')
+    const antiSpam = validateMessageAntiSpam(antiSpamRef.current, trimmedBody)
+    if (!antiSpam.allowed) {
+      if (antiSpam.toastTitle && antiSpam.toastMessage) showToast(antiSpam.toastTitle, antiSpam.toastMessage, 'info')
       return
     }
-
-    // Proteção Anti-Spam de repetição consecutiva (em menos de 2s)
-    if (trimmedBody && trimmedBody === lastDmTextRef.current && (now - lastDmSentTimeRef.current) < 2000) {
-      showToast('Spam Detectado', 'Evite enviar a mesma mensagem repetidamente.', 'info')
-      return
-    }
-
-    recentDmTimestampsRef.current.push(now)
-    lastDmTextRef.current = trimmedBody
-    lastDmSentTimeRef.current = now
 
     const targetFriendId = selectedDMUserId
     const { error: sendError } = await supabase
@@ -355,9 +345,7 @@ export function useEchoDirectMessages({
 
   const notifyDMTyping = useCallback((targetFriendId: string) => {
     if (!socialChannelRef.current || !user || !targetFriendId) return
-    const now = Date.now()
-    if (now - lastDMTypingSentRef.current < 2000) return
-    lastDMTypingSentRef.current = now
+    if (!shouldSendTypingNotification(lastDMTypingSentRef, 2000)) return
 
     socialChannelRef.current.send({
       type: 'broadcast',

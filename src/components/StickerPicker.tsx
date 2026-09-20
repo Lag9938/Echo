@@ -12,6 +12,46 @@ interface StickerPickerProps {
   userId?: string
 }
 
+function StickerIconSvg({ style }: { style?: React.CSSProperties }) {
+  return (
+    <svg style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <circle cx="10" cy="14" r="1.5" />
+      <path d="m18 17-3-3-4 4" />
+    </svg>
+  )
+}
+
+function PlusIconSvg({ style }: { style?: React.CSSProperties }) {
+  return (
+    <svg style={style} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  )
+}
+
+function UploadIconSvg({ style }: { style?: React.CSSProperties }) {
+  return (
+    <svg style={style} width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  )
+}
+
+function ImageIconSvg({ style }: { style?: React.CSSProperties }) {
+  return (
+    <svg style={style} width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="18" x="3" y="3" rx="3" />
+      <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+      <path d="m21 15-5-5L5 21" />
+    </svg>
+  )
+}
+
 export function StickerPicker({ onSelectSticker, onClose, userId }: StickerPickerProps) {
   const [stickers, setStickers] = useState<CustomSticker[]>(() => getCustomStickers(userId))
   const [isProcessing, setIsProcessing] = useState(false)
@@ -35,7 +75,7 @@ export function StickerPicker({ onSelectSticker, onClose, userId }: StickerPicke
     return () => document.removeEventListener('mousedown', handleMouseDown)
   }, [onClose])
 
-  // Criação a partir de arquivo de foto/imagem
+  // Criação a partir de arquivo de foto/imagem - apenas salva no catálogo sem disparar no chat
   const handleCreateStickerFromFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
       alert('Por favor, selecione um arquivo de imagem válido (PNG, JPG, WEBP, GIF).')
@@ -45,10 +85,8 @@ export function StickerPicker({ onSelectSticker, onClose, userId }: StickerPicke
     setIsProcessing(true)
     try {
       const created = await processImageToSticker(file, userId)
+      // Adiciona na coleção sem enviar no chat automaticamente
       setStickers(prev => [created, ...prev.filter(s => s.id !== created.id)])
-      // Envia imediatamente para a conversa ativa e fecha, igualzinho no WhatsApp
-      onSelectSticker(created.url, created.name)
-      onClose()
     } catch (err) {
       console.error('Erro ao processar imagem para figurinha:', err)
       alert('Não foi possível processar a imagem selecionada.')
@@ -113,7 +151,7 @@ export function StickerPicker({ onSelectSticker, onClose, userId }: StickerPicke
       {/* Cabeçalho do Seletor */}
       <div className="sticker-picker-header">
         <div className="sticker-picker-header-title">
-          <span className="sticker-header-icon">🎨</span>
+          <StickerIconSvg style={{ color: 'var(--accent-color, #00f2fe)' }} />
           <span className="sticker-header-text">Figurinhas</span>
           <span className="sticker-count-badge">
             {stickers.length} {stickers.length === 1 ? 'salva' : 'salvas'}
@@ -125,10 +163,10 @@ export function StickerPicker({ onSelectSticker, onClose, userId }: StickerPicke
             className="sticker-create-btn"
             onClick={() => fileInputRef.current?.click()}
             disabled={isProcessing}
-            title="Criar figurinha a partir de uma foto ou meme (igual no WhatsApp)"
+            title="Adicionar imagem como figurinha"
           >
-            <span className="plus-symbol">+</span>
-            <span>Criar Figurinha</span>
+            <PlusIconSvg style={{ width: 13, height: 13 }} />
+            <span>Adicionar</span>
           </button>
           <button
             type="button"
@@ -145,15 +183,15 @@ export function StickerPicker({ onSelectSticker, onClose, userId }: StickerPicke
       {isProcessing && (
         <div className="sticker-processing-overlay">
           <div className="sticker-loading-spinner" />
-          <span>Transformando foto em figurinha...</span>
+          <span>Salvando figurinha na sua coleção...</span>
         </div>
       )}
 
       {/* Drop Zone Indicator */}
       {isDragOver && (
         <div className="sticker-drag-indicator">
-          <span style={{ fontSize: '32px' }}>📥</span>
-          <span>Solte a imagem aqui para criar o sticker!</span>
+          <UploadIconSvg style={{ color: 'var(--accent-color, #00f2fe)' }} />
+          <span>Solte a imagem para adicionar à sua coleção</span>
         </div>
       )}
 
@@ -161,10 +199,12 @@ export function StickerPicker({ onSelectSticker, onClose, userId }: StickerPicke
       <div className="sticker-picker-content">
         {stickers.length === 0 ? (
           <div className="sticker-empty-state">
-            <div className="sticker-empty-icon">📸</div>
-            <h4 className="sticker-empty-title">Crie suas Figurinhas!</h4>
+            <div className="sticker-empty-icon">
+              <ImageIconSvg style={{ color: 'var(--accent-color, #00f2fe)', opacity: 0.85 }} />
+            </div>
+            <h4 className="sticker-empty-title">Nenhuma figurinha salva</h4>
             <p className="sticker-empty-desc">
-              Envie qualquer foto, meme ou GIF do seu computador para transformar em figurinha, igualzinho no WhatsApp.
+              Importe qualquer foto, meme ou arte para sua coleção pessoal.
             </p>
             <button
               type="button"
@@ -172,24 +212,24 @@ export function StickerPicker({ onSelectSticker, onClose, userId }: StickerPicke
               onClick={() => fileInputRef.current?.click()}
               disabled={isProcessing}
             >
-              <span style={{ fontSize: '15px' }}>+</span>
-              <span>Criar Primeira Figurinha (Enviar Foto)</span>
+              <PlusIconSvg style={{ width: 14, height: 14 }} />
+              <span>Importar Imagem</span>
             </button>
           </div>
         ) : (
           <div className="sticker-grid">
-            {/* Bloco de adicionar nova figurinha no início da grade (como no WhatsApp) */}
+            {/* Bloco de adicionar nova figurinha no início da grade */}
             <button
               type="button"
               className="sticker-create-tile"
               onClick={() => fileInputRef.current?.click()}
               disabled={isProcessing}
-              title="Adicionar nova foto como figurinha"
+              title="Adicionar nova imagem à coleção"
             >
               <div className="create-tile-icon-wrap">
-                <span className="create-tile-plus">+</span>
+                <PlusIconSvg style={{ width: 14, height: 14 }} />
               </div>
-              <span className="create-tile-label">Criar Nova</span>
+              <span className="create-tile-label">Adicionar</span>
             </button>
 
             {/* Lista de figurinhas personalizadas salvas */}
@@ -224,9 +264,9 @@ export function StickerPicker({ onSelectSticker, onClose, userId }: StickerPicke
         )}
       </div>
 
-      {/* Rodapé com instrução */}
+      {/* Rodapé limpo com instrução elegante */}
       <div className="sticker-picker-footer">
-        <span>💡 Arraste fotos para cá ou clique em "+ Criar" para novas figurinhas.</span>
+        <span>Clique para enviar na conversa • Arraste imagens para adicionar</span>
       </div>
     </div>
   )

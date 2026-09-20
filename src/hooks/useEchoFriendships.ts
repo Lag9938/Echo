@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { FriendshipRequest } from '../types'
+import { useUIStore } from '../stores/useUIStore'
 
 export interface UseEchoFriendshipsOptions {
   user: User
@@ -38,6 +39,11 @@ export function useEchoFriendships({
   const [friendSearchQuery, setFriendSearchQuery] = useState('')
   const [friendSearchNotice, setFriendSearchNotice] = useState('')
   const [pendingFriendCount, setPendingFriendCount] = useState<number>(0)
+
+  // Sincroniza lista de amizades com a Zustand store (useUIStore)
+  useEffect(() => {
+    useUIStore.getState().setFriendships(friendships)
+  }, [friendships])
 
   const loadFriendships = useCallback(async () => {
     const isMock = typeof window !== 'undefined' && window.location.search.includes('mock=true')

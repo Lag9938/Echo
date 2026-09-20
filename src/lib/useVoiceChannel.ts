@@ -56,60 +56,6 @@ async function getRnnoiseWasmBinary(): Promise<ArrayBuffer> {
   return rnnoiseWasmBinaryCache
 }
 
-function base64UrlEncode(str: string): string {
-  const bytes = new TextEncoder().encode(str)
-  let binary = ''
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i])
-  }
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
-function base64UrlEncodeBytes(bytes: Uint8Array): string {
-  let binary = ''
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i])
-  }
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
-async function createLiveKitTokenClient(
-  apiKey: string, 
-  apiSecret: string, 
-  { identity, name, room, avatarUrl }: { identity: string; name: string; room: string; avatarUrl?: string }
-): Promise<string> {
-  const enc = new TextEncoder()
-  const now = Math.floor(Date.now() / 1000)
-  const header = { alg: 'HS256', typ: 'JWT' }
-  const payload = {
-    exp: now + 24 * 3600,
-    iss: apiKey,
-    nbf: now - 3600, // Margem de tolerância contra relógios adiantados
-    sub: identity,
-    name: name,
-    metadata: JSON.stringify({ avatarUrl: avatarUrl || '' }),
-    video: {
-      room: room,
-      roomJoin: true,
-      canPublish: true,
-      canSubscribe: true,
-      canPublishData: true
-    }
-  }
-
-  const unsigned = `${base64UrlEncode(JSON.stringify(header))}.${base64UrlEncode(JSON.stringify(payload))}`
-  const key = await crypto.subtle.importKey(
-    'raw',
-    enc.encode(apiSecret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  )
-  const signatureBuffer = await crypto.subtle.sign('HMAC', key, enc.encode(unsigned))
-  const signature = base64UrlEncodeBytes(new Uint8Array(signatureBuffer))
-  return `${unsigned}.${signature}`
-}
-
 async function createStudioMicrophoneDSP(stream: MediaStream, enableAi = false): Promise<{ 
   finalStream: MediaStream; 
   audioCtx: AudioContext; 
@@ -945,7 +891,33 @@ export function useVoiceChannel(options?: {
       let connectionUrl = 'wss://137-131-144-255.sslip.io'
       let token = ''
 
-      if (typeof (window as any).electronAPI?.getLiveKitConnection === 'function') {
+      // 1. Tenta obter o token autenticado diretamente via Supabase Edge Function segura
+      if (supabase) {
+        try {
+          const { data: fnData, error: fnError } = await supabase.functions.invoke('livekit-token', {
+            body: {
+              room: channelId,
+              identity: userId,
+              name: displayName,
+              avatarUrl
+            }
+          })
+          if (!fnError && fnData && fnData.success && fnData.token) {
+            connectionUrl = (!fnData.url || fnData.url.includes('136-248-75-151'))
+              ? 'wss://137-131-144-255.sslip.io'
+              : fnData.url
+            token = fnData.token
+            console.log('[LiveKit] Token seguro obtido via Edge Function!')
+          } else if (fnError) {
+            console.warn('[LiveKit] Edge Function retornou aviso/erro:', fnError)
+          }
+        } catch (fnErr) {
+          console.warn('[LiveKit] Falha ao invocar Edge Function livekit-token:', fnErr)
+        }
+      }
+
+      // 2. Fallback de contingência para ambiente desktop Electron (ex: dev local com livekit-server.exe)
+      if (!token && typeof (window as any).electronAPI?.getLiveKitConnection === 'function') {
         try {
           const res = await (window as any).electronAPI.getLiveKitConnection({
             room: channelId,
@@ -953,8 +925,7 @@ export function useVoiceChannel(options?: {
             name: displayName,
             avatarUrl
           })
-          if (res && res.success) {
-            // Se o processo Electron ainda tiver em cache o IP antigo desativado, força o novo SFU Ampere
+          if (res && res.success && res.token) {
             connectionUrl = (!res.url || res.url.includes('136-248-75-151'))
               ? 'wss://137-131-144-255.sslip.io'
               : res.url
@@ -962,20 +933,6 @@ export function useVoiceChannel(options?: {
           }
         } catch (ipcErr) {
           console.warn('[LiveKit] Falha no token IPC:', ipcErr)
-        }
-      }
-
-      if (!token) {
-        try {
-          token = await createLiveKitTokenClient('APIi5XDp34K5gP3', 'LTl6XQ3ozsSupX8Ydva6erDmcmIVnbi7BFS6H7GPQDQ', {
-            identity: userId,
-            name: displayName,
-            room: channelId,
-            avatarUrl
-          })
-          console.log('[LiveKit] Token gerado com sucesso via Web Crypto!')
-        } catch (tokErr) {
-          console.error('[LiveKit] Falha ao gerar token via Web Crypto:', tokErr)
         }
       }
 

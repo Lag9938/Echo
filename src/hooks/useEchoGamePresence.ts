@@ -26,16 +26,15 @@ export function useEchoGamePresence({
   presenceStatus,
   presenceChannelRef
 }: UseEchoGamePresenceOptions) {
-  // Rich Presence: My active game
-  const [myGamePresence, setMyGamePresence] = useState<GamePresenceData | null>(() => {
-    try {
-      const cached = localStorage.getItem('echo-my-game-presence')
-      if (cached) return JSON.parse(cached)
-    } catch {}
-    return null
-  })
+  // Rich Presence: My active game (strictly in-memory live process tracking)
+  const [myGamePresence, setMyGamePresence] = useState<GamePresenceData | null>(null)
 
   useEffect(() => {
+    // Purge any stale ghost game from localStorage on mount
+    try {
+      localStorage.removeItem('echo-my-game-presence')
+    } catch {}
+
     const handleGame = (game: any) => {
       setMyGamePresence(prev => {
         const prevName = prev?.name || null
@@ -43,7 +42,7 @@ export function useEchoGamePresence({
         if (prevName === newName && prev?.startedAt === game?.startedAt) {
           return prev
         }
-        return game
+        return game || null
       })
       try {
         if (game) {
@@ -55,15 +54,20 @@ export function useEchoGamePresence({
       window.dispatchEvent(new CustomEvent('echo-presence-refresh'))
     }
 
+    let unsubGame: (() => void) | undefined
     if ((window as any).electronAPI?.onGameDetected) {
-      (window as any).electronAPI.onGameDetected(handleGame)
+      unsubGame = (window as any).electronAPI.onGameDetected(handleGame)
     }
+    let pollTimer: any
     if ((window as any).electronAPI?.checkActiveGame) {
-      (window as any).electronAPI.checkActiveGame().then(handleGame).catch(() => {})
-      const pollTimer = setInterval(() => {
-        (window as any).electronAPI.checkActiveGame().then(handleGame).catch(() => {})
+      (window as any).electronAPI.checkActiveGame().then(handleGame).catch(() => handleGame(null))
+      pollTimer = setInterval(() => {
+        (window as any).electronAPI.checkActiveGame().then(handleGame).catch(() => handleGame(null))
       }, 5000)
-      return () => clearInterval(pollTimer)
+    }
+    return () => {
+      if (unsubGame) unsubGame()
+      if (pollTimer) clearInterval(pollTimer)
     }
   }, [])
 

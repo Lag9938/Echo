@@ -34,7 +34,7 @@ export interface AudioVideoTabProps {
   onToggleSpatialAudio: (val: boolean) => void
   onResetAllPans: () => void
   isAiDenoiseEnabled: boolean
-  onToggleAiDenoise: (val: boolean) => void
+  onToggleAiDenoise: (val?: boolean) => void
   pttModeSetting?: boolean
   onPttModeChange?: (val: boolean) => void
   pttKey?: string

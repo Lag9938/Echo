@@ -146,8 +146,15 @@ export function useEchoScreenShare({
     setScreenShareViewMode('focus')
     const { w, h } = getQualityDimensions(screenQuality)
     const targetSource = screenSources.find(s => s.id === sourceId)
+    const isGame = Boolean(targetSource?.isGame || (targetSource?.name || '').toLowerCase().includes('(jogo)'))
+    const isScreen = targetSource?.type === 'screen' || Boolean(sourceId.startsWith('screen:'))
+    const is60Allowed = isGame || isScreen
+    const effectiveFps = is60Allowed ? screenFps : (Math.min(screenFps, 30) as 15 | 30)
+    if (!is60Allowed && screenFps === 60) {
+      setScreenFps(30)
+    }
     setActiveSharingSource(targetSource || null)
-    await startScreenShare(sourceId, w, h, screenFps)
+    await startScreenShare(sourceId, w, h, effectiveFps)
     playScreenStartSound(sfxVolume)
   }, [screenSources, screenFps, screenQuality, user.id, setIsWatchingStreams, setSelectedScreenSharerUserId, setScreenShareViewMode, startScreenShare, playScreenStartSound, sfxVolume])
 

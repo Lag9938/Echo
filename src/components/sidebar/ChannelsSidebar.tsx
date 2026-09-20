@@ -1,9 +1,10 @@
-import React from 'react'
+import React, { memo } from 'react'
 import type { FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { VoiceParticipant } from '../../lib/useVoiceChannel'
 import type { Space, Channel, Page, RolePermissions, ServerRole } from '../../types'
 import { UnifiedUserProfileFooter } from './UnifiedUserProfileFooter'
+import { useSpacesStore } from '../../stores/useSpacesStore'
 import {
   BellIcon,
   BellOffIcon,
@@ -33,8 +34,8 @@ import {
 import { AvatarDecoration } from '../AvatarDecoration'
 
 export interface ChannelsSidebarProps {
-  spaces: Space[]
-  expandedSpace: string | null
+  spaces?: Space[]
+  expandedSpace?: string | null
   user: User
   profileDisplayName: string
   profileAvatarUrl: string
@@ -73,11 +74,11 @@ export interface ChannelsSidebarProps {
   channelSearchInputRef?: React.RefObject<HTMLInputElement | null>
   collapsedCategories: Set<string>
   toggleCategoryCollapse: (spaceId: string, category: string) => void
-  spaceChannels: Record<string, Channel[]>
-  unreadChannels: Set<string>
-  selectedChannel: Channel | null
-  setSelectedChannel: (ch: Channel | null) => void
-  spaceVoiceUsers: Record<string, any[]>
+  spaceChannels?: Record<string, Channel[]>
+  unreadChannels?: Set<string>
+  selectedChannel?: Channel | null
+  setSelectedChannel?: (ch: Channel | null) => void
+  spaceVoiceUsers?: Record<string, any[]>
   activeVoiceChannelId: string | null
   participants: VoiceParticipant[]
   handleJoinVoice: (channelId: string, spaceId: string) => void
@@ -100,7 +101,7 @@ export interface ChannelsSidebarProps {
   recordingDuration: number
   canUserDo: (spaceId: string, userId: string, perm: keyof RolePermissions) => boolean
   setVolumeControlUser: (user: any) => void
-  spaceMembers: any[]
+  spaceMembers?: any[]
   isConnected: boolean
   showToast: (title: string, message: string, type?: any) => void
   newChannelIsPrivate?: boolean
@@ -121,94 +122,105 @@ export interface ChannelsSidebarProps {
   activeScreenSharers?: VoiceParticipant[]
 }
 
-export function ChannelsSidebar({
-  spaces,
-  expandedSpace,
-  user,
-  profileDisplayName,
-  profileAvatarUrl,
-  presenceStatus,
-  showStatusMenu,
-  setShowStatusMenu,
-  updatePresenceStatus,
-  theme,
-  toggleTheme,
-  setPage,
-  setShowWhatsNewModal,
-  onSignOut,
-  myGamePresence,
-  avatarDecoration,
-  setAddSpaceModalTab,
-  setShowAddSpaceModal,
-  showServerDropdown,
-  setShowServerDropdown,
-  openSpaceSettings,
-  setChannelForInvite,
-  setSpaceForAddMembers,
-  showNewChannel,
-  setShowNewChannel,
-  newChannelName,
-  setNewChannelName,
-  newChannelType,
-  setNewChannelType,
-  newChannelCategory,
-  setNewChannelCategory,
-  createChannel,
-  mutedSpaces,
-  toggleMuteSpace,
-  handleLeaveSpace,
-  channelSearchQuery,
-  setChannelSearchQuery,
-  channelSearchInputRef,
-  collapsedCategories,
-  toggleCategoryCollapse,
-  spaceChannels,
-  unreadChannels,
-  selectedChannel,
-  setSelectedChannel,
-  spaceVoiceUsers,
-  activeVoiceChannelId,
-  participants,
-  handleJoinVoice,
-  handleLeaveVoice,
-  isPttMode,
-  pttKey,
-  isPttActive,
-  isVoiceReconnecting,
-  activeVoiceChannel,
-  currentSpace: _currentSpace,
-  rtcStats,
-  isMuted,
-  handleToggleMute,
-  isDeafened,
-  handleToggleDeafen,
-  setShowSoundboardModal,
-  isRecordingCall,
-  startCallRecording,
-  stopCallRecording,
-  recordingDuration,
-  canUserDo,
-  setVolumeControlUser,
-  spaceMembers,
-  isConnected,
-  showToast,
-  newChannelIsPrivate,
-  setNewChannelIsPrivate,
-  newChannelAllowedRoles,
-  setNewChannelAllowedRoles,
-  serverRoles,
-  memberRoleMap,
-  onWatchStream,
-  onInspectMember,
-  onOpenDM,
-  presenceData,
-  moveParticipant,
-  serverMuteParticipant,
-  disconnectParticipant,
-  isPiPActive,
-  setIsPiPActive,
-  activeScreenSharers
-}: ChannelsSidebarProps) {
+export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSidebarProps) {
+  const storeSpaces = useSpacesStore((s) => s.spaces)
+  const storeExpandedSpace = useSpacesStore((s) => s.expandedSpace)
+  const storeSpaceChannels = useSpacesStore((s) => s.spaceChannels)
+  const storeSelectedChannel = useSpacesStore((s) => s.selectedChannel)
+  const storeSetSelectedChannel = useSpacesStore((s) => s.setSelectedChannel)
+  const storeUnreadChannels = useSpacesStore((s) => s.unreadChannels)
+  const storeSpaceVoiceUsers = useSpacesStore((s) => s.spaceVoiceUsers)
+  const storeSpaceMembers = useSpacesStore((s) => s.spaceMembers)
+
+  const spaces = props.spaces ?? storeSpaces
+  const expandedSpace = props.expandedSpace !== undefined ? props.expandedSpace : storeExpandedSpace
+  const spaceChannels = props.spaceChannels ?? storeSpaceChannels
+  const selectedChannel = props.selectedChannel !== undefined ? props.selectedChannel : storeSelectedChannel
+  const setSelectedChannel = props.setSelectedChannel ?? storeSetSelectedChannel
+  const unreadChannels = props.unreadChannels ?? storeUnreadChannels
+  const spaceVoiceUsers = props.spaceVoiceUsers ?? storeSpaceVoiceUsers
+  const spaceMembers = props.spaceMembers ?? storeSpaceMembers
+
+  const {
+    user,
+    profileDisplayName,
+    profileAvatarUrl,
+    presenceStatus,
+    showStatusMenu,
+    setShowStatusMenu,
+    updatePresenceStatus,
+    theme,
+    toggleTheme,
+    setPage,
+    setShowWhatsNewModal,
+    onSignOut,
+    myGamePresence,
+    avatarDecoration,
+    setAddSpaceModalTab,
+    setShowAddSpaceModal,
+    showServerDropdown,
+    setShowServerDropdown,
+    openSpaceSettings,
+    setChannelForInvite,
+    setSpaceForAddMembers,
+    showNewChannel,
+    setShowNewChannel,
+    newChannelName,
+    setNewChannelName,
+    newChannelType,
+    setNewChannelType,
+    newChannelCategory,
+    setNewChannelCategory,
+    createChannel,
+    mutedSpaces,
+    toggleMuteSpace,
+    handleLeaveSpace,
+    channelSearchQuery,
+    setChannelSearchQuery,
+    channelSearchInputRef,
+    collapsedCategories,
+    toggleCategoryCollapse,
+    activeVoiceChannelId,
+    participants,
+    handleJoinVoice,
+    handleLeaveVoice,
+    isPttMode,
+    pttKey,
+    isPttActive,
+    isVoiceReconnecting,
+    activeVoiceChannel,
+    currentSpace: _currentSpace,
+    rtcStats,
+    isMuted,
+    handleToggleMute,
+    isDeafened,
+    handleToggleDeafen,
+    setShowSoundboardModal,
+    isRecordingCall,
+    startCallRecording,
+    stopCallRecording,
+    recordingDuration,
+    canUserDo,
+    setVolumeControlUser,
+    isConnected,
+    showToast,
+    newChannelIsPrivate,
+    setNewChannelIsPrivate,
+    newChannelAllowedRoles,
+    setNewChannelAllowedRoles,
+    serverRoles,
+    memberRoleMap,
+    onWatchStream,
+    onInspectMember,
+    onOpenDM,
+    presenceData,
+    moveParticipant,
+    serverMuteParticipant,
+    disconnectParticipant,
+    isPiPActive,
+    setIsPiPActive,
+    activeScreenSharers
+  } = props
   const [voiceUserMenu, setVoiceUserMenu] = React.useState<{
     participant: any
     channel: Channel
@@ -1372,4 +1384,4 @@ export function ChannelsSidebar({
               />
             </aside>
           )
-}
+})

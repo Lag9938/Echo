@@ -14,15 +14,48 @@ export interface ReleaseNote {
   highlights: ChangelogItem[]
 }
 
-export const APP_CURRENT_VERSION = '0.35.1'
+export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '0.35.2',
+    title: 'Echo v0.35.2 - Notificações Windows, Presença de Jogos Realtime & Segurança',
+    date: '20 de Setembro de 2026',
+    tagline: 'Notificações nativas no Windows para menções em canais, alerta visual na barra de tarefas, sincronização de jogos em tempo real para todos os membros, figurinhas limpas e segurança reforçada.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🔔',
+        badge: 'NOTIFICAÇÕES',
+        title: 'Menções Nativas e Barra de Tarefas',
+        description: 'Menções (@everyone, @here ou ao seu nome) em qualquer canal agora disparam notificações nativas do Windows e som mesmo com o Echo minimizado. O ícone da barra de tarefas pisca em laranja e exibe badge de mensagens não lidas.'
+      },
+      {
+        icon: '🎮',
+        badge: 'JOGOS',
+        title: 'Detecção de Jogos em Tempo Real para Todos',
+        description: 'Detecção corrigida para todos os membros da comunidade no Windows (VALORANT, CS2, etc.), fim do status de jogo fantasma/zumbi e atualização instantânea na barra de membros.'
+      },
+      {
+        icon: '🖼️',
+        badge: 'FIGURINHAS',
+        title: 'Figurinhas Limpas Estilo WhatsApp',
+        description: 'Seletor de figurinhas reformulado sem poluição visual. Importe suas imagens sem envio automático acidental para o chat, prontas para enviar quando quiser.'
+      },
+      {
+        icon: '🛡️',
+        badge: 'SEGURANÇA',
+        title: 'Blindagem Total de Infraestrutura',
+        description: 'Autorização estrita de salas de voz via Edge Functions, processamento de pagamentos 100% isolado no servidor sem arquivos de configuração locais e proteção contra execução indevida.'
+      }
+    ]
+  },
   {
     version: '0.35.1',
     title: 'Echo v0.35.1 - Correção Crítica de Inicialização & Otimização de Processos',
     date: '19 de Setembro de 2026',
     tagline: 'Correção imediata na inicialização do aplicativo, blindagem do canal de comunicação principal e encerramento limpo para evitar processos travados em segundo plano.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🚀',

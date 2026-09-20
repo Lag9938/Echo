@@ -12,6 +12,7 @@ export interface UseEchoSpacesOptions {
   displayName: string
   getAvatarDecoration?: () => string
   getProfileEffect?: () => string
+  getMyGamePresence?: () => any
   setPage: (page: any) => void
   showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend') => void
   setError: (err: string) => void
@@ -30,6 +31,7 @@ export function useEchoSpaces({
   displayName,
   getAvatarDecoration,
   getProfileEffect,
+  getMyGamePresence,
   setPage,
   showToast,
   setError,
@@ -77,6 +79,31 @@ export function useEchoSpaces({
   spaceMembersRef.current = spaceMembers
   const registeredSpacesRef = useRef<Set<string>>(new Set())
   const loadSpaceMembersTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Sincronização automática com a Zustand store (useSpacesStore)
+  useEffect(() => {
+    useSpacesStore.getState().setSpaces(spaces)
+  }, [spaces])
+
+  useEffect(() => {
+    useSpacesStore.getState().setExpandedSpace(expandedSpace)
+  }, [expandedSpace])
+
+  useEffect(() => {
+    useSpacesStore.getState().setSpaceChannels(spaceChannels)
+  }, [spaceChannels])
+
+  useEffect(() => {
+    useSpacesStore.getState().setSelectedChannel(selectedChannel)
+  }, [selectedChannel])
+
+  useEffect(() => {
+    useSpacesStore.getState().setSpaceMembersMap(spaceMembersMap)
+  }, [spaceMembersMap])
+
+  useEffect(() => {
+    useSpacesStore.getState().setSpaceMembers(spaceMembers)
+  }, [spaceMembers])
 
   // Limpa caches corrompidos de versões anteriores do localStorage na inicialização
   useEffect(() => {
@@ -154,8 +181,14 @@ export function useEchoSpaces({
 
     setSpaces(result)
     useSpacesStore.getState().setSpaces(result)
-    if (result.length > 0 && !expandedSpace) {
-      setExpandedSpace(result[0].id)
+    if (result.length > 0) {
+      const targetSpaceId = expandedSpace || result[0].id
+      if (!expandedSpace) {
+        setExpandedSpace(targetSpaceId)
+      }
+      if (!spaceChannelsRef.current[targetSpaceId] || spaceChannelsRef.current[targetSpaceId].length === 0) {
+        loadChannelsForSpace(targetSpaceId)
+      }
     }
   }
 
@@ -418,7 +451,11 @@ export function useEchoSpaces({
                 display_name: p.display_name || 'Membro',
                 avatar_url: p.avatar_url,
                 avatar_decoration: p.avatar_decoration,
-                profile_effect: p.profile_effect
+                profile_effect: p.profile_effect,
+                current_game: p.current_game || p.game_presence || null,
+                game_presence: p.game_presence || p.current_game || null,
+                presence_status: p.presence_status || 'online',
+                custom_status: p.custom_status || null
               }
             })
           }
@@ -436,7 +473,7 @@ export function useEchoSpaces({
           liveUsers.forEach(liveU => {
             const existing = map.get(liveU.user.id)
             if (existing) {
-              // Atualiza cosméticos e display name em tempo real para membros existentes
+              // Atualiza cosméticos, display name e atividades em tempo real para membros existentes
               const updated = {
                 ...existing,
                 user: {
@@ -448,7 +485,11 @@ export function useEchoSpaces({
                     : (existing.user.avatar_decoration || null),
                   profile_effect: (liveU.user.profile_effect !== undefined && liveU.user.profile_effect !== null && liveU.user.profile_effect !== '')
                     ? liveU.user.profile_effect
-                    : (existing.user.profile_effect || null)
+                    : (existing.user.profile_effect || null),
+                  current_game: liveU.user.current_game !== undefined ? liveU.user.current_game : (existing.user.current_game || null),
+                  game_presence: liveU.user.game_presence !== undefined ? liveU.user.game_presence : (existing.user.game_presence || null),
+                  presence_status: liveU.user.presence_status || existing.user.presence_status || 'online',
+                  custom_status: liveU.user.custom_status !== undefined ? liveU.user.custom_status : (existing.user.custom_status || null)
                 }
               }
               map.set(liveU.user.id, updated)
@@ -474,6 +515,11 @@ export function useEchoSpaces({
       const profName = getProfileDisplayName ? getProfileDisplayName() : displayName
       const profAvatar = getProfileAvatarUrl ? getProfileAvatarUrl() : ''
 
+      const currentGameData = getMyGamePresence ? getMyGamePresence() : null
+      const savedPresStatus = localStorage.getItem('echo-presence-status') || 'online'
+      const gameData = savedPresStatus === 'invisible' ? null : (currentGameData || null)
+      const savedCustomStatus = savedPresStatus === 'invisible' ? '' : (localStorage.getItem('echo-custom-status') || '')
+
       await spacePresenceChannel.track({
         user_id: user.id,
         display_name: profName || displayName,
@@ -481,7 +527,11 @@ export function useEchoSpaces({
         role: isOwner ? 'owner' : 'member',
         space_id: currentSpaceId,
         avatar_decoration: savedDecoration,
-        profile_effect: savedEffect
+        profile_effect: savedEffect,
+        presence_status: savedPresStatus,
+        custom_status: savedCustomStatus,
+        current_game: gameData,
+        game_presence: gameData
       }).catch(() => {})
     }
 
@@ -496,6 +546,13 @@ export function useEchoSpaces({
         }
       })
 
+    const handlePresenceRefresh = () => {
+      trackSpacePresence()
+    }
+    window.addEventListener('echo-profile-updated', handlePresenceRefresh)
+    window.addEventListener('echo-presence-refresh', handlePresenceRefresh)
+    window.addEventListener('storage', handlePresenceRefresh)
+
     // Sincronização periódica de redundância (a cada 60s)
     const syncInterval = setInterval(() => {
       loadSpaceMembers(currentSpaceId)
@@ -507,6 +564,9 @@ export function useEchoSpaces({
         clearTimeout(loadSpaceMembersTimeoutRef.current)
       }
       clearInterval(syncInterval)
+      window.removeEventListener('echo-profile-updated', handlePresenceRefresh)
+      window.removeEventListener('echo-presence-refresh', handlePresenceRefresh)
+      window.removeEventListener('storage', handlePresenceRefresh)
       spacePresenceChannel.untrack().catch(() => {})
       supabase?.removeChannel(membersChannel)
       supabase?.removeChannel(spacePresenceChannel)

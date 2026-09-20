@@ -37,3 +37,4 @@ src/native/**/bin/*
 
 # Local Tools
 tools/
+supabase/.temp/

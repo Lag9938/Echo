@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
+import { useUIStore } from '../stores/useUIStore'
 
 export interface BlockedUserProfile {
   id: string
@@ -24,6 +25,11 @@ export function useEchoBlockedUsers({
 }: UseEchoBlockedUsersOptions) {
   const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set())
   const [blockedProfiles, setBlockedProfiles] = useState<BlockedUserProfile[]>([])
+
+  // Sincroniza usuários bloqueados com a Zustand store (useUIStore)
+  useEffect(() => {
+    useUIStore.getState().setBlockedUserIds(blockedUserIds)
+  }, [blockedUserIds])
 
   const loadBlockedUsers = useCallback(async () => {
     try {
