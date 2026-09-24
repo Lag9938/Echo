@@ -442,6 +442,17 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
     count: filteredMessages.length,
     getScrollElement: () => messagesContainerRef.current,
     estimateSize: () => 64,
+    // Sem isto, o virtualizador guarda a altura medida de cada linha pela
+    // POSIÇÃO (índice) e não pela mensagem em si. Isso funciona enquanto a
+    // lista só cresce no final, mas quebra ao carregar mensagens antigas no
+    // topo (loadMoreMessages) ou ao filtrar/buscar: os índices deslizam,
+    // porém as alturas em cache continuam "grudadas" nas posições antigas.
+    // Resultado visível: uma mensagem mais alta (ex: nota de voz) herda a
+    // altura cacheada de uma mensagem de texto curta que estava naquele
+    // índice antes, e a linha seguinte é posicionada cedo demais — as
+    // mensagens se sobrepõem na tela. Usar o id da mensagem como chave
+    // resolve isso, pois a altura fica amarrada à mensagem, não à posição.
+    getItemKey: (index) => filteredMessages[index]?.id ?? index,
     overscan: 8,
     paddingEnd: 32
   })

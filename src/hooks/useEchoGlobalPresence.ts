@@ -140,8 +140,8 @@ export function useEchoGlobalPresence({
     const presenceChannel = presenceChannelRef.current
     if (!presenceChannel) return
 
-    const savedStatus = localStorage.getItem('echo-custom-status') || ''
     const savedPresStatus = localStorage.getItem('echo-presence-status') || 'online'
+    const savedStatus = savedPresStatus === 'invisible' ? '' : (localStorage.getItem('echo-custom-status') || '')
     const savedDecoration = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
     const savedEffect = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
     const rawBannerCustom = localStorage.getItem(`echo-banner-custom-${user.id}`) || localStorage.getItem('echo-banner-custom') || ''

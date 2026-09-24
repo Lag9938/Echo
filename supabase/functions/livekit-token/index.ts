@@ -108,9 +108,25 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const livekitUrl = Deno.env.get("LIVEKIT_URL") || "wss://137-131-144-255.sslip.io"
-    const apiKey = Deno.env.get("LIVEKIT_API_KEY") || "APIi5XDp34K5gP3"
-    const apiSecret = Deno.env.get("LIVEKIT_API_SECRET") || ""
+    // Sem fallback hardcoded: uma API key/secret fixos no código-fonte ficam
+    // expostos a qualquer pessoa com acesso ao repositório, e um secret vazio
+    // permitiria que qualquer um assine tokens LiveKit válidos sozinho (HMAC
+    // com chave vazia é trivial de reproduzir). Se as variáveis de ambiente
+    // não estiverem configuradas na Edge Function, falhamos explicitamente
+    // em vez de emitir um token inseguro.
+    const livekitUrl = Deno.env.get("LIVEKIT_URL")
+    const apiKey = Deno.env.get("LIVEKIT_API_KEY")
+    const apiSecret = Deno.env.get("LIVEKIT_API_SECRET")
+
+    if (!livekitUrl || !apiKey || !apiSecret) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: "LiveKit não está configurado corretamente no servidor (variáveis de ambiente ausentes)."
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      })
+    }
 
     const now = Math.floor(Date.now() / 1000)
     const header = { alg: "HS256", typ: "JWT" }

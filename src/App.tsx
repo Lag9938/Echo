@@ -188,6 +188,11 @@ function Echo({ user }: { user: User }) {
     useUIStore.getState().setPage(page)
   }, [page])
   const [error, setError] = useState('')
+  useEffect(() => {
+    if (!error) return
+    const timer = setTimeout(() => setError(''), 6000)
+    return () => clearTimeout(timer)
+  }, [error])
   const [addSpaceModalTab, setAddSpaceModalTab] = useState<'options' | 'create' | 'join'>('options')
 
   const { toasts, showToast, removeToast } = useEchoToasts()
@@ -459,6 +464,11 @@ function Echo({ user }: { user: User }) {
   const userRef = useRef(user)
   userRef.current = user
   const presenceChannelRef = useRef<any>(null)
+  // Voice Presence Refs for Global Presence synchronization (hoisted above the
+  // cosmetics hook so equip actions can include current voice channel state
+  // in their presence broadcasts too — see useEchoCosmetics.buildFullPresencePayload)
+  const activeVoiceChannelIdRef = useRef<string | null>(null)
+  const activeVoiceSpaceIdRef = useRef<string | null>(null)
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [noiseSuppressionEnabled, setNoiseSuppressionEnabled] = useState(() => localStorage.getItem('echo-noise-suppression') !== 'false')
   const [echoCancellationEnabled, setEchoCancellationEnabled] = useState(() => localStorage.getItem('echo-echo-cancellation') !== 'false')
@@ -515,13 +525,24 @@ function Echo({ user }: { user: User }) {
     presenceStatus,
     getMyGamePresence: () => myGamePresenceRef.current,
     presenceChannelRef,
-    supabase
+    supabase,
+    activeVoiceChannelIdRef,
+    activeVoiceSpaceIdRef
   })
   avatarDecorationRef.current = avatarDecoration
   profileEffectRef.current = profileEffect
 
   async function updatePresenceStatus(status: 'online' | 'idle' | 'dnd' | 'invisible') {
     setPresenceStatus(status)
+    // Mantém a store global (useUIStore) sincronizada: TextChannelView e
+    // VoiceChannelView usam `props.presenceStatus ?? storePresenceStatus`,
+    // e como nenhum dos dois recebe presenceStatus como prop, eles sempre
+    // caem no valor da store. Sem esta linha, a store ficava travada no
+    // valor lido do localStorage no boot do app e nunca era atualizada,
+    // então trocar para "Invisível" não refletia nesses componentes —
+    // por exemplo, a barra de membros continuava mostrando "Em chamada"
+    // como se o usuário estivesse online.
+    useUIStore.getState().setPresenceStatus(status)
     localStorage.setItem('echo-presence-status', status)
     if (presenceChannelRef.current) {
       const savedStatus = status === 'invisible' ? '' : (localStorage.getItem('echo-custom-status') || '')
@@ -530,17 +551,27 @@ function Echo({ user }: { user: User }) {
       const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || profileEffect || ''
       const curNameEff = localStorage.getItem(`echo-name-effect-${user.id}`) || nameEffect || 'resonance_cyan'
       const curBadge = localStorage.getItem(`echo-show-badge-${user.id}`) !== 'false' ? (localStorage.getItem(`echo-badge-${user.id}`) || 'owner') : 'none'
+      const rawBanner = localStorage.getItem(`echo-banner-custom-${user.id}`) || ''
+      const safeBanner = (rawBanner && !rawBanner.startsWith('data:') && rawBanner.length < 2048) ? rawBanner : ''
+      const bannerPreset = localStorage.getItem(`echo-banner-preset-${user.id}`) || 'synthwave'
       await presenceChannelRef.current.track({
         user_id: user.id,
         display_name: profileDisplayName,
+        avatar_url: profileAvatarUrl,
         online_at: new Date().toISOString(),
         custom_status: savedStatus,
         presence_status: status,
         current_game: gameData,
+        game_presence: gameData,
         avatar_decoration: curDeco,
         profile_effect: curEff,
         name_effect: curNameEff,
-        badge: curBadge
+        badge: curBadge,
+        banner_custom: safeBanner,
+        banner_preset: bannerPreset,
+        banner_url: safeBanner,
+        voice_channel_id: activeVoiceChannelIdRef.current,
+        voice_space_id: activeVoiceSpaceIdRef.current
       })
     }
   }
@@ -589,10 +620,6 @@ function Echo({ user }: { user: User }) {
     showToast
   })
 
-  // Voice Presence Refs for Global Presence synchronization
-  const activeVoiceChannelIdRef = useRef<string | null>(null)
-  const activeVoiceSpaceIdRef = useRef<string | null>(null)
-
   // Rich Presence: My active game via custom hook
   const { myGamePresence } = useEchoGamePresence({
     userId: user.id,
@@ -601,7 +628,9 @@ function Echo({ user }: { user: User }) {
     profileEffect,
     nameEffect,
     presenceStatus,
-    presenceChannelRef
+    presenceChannelRef,
+    activeVoiceChannelIdRef,
+    activeVoiceSpaceIdRef
   })
   myGamePresenceRef.current = myGamePresence
 
@@ -859,6 +888,7 @@ function Echo({ user }: { user: User }) {
     isDeafened,
     isConnected,
     localScreenStream,
+    localCameraStream,
     rtcStats,
     isPttMode,
     isPttActive,
@@ -868,6 +898,8 @@ function Echo({ user }: { user: User }) {
     leaveVoice,
     startScreenShare,
     stopScreenShare,
+    startCamera,
+    stopCamera,
     changeInputDevice,
     changeOutputDevice,
     changeScreenShareSettings,
@@ -1341,6 +1373,15 @@ function Echo({ user }: { user: User }) {
   activeSharingSourceRef.current = activeSharingSource
   setActiveSharingSourceRef.current = setActiveSharingSource
 
+  // Chamada de vídeo (câmera) — versão simples: apenas liga/desliga, sem seleção de dispositivo ainda
+  const handleToggleCamera = useCallback(() => {
+    if (localCameraStream) {
+      stopCamera()
+    } else {
+      startCamera(undefined, (message: string) => setError(message))
+    }
+  }, [localCameraStream, startCamera, stopCamera, setError])
+
   // ── Inactivity / AFK Tracker via custom hook ──
   const {
     showAfkPrompt,
@@ -1763,6 +1804,7 @@ function Echo({ user }: { user: User }) {
       if (presenceChannelRef.current) {
         const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
         const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
+        const curNameEff = localStorage.getItem(`echo-name-effect-${user.id}`) || nameEffect || 'resonance_cyan'
         const gameData = presenceStatus === 'invisible' ? null : myGamePresence
         const rawBanner = bannerUrl || localStorage.getItem(`echo-banner-custom-${user.id}`) || ''
         const safeBanner = (rawBanner && !rawBanner.startsWith('data:') && rawBanner.length < 2048) ? rawBanner : ''
@@ -1776,16 +1818,20 @@ function Echo({ user }: { user: User }) {
           custom_status: customStatus,
           presence_status: presenceStatus,
           current_game: gameData,
+          game_presence: gameData,
           avatar_decoration: curDeco,
           profile_effect: curEff,
+          name_effect: curNameEff,
           banner_custom: safeBanner,
           banner_preset: preset,
           banner_url: safeBanner,
-          badge: curBadge
+          badge: curBadge,
+          voice_channel_id: activeVoiceChannelIdRef.current,
+          voice_space_id: activeVoiceSpaceIdRef.current
         }).catch(() => {})
       }
     }
-  }, [user, updateLocalProfile, setSpaceMembers, avatarDecoration, profileEffect, presenceStatus, myGamePresence, customStatus])
+  }, [user, updateLocalProfile, setSpaceMembers, avatarDecoration, profileEffect, nameEffect, presenceStatus, myGamePresence, customStatus])
 
   const handleCustomStatusUpdate = useCallback(async (status: string) => {
     setCustomStatus(status)
@@ -1793,21 +1839,33 @@ function Echo({ user }: { user: User }) {
     if (presenceChannelRef.current) {
       const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
       const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
+      const curNameEff = localStorage.getItem(`echo-name-effect-${user.id}`) || nameEffect || 'resonance_cyan'
       const curBadge = localStorage.getItem(`echo-show-badge-${user.id}`) !== 'false' ? (localStorage.getItem(`echo-badge-${user.id}`) || 'owner') : 'none'
+      const rawBanner = localStorage.getItem(`echo-banner-custom-${user.id}`) || ''
+      const safeBanner = (rawBanner && !rawBanner.startsWith('data:') && rawBanner.length < 2048) ? rawBanner : ''
+      const bannerPreset = localStorage.getItem(`echo-banner-preset-${user.id}`) || 'synthwave'
       const gameData = presenceStatus === 'invisible' ? null : myGamePresence
       await presenceChannelRef.current.track({
         user_id: user.id,
         display_name: profileDisplayName,
+        avatar_url: profileAvatarUrl,
         online_at: new Date().toISOString(),
         custom_status: status,
         presence_status: presenceStatus,
         current_game: gameData,
+        game_presence: gameData,
         avatar_decoration: curDeco,
         profile_effect: curEff,
-        badge: curBadge
+        name_effect: curNameEff,
+        badge: curBadge,
+        banner_custom: safeBanner,
+        banner_preset: bannerPreset,
+        banner_url: safeBanner,
+        voice_channel_id: activeVoiceChannelIdRef.current,
+        voice_space_id: activeVoiceSpaceIdRef.current
       })
     }
-  }, [user.id, avatarDecoration, profileEffect, presenceStatus, myGamePresence, profileDisplayName])
+  }, [user.id, avatarDecoration, profileEffect, nameEffect, presenceStatus, myGamePresence, profileDisplayName])
 
   const handleNoiseSuppressionChange = useCallback((val: boolean) => {
     setNoiseSuppressionEnabled(val)
@@ -2151,6 +2209,8 @@ function Echo({ user }: { user: User }) {
                     handleStopScreenShare={handleStopScreenShare}
                     openScreenPicker={openScreenPicker}
                     forceOpenScreenPicker={forceOpenScreenPicker}
+                    localCameraStream={localCameraStream}
+                    handleToggleCamera={handleToggleCamera}
                     screenQuality={screenQuality}
                     handleQualityChange={handleQualityChange}
                     screenFps={screenFps}

@@ -15,6 +15,8 @@ export interface UseEchoGamePresenceOptions {
   nameEffect?: string | null
   presenceStatus: 'online' | 'idle' | 'dnd' | 'invisible'
   presenceChannelRef: React.MutableRefObject<RealtimeChannel | null>
+  activeVoiceChannelIdRef?: React.MutableRefObject<string | null>
+  activeVoiceSpaceIdRef?: React.MutableRefObject<string | null>
 }
 
 export function useEchoGamePresence({
@@ -24,7 +26,9 @@ export function useEchoGamePresence({
   profileEffect,
   nameEffect,
   presenceStatus,
-  presenceChannelRef
+  presenceChannelRef,
+  activeVoiceChannelIdRef,
+  activeVoiceSpaceIdRef
 }: UseEchoGamePresenceOptions) {
   // Rich Presence: My active game (strictly in-memory live process tracking)
   const [myGamePresence, setMyGamePresence] = useState<GamePresenceData | null>(null)
@@ -82,6 +86,10 @@ export function useEchoGamePresence({
       const rawBanner = localStorage.getItem(`echo-banner-custom-${userId}`) || localStorage.getItem('echo-banner-custom') || ''
       const safeBanner = (rawBanner && !rawBanner.startsWith('data:') && rawBanner.length < 2048) ? rawBanner : ''
       const preset = localStorage.getItem(`echo-banner-preset-${userId}`) || 'synthwave'
+      const curShowBadge = localStorage.getItem(`echo-show-badge-${userId}`) !== 'false'
+      const curBadge = curShowBadge ? (localStorage.getItem(`echo-badge-${userId}`) || 'owner') : 'none'
+      const voiceChanId = activeVoiceChannelIdRef?.current || null
+      const voiceSpId = activeVoiceSpaceIdRef?.current || null
       presenceChannelRef.current.track({
         user_id: userId,
         display_name: profileDisplayName,
@@ -93,9 +101,12 @@ export function useEchoGamePresence({
         avatar_decoration: curDeco,
         profile_effect: curEff,
         name_effect: curNameEff,
+        badge: curBadge,
         banner_custom: safeBanner,
         banner_preset: preset,
-        banner_url: safeBanner
+        banner_url: safeBanner,
+        voice_channel_id: voiceChanId,
+        voice_space_id: voiceSpId
       }).catch(() => {})
     }
   }, [myGamePresence, presenceStatus, profileDisplayName, avatarDecoration, profileEffect, nameEffect, userId, presenceChannelRef])

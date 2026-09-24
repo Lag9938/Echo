@@ -977,6 +977,7 @@
 .echo-badge-choice-card.active {
   border-color: #6366f1;
   background: rgba(99, 102, 241, 0.12);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
 .echo-badge-choice-card.locked {
@@ -1063,12 +1064,6 @@
 .echo-badge-choice-meta span {
   font-size: 11.5px;
   color: var(--text-muted);
-}
-
-.echo-badge-check {
-  color: #10b981;
-  font-weight: 700;
-  font-size: 16px;
 }
 
 /* ── Floating Save Bar ─────────────────────────────────────────────────── */

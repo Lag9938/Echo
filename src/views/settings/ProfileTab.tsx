@@ -986,7 +986,6 @@ export const ProfileTab = memo(function ProfileTab({
                               </span>
                             )}
                           </div>
-                          {localBadge === b.id && <span className="echo-badge-check">✓</span>}
                         </div>
                       ))}
                     </div>

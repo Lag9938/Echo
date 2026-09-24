@@ -147,6 +147,26 @@ export function CameraIcon({ className, style }: { className?: string; style?: R
   )
 }
 
+export function VideoCallIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="5" width="15" height="14" rx="2.5" ry="2.5"/>
+      <polygon points="23 7 16 12 23 17 23 7"/>
+    </svg>
+  )
+}
+
+export function VideoOffIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 16v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h1"/>
+      <path d="M10 5h4a2 2 0 0 1 2 2v4"/>
+      <polygon points="23 7 16 12 23 17 23 7"/>
+      <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+  )
+}
+
 export function RecordCallIcon({ className, style, isRecording }: { className?: string; style?: React.CSSProperties; isRecording?: boolean }) {
   if (isRecording) {
     return (

@@ -18,12 +18,12 @@ import {
   MessageSquareIcon,
   MicIcon,
   MicOffIcon,
+  MusicIcon,
   PaperclipIcon,
   PhoneOffIcon,
   PinIcon,
   PipIcon,
   PlayIcon,
-  RecordCallIcon,
   ScreenIcon,
   SearchIcon,
   SendIcon,
@@ -32,11 +32,43 @@ import {
   StopSquareIcon,
   TrashIcon,
   UsersIcon,
+  VideoCallIcon,
+  VideoOffIcon,
   VolumeIcon
 } from '../components/icons'
 import { openExternalUrl } from '../lib/openExternal'
 import { useUIStore } from '../stores/useUIStore'
 import { useSpacesStore } from '../stores/useSpacesStore'
+
+// Tile de vídeo de câmera (chamada de vídeo estilo Discord — versão simples).
+// MediaStream não pode ser passado como atributo JSX (precisa de srcObject via ref/efeito).
+const CameraVideoTile = memo(function CameraVideoTile({ stream, mirrored }: { stream: MediaStream; mirrored?: boolean }) {
+  const videoRef = React.useRef<HTMLVideoElement | null>(null)
+
+  useEffect(() => {
+    const el = videoRef.current
+    if (el && el.srcObject !== stream) {
+      el.srcObject = stream
+    }
+  }, [stream])
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      playsInline
+      muted
+      style={{
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+        borderRadius: 'inherit',
+        transform: mirrored ? 'scaleX(-1)' : undefined,
+        background: '#000'
+      }}
+    />
+  )
+})
 
 export interface VoiceChannelViewProps {
   currentSpace: Space | null
@@ -94,6 +126,8 @@ export interface VoiceChannelViewProps {
   handleStopScreenShare: () => void
   openScreenPicker: () => void
   forceOpenScreenPicker: () => void
+  localCameraStream: MediaStream | null
+  handleToggleCamera: () => void
   screenQuality: string
   handleQualityChange: (q: any) => void | Promise<void>
   screenFps: number
@@ -188,10 +222,6 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
     isPttActive,
     pttKey,
     setShowSoundboardModal,
-    isRecordingCall,
-    startCallRecording,
-    stopCallRecording,
-    recordingDuration,
     setVolumeControlUser,
     activeScreenSharers,
     activeScreenSharer,
@@ -206,6 +236,8 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
     handleStopScreenShare,
     openScreenPicker,
     forceOpenScreenPicker,
+    localCameraStream,
+    handleToggleCamera,
     screenQuality,
     handleQualityChange,
     screenFps,
@@ -253,6 +285,7 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
     setShowScreenMenu
   } = props
   const openLightbox = useUIStore((s) => s.openLightbox)
+  const setShowMusicBotModal = useUIStore((s) => s.setShowMusicBotModal)
   const [pendingVoicePastedFile, setPendingVoicePastedFile] = useState<File | null>(null)
   const [pendingVoiceImagePreview, setPendingVoiceImagePreview] = useState<string | null>(null)
   const [pendingVoiceImageSize, setPendingVoiceImageSize] = useState<'small' | 'medium' | 'large' | 'original'>('medium')
@@ -440,7 +473,9 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                   isMuted,
                                   isDeafened,
                                   screenStream: localScreenStream || undefined,
-                                  isScreenSharing: !!(localScreenStream && localScreenStream.getVideoTracks().length > 0)
+                                  isScreenSharing: !!(localScreenStream && localScreenStream.getVideoTracks().length > 0),
+                                  cameraStream: localCameraStream || undefined,
+                                  isCameraOn: !!(localCameraStream && localCameraStream.getVideoTracks().length > 0)
                                 })
                               }
                               const callMembersList = Array.from(callMembersMap.values())
@@ -666,15 +701,24 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                           <span className="live-dot-pulse" /> AO VIVO
                                         </div>
                                       )}
-                                      <div className="participant-avatar-large" style={{ position: 'relative' }}>
-                                        {p.avatarUrl ? (
+                                      <div
+                                        className="participant-avatar-large"
+                                        style={
+                                          p.isCameraOn && p.cameraStream
+                                            ? { position: 'relative', width: '120px', height: '90px', borderRadius: '12px', overflow: 'hidden' }
+                                            : { position: 'relative' }
+                                        }
+                                      >
+                                        {p.isCameraOn && p.cameraStream ? (
+                                          <CameraVideoTile stream={p.cameraStream} mirrored={p.userId === user.id} />
+                                        ) : p.avatarUrl ? (
                                           <img src={p.avatarUrl} alt={p.displayName} className="round-avatar-img-large" />
                                         ) : (
                                           <span className="avatar-initial-large">
                                             {p.displayName.slice(0, 1).toUpperCase()}
                                           </span>
                                         )}
-                                        {(() => {
+                                        {!(p.isCameraOn && p.cameraStream) && (() => {
                                           const deco = presenceData[p.userId]?.avatar_decoration || spaceMembers.find(m => (m.user?.id || m.id) === p.userId)?.user?.avatar_decoration || (p.userId === user.id ? avatarDecoration : null)
                                           return deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null
                                         })()}
@@ -786,7 +830,20 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                   }} />
                                 )}
                               </button>
-                              
+
+                              <button
+                                type="button"
+                                className={`control-btn camera-btn ${localCameraStream ? 'sharing' : ''}`}
+                                onClick={handleToggleCamera}
+                                title={localCameraStream ? "Desligar Câmera" : "Ligar Câmera"}
+                              >
+                                {localCameraStream ? (
+                                  <VideoOffIcon />
+                                ) : (
+                                  <VideoCallIcon />
+                                )}
+                              </button>
+
                               <div className="screen-control-wrapper" style={{ position: 'relative' }}>
                                 <button 
                                   className={`control-btn screen-btn ${localScreenStream ? 'sharing' : ''}`} 
@@ -854,14 +911,13 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                   <SoundboardIcon />
                                 </button>
 
-                                {/* Call Recording Button */}
-                                <button 
-                                  className={`control-btn ${isRecordingCall ? 'recording' : ''}`} 
-                                  onClick={isRecordingCall ? stopCallRecording : startCallRecording}
-                                  title={isRecordingCall ? `Gravando chamada (${recordingDuration}s) - Clique para parar e baixar` : "Gravar Áudio da Chamada"}
-                                  style={{ color: isRecordingCall ? '#ff4655' : 'inherit' }}
+                                {/* Music Bot Button */}
+                                <button
+                                  className="control-btn"
+                                  onClick={() => setShowMusicBotModal(true)}
+                                  title="Bot de Música"
                                 >
-                                  <RecordCallIcon isRecording={isRecordingCall} />
+                                  <MusicIcon style={{ width: 18, height: 18 }} />
                                 </button>
 
                                 <button 

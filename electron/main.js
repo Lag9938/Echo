@@ -252,8 +252,23 @@ export function createWindow() {
 
 if (setupDeeplink(getMainWindow, createWindow)) {
   app.whenReady().then(() => {
+    // Servidor LiveKit self-hosted usa um domínio sslip.io com certificado que
+    // o Chromium não valida por padrão, então aceitamos o erro de certificado
+    // apenas para esse host exato. A versão anterior usava url.includes(...),
+    // que casava qualquer URL contendo a substring 'sslip.io' — como sslip.io
+    // é um serviço de DNS público (qualquer-ip.sslip.io resolve para esse IP),
+    // isso aceitava certificados inválidos de QUALQUER host malicioso que
+    // usasse um subdomínio sslip.io, não só o nosso servidor.
+    const TRUSTED_SELF_SIGNED_HOSTS = new Set(['137-131-144-255.sslip.io', 'localhost', '127.0.0.1'])
     app.on('certificate-error', (event, _webContents, url, _error, _certificate, callback) => {
-      if (url.includes('sslip.io') || url.includes('137-131-144-255') || url.includes('localhost') || url.includes('127.0.0.1')) {
+      let hostname = ''
+      try {
+        hostname = new URL(url).hostname
+      } catch {
+        callback(false)
+        return
+      }
+      if (TRUSTED_SELF_SIGNED_HOSTS.has(hostname)) {
         event.preventDefault()
         callback(true)
       } else {

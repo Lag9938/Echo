@@ -1,0 +1,33 @@
+[Unit]
+Description=Echo Music Bot (worker isolado de musica para o LiveKit)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=echobot
+WorkingDirectory=/opt/echo/music-bot
+ExecStart=/usr/bin/node src/index.js
+EnvironmentFile=/opt/echo/music-bot/.env
+Restart=on-failure
+RestartSec=5
+
+# --- Isolamento de recursos -------------------------------------------
+# O objetivo destes limites e' simples: mesmo que um processo de ffmpeg/
+# yt-dlp trave ou vaze memoria, ele nunca consegue roubar CPU/RAM da SFU
+# do LiveKit (que atende voz/video/tela pra todo mundo). Ajuste os valores
+# conforme o numero de OCPUs da sua VM (aqui: 4 OCPUs ARM Ampere).
+CPUQuota=150%
+MemoryMax=1G
+MemoryHigh=768M
+TasksMax=256
+
+# --- Endurecimento basico ----------------------------------------------
+# O processo nao precisa de root nem de acesso ao resto do filesystem.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/echo/music-bot
+
+[Install]
+WantedBy=multi-user.target

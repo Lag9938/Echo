@@ -16,6 +16,7 @@ export interface UIState {
   showSavedMessagesModal: boolean
   showWhatsNewModal: boolean
   showSoundboardModal: boolean
+  showMusicBotModal: boolean
   showSubscriptionModal: boolean
   showCommandPalette: boolean
   lightboxImageUrl: string | null
@@ -42,6 +43,7 @@ export interface UIState {
   setShowSavedMessagesModal: (show: boolean) => void
   setShowWhatsNewModal: (show: boolean) => void
   setShowSoundboardModal: (show: boolean) => void
+  setShowMusicBotModal: (show: boolean) => void
   setShowSubscriptionModal: (show: boolean) => void
   setShowCommandPalette: (show: boolean) => void
   openLightbox: (url: string) => void
@@ -64,6 +66,7 @@ export const useUIStore = create<UIState>((set) => ({
   showSavedMessagesModal: false,
   showWhatsNewModal: false,
   showSoundboardModal: false,
+  showMusicBotModal: false,
   showSubscriptionModal: false,
   showCommandPalette: false,
   lightboxImageUrl: null,
@@ -99,6 +102,7 @@ export const useUIStore = create<UIState>((set) => ({
   setShowSavedMessagesModal: (showSavedMessagesModal) => set({ showSavedMessagesModal }),
   setShowWhatsNewModal: (showWhatsNewModal) => set({ showWhatsNewModal }),
   setShowSoundboardModal: (showSoundboardModal) => set({ showSoundboardModal }),
+  setShowMusicBotModal: (showMusicBotModal) => set({ showMusicBotModal }),
   setShowSubscriptionModal: (showSubscriptionModal) => set({ showSubscriptionModal }),
   setShowCommandPalette: (showCommandPalette) => set({ showCommandPalette }),
   openLightbox: (lightboxImageUrl) => set({ lightboxImageUrl }),

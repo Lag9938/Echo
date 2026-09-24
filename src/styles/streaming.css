@@ -1008,6 +1008,11 @@
   color: #4a8a6a;
   border: 1px solid #d2ebd9;
 }
+.control-btn.camera-btn.sharing {
+  background: #edf7f2;
+  color: #4a8a6a;
+  border: 1px solid #d2ebd9;
+}
 
 
 /* ── Screenshare Quality Select Modal ───────────────── */

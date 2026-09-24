@@ -31,6 +31,8 @@ export type VoiceParticipant = {
   isMuted?: boolean
   isDeafened?: boolean
   screenFps?: number
+  cameraStream?: MediaStream
+  isCameraOn?: boolean
 }
 
 export interface StudioMicrophoneDSPNodes {
@@ -201,6 +203,7 @@ export function useVoiceChannel(options?: {
   const [isDeafened, setIsDeafened] = useState(false)
   const [isConnected, setIsConnected] = useState(false)
   const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null)
+  const [localCameraStream, setLocalCameraStream] = useState<MediaStream | null>(null)
   const [rtcStats, setRtcStats] = useState<{ ping: number; jitter: number; packetLoss: number } | null>(null)
   
   // Push-to-Talk (PTT)
@@ -238,6 +241,9 @@ export function useVoiceChannel(options?: {
   const localAudioTrackRef = useRef<LocalAudioTrack | null>(null)
   const localScreenVideoTrackRef = useRef<LocalVideoTrack | null>(null)
   const localScreenAudioTrackRef = useRef<LocalAudioTrack | null>(null)
+  const localCameraVideoTrackRef = useRef<LocalVideoTrack | null>(null)
+  const localCameraStreamRef = useRef<MediaStream | null>(null)
+  const remoteCameraStreamsRef = useRef<Map<string, MediaStream>>(new Map())
   const activeSpeakersRef = useRef<Set<string>>(new Set())
 
   // Audio streams & DSP
@@ -420,7 +426,9 @@ export function useVoiceChannel(options?: {
         isDeafened: isDeafenedRef.current,
         screenStream: localScreenStreamRef.current || undefined,
         isScreenSharing: !!(localScreenStreamRef.current && localScreenStreamRef.current.getVideoTracks().length > 0),
-        screenFps: localTargetFpsRef.current || 30
+        screenFps: localTargetFpsRef.current || 30,
+        cameraStream: localCameraStreamRef.current || undefined,
+        isCameraOn: !!(localCameraStreamRef.current && localCameraStreamRef.current.getVideoTracks().length > 0)
       })
     }
 
@@ -428,7 +436,10 @@ export function useVoiceChannel(options?: {
     if (room) {
       room.remoteParticipants.forEach((rp) => {
         let screenStream: MediaStream | undefined = undefined
-        const screenPub = rp.getTrackPublication(Track.Source.ScreenShare) || rp.getTrackPublication(Track.Source.Camera)
+        // Nota: Câmera e Compartilhamento de Tela são fontes distintas (Track.Source.Camera vs
+        // Track.Source.ScreenShare) — antes de existir publicação real de câmera, este fallback
+        // nunca disparava. Removido para não confundir vídeo de câmera com tela compartilhada.
+        const screenPub = rp.getTrackPublication(Track.Source.ScreenShare)
         const screenAudioPub = rp.getTrackPublication(Track.Source.ScreenShareAudio)
 
         let remoteScreenFps = 30
@@ -467,6 +478,26 @@ export function useVoiceChannel(options?: {
         }
 
         const isScreenSharing = Boolean((screenPub && !screenPub.isMuted) || (screenStream && screenStream.getVideoTracks().length > 0))
+
+        // Vídeo de câmera (webcam) — publicação separada da de tela, mesmo padrão de cache de MediaStream
+        let cameraStream: MediaStream | undefined = undefined
+        const cameraPub = rp.getTrackPublication(Track.Source.Camera)
+        if (cameraPub && cameraPub.track && cameraPub.track.mediaStreamTrack) {
+          const camVideoTrack = cameraPub.track.mediaStreamTrack
+          const existingCam = remoteCameraStreamsRef.current.get(rp.identity)
+          const curCamTrack = existingCam?.getVideoTracks()[0]
+          if (!existingCam || !curCamTrack || curCamTrack.id !== camVideoTrack.id) {
+            const camStream = new MediaStream([camVideoTrack])
+            remoteCameraStreamsRef.current.set(rp.identity, camStream)
+            cameraStream = camStream
+          } else {
+            cameraStream = existingCam
+          }
+        } else {
+          remoteCameraStreamsRef.current.delete(rp.identity)
+        }
+        const isCameraOn = Boolean(cameraPub && !cameraPub.isMuted && cameraStream && cameraStream.getVideoTracks().length > 0)
+
         const isMuted = !rp.isMicrophoneEnabled
         const isSpeaking = activeSpeakersRef.current.has(rp.identity)
 
@@ -491,7 +522,9 @@ export function useVoiceChannel(options?: {
           isDeafened: false,
           screenStream,
           isScreenSharing,
-          screenFps: remoteScreenFps
+          screenFps: remoteScreenFps,
+          cameraStream,
+          isCameraOn
         })
       })
     }
@@ -526,7 +559,7 @@ export function useVoiceChannel(options?: {
     const activeSharerId = currentOpts.activeSharerId
 
     room.remoteParticipants.forEach((rp) => {
-      const screenPub = rp.getTrackPublication(Track.Source.ScreenShare) || rp.getTrackPublication(Track.Source.Camera)
+      const screenPub = rp.getTrackPublication(Track.Source.ScreenShare)
       const shouldSubscribe = isWatching && (viewMode === 'grid' || !activeSharerId || activeSharerId === rp.identity)
       if (screenPub) {
         // Se o espectador não estiver visualizando a tela, corta a transmissão de vídeo (0 Kbps)
@@ -698,6 +731,112 @@ export function useVoiceChannel(options?: {
     syncParticipants()
   }, [syncParticipants, sendVoicePresence])
 
+  // Stop local webcam (video call — MVP: apenas câmera, sem configurações extras por enquanto)
+  const stopCamera = useCallback(() => {
+    const room = roomRef.current
+    if (localCameraVideoTrackRef.current) {
+      if (room) {
+        room.localParticipant.unpublishTrack(localCameraVideoTrackRef.current).catch(() => {})
+      }
+      localCameraVideoTrackRef.current.stop()
+      localCameraVideoTrackRef.current = null
+    }
+    if (localCameraStreamRef.current) {
+      try { localCameraStreamRef.current.getTracks().forEach(t => t.stop()) } catch (e) {}
+    }
+    localCameraStreamRef.current = null
+    setLocalCameraStream(null)
+
+    syncParticipants()
+  }, [syncParticipants])
+
+  // Start local webcam and publish it to the room (Track.Source.Camera — separado do Track.Source.ScreenShare)
+  const startCamera = useCallback(async (deviceId?: string, onError?: (message: string) => void) => {
+    const room = roomRef.current
+    if (!room || !myInfoRef.current) {
+      console.warn('[Camera] Sala ou info local indisponível.')
+      onError?.('Você precisa estar conectado a uma chamada de voz para ligar a câmera.')
+      return
+    }
+
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+      console.error('[Camera] navigator.mediaDevices.getUserMedia indisponível neste ambiente.')
+      onError?.('Este dispositivo não oferece suporte a captura de câmera.')
+      return
+    }
+
+    let stream: MediaStream
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          deviceId: deviceId ? { exact: deviceId } : undefined,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 }
+        }
+      })
+    } catch (err: any) {
+      console.error('[Camera] Falha ao capturar vídeo da câmera:', err)
+      const name = err?.name || ''
+      let message = 'Não foi possível ligar a câmera.'
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError' || name === 'SecurityError') {
+        message = 'Permissão de câmera negada. Verifique em Configurações do Windows → Privacidade e Segurança → Câmera se "Permitir que apps de área de trabalho acessem sua câmera" está ativado, e se o Echo tem permissão de câmera.'
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        message = 'Nenhuma câmera foi encontrada neste computador.'
+      } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+        message = 'Não foi possível acessar a câmera. Ela pode estar sendo usada por outro aplicativo.'
+      } else if (name === 'OverconstrainedError' || name === 'ConstraintNotSatisfiedError') {
+        message = 'A câmera selecionada não suporta as configurações necessárias.'
+      } else if (err?.message) {
+        message = `Não foi possível ligar a câmera: ${err.message}`
+      }
+      onError?.(message)
+      return
+    }
+
+    try {
+      const videoTrack = stream.getVideoTracks()[0]
+      if (!videoTrack) {
+        console.error('[Camera] Nenhuma faixa de vídeo foi capturada.')
+        try { stream.getTracks().forEach(t => t.stop()) } catch (e) {}
+        onError?.('Não foi possível capturar vídeo da câmera.')
+        return
+      }
+
+      localCameraStreamRef.current = stream
+      setLocalCameraStream(stream)
+
+      videoTrack.onended = () => {
+        stopCamera()
+      }
+
+      if (room.state === 'connected') {
+        try {
+          const localVideoTrack = new LocalVideoTrack(videoTrack)
+          localCameraVideoTrackRef.current = localVideoTrack
+
+          await room.localParticipant.publishTrack(localVideoTrack, {
+            source: Track.Source.Camera,
+            name: 'camera_video',
+            simulcast: true,
+            videoEncoding: {
+              maxBitrate: 1200000,
+              maxFramerate: 30
+            }
+          })
+        } catch (pubErr) {
+          console.error('[Camera] Falha ao publicar câmera no LiveKit:', pubErr)
+          onError?.('Sua câmera ligou, mas não foi possível transmiti-la para os outros participantes. Tente novamente.')
+        }
+      }
+
+      syncParticipants()
+    } catch (err) {
+      console.error('[Camera] Falha ao iniciar câmera:', err)
+      onError?.('Não foi possível ligar a câmera.')
+    }
+  }, [stopCamera, syncParticipants])
+
   // Leave voice channel cleanly
   const leaveVoice = useCallback(() => {
     isManualDisconnectRef.current = true
@@ -721,7 +860,9 @@ export function useVoiceChannel(options?: {
 
     stopLocalVad()
     stopScreenShare()
+    stopCamera()
     remoteScreenStreamsRef.current.clear()
+    remoteCameraStreamsRef.current.clear()
 
     const room = roomRef.current
     if (room) {
@@ -786,7 +927,7 @@ export function useVoiceChannel(options?: {
     setIsConnected(false)
     setParticipants([])
     setRtcStats(null)
-  }, [stopLocalVad, stopScreenShare])
+  }, [stopLocalVad, stopScreenShare, stopCamera])
 
   // Join a voice channel via LiveKit SFU
   const joinVoice = useCallback(async (
@@ -1021,6 +1162,7 @@ export function useVoiceChannel(options?: {
 
       room.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
         remoteScreenStreamsRef.current.delete(participant.identity)
+        remoteCameraStreamsRef.current.delete(participant.identity)
         activeStreamTilesRef.current.delete(participant.identity)
         const voiceKey = `${participant.identity}-voice`
         const screenKey = `${participant.identity}-screen`
@@ -1084,7 +1226,12 @@ export function useVoiceChannel(options?: {
           }
           syncParticipants()
         } else if (track.kind === Track.Kind.Video) {
-          remoteScreenStreamsRef.current.delete(participant.identity)
+          // Distingue a fonte para não apagar o cache errado (câmera vs. tela compartilhada)
+          if (track.source === Track.Source.Camera) {
+            remoteCameraStreamsRef.current.delete(participant.identity)
+          } else {
+            remoteScreenStreamsRef.current.delete(participant.identity)
+          }
           syncParticipants()
         }
       })
@@ -2130,8 +2277,9 @@ export function useVoiceChannel(options?: {
     participants, 
     isMuted, 
     isDeafened,
-    isConnected, 
+    isConnected,
     localScreenStream,
+    localCameraStream,
     rtcStats,
     isPttMode,
     isPttActive,
@@ -2144,6 +2292,8 @@ export function useVoiceChannel(options?: {
     toggleDeafen,
     startScreenShare,
     stopScreenShare,
+    startCamera,
+    stopCamera,
     changeInputDevice,
     changeOutputDevice,
     changeScreenShareSettings,

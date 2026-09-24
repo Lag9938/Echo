@@ -151,7 +151,7 @@ export function StickerPicker({ onSelectSticker, onClose, userId }: StickerPicke
       {/* Cabeçalho do Seletor */}
       <div className="sticker-picker-header">
         <div className="sticker-picker-header-title">
-          <StickerIconSvg style={{ color: 'var(--accent-color, #00f2fe)' }} />
+          <StickerIconSvg style={{ color: '#00f2fe' }} />
           <span className="sticker-header-text">Figurinhas</span>
           <span className="sticker-count-badge">
             {stickers.length} {stickers.length === 1 ? 'salva' : 'salvas'}
@@ -190,7 +190,7 @@ export function StickerPicker({ onSelectSticker, onClose, userId }: StickerPicke
       {/* Drop Zone Indicator */}
       {isDragOver && (
         <div className="sticker-drag-indicator">
-          <UploadIconSvg style={{ color: 'var(--accent-color, #00f2fe)' }} />
+          <UploadIconSvg style={{ color: '#00f2fe' }} />
           <span>Solte a imagem para adicionar à sua coleção</span>
         </div>
       )}
@@ -200,7 +200,7 @@ export function StickerPicker({ onSelectSticker, onClose, userId }: StickerPicke
         {stickers.length === 0 ? (
           <div className="sticker-empty-state">
             <div className="sticker-empty-icon">
-              <ImageIconSvg style={{ color: 'var(--accent-color, #00f2fe)', opacity: 0.85 }} />
+              <ImageIconSvg style={{ color: '#00f2fe', opacity: 0.85 }} />
             </div>
             <h4 className="sticker-empty-title">Nenhuma figurinha salva</h4>
             <p className="sticker-empty-desc">

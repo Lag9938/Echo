@@ -142,19 +142,61 @@ Deno.serve(async (req: Request) => {
 
       const isPaid = Boolean(res && (res.status === "RECEIVED" || res.status === "CONFIRMED"))
 
-      if (isPaid) {
+      // Confirma que este pagamento pertence ao usuário autenticado antes de
+      // conceder qualquer benefício. Sem isso, qualquer usuário logado
+      // poderia informar o paymentId de OUTRA pessoa (adivinhado, vazado ou
+      // reaproveitado) e ganhar Echo Pro sem ter pago nada. O externalReference
+      // é definido como user.id no momento da criação da cobrança (ação
+      // "create-pix" acima) e não pode ser forjado pelo cliente, pois vem da
+      // resposta da própria API do Asaas.
+      const belongsToUser = Boolean(res && res.externalReference === user.id)
+      const grantsPremium = isPaid && belongsToUser
+
+      if (grantsPremium) {
         const premiumUntil = new Date(Date.now() + 30 * 86400000).toISOString()
-        await supabaseClient
+        // Usa a service role para gravar is_premium/premium_until: essas colunas
+        // são protegidas por trigger contra escrita direta de clientes
+        // autenticados (ver migration_07_protect_subscription_fields.sql), então
+        // a concessão só é possível a partir do servidor, após a verificação acima.
+        const supabaseAdmin = createClient(
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+        )
+        await supabaseAdmin
           .from("profiles")
-          .update({ is_premium: true, premium_until: premiumUntil })
+          .update({
+            is_premium: true,
+            premium_until: premiumUntil,
+            asaas_customer_id: typeof res.customer === "string" ? res.customer : undefined
+          })
           .eq("id", user.id)
       }
 
       return new Response(JSON.stringify({
         success: true,
         status: res?.status || "UNKNOWN",
-        isPaid
+        isPaid: grantsPremium
       }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      })
+    }
+
+    if (action === "cancel-subscription") {
+      // Desativa o Echo Pro do próprio usuário autenticado (nunca de outro,
+      // pois usamos user.id do token verificado acima, nunca um id vindo do
+      // corpo da requisição). is_premium/premium_until são protegidos por
+      // trigger contra escrita direta do cliente, então essa desativação só
+      // é possível a partir do servidor, com a service role.
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      )
+      await supabaseAdmin
+        .from("profiles")
+        .update({ is_premium: false, premium_until: null })
+        .eq("id", user.id)
+
+      return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       })
     }

@@ -18,11 +18,44 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.36.0',
+    title: 'Echo v0.36.0 - Bot de Música, Chamada de Vídeo nos Canais de Voz & Correção do Chat',
+    date: '23 de Setembro de 2026',
+    tagline: 'Toque músicas do YouTube direto na chamada de voz com o novo Bot de Música, ligue a câmera durante as chamadas do servidor e conte com a correção de mensagens sobrepostas no chat de texto.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎵',
+        badge: 'NOVIDADE',
+        title: 'Bot de Música nos Canais de Voz',
+        description: 'Clique no botão de música na barra da chamada, cole um link do YouTube ou YouTube Music (ou digite o nome da música) e o Echo Music Bot entra na chamada e toca para todo mundo. Pause, pule, ajuste o volume ou pare quando quiser.'
+      },
+      {
+        icon: '📹',
+        badge: 'NOVIDADE',
+        title: 'Chamada de Vídeo nos Canais de Voz',
+        description: 'Ligue sua câmera durante uma chamada em canais de voz do servidor e veja o vídeo ao vivo de qualquer membro que também ativar a câmera, direto na grade de participantes.'
+      },
+      {
+        icon: '💬',
+        badge: 'CORREÇÃO',
+        title: 'Mensagens do Chat Não Sobrepõem Mais',
+        description: 'Corrigido um bug que fazia mensagens de texto ficarem sobrepostas umas às outras no chat, especialmente perto de mensagens de voz, ao carregar mensagens mais antigas.'
+      },
+      {
+        icon: '👻',
+        badge: 'CORREÇÃO',
+        title: 'Status Invisível Agora Reflete Corretamente em Chamada',
+        description: 'Corrigido um bug que mostrava "Em chamada" na lista de membros mesmo com o status definido como Invisível.'
+      }
+    ]
+  },
+  {
     version: '0.35.2',
     title: 'Echo v0.35.2 - Notificações Windows, Presença de Jogos Realtime & Segurança',
     date: '20 de Setembro de 2026',
     tagline: 'Notificações nativas no Windows para menções em canais, alerta visual na barra de tarefas, sincronização de jogos em tempo real para todos os membros, figurinhas limpas e segurança reforçada.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🔔',

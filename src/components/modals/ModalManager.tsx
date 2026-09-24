@@ -13,6 +13,7 @@ import type {
   RolePermissions 
 } from '../../types'
 import { supabase } from '../../lib/supabase'
+import { useUIStore } from '../../stores/useUIStore'
 
 import { HoveredMemberPopover } from '../sidebar/HoveredMemberPopover'
 import { SoundboardToast } from './SoundboardToast'
@@ -25,6 +26,7 @@ const MemberProfileModalWrapper = lazy(() => import('./MemberProfileModalWrapper
 const ChannelInviteModal = lazy(() => import('./ChannelInviteModal').then(m => ({ default: m.ChannelInviteModal })))
 const SpaceAddMembersModal = lazy(() => import('./SpaceAddMembersModal').then(m => ({ default: m.SpaceAddMembersModal })))
 const SoundboardModal = lazy(() => import('./SoundboardModal').then(m => ({ default: m.SoundboardModal })))
+const MusicBotModal = lazy(() => import('./MusicBotModal').then(m => ({ default: m.MusicBotModal })))
 const WhatsNewModal = lazy(() => import('../WhatsNewModal').then(m => ({ default: m.WhatsNewModal })))
 const SavedMessagesModal = lazy(() => import('./SavedMessagesModal').then(m => ({ default: m.SavedMessagesModal })))
 const ImageLightboxModal = lazy(() => import('./ImageLightboxModal').then(m => ({ default: m.ImageLightboxModal })))
@@ -430,6 +432,8 @@ export function ModalManager(props: ModalManagerProps) {
     acceptIncomingCall,
     rejectIncomingCall
   } = props
+  const showMusicBotModal = useUIStore((s) => s.showMusicBotModal)
+  const setShowMusicBotModal = useUIStore((s) => s.setShowMusicBotModal)
 
   return (
     <Suspense fallback={null}>
@@ -679,6 +683,15 @@ export function ModalManager(props: ModalManagerProps) {
         onPlaySound={playSoundboard}
       />
       <SoundboardToast lastEvent={lastSoundboardEvent} />
+
+      {/* Music Bot Modal */}
+      <MusicBotModal
+        isOpen={showMusicBotModal}
+        onClose={() => setShowMusicBotModal(false)}
+        channelId={activeVoiceChannelId}
+        userId={user.id}
+        channelName={activeVoiceChannel?.name}
+      />
 
       {/* WhatsNew Modal */}
       <WhatsNewModal 
