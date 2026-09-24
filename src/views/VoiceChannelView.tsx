@@ -617,7 +617,7 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                 </div>
                               </div>
                             ) : (
-                              <div className="participants-grid">
+                              <div className={`participants-grid ${callMembersList.some(m => m.isCameraOn && m.cameraStream) ? 'has-cameras' : ''}`}>
                                 {(() => {
                                   const displayList = callMembersList
 
@@ -680,10 +680,11 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
 
                                   return displayList.map(p => {
                                   const isSharer = Boolean(p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0))
+                                  const hasCam = Boolean(p.isCameraOn && p.cameraStream)
                                   return (
-                                    <div 
-                                      key={p.userId} 
-                                      className={`participant-card ${p.isSpeaking ? 'speaking' : ''} ${isSharer ? 'has-live-screen' : ''}`}
+                                    <div
+                                      key={p.userId}
+                                      className={`participant-card ${p.isSpeaking ? 'speaking' : ''} ${isSharer ? 'has-live-screen' : ''} ${hasCam ? 'has-camera' : ''}`}
                                       onClick={() => {
                                         if (isSharer) {
                                           setSelectedScreenSharerUserId(p.userId)
@@ -701,17 +702,24 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                           <span className="live-dot-pulse" /> AO VIVO
                                         </div>
                                       )}
+                                      {hasCam && p.cameraStream && (
+                                        <>
+                                          <div className="participant-card-video">
+                                            <CameraVideoTile stream={p.cameraStream} mirrored={p.userId === user.id} />
+                                          </div>
+                                          {(p.isDeafened || p.isMuted) && (
+                                            <div className="participant-camera-status">
+                                              {p.isMuted && <MicOffIcon style={{ width: '13px', height: '13px' }} />}
+                                              {p.isDeafened && <HeadphonesOffIcon style={{ width: '13px', height: '13px' }} />}
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
                                       <div
                                         className="participant-avatar-large"
-                                        style={
-                                          p.isCameraOn && p.cameraStream
-                                            ? { position: 'relative', width: '120px', height: '90px', borderRadius: '12px', overflow: 'hidden' }
-                                            : { position: 'relative' }
-                                        }
+                                        style={hasCam ? { display: 'none' } : { position: 'relative' }}
                                       >
-                                        {p.isCameraOn && p.cameraStream ? (
-                                          <CameraVideoTile stream={p.cameraStream} mirrored={p.userId === user.id} />
-                                        ) : p.avatarUrl ? (
+                                        {p.avatarUrl ? (
                                           <img src={p.avatarUrl} alt={p.displayName} className="round-avatar-img-large" />
                                         ) : (
                                           <span className="avatar-initial-large">

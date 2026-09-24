@@ -12,7 +12,7 @@ export interface UseEchoDesktopShellOptions {
   selectedChannel: Channel | null
   activeVoiceChannelId: string | null
   page: string
-  updateScreenSubscriptions: (options: { activeSharerId: string | null; viewMode: 'focus' | 'grid'; isWatching: boolean }) => void
+  updateScreenSubscriptions: (options: { activeSharerId: string | null; viewMode: 'focus' | 'grid'; isWatching: boolean; isCameraVisible?: boolean }) => void
 }
 
 export function useEchoDesktopShell({
@@ -98,6 +98,7 @@ export function useEchoDesktopShell({
   // Filter participants who have an active screenshare stream or are actively sharing their screen
   const activeScreenSharers = participants.filter(p => p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0))
   const activeScreenSharer = (selectedScreenSharerUserId && activeScreenSharers.find(p => p.userId === selectedScreenSharerUserId)) || activeScreenSharers[0] || null
+  const hasActiveScreenSharers = activeScreenSharers.length > 0
   const [isScreenFullScreen, setIsScreenFullScreen] = useState(false)
 
   // Auto-switch to watching streams only when a new stream starts
@@ -190,11 +191,14 @@ export function useEchoDesktopShell({
     const isDocVisible = typeof document !== 'undefined' ? document.visibilityState === 'visible' : true
 
     const shouldWatch = isWatchingStreams && isVoiceChannelSelected && isPageActive && isDocVisible
+    // Os tiles de câmera só são renderizados no grid de participantes, nunca junto da visualização de transmissão
+    const isViewingStream = hasActiveScreenSharers && isWatchingStreams
 
     updateScreenSubscriptions({
       activeSharerId: selectedScreenSharerUserId,
       viewMode: screenShareViewMode,
-      isWatching: shouldWatch
+      isWatching: shouldWatch,
+      isCameraVisible: isVoiceChannelSelected && isPageActive && isDocVisible && !isViewingStream
     })
 
     const handleVisibilityChange = () => {
@@ -202,7 +206,8 @@ export function useEchoDesktopShell({
       updateScreenSubscriptions({
         activeSharerId: selectedScreenSharerUserId,
         viewMode: screenShareViewMode,
-        isWatching: isWatchingStreams && isVoiceChannelSelected && isPageActive && nowVisible
+        isWatching: isWatchingStreams && isVoiceChannelSelected && isPageActive && nowVisible,
+        isCameraVisible: isVoiceChannelSelected && isPageActive && nowVisible && !isViewingStream
       })
     }
 
@@ -212,6 +217,7 @@ export function useEchoDesktopShell({
     }
   }, [
     isWatchingStreams,
+    hasActiveScreenSharers,
     selectedScreenSharerUserId,
     screenShareViewMode,
     selectedChannel?.id,

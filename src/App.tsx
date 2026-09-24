@@ -919,6 +919,7 @@ function Echo({ user }: { user: User }) {
     screenAudioSyncDelayMs,
     changeScreenAudioSyncDelay,
     isVoiceReconnecting,
+    isVoiceNetworkUnstable,
     voiceReconnectCountdown,
     voiceReconnectAttempt,
     retryVoiceReconnect,
@@ -2039,7 +2040,7 @@ function Echo({ user }: { user: User }) {
             isPttMode={isPttMode}
             pttKey={pttKey}
             isPttActive={isPttActive}
-            isVoiceReconnecting={isVoiceReconnecting}
+            isVoiceReconnecting={isVoiceReconnecting || isVoiceNetworkUnstable}
             activeVoiceChannel={activeVoiceChannel}
             currentSpace={currentSpace}
             rtcStats={rtcStats}

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { User } from '@supabase/supabase-js'
+import { installPresenceTrackThrottle } from '../lib/presenceThrottle'
 
 export interface UseEchoGlobalPresenceOptions {
   user: User
@@ -203,15 +204,14 @@ export function useEchoGlobalPresence({
     }
   }, [])
 
-  // Re-sincroniza presença imediatamente ao detectar alteração de jogo
+  // Re-sincroniza presença ao detectar alteração de jogo. Não escuta onGameDetected diretamente: o processo
+  // principal emite esse evento a cada varredura (5s) mesmo sem mudança, o que gerava um track a cada 5s.
+  // A mudança real chega por 'echo-presence-refresh' (só disparado quando o jogo muda) e pelo efeito em myGamePresence.
   useEffect(() => {
     const handleGameChange = () => {
       if (presenceChannelRef.current) {
         trackMyPresenceRef.current()
       }
-    }
-    if ((window as any).electronAPI?.onGameDetected) {
-      (window as any).electronAPI.onGameDetected(handleGameChange)
     }
     const storageHandler = (e: StorageEvent) => {
       if (e.key === 'echo-my-game-presence' || e.key === 'echo-custom-status') {
@@ -235,6 +235,8 @@ export function useEchoGlobalPresence({
       config: { presence: { key: user.id } }
     })
     presenceChannelRef.current = presenceChannel
+    // Limite do Realtime: 5 atualizações de presença / 30s por cliente (senão o canal é fechado)
+    installPresenceTrackThrottle(presenceChannel)
 
     presenceChannel
       .on('presence', { event: 'sync' }, handleGlobalPresenceUpdate)

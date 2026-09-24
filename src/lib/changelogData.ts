@@ -18,11 +18,43 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.36.1',
+    title: 'Echo v0.36.1 - Presença Estável, Câmera em Tela Grande & Chamadas Mais Leves',
+    date: '24 de Setembro de 2026',
+    tagline: 'Amigos que sumiam da lista da chamada e o jogo que não aparecia foram corrigidos, a câmera agora ocupa o card inteiro e as chamadas de vídeo consomem menos banda e se recuperam melhor de quedas de rede.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🟢',
+        badge: 'CORREÇÃO',
+        title: 'Presença Estável: Chamada e Jogos Não Somem Mais',
+        description: 'Corrigido um limite do Realtime que fechava o canal de presença e fazia participantes sumirem da lista da chamada e o "Jogando VALORANT" não aparecer para os amigos. Todos precisam estar na 0.36.1 para a correção valer para si.'
+      },
+      {
+        icon: '📹',
+        badge: 'MELHORIA',
+        title: 'Câmera em Tela Grande',
+        description: 'A câmera agora preenche o card do participante em formato 16:9, em vez de uma miniatura, e a qualidade se ajusta ao número de pessoas na chamada.'
+      },
+      {
+        icon: '🌐',
+        badge: 'OTIMIZAÇÃO',
+        title: 'Chamadas de Vídeo Mais Leves',
+        description: 'As câmeras pausam quando você está assistindo uma transmissão, em outro canal ou com a janela minimizada, e quem transmite deixa de enviar vídeo que ninguém está recebendo, reduzindo o consumo de banda.'
+      },
+      {
+        icon: '📶',
+        badge: 'REDE',
+        title: 'Reconexão Mais Clara e Câmera Automática',
+        description: 'Ao oscilar a rede a barra lateral mostra "Reconectando...", e, se a conexão cair de vez, sua câmera liga sozinha ao voltar para a chamada. A transmissão de tela precisa ser iniciada de novo.'
+      }
+    ]
+  },
+  {
     version: '0.36.0',
     title: 'Echo v0.36.0 - Bot de Música, Chamada de Vídeo nos Canais de Voz & Correção do Chat',
     date: '23 de Setembro de 2026',
     tagline: 'Toque músicas do YouTube direto na chamada de voz com o novo Bot de Música, ligue a câmera durante as chamadas do servidor e conte com a correção de mensagens sobrepostas no chat de texto.',
-    isLatest: true,
     highlights: [
       {
         icon: '🎵',

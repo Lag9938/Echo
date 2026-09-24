@@ -20,6 +20,7 @@ import rnnoiseWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise.wasm?url'
 import rnnoiseSimdWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise_simd.wasm?url'
 import { playJoinSound, playLeaveSound, playSoundboardEffect } from './soundEffects'
 import { trackVoiceJoined, trackVoiceLeft, trackScreenShareStarted, trackScreenShareStopped } from './analytics'
+import { installPresenceTrackThrottle } from './presenceThrottle'
 
 export type VoiceParticipant = {
   userId: string
@@ -170,6 +171,7 @@ export function useVoiceChannel(options?: {
   onServerMuted?: () => void;
   onKickedFromVoice?: () => void;
   onMovedToVoiceChannel?: (targetChannelId: string, targetChannelName?: string) => void;
+  onReconnectMediaNotice?: (title: string, message: string) => void;
 }) {
   const onDisconnectedRef = useRef(options?.onDisconnected)
   useEffect(() => {
@@ -197,6 +199,11 @@ export function useVoiceChannel(options?: {
   useEffect(() => {
     onMovedToVoiceChannelRef.current = options?.onMovedToVoiceChannel
   }, [options?.onMovedToVoiceChannel])
+
+  const onReconnectMediaNoticeRef = useRef(options?.onReconnectMediaNotice)
+  useEffect(() => {
+    onReconnectMediaNoticeRef.current = options?.onReconnectMediaNotice
+  }, [options?.onReconnectMediaNotice])
 
   const [participants, setParticipants] = useState<VoiceParticipant[]>([])
   const [isMuted, setIsMuted] = useState(false)
@@ -349,6 +356,10 @@ export function useVoiceChannel(options?: {
 
   // Reconnection Loop State
   const [isReconnecting, setIsReconnecting] = useState(false)
+  // Oscilação de rede enquanto o próprio LiveKit tenta se recuperar (antes do loop de reconexão do app assumir)
+  const [isNetworkUnstable, setIsNetworkUnstable] = useState(false)
+  // Câmera/tela ativas quando a conexão caiu, para religar a câmera depois de uma reconexão total
+  const pendingMediaRestoreRef = useRef<{ camera: boolean; cameraDeviceId?: string; screen: boolean } | null>(null)
   const [reconnectCountdown, setReconnectCountdown] = useState(5)
   const [reconnectAttempt, setReconnectAttempt] = useState(0)
   const isReconnectingRef = useRef(false)
@@ -537,12 +548,14 @@ export function useVoiceChannel(options?: {
     activeSharerId?: string | null
     viewMode?: 'focus' | 'grid'
     isWatching?: boolean
-  }>({ isWatching: true, viewMode: 'focus' })
+    isCameraVisible?: boolean
+  }>({ isWatching: true, viewMode: 'focus', isCameraVisible: true })
 
   const updateScreenSubscriptions = useCallback((opts?: {
     activeSharerId?: string | null
     viewMode?: 'focus' | 'grid'
     isWatching?: boolean
+    isCameraVisible?: boolean
   }) => {
     if (opts) {
       subscriptionOptionsRef.current = {
@@ -557,18 +570,32 @@ export function useVoiceChannel(options?: {
     const isWatching = currentOpts.isWatching ?? true
     const viewMode = currentOpts.viewMode ?? 'focus'
     const activeSharerId = currentOpts.activeSharerId
+    const isCameraVisible = currentOpts.isCameraVisible ?? true
 
     room.remoteParticipants.forEach((rp) => {
+      // Câmeras: só são exibidas no grid de participantes e ficam ocultas enquanto o usuário assiste a uma
+      // transmissão, está em outro canal/página ou com a janela minimizada. setEnabled(false) pausa o
+      // encaminhamento no SFU (0 Kbps) sem desfazer a assinatura.
+      // O tamanho de cada tile depende de quantas pessoas dividem o grid, então a camada do simulcast
+      // acompanha: 720p com até 2 pessoas, 360p até 6 e 180p acima disso.
+      const cameraPub = rp.getTrackPublication(Track.Source.Camera)
+      if (cameraPub) {
+        const tileCount = room.remoteParticipants.size + 1
+        cameraPub.setEnabled(isCameraVisible)
+        cameraPub.setVideoQuality(
+          tileCount <= 2 ? VideoQuality.HIGH : tileCount <= 6 ? VideoQuality.MEDIUM : VideoQuality.LOW
+        )
+      }
+
       const screenPub = rp.getTrackPublication(Track.Source.ScreenShare)
       const shouldSubscribe = isWatching && (viewMode === 'grid' || !activeSharerId || activeSharerId === rp.identity)
       if (screenPub) {
         // Se o espectador não estiver visualizando a tela, corta a transmissão de vídeo (0 Kbps)
-        // No modo foco, assina apenas a tela selecionada. No modo grade, assina todas em baixa resolução.
+        // No modo foco, assina apenas a tela selecionada. No modo grade, assina todas.
+        // A tela é publicada sem simulcast (uma única camada), então não existe qualidade menor para
+        // o modo grade: cada tela assinada consome o bitrate completo, mesmo em miniatura.
         if (screenPub.isSubscribed !== shouldSubscribe) {
           screenPub.setSubscribed(shouldSubscribe)
-        }
-        if (shouldSubscribe) {
-          screenPub.setVideoQuality(viewMode === 'grid' ? VideoQuality.LOW : VideoQuality.HIGH)
         }
       }
 
@@ -846,7 +873,9 @@ export function useVoiceChannel(options?: {
     }
     isReconnectingRef.current = false
     setIsReconnecting(false)
+    setIsNetworkUnstable(false)
     lastJoinParamsRef.current = null
+    pendingMediaRestoreRef.current = null
 
     if (voiceJoinTimeRef.current && activeChannelIdRef.current) {
       const dur = (Date.now() - voiceJoinTimeRef.current) / 1000
@@ -1082,8 +1111,12 @@ export function useVoiceChannel(options?: {
       }
 
       const room = new Room({
+        // adaptiveStream fica desligado: os tiles usam MediaStream próprio (não track.attach), então o
+        // LiveKit não enxergaria o elemento de vídeo e pausaria a faixa. A economia de câmera é feita
+        // manualmente em updateScreenSubscriptions.
         adaptiveStream: false,
-        dynacast: false,
+        // dynacast: quem transmite para de codificar/enviar camadas que nenhum espectador está recebendo
+        dynacast: true,
         publishDefaults: {
           simulcast: false,
           videoCodec: 'vp8',
@@ -1095,6 +1128,7 @@ export function useVoiceChannel(options?: {
       // Setup LiveKit room events
       room.on(RoomEvent.Connected, () => {
         setIsConnected(true)
+        setIsNetworkUnstable(false)
         setIsReconnecting(false)
         isReconnectingRef.current = false
         setReconnectAttempt(0)
@@ -1109,10 +1143,12 @@ export function useVoiceChannel(options?: {
 
       room.on(RoomEvent.Reconnecting, () => {
         console.log('[LiveKit] Reconectando ao SFU...')
+        setIsNetworkUnstable(true)
       })
 
       room.on(RoomEvent.Reconnected, () => {
         console.log('[LiveKit] Reconectado com sucesso ao SFU!')
+        setIsNetworkUnstable(false)
         setIsConnected(true)
         setIsReconnecting(false)
         isReconnectingRef.current = false
@@ -1132,6 +1168,7 @@ export function useVoiceChannel(options?: {
       room.on(RoomEvent.Disconnected, (reason) => {
         console.warn('[LiveKit] Desconectado do SFU. Motivo:', reason)
         setIsConnected(false)
+        setIsNetworkUnstable(false)
         if (isManualDisconnectRef.current) {
           if (onDisconnectedRef.current) {
             onDisconnectedRef.current()
@@ -1146,12 +1183,13 @@ export function useVoiceChannel(options?: {
 
       room.on(RoomEvent.ParticipantConnected, () => {
         syncParticipants()
+        updateScreenSubscriptions()
         playJoinSound(sfxVolumeRef.current)
       })
 
       room.on(RoomEvent.TrackPublished, (pub: RemoteTrackPublication) => {
         syncParticipants()
-        if (pub && pub.source === Track.Source.ScreenShare) {
+        if (pub && (pub.source === Track.Source.ScreenShare || pub.source === Track.Source.Camera)) {
           updateScreenSubscriptions()
         }
       })
@@ -1172,6 +1210,7 @@ export function useVoiceChannel(options?: {
         const sAudio = audioElementsRef.current.get(screenKey)
         if (sAudio) { sAudio.srcObject = null; sAudio.remove(); audioElementsRef.current.delete(screenKey) }
         syncParticipants()
+        updateScreenSubscriptions()
         playLeaveSound(sfxVolumeRef.current)
       })
 
@@ -1342,6 +1381,8 @@ export function useVoiceChannel(options?: {
         const sbChannel = supabase.channel(presenceChanName, {
           config: { presence: { key: userId } }
         })
+        // Normalmente é o mesmo canal já criado por useEchoVoiceSession (a instalação é idempotente)
+        installPresenceTrackThrottle(sbChannel, { keepAliveMs: 15000 })
         channelRef.current = sbChannel
 
         const doTrack = async () => {
@@ -1426,6 +1467,19 @@ export function useVoiceChannel(options?: {
 
     try {
       console.log(`[LiveKit] Tentativa de reconexão contínua ao canal: ${params.channelId}`)
+
+      // room.disconnect() para todas as faixas locais, mas o estado de câmera/tela do app continuaria "ligado".
+      // Guarda o que estava ativo (só na primeira tentativa — nas seguintes já foi limpo) e limpa o estado.
+      if (!pendingMediaRestoreRef.current && (localCameraStreamRef.current || localScreenStreamRef.current)) {
+        pendingMediaRestoreRef.current = {
+          camera: !!localCameraStreamRef.current,
+          cameraDeviceId: localCameraStreamRef.current?.getVideoTracks()[0]?.getSettings().deviceId,
+          screen: !!localScreenStreamRef.current
+        }
+      }
+      if (localCameraStreamRef.current) stopCamera()
+      if (localScreenStreamRef.current) stopScreenShare()
+
       if (roomRef.current) {
         try { roomRef.current.disconnect() } catch (e) {}
         roomRef.current = null
@@ -1451,11 +1505,28 @@ export function useVoiceChannel(options?: {
         clearInterval(reconnectTimerRef.current)
         reconnectTimerRef.current = null
       }
+
+      // Religa a câmera automaticamente. A tela não é retomada sozinha: exige escolher a fonte de novo.
+      const restore = pendingMediaRestoreRef.current
+      pendingMediaRestoreRef.current = null
+      if (restore) {
+        if (restore.camera && !localCameraStreamRef.current) {
+          await startCamera(restore.cameraDeviceId, (message) => {
+            onReconnectMediaNoticeRef.current?.('Câmera desligada', message)
+          })
+        }
+        if (restore.screen) {
+          onReconnectMediaNoticeRef.current?.(
+            'Transmissão encerrada',
+            'Sua conexão caiu e a transmissão de tela foi interrompida. Inicie a transmissão novamente para retomar.'
+          )
+        }
+      }
     } catch (err) {
       console.warn('[LiveKit] Falha na tentativa de reconexão (rede offline), reagendando em 5s...', err)
       startReconnectionLoopRef.current()
     }
-  }, [joinVoice])
+  }, [joinVoice, startCamera, stopCamera, stopScreenShare])
   attemptReconnectRef.current = attemptReconnect
 
   const startReconnectionLoop = useCallback(() => {
@@ -2313,6 +2384,7 @@ export function useVoiceChannel(options?: {
     screenAudioSyncDelayMs,
     changeScreenAudioSyncDelay,
     isReconnecting,
+    isNetworkUnstable,
     reconnectCountdown,
     reconnectAttempt,
     retryVoiceReconnect,

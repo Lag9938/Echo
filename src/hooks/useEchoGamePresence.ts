@@ -39,7 +39,14 @@ export function useEchoGamePresence({
       localStorage.removeItem('echo-my-game-presence')
     } catch {}
 
+    // O processo principal e o polling chamam handleGame a cada 5s com o mesmo jogo. Só reage quando muda,
+    // senão cada chamada regravava o localStorage e disparava 'echo-presence-refresh' (um track por vez).
+    let lastGameKey: string | null = null
     const handleGame = (game: any) => {
+      const gameKey = game ? `${game.name}|${game.startedAt}` : ''
+      if (gameKey === lastGameKey) return
+      lastGameKey = gameKey
+
       setMyGamePresence(prev => {
         const prevName = prev?.name || null
         const newName = game?.name || null

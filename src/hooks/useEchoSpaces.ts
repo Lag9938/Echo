@@ -4,6 +4,7 @@ import type { Space, Channel } from '../types'
 import { useSpacesStore } from '../stores/useSpacesStore'
 import { playJoinSound } from '../lib/soundEffects'
 import { extractSpaceIdFromInvite } from '../lib/invite'
+import { installPresenceTrackThrottle } from '../lib/presenceThrottle'
 
 export interface UseEchoSpacesOptions {
   user: User
@@ -435,6 +436,8 @@ export function useEchoSpaces({
     const spacePresenceChannel = supabase.channel(`space-presence-${currentSpaceId}`, {
       config: { presence: { key: user.id } }
     })
+    // Limite do Realtime: 5 atualizações de presença / 30s por cliente (senão o canal é fechado)
+    installPresenceTrackThrottle(spacePresenceChannel)
 
     const handleSpacePresenceSync = () => {
       const state = spacePresenceChannel.presenceState()

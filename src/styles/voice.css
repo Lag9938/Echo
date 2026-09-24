@@ -382,6 +382,58 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
 }
 
+/* Chamada de vídeo: quando alguém liga a câmera, todos os cards viram tiles 16:9 e o vídeo preenche o card */
+.participants-grid.has-cameras .participant-card {
+  flex: 1 1 380px;
+  max-width: 760px;
+  min-width: 260px;
+  height: auto;
+  aspect-ratio: 16 / 9;
+}
+.participant-card.has-camera {
+  padding: 0;
+  overflow: hidden;
+  background: #000;
+}
+.participant-card-video {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+}
+.participant-card.has-camera .participant-card-bottom-info {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  padding: 28px 14px 10px;
+  box-sizing: border-box;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+  pointer-events: none;
+}
+.participant-card.has-camera .participant-card-bottom-info .watch-stream-badge-btn {
+  pointer-events: auto;
+}
+.participant-card.has-camera .participant-name {
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+.participant-camera-status {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 9999px;
+  background: #e0554c;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
 .participant-card.has-live-screen {
   border-color: rgba(239, 68, 68, 0.55);
   background: linear-gradient(180deg, rgba(239, 68, 68, 0.08) 0%, var(--bg-tertiary) 100%);

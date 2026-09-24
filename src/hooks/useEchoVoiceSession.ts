@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { useVoiceChannel, type VoiceParticipant } from '../lib/useVoiceChannel'
+import { installPresenceTrackThrottle } from '../lib/presenceThrottle'
 import type { Space, Channel } from '../types'
 import {
   playJoinSound,
@@ -134,6 +135,7 @@ export function useEchoVoiceSession({
     screenAudioSyncDelayMs,
     changeScreenAudioSyncDelay,
     isReconnecting: isVoiceReconnecting,
+    isNetworkUnstable: isVoiceNetworkUnstable,
     reconnectCountdown: voiceReconnectCountdown,
     reconnectAttempt: voiceReconnectAttempt,
     retryVoiceReconnect,
@@ -144,6 +146,9 @@ export function useEchoVoiceSession({
   } = useVoiceChannel({
     onDisconnected: handleVoiceDisconnected,
     sfxVolume,
+    onReconnectMediaNotice: (title, message) => {
+      showToast?.(title, message, 'info')
+    },
     onServerMuted: () => {
       showToast?.('Silenciado no Servidor', 'Um moderador silenciou seu microfone.', 'info')
     },
@@ -182,6 +187,9 @@ export function useEchoVoiceSession({
       const channel = sb.channel(`space-voice-${sp.id}`, {
         config: { presence: { key: user.id } }
       })
+      // Limite do Realtime: 5 atualizações de presença / 30s por cliente (senão o canal é fechado).
+      // Batimento mais curto que o padrão para a presença de voz se recuperar rápido após reconexão.
+      installPresenceTrackThrottle(channel, { keepAliveMs: 15000 })
 
       const handlePresenceSync = () => {
         const state = channel.presenceState()
@@ -514,6 +522,7 @@ export function useEchoVoiceSession({
     screenAudioSyncDelayMs,
     changeScreenAudioSyncDelay,
     isVoiceReconnecting,
+    isVoiceNetworkUnstable,
     voiceReconnectCountdown,
     voiceReconnectAttempt,
     retryVoiceReconnect,
