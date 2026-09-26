@@ -17,6 +17,9 @@ import {
 } from '../icons'
 import { openExternalUrl } from '../../lib/openExternal'
 
+/** A partir daqui a lista pula a renderização das mensagens fora da tela (content-visibility) para ficar leve. */
+const LONG_LIST_THRESHOLD = 150
+
 function renderRichEmbed(body: string) {
   return <ChatLinkEmbed content={body} />
 }
@@ -29,9 +32,9 @@ export interface MessageListProps {
   filteredMessages: Message[]
   hasMoreMessages: boolean
   isLoadingMore: boolean
+  isLoadingMessages?: boolean
   loadMoreMessages: (channelId: string) => Promise<void> | void
   searchQuery: string
-  channelVirtualizer: any
   user: User
   profileDisplayName: string
   profileAvatarUrl?: string
@@ -70,9 +73,9 @@ export const MessageList = memo(function MessageList({
   filteredMessages,
   hasMoreMessages,
   isLoadingMore,
+  isLoadingMessages = false,
   loadMoreMessages,
   searchQuery,
-  channelVirtualizer,
   user,
   profileDisplayName,
   profileAvatarUrl = '',
@@ -103,7 +106,7 @@ export const MessageList = memo(function MessageList({
   messageReactions
 }: MessageListProps) {
   return (
-    <div 
+    <div
       className="messages-area"
       ref={messagesContainerRef}
       onScroll={(e) => {
@@ -139,6 +142,21 @@ export const MessageList = memo(function MessageList({
         </div>
       )}
 
+      {/* Esqueleto enquanto o canal ainda não tem nada para mostrar: evita a tela vazia parecida com "canal sem mensagens" */}
+      {isLoadingMessages && filteredMessages.length === 0 && !searchQuery.trim() && (
+        <div className="messages-skeleton" aria-busy="true" aria-label="Carregando mensagens">
+          {[62, 38, 74, 50, 30].map((width, i) => (
+            <div className="messages-skeleton-row" key={i}>
+              <span className="messages-skeleton-avatar" />
+              <span className="messages-skeleton-lines">
+                <span className="messages-skeleton-line short" />
+                <span className="messages-skeleton-line" style={{ width: `${width}%` }} />
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {filteredMessages.length === 0 && searchQuery && (
         <div className="no-messages">
           <span className="no-msg-icon">🔍</span>
@@ -146,16 +164,14 @@ export const MessageList = memo(function MessageList({
         </div>
       )}
 
-      <div
-        style={{
-          height: `${channelVirtualizer.getTotalSize()}px`,
-          width: '100%',
-          position: 'relative'
-        }}
-      >
-        {channelVirtualizer.getVirtualItems().map((virtualRow: any) => {
-          const index = virtualRow.index
-          const message = filteredMessages[index]
+      {/*
+        As mensagens ficam no fluxo normal da página (uma embaixo da outra). Antes elas eram posicionadas
+        uma a uma por um virtualizador que guarda a altura de cada linha; quando uma imagem, reação ou
+        incorporação mudava de altura depois de medida, as linhas seguintes ficavam por cima. No fluxo normal
+        o navegador calcula a altura sozinho e a sobreposição não tem como acontecer.
+      */}
+      <div className={`messages-flow${filteredMessages.length > LONG_LIST_THRESHOLD ? ' long' : ''}`}>
+        {filteredMessages.map((message, index) => {
           const prevMessage = index > 0 ? filteredMessages[index - 1] : null
           const msgDate = new Date(message.created_at)
           const prevDate = prevMessage ? new Date(prevMessage.created_at) : null
@@ -200,16 +216,9 @@ export const MessageList = memo(function MessageList({
 
           return (
             <div
-              key={message.id || virtualRow.key}
-              data-index={virtualRow.index}
-              ref={channelVirtualizer.measureElement}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                transform: `translateY(${virtualRow.start}px)`
-              }}
+              key={message.id || `${message.created_at}-${index}`}
+              data-index={index}
+              className="msg-row"
             >
               {isDifferentDay && (
                 <div className="chat-date-divider">

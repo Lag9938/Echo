@@ -1745,14 +1745,22 @@
   justify-content: center;
 }
 
+/* O nome tem prioridade sobre os selos (comunidade, aura, clã, Dono/cargo). Antes tudo ficava numa linha só
+   e os selos, com largura fixa, deixavam ~66px para o nome: "Lazinmenoquente" saía cortado. Agora a linha
+   quebra e os selos descem para a linha de baixo só quando não cabem ao lado do nome inteiro. */
 .member-name-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 2px 6px;
   min-width: 0;
 }
 
 .member-name {
+  /* só usa reticências se o nome sozinho for maior que a linha inteira */
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
   font-size: 13.5px;
   font-weight: 600;
   color: var(--text-primary);

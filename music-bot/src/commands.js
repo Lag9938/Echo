@@ -25,7 +25,11 @@ export function parseCommand(body) {
     pause: 'pause', pausar: 'pause',
     resume: 'resume', continuar: 'resume', unpause: 'resume',
     queue: 'queue', fila: 'queue',
-    volume: 'volume', vol: 'volume'
+    volume: 'volume', vol: 'volume',
+    remove: 'remove', rm: 'remove', remover: 'remove',
+    next: 'next', proxima: 'next', proximo: 'next',
+    now: 'now', agora: 'now', jump: 'now',
+    clear: 'clear', limpar: 'clear'
   }
 
   const name = aliases[rawName]

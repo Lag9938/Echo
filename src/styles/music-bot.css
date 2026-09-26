@@ -1,0 +1,523 @@
+/* Painel do Bot de Música.
+ *
+ * Segue a linguagem visual do resto do app e só usa variáveis de tema (--bg-*, --border-color, --text-*,
+ * --accent-*), sem cores fixas para superfícies: funciona em todos os temas, inclusive o claro.
+ *  - fundo: .modal-backdrop (global, modals.css)
+ *  - cartões: --bg-tertiary + borda --border-color, raio 12px (como .soundboard-card)
+ *  - estado ativo: --accent-light + --accent-color (como .type-btn.type-active)
+ *  - controles redondos: mesma geometria dos botões da barra de chamada (.control-btn)
+ */
+
+.music-bot-modal {
+  width: min(460px, 92vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  color: var(--text-primary);
+  animation: modalScaleSpring 0.26s var(--ease-spring);
+}
+
+/* Cabeçalho */
+.music-bot-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.music-bot-badge {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--accent-color);
+  background: var(--accent-light);
+}
+
+.music-bot-heading {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.music-bot-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-bot-subtitle {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-bot-close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.music-bot-close:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* Selo com o estado do bot: a cor vem de `color` e o fundo é derivado dela (funciona em qualquer tema) */
+.music-bot-pill {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.music-bot-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.music-bot-pill.playing { color: #22c55e; }
+.music-bot-pill.paused,
+.music-bot-pill.outdated { color: #f59e0b; }
+.music-bot-pill.loading { color: var(--speaking-color, #3b82f6); }
+.music-bot-pill.loading .music-bot-pill-dot { animation: musicBotPulse 1s ease-in-out infinite; }
+.music-bot-pill.off { color: var(--text-muted); }
+
+@keyframes musicBotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Tocando agora */
+.music-bot-now {
+  min-height: 46px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+}
+
+.music-bot-now-title {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-bot-now-empty {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.music-bot-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.music-bot-time {
+  flex-shrink: 0;
+  min-width: 34px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.music-bot-progress + .music-bot-time {
+  text-align: right;
+}
+
+.music-bot-progress {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border-color);
+  overflow: hidden;
+}
+
+.music-bot-progress.unknown {
+  background: repeating-linear-gradient(90deg, var(--border-color) 0 6px, transparent 6px 12px);
+}
+
+.music-bot-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent-color);
+  transition: width 0.4s linear;
+}
+
+/* Campo de busca com o botão dentro */
+.music-bot-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 5px 5px 14px;
+  background: var(--bg-tertiary);
+  border: 1.5px solid var(--border-color);
+  border-radius: 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.music-bot-search:focus-within {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.music-bot-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.music-bot-input::placeholder {
+  color: var(--text-muted);
+}
+
+.music-bot-play {
+  flex-shrink: 0;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.music-bot-play:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.music-bot-play:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Controles: círculos, como os botões da barra de chamada */
+.music-bot-transport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.music-bot-icon-btn {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-color);
+  cursor: pointer;
+  transition: transform 0.22s var(--ease-spring), background 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.2s ease;
+}
+
+.music-bot-icon-btn:hover:not(:disabled) {
+  background: var(--bg-primary);
+  border-color: var(--text-muted);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: var(--shadow-md);
+}
+
+.music-bot-icon-btn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.music-bot-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.music-bot-icon-btn.primary {
+  width: 54px;
+  height: 54px;
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #fff;
+}
+
+.music-bot-icon-btn.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.music-bot-icon-btn.danger:hover:not(:disabled) {
+  color: #ef4444;
+  border-color: #ef4444;
+  background: color-mix(in srgb, #ef4444 10%, var(--bg-tertiary));
+}
+
+/* Volume: slider nativo com a cor de destaque do tema (igual ao do modal de áudio de membros) */
+.music-bot-volume {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.music-bot-mute {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.music-bot-mute:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.music-bot-slider {
+  flex: 1;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--accent-color);
+}
+
+.music-bot-volume-value {
+  flex-shrink: 0;
+  min-width: 40px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+/* Fila e recentes: abas no mesmo formato de .type-btn / .type-active */
+.music-bot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.music-bot-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.music-bot-tab {
+  flex: 1;
+  padding: 6px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.music-bot-tab:hover {
+  border-color: var(--text-muted);
+}
+
+.music-bot-tab.active {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  background: var(--accent-light);
+}
+
+.music-bot-clear {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.music-bot-clear:hover:not(:disabled) {
+  color: #ef4444;
+  background: color-mix(in srgb, #ef4444 10%, transparent);
+}
+
+.music-bot-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 168px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.music-bot-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  transition: background 0.12s ease;
+}
+
+.music-bot-item:hover,
+.music-bot-item:focus-within {
+  background: var(--bg-tertiary);
+}
+
+.music-bot-item-index {
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.music-bot-item-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-bot-item-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 2px;
+  /* Sempre visíveis (só mais discretos): escondê-los até passar o mouse fazia parecer que só existia a lixeira */
+  opacity: 0.65;
+  transition: opacity 0.12s ease;
+}
+
+.music-bot-item:hover .music-bot-item-actions,
+.music-bot-item:focus-within .music-bot-item-actions,
+.music-bot-item-actions.always {
+  opacity: 1;
+}
+
+.music-bot-item-btn {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.music-bot-item-btn:hover:not(:disabled) {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.music-bot-item-btn.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, #ef4444 12%, transparent);
+  color: #ef4444;
+}
+
+.music-bot-item-btn:disabled,
+.music-bot-clear:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.music-bot-empty,
+.music-bot-more {
+  padding: 12px 8px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.music-bot-more {
+  padding: 4px 8px;
+}
+
+/* Linha de status: reserva a altura para o painel não pular quando aparece uma mensagem */
+.music-bot-status {
+  min-height: 16px;
+  margin: -4px 0 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.music-bot-status.error {
+  color: #ef4444;
+}
+
+.music-bot-close:focus-visible,
+.music-bot-play:focus-visible,
+.music-bot-icon-btn:focus-visible,
+.music-bot-mute:focus-visible,
+.music-bot-slider:focus-visible,
+.music-bot-tab:focus-visible,
+.music-bot-clear:focus-visible,
+.music-bot-item-btn:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .music-bot-modal { animation: none; }
+  .music-bot-icon-btn,
+  .music-bot-progress-fill { transition: none; }
+  .music-bot-pill.loading .music-bot-pill-dot { animation: none; }
+}

@@ -21,6 +21,8 @@ import rnnoiseSimdWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise_simd.w
 import { playJoinSound, playLeaveSound, playSoundboardEffect } from './soundEffects'
 import { trackVoiceJoined, trackVoiceLeft, trackScreenShareStarted, trackScreenShareStopped } from './analytics'
 import { installPresenceTrackThrottle } from './presenceThrottle'
+import { isMusicBotIdentity, parseMusicBotState } from './musicBotState'
+import { useMusicBotStore } from '../stores/useMusicBotStore'
 
 export type VoiceParticipant = {
   userId: string
@@ -355,6 +357,10 @@ export function useVoiceChannel(options?: {
   }, [])
 
   // Reconnection Loop State
+  // Último metadado do bot de música visto (para só atualizar o store quando mudar)
+  const musicBotRawRef = useRef<string | null | undefined>(undefined)
+  const musicBotPresentRef = useRef<boolean | undefined>(undefined)
+
   const [isReconnecting, setIsReconnecting] = useState(false)
   // Oscilação de rede enquanto o próprio LiveKit tenta se recuperar (antes do loop de reconexão do app assumir)
   const [isNetworkUnstable, setIsNetworkUnstable] = useState(false)
@@ -538,6 +544,19 @@ export function useVoiceChannel(options?: {
           isCameraOn
         })
       })
+    }
+
+    // Bot de Música: o bot publica o estado (fila, faixa atual...) nos metadados do próprio participante.
+    // Só atualiza o store quando algo mudou, porque syncParticipants roda a cada troca de "falando".
+    const botParticipant = room
+      ? Array.from(room.remoteParticipants.values()).find(rp => isMusicBotIdentity(rp.identity))
+      : undefined
+    const botRaw = botParticipant?.metadata ?? null
+    const botPresent = Boolean(botParticipant)
+    if (botRaw !== musicBotRawRef.current || botPresent !== musicBotPresentRef.current) {
+      musicBotRawRef.current = botRaw
+      musicBotPresentRef.current = botPresent
+      useMusicBotStore.getState().update(botPresent, parseMusicBotState(botRaw))
     }
 
     setParticipants(list)
@@ -956,6 +975,9 @@ export function useVoiceChannel(options?: {
     setIsConnected(false)
     setParticipants([])
     setRtcStats(null)
+    musicBotRawRef.current = undefined
+    musicBotPresentRef.current = undefined
+    useMusicBotStore.getState().reset()
   }, [stopLocalVad, stopScreenShare, stopCamera])
 
   // Join a voice channel via LiveKit SFU
@@ -1282,6 +1304,7 @@ export function useVoiceChannel(options?: {
         syncParticipants()
       })
 
+      room.on(RoomEvent.ParticipantMetadataChanged, () => syncParticipants())
       room.on(RoomEvent.TrackMuted, () => syncParticipants())
       room.on(RoomEvent.TrackUnmuted, () => syncParticipants())
 

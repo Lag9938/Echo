@@ -1,6 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { MusicIcon } from '../icons'
+import { useMusicBotStore } from '../../stores/useMusicBotStore'
+import { formatClock, getCurrentPositionMs, type MusicBotStatus } from '../../lib/musicBotState'
+import {
+  ArrowUpIcon,
+  CloseXIcon,
+  MusicIcon,
+  PauseIcon,
+  PlayIcon,
+  SkipForwardIcon,
+  StopSquareIcon,
+  TrashIcon,
+  VolumeIcon,
+  VolumeXIcon
+} from '../icons'
 
 export interface MusicBotModalProps {
   isOpen: boolean
@@ -11,26 +24,70 @@ export interface MusicBotModalProps {
 }
 
 const MAX_QUERY_LENGTH = 300
+const DEFAULT_VOLUME = 100
+const STATUS_TIMEOUT_MS = 3500
 
-const controlBtnStyle: React.CSSProperties = {
-  flex: 1,
-  padding: '10px 8px',
-  borderRadius: '10px',
-  border: '1px solid rgba(255,255,255,0.1)',
-  background: 'rgba(255,255,255,0.05)',
-  color: 'inherit',
-  cursor: 'pointer',
-  fontSize: '13px',
-  fontWeight: 600
+type ListTab = 'queue' | 'recent'
+
+const STATUS_LABEL: Record<MusicBotStatus, string> = {
+  loading: 'Carregando',
+  playing: 'Tocando',
+  paused: 'Pausado',
+  idle: 'Ocioso'
 }
 
-// O bot (music-bot/) escuta INSERTs em `messages` e reage a "!comando" em canais
-// de voz. O painel só posta essas mensagens em nome do usuário — não há API própria.
+// O bot (music-bot/) escuta INSERTs em `messages` e reage a "!comando" em canais de voz. O painel envia
+// esses comandos em nome do usuário e lê o estado que o bot publica nos metadados dele no LiveKit
+// (fila, faixa atual, volume) — veja src/lib/musicBotState.ts.
 export function MusicBotModal({ isOpen, onClose, channelId, userId, channelName }: MusicBotModalProps) {
   const [query, setQuery] = useState('')
-  const [volume, setVolume] = useState(100)
+  const [volume, setVolume] = useState(DEFAULT_VOLUME)
+  const [volumeBeforeMute, setVolumeBeforeMute] = useState(DEFAULT_VOLUME)
+  // Só é usado com um bot sem painel (sem estado publicado): o botão alterna pelo último comando enviado
+  const [localPaused, setLocalPaused] = useState(false)
   const [sending, setSending] = useState(false)
   const [status, setStatus] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
+  const [tab, setTab] = useState<ListTab>('queue')
+  const [now, setNow] = useState(() => Date.now())
+  const draggingVolume = useRef(false)
+
+  const botPresent = useMusicBotStore((s) => s.present)
+  const botState = useMusicBotStore((s) => s.state)
+  const receivedAt = useMusicBotStore((s) => s.receivedAt)
+
+  const paused = botState ? botState.status === 'paused' : localPaused
+  const isPlaying = botState?.status === 'playing'
+
+  // Mensagens de sucesso somem sozinhas; erros ficam até a próxima ação
+  useEffect(() => {
+    if (!status || status.kind === 'error') return
+    const timer = setTimeout(() => setStatus(null), STATUS_TIMEOUT_MS)
+    return () => clearTimeout(timer)
+  }, [status])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isOpen, onClose])
+
+  // Relógio da barra de progresso: só corre enquanto o painel está aberto e o bot está tocando
+  useEffect(() => {
+    if (!isOpen || !isPlaying) return
+    setNow(Date.now())
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [isOpen, isPlaying])
+
+  // O volume real vem do bot (outra pessoa pode ter mudado); não mexe enquanto o usuário arrasta
+  const botVolume = botState?.volume
+  useEffect(() => {
+    if (botVolume === undefined || draggingVolume.current) return
+    setVolume(botVolume)
+  }, [botVolume])
 
   if (!isOpen) return null
 
@@ -67,115 +124,326 @@ export function MusicBotModal({ isOpen, onClose, channelId, userId, channelName 
     }
     if (await sendCommand(`!play ${trimmed}`, 'Pedido enviado. O bot entra na chamada em alguns segundos.')) {
       setQuery('')
+      setLocalPaused(false)
     }
   }
 
-  const commitVolume = () => {
-    void sendCommand(`!volume ${volume}`, `Volume ajustado para ${volume}%.`)
+  const handleTogglePause = async () => {
+    const wasPaused = paused
+    const ok = wasPaused
+      ? await sendCommand('!resume', 'Retomado.')
+      : await sendCommand('!pause', 'Pausado.')
+    if (ok) setLocalPaused(!wasPaused)
+  }
+
+  const handleSkip = async () => {
+    if (await sendCommand('!skip', 'Pulando para a próxima.')) setLocalPaused(false)
+  }
+
+  const handleStop = async () => {
+    if (await sendCommand('!stop', 'Bot desconectado do canal.')) setLocalPaused(false)
+  }
+
+  const commitVolume = (value: number) => {
+    void sendCommand(`!volume ${value}`, `Volume em ${value}%.`)
+  }
+
+  const handleToggleMute = () => {
+    if (volume > 0) {
+      setVolumeBeforeMute(volume)
+      setVolume(0)
+      commitVolume(0)
+    } else {
+      const restored = volumeBeforeMute || DEFAULT_VOLUME
+      setVolume(restored)
+      commitVolume(restored)
+    }
+  }
+
+  // Por id (q7) e não por posição: o comando continua certo mesmo que a fila ande antes de ele chegar
+  const handleRemove = (id: string | null, position: number, title: string) => {
+    void sendCommand(`!remove ${id ?? position}`, `Removido: ${title}`)
+  }
+
+  const handlePlayNext = (id: string | null, position: number, title: string) => {
+    void sendCommand(`!next ${id ?? position}`, `Vai tocar em seguida: ${title}`)
+  }
+
+  const handlePlayNow = (id: string | null, position: number, title: string) => {
+    void sendCommand(`!now ${id ?? position}`, `Tocando agora: ${title}`)
+  }
+
+  const handleClear = () => {
+    void sendCommand('!clear', 'Fila limpa.')
+  }
+
+  const handleReplay = (url: string, title: string) => {
+    void sendCommand(`!play ${url}`, `Adicionada de novo: ${title}`)
+  }
+
+  const PauseToggleIcon = paused ? PlayIcon : PauseIcon
+  const pauseLabel = paused ? 'Continuar' : 'Pausar'
+  const VolumeStateIcon = volume === 0 ? VolumeXIcon : VolumeIcon
+
+  const queue = botState?.queue ?? []
+  const queueTotal = botState?.queueTotal ?? 0
+  const history = botState?.history ?? []
+  const current = botState?.current ?? null
+  const positionMs = botState && current ? getCurrentPositionMs(botState, receivedAt, now) : 0
+  const durationMs = current?.durationSeconds ? current.durationSeconds * 1000 : null
+  const progress = durationMs ? Math.min(100, (positionMs / durationMs) * 100) : 0
+
+  // Estado do bot para o selo do cabeçalho
+  let pillClass = 'off'
+  let pillText = 'Bot fora da chamada'
+  if (botState) {
+    pillClass = botState.status
+    pillText = STATUS_LABEL[botState.status]
+  } else if (botPresent) {
+    pillClass = 'outdated'
+    pillText = 'Bot desatualizado'
+  }
+
+  let nowPlayingText = 'Peça uma música para o bot entrar na chamada'
+  if (botState) {
+    nowPlayingText = botState.status === 'loading' ? 'Carregando a música…' : 'Nada tocando'
+  } else if (botPresent) {
+    nowPlayingText = 'Atualize o bot no servidor para ver o que está tocando'
   }
 
   return (
-    <div
-      className="modal-backdrop"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        width: '100vw',
-        height: '100vh',
-        zIndex: 99999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)'
-      }}
-      onClick={onClose}
-    >
-      <div className="modal-content" style={{ maxWidth: '520px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <MusicIcon style={{ width: 26, height: 26 }} />
-            <div>
-              <h3 style={{ margin: 0 }}>Bot de Música</h3>
-              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                {channelName ? `Tocando em ${channelName}` : 'Toque músicas do YouTube na chamada de voz'}
-              </span>
-            </div>
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="music-bot-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Bot de Música"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="music-bot-header">
+          <div className="music-bot-badge">
+            <MusicIcon style={{ width: 20, height: 20 }} />
           </div>
-          <button className="settings-close-btn" onClick={onClose}>✕</button>
+          <div className="music-bot-heading">
+            <h3 className="music-bot-title">Bot de Música</h3>
+            <span className="music-bot-subtitle">
+              {channelName ? `Canal: ${channelName}` : 'Toque músicas do YouTube na chamada'}
+            </span>
+          </div>
+          <span className={`music-bot-pill ${pillClass}`}>
+            <span className="music-bot-pill-dot" />
+            {pillText}
+          </span>
+          <button type="button" className="music-bot-close" onClick={onClose} aria-label="Fechar">
+            <CloseXIcon />
+          </button>
+        </div>
+
+        <div className="music-bot-now">
+          {current ? (
+            <>
+              <div className="music-bot-now-title" title={current.title}>{current.title}</div>
+              <div className="music-bot-progress-row">
+                <span className="music-bot-time">{formatClock(positionMs)}</span>
+                {durationMs && (
+                  <>
+                    <div className="music-bot-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
+                      <div className="music-bot-progress-fill" style={{ width: `${progress}%` }} />
+                    </div>
+                    <span className="music-bot-time">{formatClock(durationMs)}</span>
+                  </>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="music-bot-now-empty">{nowPlayingText}</div>
+          )}
         </div>
 
         <form
-          style={{ display: 'flex', gap: '8px', marginTop: '16px' }}
+          className="music-bot-search"
           onSubmit={(e) => { e.preventDefault(); void handlePlay() }}
         >
           <input
+            className="music-bot-input"
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             maxLength={MAX_QUERY_LENGTH}
-            placeholder="Link do YouTube / YouTube Music ou nome da música"
+            placeholder="Link do YouTube ou nome da música"
+            aria-label="Link ou nome da música"
             autoFocus
-            style={{
-              flex: 1,
-              padding: '10px 12px',
-              borderRadius: '10px',
-              border: '1px solid rgba(255,255,255,0.12)',
-              background: 'rgba(0,0,0,0.25)',
-              color: 'inherit',
-              fontSize: '14px',
-              outline: 'none'
-            }}
           />
-          <button
-            type="submit"
-            disabled={sending}
-            style={{
-              padding: '10px 18px',
-              borderRadius: '10px',
-              border: 'none',
-              background: '#1eb4ff',
-              color: '#04121c',
-              fontWeight: 700,
-              cursor: sending ? 'default' : 'pointer',
-              opacity: sending ? 0.6 : 1
-            }}
-          >
+          <button type="submit" className="music-bot-play" disabled={sending}>
             Tocar
           </button>
         </form>
 
-        <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-          <button type="button" disabled={sending} style={controlBtnStyle} onClick={() => void sendCommand('!pause', 'Pausado.')}>⏸ Pausar</button>
-          <button type="button" disabled={sending} style={controlBtnStyle} onClick={() => void sendCommand('!resume', 'Retomado.')}>▶ Continuar</button>
-          <button type="button" disabled={sending} style={controlBtnStyle} onClick={() => void sendCommand('!skip', 'Pulando para a próxima.')}>⏭ Pular</button>
-          <button type="button" disabled={sending} style={{ ...controlBtnStyle, color: '#ff4655' }} onClick={() => void sendCommand('!stop', 'Bot desconectado do canal.')}>⏹ Parar</button>
+        <div className="music-bot-transport">
+          <button
+            type="button"
+            className="music-bot-icon-btn primary"
+            disabled={sending}
+            onClick={() => void handleTogglePause()}
+            title={pauseLabel}
+            aria-label={pauseLabel}
+          >
+            <PauseToggleIcon style={{ width: 22, height: 22 }} />
+          </button>
+          <button
+            type="button"
+            className="music-bot-icon-btn"
+            disabled={sending}
+            onClick={() => void handleSkip()}
+            title="Pular"
+            aria-label="Pular"
+          >
+            <SkipForwardIcon style={{ width: 18, height: 18 }} />
+          </button>
+          <button
+            type="button"
+            className="music-bot-icon-btn danger"
+            disabled={sending}
+            onClick={() => void handleStop()}
+            title="Parar e desconectar o bot"
+            aria-label="Parar e desconectar o bot"
+          >
+            <StopSquareIcon style={{ width: 16, height: 16 }} />
+          </button>
         </div>
 
-        <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '13px', color: 'var(--text-secondary)', minWidth: '58px' }}>Volume {volume}%</span>
+        <div className="music-bot-volume">
+          <button
+            type="button"
+            className="music-bot-mute"
+            onClick={handleToggleMute}
+            title={volume === 0 ? 'Restaurar volume' : 'Silenciar'}
+            aria-label={volume === 0 ? 'Restaurar volume' : 'Silenciar'}
+          >
+            <VolumeStateIcon style={{ width: 18, height: 18 }} />
+          </button>
           <input
+            className="music-bot-slider"
             type="range"
             min={0}
             max={200}
             step={5}
             value={volume}
+            aria-label="Volume do bot"
+            onPointerDown={() => { draggingVolume.current = true }}
             onChange={(e) => setVolume(Number(e.target.value))}
-            onMouseUp={commitVolume}
-            onTouchEnd={commitVolume}
-            onKeyUp={commitVolume}
-            style={{ flex: 1 }}
+            onPointerUp={() => { draggingVolume.current = false; commitVolume(volume) }}
+            onKeyUp={() => commitVolume(volume)}
           />
+          <span className="music-bot-volume-value">{volume}%</span>
         </div>
 
-        {status && (
-          <p style={{ margin: '14px 0 0', fontSize: '12px', color: status.kind === 'error' ? '#ff4655' : 'var(--text-secondary)' }}>
-            {status.text}
-          </p>
-        )}
-        <p style={{ margin: '10px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>
-          Os comandos aparecem no chat de texto da chamada, junto com as respostas do bot.
+        <div className="music-bot-list">
+          <div className="music-bot-tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'queue'}
+              className={`music-bot-tab${tab === 'queue' ? ' active' : ''}`}
+              onClick={() => setTab('queue')}
+            >
+              Fila{queueTotal > 0 ? ` (${queueTotal})` : ''}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'recent'}
+              className={`music-bot-tab${tab === 'recent' ? ' active' : ''}`}
+              onClick={() => setTab('recent')}
+            >
+              Recentes
+            </button>
+            {tab === 'queue' && queueTotal > 0 && (
+              <button type="button" className="music-bot-clear" disabled={sending} onClick={handleClear}>
+                Limpar
+              </button>
+            )}
+          </div>
+
+          <ul className="music-bot-items">
+            {tab === 'queue' && queue.map((item, index) => (
+              <li key={item.id ?? `${index}-${item.title}`} className="music-bot-item">
+                <span className="music-bot-item-index">{index + 1}</span>
+                <span className="music-bot-item-title" title={item.title}>{item.title}</span>
+                <span className="music-bot-item-actions">
+                  <button
+                    type="button"
+                    className="music-bot-item-btn"
+                    disabled={sending}
+                    title="Tocar agora"
+                    aria-label={`Tocar agora: ${item.title}`}
+                    onClick={() => handlePlayNow(item.id, index + 1, item.title)}
+                  >
+                    <PlayIcon style={{ width: 14, height: 14 }} />
+                  </button>
+                  {index > 0 && (
+                    <button
+                      type="button"
+                      className="music-bot-item-btn"
+                      disabled={sending}
+                      title="Tocar em seguida"
+                      aria-label={`Tocar em seguida: ${item.title}`}
+                      onClick={() => handlePlayNext(item.id, index + 1, item.title)}
+                    >
+                      <ArrowUpIcon style={{ width: 14, height: 14 }} />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="music-bot-item-btn danger"
+                    disabled={sending}
+                    title="Remover da fila"
+                    aria-label={`Remover da fila: ${item.title}`}
+                    onClick={() => handleRemove(item.id, index + 1, item.title)}
+                  >
+                    <TrashIcon style={{ width: 14, height: 14 }} />
+                  </button>
+                </span>
+              </li>
+            ))}
+            {tab === 'queue' && queueTotal > queue.length && (
+              <li className="music-bot-more">+ {queueTotal - queue.length} na fila</li>
+            )}
+            {tab === 'queue' && queue.length === 0 && (
+              <li className="music-bot-empty">
+                {botState || !botPresent
+                  ? 'A fila está vazia. Peça outra música acima e, para cada uma da fila, você poderá tocar agora, colocar como próxima ou remover.'
+                  : 'Atualize o bot no servidor para ver a fila.'}
+              </li>
+            )}
+
+            {tab === 'recent' && history.map((item, index) => (
+              <li key={`${index}-${item.title}`} className="music-bot-item">
+                <span className="music-bot-item-title" title={item.title}>{item.title}</span>
+                {item.url && (
+                  <span className="music-bot-item-actions always">
+                    <button
+                      type="button"
+                      className="music-bot-item-btn"
+                      disabled={sending}
+                      title="Tocar de novo"
+                      aria-label={`Tocar de novo: ${item.title}`}
+                      onClick={() => handleReplay(item.url as string, item.title)}
+                    >
+                      <PlayIcon style={{ width: 13, height: 13 }} />
+                    </button>
+                  </span>
+                )}
+              </li>
+            ))}
+            {tab === 'recent' && history.length === 0 && (
+              <li className="music-bot-empty">As músicas que já tocaram aparecem aqui.</li>
+            )}
+          </ul>
+        </div>
+
+        <p className={`music-bot-status${status?.kind === 'error' ? ' error' : ''}`} role="status" aria-live="polite">
+          {status?.text ?? ''}
         </p>
       </div>
     </div>

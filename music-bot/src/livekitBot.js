@@ -21,7 +21,10 @@ async function mintBotToken(roomName, identity) {
     canPublish: true,
     // O bot não precisa ouvir ninguém, só publicar a música — economiza
     // banda/CPU não assinando as faixas dos outros participantes.
-    canSubscribe: false
+    canSubscribe: false,
+    // Permite publicar o estado (fila, faixa atual...) nos metadados do próprio participante,
+    // que o app do Echo lê para montar o painel do bot (veja state.js).
+    canUpdateOwnMetadata: true
   })
   return at.toJwt()
 }

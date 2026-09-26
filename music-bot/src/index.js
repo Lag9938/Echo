@@ -9,6 +9,10 @@ import {
   handleResume,
   handleVolume,
   handleQueue,
+  handleRemove,
+  handleNext,
+  handleNow,
+  handleClear,
   endAllSessions,
   getActiveSessionCount
 } from './sessionManager.js'
@@ -47,6 +51,10 @@ const realtimeChannel = supabase
         case 'resume': await handleResume(msg.channel_id); break
         case 'volume': await handleVolume(msg.channel_id, command.arg); break
         case 'queue': await handleQueue(msg.channel_id); break
+        case 'remove': await handleRemove(msg.channel_id, command.arg); break
+        case 'next': await handleNext(msg.channel_id, command.arg); break
+        case 'now': await handleNow(msg.channel_id, command.arg); break
+        case 'clear': await handleClear(msg.channel_id); break
       }
     } catch (err) {
       console.error(`[Command] Erro ao processar "!${command.name}":`, err)

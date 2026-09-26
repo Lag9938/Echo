@@ -18,11 +18,49 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.38.0',
+    title: 'Echo v0.38.0 - Bot de Música com Fila & Chat Sem Sobreposição',
+    date: '26 de Setembro de 2026',
+    tagline: 'O painel do Bot de Música foi refeito com fila, progresso ao vivo e controle de qual música toca a seguir, o chat de texto não deixa mais mensagens se sobrepondo e os canais abrem mais rápido.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎵',
+        badge: 'NOVIDADE',
+        title: 'Bot de Música com Fila e Progresso ao Vivo',
+        description: 'O painel do bot mostra o que está tocando com o tempo decorrido, a fila e as músicas recentes. Em cada música da fila você pode tocar agora, colocar como a próxima ou remover, e também limpar a fila toda. O painel segue o visual e os temas do app.'
+      },
+      {
+        icon: '🖱️',
+        badge: 'MELHORIA',
+        title: 'Um Só Lugar para Controlar o Bot',
+        description: 'Clicar no card do bot na chamada agora abre o painel do Bot de Música, em vez da tela de participante comum (posição 3D, moderação).'
+      },
+      {
+        icon: '💬',
+        badge: 'CORREÇÃO',
+        title: 'Mensagens Não se Sobrepõem Mais',
+        description: 'Imagens, reações e links que cresciam depois de carregar faziam as mensagens seguintes ficarem por cima. As mensagens agora seguem o fluxo normal da página, então isso não acontece mais.'
+      },
+      {
+        icon: '⚡',
+        badge: 'MELHORIA',
+        title: 'Canais Abrem Mais Rápido',
+        description: 'Ao abrir um espaço, o Echo já busca em segundo plano as mensagens dos primeiros canais de texto dele, e mostra um esqueleto enquanto carrega, em vez de uma tela vazia. Também deixou de refazer a conexão do canal sem necessidade.'
+      },
+      {
+        icon: '👥',
+        badge: 'CORREÇÃO',
+        title: 'Nomes dos Membros por Inteiro',
+        description: 'Os nomes na lista de membros não ficam mais cortados.'
+      }
+    ]
+  },
+  {
     version: '0.37.0',
     title: 'Echo v0.37.0 - Convites de Verdade & Servidores Realmente Privados',
     date: '25 de Setembro de 2026',
     tagline: 'Só entra no seu espaço quem recebe o seu convite: links com código, validade, revogação e proteção contra entrada não autorizada em servidores e chamadas de voz.',
-    isLatest: true,
     highlights: [
       {
         icon: '🔑',

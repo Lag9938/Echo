@@ -10,6 +10,17 @@ import {
   shouldSendTypingNotification
 } from './useEchoMessagesCore'
 
+const PAGE_SIZE = 50
+const MESSAGE_SELECT = 'id,channel_id,body,created_at,updated_at,author_id,attachment_url,attachment_type,reply_to_message_id,is_edited,message_type,profiles(display_name,avatar_url,avatar_decoration,profile_effect)'
+/** Depois disso, uma busca antecipada de um canal é considerada velha e pode ser refeita. */
+const PREFETCH_FRESH_MS = 5 * 60_000
+/** Quantos canais aquecer de uma vez, para não disputar a rede com o canal aberto. */
+const PREFETCH_BATCH = 3
+/** Teto de canais aquecidos por espaço (os primeiros da lista); os demais carregam ao clicar. */
+const PREFETCH_MAX_CHANNELS = 6
+/** Quantos canais ficam guardados em memória; os menos usados são esquecidos. */
+const CACHE_MAX_CHANNELS = 24
+
 export interface UseEchoChannelMessagesOptions {
   user: User
   profileDisplayName: string
@@ -17,6 +28,8 @@ export interface UseEchoChannelMessagesOptions {
   displayName: string
   selectedChannel: Channel | null
   spaces: Space[]
+  /** Canais de cada espaço: os de texto do espaço aberto são aquecidos em segundo plano. */
+  spaceChannels?: Record<string, Channel[]>
   sfxVolume: number
   canUserDo: (spaceId: string, userId: string, perm: keyof RolePermissions) => boolean
   showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend') => void
@@ -33,6 +46,7 @@ export function useEchoChannelMessages({
   displayName,
   selectedChannel,
   spaces,
+  spaceChannels,
   sfxVolume,
   canUserDo,
   showToast,
@@ -55,6 +69,8 @@ export function useEchoChannelMessages({
   const [slowmodeCooldown, setSlowmodeCooldown] = useState<number>(0)
   const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true)
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false)
+  // Só é true enquanto o canal aberto não tem NADA para mostrar (sem cache) e a busca está em andamento
+  const [isLoadingMessages, setIsLoadingMessages] = useState<boolean>(false)
   const [typingUsersMap, setTypingUsersMap] = useState<Record<string, { name: string, timeout: any }>>({})
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -62,10 +78,19 @@ export function useEchoChannelMessages({
   const channelBroadcastRef = useRef<RealtimeChannel | null>(null)
   const isPrependingRef = useRef<boolean>(false)
   const messagesCacheRef = useRef<Record<string, Message[]>>({})
+  const hasMoreCacheRef = useRef<Record<string, boolean>>({})
+  const prefetchedAtRef = useRef<Record<string, number>>({})
   const lastTypingSentRef = useRef<number>(0)
 
   const activeChannelIdRef = useRef<string | null>(selectedChannel?.id || null)
   activeChannelIdRef.current = selectedChannel?.id || null
+
+  // Valores lidos dentro dos ouvintes em tempo real. Ficam em refs para que mudar o nome do perfil ou o
+  // volume dos sons NÃO derrube a conexão do canal e refaça a busca das mensagens.
+  const liveRef = useRef({ profileDisplayName, displayName, sfxVolume, selectedChannel, triggerDesktopNotification, playDmNotificationSound })
+  liveRef.current = { profileDisplayName, displayName, sfxVolume, selectedChannel, triggerDesktopNotification, playDmNotificationSound }
+  const messagesRef = useRef<Message[]>([])
+  messagesRef.current = messages
 
   // Anti-Spam & Rate-Limiting ref
   const antiSpamRef = useRef(createAntiSpamState())
@@ -123,6 +148,65 @@ export function useEchoChannelMessages({
     })
   }, [profileDisplayName, profileAvatarUrl, user?.id])
 
+  /** Busca as últimas mensagens de um canal já na ordem cronológica (mais antigas primeiro). */
+  async function fetchLatestMessages(channelId: string): Promise<{ messages: Message[]; hasMore: boolean } | { error: string }> {
+    const { data, error: queryError } = await supabase
+      .from('messages')
+      .select(MESSAGE_SELECT)
+      .eq('channel_id', channelId)
+      .order('created_at', { ascending: false })
+      .limit(PAGE_SIZE)
+
+    if (queryError) return { error: queryError.message }
+
+    const rawData = data ?? []
+    return {
+      hasMore: rawData.length >= PAGE_SIZE,
+      messages: [...rawData].reverse().map((row: any) => ({
+        ...row,
+        channel_id: row.channel_id || channelId,
+        profile: Array.isArray(row.profiles) ? row.profiles?.[0] : row.profiles,
+        status: 'sent' as const
+      }))
+    }
+  }
+
+  /**
+   * Aquece o cache de um canal antes de o usuário abrir: ao clicar, as mensagens já estão na tela
+   * e a busca normal só confere o que mudou. Não mexe no canal aberto nem repete busca recente.
+   */
+  async function prefetchChannelMessages(channelId: string) {
+    if (!supabase || activeChannelIdRef.current === channelId) return
+    // App minimizado ou em segundo plano: ninguém vai clicar agora, então não gasta rede
+    if (typeof document !== 'undefined' && document.hidden) return
+    const last = prefetchedAtRef.current[channelId]
+    if (last && Date.now() - last < PREFETCH_FRESH_MS) return
+    prefetchedAtRef.current[channelId] = Date.now()
+
+    const result = await fetchLatestMessages(channelId)
+    if ('error' in result) {
+      delete prefetchedAtRef.current[channelId]
+      return
+    }
+    // Se o canal virou o ativo enquanto buscava, quem manda é o carregamento normal dele
+    if (activeChannelIdRef.current === channelId) return
+    messagesCacheRef.current[channelId] = result.messages
+    hasMoreCacheRef.current[channelId] = result.hasMore
+    evictOldCache()
+  }
+
+  /** Mantém o cache pequeno: esquece os canais mais antigos (ordem de inserção), nunca o aberto. */
+  function evictOldCache() {
+    const keys = Object.keys(messagesCacheRef.current)
+    for (let i = 0; keys.length - i > CACHE_MAX_CHANNELS && i < keys.length; i++) {
+      const key = keys[i]
+      if (key === activeChannelIdRef.current) continue
+      delete messagesCacheRef.current[key]
+      delete hasMoreCacheRef.current[key]
+      delete prefetchedAtRef.current[key]
+    }
+  }
+
   // Busca robusta de mensagens com cache estrito em memória por canal e consulta direta ao Supabase
   async function loadMessages(channelId: string, _forceFullFetch = false) {
     const isMock = typeof window !== 'undefined' && window.location.search.includes('mock=true')
@@ -149,34 +233,24 @@ export function useEchoChannelMessages({
 
     if (!foundCached) {
       setMessages([])
+      setIsLoadingMessages(true)
     }
 
     // 2. Busca Oficial e Segura das mensagens no Supabase para o canal ativo
-    const { data, error: queryError } = await supabase
-      .from('messages')
-      .select('id,channel_id,body,created_at,updated_at,author_id,attachment_url,attachment_type,reply_to_message_id,is_edited,message_type,profiles(display_name,avatar_url,avatar_decoration,profile_effect)')
-      .eq('channel_id', channelId)
-      .order('created_at', { ascending: false })
-      .limit(50)
-
-    if (queryError) { 
-      setError(queryError.message)
-      return 
-    }
+    const result = await fetchLatestMessages(channelId)
 
     // Se o usuário já navegou para outro canal enquanto a busca acontecia, descarte
     if (activeChannelIdRef.current !== channelId) return
+    setIsLoadingMessages(false)
 
-    const rawData = data ?? []
-    setHasMoreMessages(rawData.length >= 50)
+    if ('error' in result) {
+      setError(result.error)
+      return
+    }
 
-    // Reverte para manter a ordem cronológica correta (mais antigas no topo)
-    const loaded: Message[] = [...rawData].reverse().map((row: any) => ({
-      ...row,
-      channel_id: row.channel_id || channelId,
-      profile: Array.isArray(row.profiles) ? row.profiles?.[0] : row.profiles,
-      status: 'sent' as const
-    }))
+    setHasMoreMessages(result.hasMore)
+    hasMoreCacheRef.current[channelId] = result.hasMore
+    const loaded = result.messages
 
     setMessages(prev => {
       if (activeChannelIdRef.current !== channelId) return prev
@@ -187,6 +261,7 @@ export function useEchoChannelMessages({
       )
       const merged = [...loaded, ...pendingLocal]
       messagesCacheRef.current[channelId] = merged
+      evictOldCache()
       return merged
     })
 
@@ -525,17 +600,11 @@ export function useEchoChannelMessages({
       return
     }
 
-    setHasMoreMessages(true)
+    setHasMoreMessages(hasMoreCacheRef.current[selectedChannel.id] ?? true)
     setIsLoadingMore(false)
     isPrependingRef.current = false
 
-    const initialCache = messagesCacheRef.current[selectedChannel.id] || []
-    if (initialCache.length > 0) {
-      setMessages(initialCache)
-    } else {
-      setMessages([])
-    }
-
+    // loadMessages mostra o cache na hora (se houver) e só depois confere no servidor
     loadMessages(selectedChannel.id)
 
     const channelTopic = `room-messages-${selectedChannel.id}`
@@ -568,6 +637,7 @@ export function useEchoChannelMessages({
 
       // Alerta sonoro e notificação no Windows caso o usuário seja mencionado
       if (user && payload.author_id !== user.id) {
+        const { profileDisplayName, displayName, sfxVolume, selectedChannel, triggerDesktopNotification, playDmNotificationSound } = liveRef.current
         const myName = (profileDisplayName || displayName || '').toLowerCase()
         const bodyLower = (payload.body || '').toLowerCase()
         const isMentioned = 
@@ -633,6 +703,11 @@ export function useEchoChannelMessages({
       filter: `channel_id=eq.${selectedChannel.id}` 
     }, (payload: any) => {
       const isDeleteOrUpdate = payload && (payload.eventType === 'DELETE' || payload.eventType === 'UPDATE')
+      // Mensagem nova que já chegou pelo broadcast (ou pelo envio confirmado): não precisa rebuscar tudo
+      if (payload?.eventType === 'INSERT' && payload.new?.id &&
+          messagesRef.current.some(m => m.id === payload.new.id && m.status === 'sent')) {
+        return
+      }
       loadMessages(selectedChannel.id, isDeleteOrUpdate)
     })
 
@@ -654,7 +729,25 @@ export function useEchoChannelMessages({
       client.removeChannel(live)
       setTypingUsersMap({})
     }
-  }, [selectedChannel?.id, user?.id, profileDisplayName, sfxVolume])
+  }, [selectedChannel?.id, user?.id])
+
+  // Aquece em segundo plano os outros canais de texto do espaço aberto
+  const activeSpaceId = selectedChannel?.space_id
+  const spaceTextChannelIds = (activeSpaceId ? spaceChannels?.[activeSpaceId] : undefined)
+    ?.filter(c => c.type === 'text').slice(0, PREFETCH_MAX_CHANNELS).map(c => c.id).join(',') ?? ''
+  useEffect(() => {
+    if (!supabase || !spaceTextChannelIds) return
+    let cancelled = false
+    const ids = spaceTextChannelIds.split(',')
+    ;(async () => {
+      // Espera o canal aberto terminar de carregar antes de disputar a rede
+      await new Promise(resolve => setTimeout(resolve, 400))
+      for (let i = 0; i < ids.length && !cancelled; i += PREFETCH_BATCH) {
+        await Promise.all(ids.slice(i, i + PREFETCH_BATCH).map(id => prefetchChannelMessages(id)))
+      }
+    })()
+    return () => { cancelled = true }
+  }, [spaceTextChannelIds, activeSpaceId, user?.id])
 
   // Broadcast typing indicator with 2s debounce
   const notifyTyping = useCallback(() => {
@@ -705,6 +798,8 @@ export function useEchoChannelMessages({
     setHasMoreMessages,
     isLoadingMore,
     setIsLoadingMore,
+    isLoadingMessages,
+    prefetchChannelMessages,
     messagesEndRef,
     messagesContainerRef,
     messagesCacheRef,

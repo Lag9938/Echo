@@ -22,6 +22,7 @@ import { initAnalytics, identifyUser, resetUser, trackAppOpened } from './lib/an
 import { ModalManager } from './components/modals/ModalManager'
 import { useSpacesStore } from './stores/useSpacesStore'
 import { useUIStore } from './stores/useUIStore'
+import { isMusicBotIdentity } from './lib/musicBotState'
 import { useEchoAfkDetector } from './hooks/useEchoAfkDetector'
 import { useEchoToasts } from './hooks/useEchoToasts'
 import { useEchoSavedMessages } from './hooks/useEchoSavedMessages'
@@ -790,6 +791,7 @@ function Echo({ user }: { user: User }) {
     slowmodeCooldown,
     hasMoreMessages,
     isLoadingMore,
+    isLoadingMessages,
     messagesEndRef,
     messagesContainerRef,
     loadMoreMessages,
@@ -809,6 +811,7 @@ function Echo({ user }: { user: User }) {
     displayName,
     selectedChannel,
     spaces,
+    spaceChannels,
     sfxVolume,
     canUserDo,
     showToast,
@@ -1270,7 +1273,7 @@ function Echo({ user }: { user: User }) {
     userVolumes,
     setUserVolumes,
     volumeControlUser,
-    setVolumeControlUser,
+    setVolumeControlUser: setVolumeControlUserRaw,
     spatialAudioEnabled,
     setSpatialAudioEnabledState,
     userStereoPans,
@@ -1285,6 +1288,16 @@ function Echo({ user }: { user: User }) {
     setSpatialAudioEnabled,
     changePeerScreenVolume
   })
+
+  // Clicar no card do bot de música abre o painel do bot, não a tela de participante comum
+  // (posição 3D, mutar no servidor, expulsar e mover não fazem sentido para ele).
+  const setVolumeControlUser = useCallback((participant: any) => {
+    if (participant && isMusicBotIdentity(participant.userId)) {
+      useUIStore.getState().setShowMusicBotModal(true)
+      return
+    }
+    setVolumeControlUserRaw(participant)
+  }, [setVolumeControlUserRaw])
 
   // Desktop Shell, Fullscreen & Stream Viewing Hook (Phase 19)
   const {
@@ -2089,6 +2102,7 @@ function Echo({ user }: { user: User }) {
                     messages={messages}
                     hasMoreMessages={hasMoreMessages}
                     isLoadingMore={isLoadingMore}
+                    isLoadingMessages={isLoadingMessages}
                     loadMoreMessages={loadMoreMessages}
                     messagesContainerRef={messagesContainerRef}
                     messagesEndRef={messagesEndRef}

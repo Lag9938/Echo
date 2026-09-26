@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef, memo } from 'react'
-import { useVirtualizer } from '@tanstack/react-virtual'
 import type { User } from '@supabase/supabase-js'
 import type { Space, Channel, Message, PinnedMessage, ServerEmoji, RolePermissions, ServerRole } from '../types'
 import { MembersSidebar } from '../components/sidebar/MembersSidebar'
@@ -17,6 +16,7 @@ export interface TextChannelViewProps {
   messages: Message[]
   hasMoreMessages: boolean
   isLoadingMore: boolean
+  isLoadingMessages?: boolean
   loadMoreMessages: (channelId: string) => Promise<void> | void
   activeScreenSharers?: any[]
   isWatchingStreams?: boolean
@@ -104,6 +104,7 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
     messages,
     hasMoreMessages,
     isLoadingMore,
+    isLoadingMessages = false,
     loadMoreMessages,
     activeScreenSharers = [],
     isWatchingStreams = false,
@@ -438,45 +439,32 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
     })
   }, [messages, searchQuery, selectedChannel?.id])
 
-  const channelVirtualizer = useVirtualizer({
-    count: filteredMessages.length,
-    getScrollElement: () => messagesContainerRef.current,
-    estimateSize: () => 64,
-    // Sem isto, o virtualizador guarda a altura medida de cada linha pela
-    // POSIÇÃO (índice) e não pela mensagem em si. Isso funciona enquanto a
-    // lista só cresce no final, mas quebra ao carregar mensagens antigas no
-    // topo (loadMoreMessages) ou ao filtrar/buscar: os índices deslizam,
-    // porém as alturas em cache continuam "grudadas" nas posições antigas.
-    // Resultado visível: uma mensagem mais alta (ex: nota de voz) herda a
-    // altura cacheada de uma mensagem de texto curta que estava naquele
-    // índice antes, e a linha seguinte é posicionada cedo demais — as
-    // mensagens se sobrepõem na tela. Usar o id da mensagem como chave
-    // resolve isso, pois a altura fica amarrada à mensagem, não à posição.
-    getItemKey: (index) => filteredMessages[index]?.id ?? index,
-    overscan: 8,
-    paddingEnd: 32
-  })
-
-  // Garante que o chat role suavemente para o fim e mantenha a última mensagem sempre acima da caixa de digitação
+  // Mantém o chat no fim quando chega mensagem nova, mantendo a última acima da caixa de digitação.
+  // Só cola no fim se a pessoa já estava perto dele (não puxa de volta quem subiu para ler o histórico) e
+  // repete algumas vezes porque imagens e incorporações crescem depois de carregar.
+  const lastMessageId = filteredMessages[filteredMessages.length - 1]?.id
+  const stickToBottomRef = useRef(true)
+  useEffect(() => { stickToBottomRef.current = true }, [selectedChannel?.id])
   useEffect(() => {
-    if (filteredMessages.length > 0) {
-      channelVirtualizer.scrollToIndex(filteredMessages.length - 1, { align: 'end' })
-      const t1 = setTimeout(() => {
-        if (messagesContainerRef.current) {
-          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
-        }
-      }, 50)
-      const t2 = setTimeout(() => {
-        if (messagesContainerRef.current) {
-          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
-        }
-      }, 160)
-      return () => {
-        clearTimeout(t1)
-        clearTimeout(t2)
-      }
+    const el = messagesContainerRef.current
+    if (!el) return
+    const onScroll = () => {
+      stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 160
     }
-  }, [filteredMessages.length, channelVirtualizer])
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [messagesContainerRef, selectedChannel?.id])
+  useEffect(() => {
+    if (!lastMessageId) return
+    const el = messagesContainerRef.current
+    if (!el) return
+    const toBottom = () => {
+      if (stickToBottomRef.current) el.scrollTop = el.scrollHeight
+    }
+    toBottom()
+    const timers = [50, 160, 400, 900].map(ms => setTimeout(toBottom, ms))
+    return () => timers.forEach(clearTimeout)
+  }, [lastMessageId, messagesContainerRef])
 
   return (
     <>
@@ -552,9 +540,9 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
             filteredMessages={filteredMessages}
             hasMoreMessages={hasMoreMessages}
             isLoadingMore={isLoadingMore}
+            isLoadingMessages={isLoadingMessages}
             loadMoreMessages={loadMoreMessages}
             searchQuery={searchQuery}
-            channelVirtualizer={channelVirtualizer}
             user={user}
             profileDisplayName={profileDisplayName}
             profileAvatarUrl={profileAvatarUrl}

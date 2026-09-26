@@ -85,6 +85,29 @@ O `CPUQuota=150%` e `MemoryMax=1G` no `.service` já isolam o bot do
 `livekit-server` — ajuste conforme achar melhor, mas não recomendo tirar
 o limite completamente.
 
+## O bot entra na call e sai logo em seguida / "Sign in to confirm you're not a bot"
+
+Se no chat aparecer **"O YouTube bloqueou o servidor do bot"** (ou nos logs
+`Sign in to confirm you're not a bot`), o YouTube está bloqueando o IP da VM.
+Não é defeito do bot: acontece com a maioria dos IPs de datacenter. O que
+tentar, na ordem:
+
+1. **Atualizar o yt-dlp** no servidor (o YouTube muda com frequência):
+   `sudo yt-dlp -U` (ou baixe o binário novo).
+2. **Cookies**: exporte os cookies do youtube.com de uma conta Google
+   **secundária** (extensão "Get cookies.txt LOCALLY", formato Netscape),
+   salve em `/opt/echo/music-bot/cookies.txt` e configure no `.env`:
+   `YTDLP_COOKIES_FILE=/opt/echo/music-bot/cookies.txt`, depois
+   `sudo systemctl restart echo-music-bot`. Os cookies podem expirar.
+3. **Argumentos extras**, por exemplo outro cliente do YouTube:
+   `YTDLP_EXTRA_ARGS=--extractor-args youtube:player_client=tv`.
+4. Como alternativa, links do **SoundCloud** costumam funcionar sem cookies.
+
+O bot agora verifica se consegue carregar a música **antes** de entrar na
+sala, então em caso de bloqueio ele responde no chat em vez de entrar e sair.
+
+Para rodar os testes: `npm test` dentro de `music-bot/`.
+
 ## O que ainda vale testar/validar no primeiro deploy real
 
 Este é um v1 funcional na teoria, mas que eu não consegui rodar de ponta a

@@ -22,7 +22,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
 
 if (process.platform === 'win32') {
-  app.setAppUserModelId('com.echo.desktop')
+  // Precisa ser igual ao appId do electron-builder (package.json): é o que liga as notificações do Windows
+  // ao atalho instalado. Com IDs diferentes o Windows pode não exibir os avisos ou agrupá-los à parte.
+  app.setAppUserModelId('com.echo.app')
 }
 
 if (isDevelopment) {
