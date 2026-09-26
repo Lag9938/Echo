@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, memo } from 'react'
+import React, { useState, useCallback, useEffect, useMemo, memo } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { VoiceParticipant } from '../lib/useVoiceChannel'
 import type { Space, Channel, Message, PinnedMessage, ServerEmoji, RolePermissions, ServerRole } from '../types'
@@ -10,6 +10,7 @@ import { ModernVoiceNotePlayer } from '../components/chat/ModernVoiceNotePlayer'
 import { ChatLinkEmbed } from '../components/chat/ChatLinkEmbed'
 import { formatMessageText } from '../lib/messageFormatter'
 import { CommunityBadge } from '../components/CommunityBadge'
+import { CallElapsed, ConnectionPill, peopleLabel } from '../components/voice/CallHeaderMeta'
 import {
   BrainIcon,
   GridIcon,
@@ -284,6 +285,14 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
     showScreenMenu,
     setShowScreenMenu
   } = props
+  const inThisCall = activeVoiceChannelId === selectedChannel.id && isConnected
+  const callPeopleCount = useMemo(() => {
+    const ids = new Set<string>()
+    if (inThisCall) participants.forEach((p) => { if (p?.userId) ids.add(p.userId) })
+    ;(spaceVoiceUsers[selectedChannel.id] || []).forEach((p) => { if (p?.userId) ids.add(p.userId) })
+    if (inThisCall && user?.id) ids.add(user.id)
+    return ids.size
+  }, [inThisCall, participants, spaceVoiceUsers, selectedChannel.id, user?.id])
   const openLightbox = useUIStore((s) => s.openLightbox)
   const setShowMusicBotModal = useUIStore((s) => s.setShowMusicBotModal)
   const [pendingVoicePastedFile, setPendingVoicePastedFile] = useState<File | null>(null)
@@ -369,14 +378,22 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
   return (
                 <div className="voice-room">
                   <header className="content-header">
-                    <div className="header-info">
-                      {currentSpace && <span className="header-space">{currentSpace.name}</span>}
+                    <div className="header-info voice-header-info">
                       <h1><span className="header-icon"><VolumeIcon /></span> {selectedChannel.name}</h1>
+                      <span className="header-sub">
+                        {currentSpace?.name}
+                        {inThisCall && (
+                          <>
+                            {currentSpace && <span className="header-sub-sep">·</span>}
+                            <CallElapsed />
+                            <span className="header-sub-sep">·</span>
+                            <span className="call-meta-value">{peopleLabel(callPeopleCount)}</span>
+                          </>
+                        )}
+                      </span>
                     </div>
                     <div className="channel-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {activeVoiceChannelId === selectedChannel.id && isConnected && (
-                        <span className="live-badge voice-live">● Conectado</span>
-                      )}
+                      {inThisCall && <ConnectionPill />}
 
                       {/* Search messages in channel */}
                       <div className="channel-search-box-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -543,6 +560,7 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                         <div
                                           key={p.userId}
                                           className={`stream-strip-card ${p.isSpeaking ? 'speaking' : ''} ${isSharer ? 'is-sharer' : ''} ${isCurrentStreamer ? 'active-streamer' : ''}`}
+                                          data-user-id={p.userId}
                                           onClick={() => {
                                             if (isSharer && !isCurrentStreamer) {
                                               setSelectedScreenSharerUserId(p.userId)
@@ -560,16 +578,17 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                             ) : (
                                               <span>{(p.displayName || 'M').slice(0, 1).toUpperCase()}</span>
                                             )}
-                                            {p.isMuted && (
+                                            {p.isMuted ? (
                                               <span className="stream-strip-badge" title="Mutado">
-                                                <MicOffIcon style={{ width: '8px', height: '8px' }} />
+                                                <MicOffIcon />
                                               </span>
-                                            )}
+                                            ) : isSharer ? (
+                                              <span className="stream-strip-badge live" title={isCurrentStreamer ? 'Ao vivo (na tela)' : 'Transmitindo a tela'}>
+                                                <ScreenIcon />
+                                              </span>
+                                            ) : null}
                                           </div>
                                           <span className="stream-strip-name">{p.displayName}{p.userId === user.id ? ' (Você)' : ''}</span>
-                                          {isSharer && (
-                                            <span className={`stream-strip-live-dot ${isCurrentStreamer ? 'active-live' : ''}`} title={isCurrentStreamer ? "Ao Vivo (Na Tela)" : "Transmitindo tela"} />
-                                          )}
                                         </div>
                                       )
                                     })}
@@ -579,27 +598,30 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
 
                                     {/* Ações Rápidas: Modo Grade/Foco, Mini Player & Ocultar Vídeo */}
                                     <div className="stream-dock-actions">
-                                      {activeScreenSharers.length > 1 && (
+                                      <div className="stream-dock-seg" role="group" aria-label="Modo de exibição">
+                                        {activeScreenSharers.length > 1 && (
+                                          <button
+                                            type="button"
+                                            className={screenShareViewMode === 'grid' ? 'on' : ''}
+                                            aria-pressed={screenShareViewMode === 'grid'}
+                                            onClick={() => setScreenShareViewMode(screenShareViewMode === 'grid' ? 'focus' : 'grid')}
+                                            title={screenShareViewMode === 'grid' ? "Modo Foco (Uma tela)" : "Modo Grade (Ver todas as telas)"}
+                                          >
+                                            <GridIcon style={{ width: '15px', height: '15px' }} />
+                                            <span>Grade</span>
+                                          </button>
+                                        )}
                                         <button
                                           type="button"
-                                          className={`stream-dock-btn ${screenShareViewMode === 'grid' ? 'active' : ''}`}
-                                          onClick={() => setScreenShareViewMode(screenShareViewMode === 'grid' ? 'focus' : 'grid')}
-                                          title={screenShareViewMode === 'grid' ? "Modo Foco (Uma tela)" : "Modo Grade (Ver todas as telas)"}
+                                          className={isPiPActive ? 'on' : ''}
+                                          aria-pressed={isPiPActive}
+                                          onClick={() => setIsPiPActive(!isPiPActive)}
+                                          title={isPiPActive ? "Fechar Mini Player Flutuante" : "Ativar Mini Player Flutuante (Always-on-Top)"}
                                         >
-                                          <GridIcon style={{ width: '13px', height: '13px' }} />
-                                          <span>{screenShareViewMode === 'grid' ? 'Foco' : 'Grade'}</span>
+                                          <PipIcon style={{ width: '15px', height: '15px' }} />
+                                          <span>Mini Player</span>
                                         </button>
-                                      )}
-
-                                      <button
-                                        type="button"
-                                        className={`stream-dock-btn ${isPiPActive ? 'active' : ''}`}
-                                        onClick={() => setIsPiPActive(!isPiPActive)}
-                                        title={isPiPActive ? "Fechar Mini Player Flutuante" : "Ativar Mini Player Flutuante (Always-on-Top)"}
-                                      >
-                                        <PipIcon style={{ width: '13px', height: '13px' }} />
-                                        <span>{isPiPActive ? 'Mini Player ON' : 'Mini Player'}</span>
-                                      </button>
+                                      </div>
 
                                       {localScreenStream && (
                                         <button

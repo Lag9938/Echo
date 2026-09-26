@@ -2077,6 +2077,12 @@ function Echo({ user }: { user: User }) {
                 <ErrorBoundary name="Chat de Texto">
                   <Suspense fallback={<div className="loading-screen"><div className="loader" /><span>Carregando chat…</span></div>}>
                     <TextChannelView
+                    onJoinVoice={(voiceChannel) => {
+                      setSelectedChannel(voiceChannel)
+                      if (activeVoiceChannelId !== voiceChannel.id || !isConnected) {
+                        handleJoinVoice(voiceChannel.id, voiceChannel.space_id)
+                      }
+                    }}
                     currentSpace={currentSpace}
                     selectedChannel={selectedChannel}
                     messages={messages}

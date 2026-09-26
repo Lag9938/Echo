@@ -28,6 +28,8 @@ import { trackVoiceJoined, trackVoiceLeft, trackScreenShareStarted, trackScreenS
 import { installPresenceTrackThrottle } from './presenceThrottle'
 import { isMusicBotIdentity, parseMusicBotState, encodeMusicBotVolume, MUSIC_BOT_CONTROL_TOPIC } from './musicBotState'
 import { useMusicBotStore } from '../stores/useMusicBotStore'
+import { useCallStatsStore } from '../stores/useCallStatsStore'
+import { summarizeRtcStats, type InboundCounters } from './rtcStats'
 import { parseModerationNotice } from './voiceModeration'
 
 export type VoiceParticipant = {
@@ -429,6 +431,47 @@ export function useVoiceChannel(options?: {
   const [isReconnecting, setIsReconnecting] = useState(false)
   // Oscilação de rede enquanto o próprio LiveKit tenta se recuperar (antes do loop de reconexão do app assumir)
   const [isNetworkUnstable, setIsNetworkUnstable] = useState(false)
+
+  // Medição REAL da conexão (latência, jitter e perda) lida do WebRTC a cada 2s enquanto conectado
+  const hasRealStatsRef = useRef(false)
+  useEffect(() => {
+    if (!isConnected) return
+    let cancelled = false
+    let previous: InboundCounters | null = null
+
+    const measure = async () => {
+      const manager = (roomRef.current as any)?.engine?.pcManager
+      if (!manager) return
+      try {
+        const [publisherStats, subscriberStats] = await Promise.all([
+          manager.publisher?.getStats?.(),
+          manager.subscriber?.getStats?.()
+        ])
+        if (cancelled) return
+        const { stats, counters } = summarizeRtcStats([publisherStats, subscriberStats], previous)
+        previous = counters
+        if (stats) {
+          hasRealStatsRef.current = true
+          setRtcStats(stats)
+          useCallStatsStore.getState().setStats(stats)
+        }
+      } catch {
+        // Sem medição por enquanto: a estimativa pela nota de qualidade continua valendo
+      }
+    }
+
+    void measure()
+    const timer = setInterval(() => void measure(), 2000)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [isConnected])
+
+  useEffect(() => {
+    useCallStatsStore.getState().setUnstable(isNetworkUnstable || isReconnecting)
+  }, [isNetworkUnstable, isReconnecting])
+
   // Câmera/tela ativas quando a conexão caiu, para religar a câmera depois de uma reconexão total
   const pendingMediaRestoreRef = useRef<{ camera: boolean; cameraDeviceId?: string; screen: boolean } | null>(null)
   const [reconnectCountdown, setReconnectCountdown] = useState(5)
@@ -1024,6 +1067,8 @@ export function useVoiceChannel(options?: {
     musicBotRawRef.current = undefined
     musicBotPresentRef.current = undefined
     useMusicBotStore.getState().reset()
+    useCallStatsStore.getState().reset()
+    hasRealStatsRef.current = false
   }, [stopLocalVad, stopScreenShare, stopCamera])
 
   // Join a voice channel via LiveKit SFU
@@ -1446,7 +1491,8 @@ export function useVoiceChannel(options?: {
       })
 
       room.on(RoomEvent.ConnectionQualityChanged, (quality: ConnectionQuality, participant: Participant) => {
-        if (participant === room.localParticipant) {
+        // Só é uma estimativa aproximada: quando já há medição real do WebRTC (efeito abaixo), ela manda
+        if (participant === room.localParticipant && !hasRealStatsRef.current) {
           const ping = quality === ConnectionQuality.Excellent ? 18 : quality === ConnectionQuality.Good ? 35 : 85
           const packetLoss = quality === ConnectionQuality.Poor ? 4.5 : 0.0
           setRtcStats({ ping, jitter: 2, packetLoss })
@@ -1459,6 +1505,7 @@ export function useVoiceChannel(options?: {
           await room.connect(connectionUrl, token)
           console.log('[LiveKit] Conectado com sucesso ao SFU!')
           voiceJoinTimeRef.current = Date.now()
+          useCallStatsStore.getState().setJoinedAt(voiceJoinTimeRef.current)
           trackVoiceJoined(channelId)
           setIsConnected(true)
           syncParticipants()

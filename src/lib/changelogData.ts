@@ -18,11 +18,49 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.40.0',
+    title: 'Echo v0.40.0 - Chamadas e Chat Renovados',
+    date: '26 de Setembro de 2026',
+    tagline: 'A lista de chamada, o topo e a barra da transmissão, o chat de texto e o mini player do bot de música ganharam um visual novo, com a qualidade da conexão medida de verdade.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '📶',
+        badge: 'NOVO',
+        title: 'Qualidade da Conexão de Verdade',
+        description: 'O topo da chamada mostra o tempo desde que você entrou, quantas pessoas estão e um indicador Boa/Instável/Ruim com o ping medido pela conexão real (latência, jitter e perda de pacotes ao passar o mouse).'
+      },
+      {
+        icon: '🎙️',
+        badge: 'VISUAL',
+        title: 'Barra da Transmissão Mais Limpa',
+        description: 'Avatares compactos que mostram o nome só de quem fala, onda na cor do tema ao falar, selos discretos para mutado e transmitindo, e Grade / Mini Player num controle só.'
+      },
+      {
+        icon: '📞',
+        badge: 'VISUAL',
+        title: 'Lista de Chamada Redesenhada',
+        description: 'Fotos de perfil sempre redondas, indicador de chamada ativa mais discreto, botão de assistir que revela o texto ao passar o mouse e o bot de música com mini player (tocar, pausar e pular) direto na lista.'
+      },
+      {
+        icon: '💬',
+        badge: 'NOVO',
+        title: 'Chat de Texto Novo',
+        description: 'Campo de mensagem flutuante, faixa com quem está na chamada (com botão para entrar) e avisos discretos quando alguém entra, sai ou o bot troca de música.'
+      },
+      {
+        icon: '🖼️',
+        badge: 'CORREÇÃO',
+        title: 'Foto de Perfil Salva na Hora',
+        description: 'Ao trocar a foto ela é salva imediatamente e aparece para os outros sem precisar clicar em salvar; se falhar, a foto anterior volta com um aviso.'
+      }
+    ]
+  },
+  {
     version: '0.39.1',
     title: 'Echo v0.39.1 - Moderação de Voz Segura',
     date: '26 de Setembro de 2026',
     tagline: 'Silenciar, mover e tirar alguém da chamada agora é conferido no servidor: só quem tem o cargo certo, acima do alvo na hierarquia, consegue.',
-    isLatest: true,
     highlights: [
       {
         icon: '🛡️',

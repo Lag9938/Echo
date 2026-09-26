@@ -77,6 +77,16 @@ export class ErrorBoundary extends Component<Props, State> {
           <p style={{ margin: '0 0 16px', fontSize: '12.5px', color: 'rgba(255, 255, 255, 0.65)', lineHeight: 1.4 }}>
             O restante do aplicativo continua funcionando normalmente. Você pode tentar recarregar esta área.
           </p>
+          {this.state.error && (
+            // O motivo do erro, para poder mandar ao suporte em vez de só "algo deu errado"
+            <details style={{ margin: '0 0 16px', maxWidth: '100%', fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.55)', textAlign: 'left' }}>
+              <summary style={{ cursor: 'pointer', textAlign: 'center' }}>Detalhes do erro</summary>
+              <pre style={{ margin: '8px 0 0', padding: '8px 10px', maxHeight: '140px', overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'rgba(0, 0, 0, 0.25)', borderRadius: '8px' }}>
+                {String(this.state.error.message || this.state.error).slice(0, 600)}
+                {this.state.error.stack ? `\n\n${this.state.error.stack.split('\n').slice(1, 6).join('\n')}` : ''}
+              </pre>
+            </details>
+          )}
           <button
             type="button"
             onClick={this.handleReset}
