@@ -448,10 +448,12 @@
   <script>
     (function() {
       var params = new URLSearchParams(window.location.search);
-      var spaceId = params.get('space') || params.get('code') || params.get('id') || '';
+      // Convite = código gerado no servidor (12 caracteres). Links antigos traziam o UUID do espaço e não valem mais.
+      var inviteToken = params.get('code') || params.get('space') || params.get('id') || '';
+      var isInviteCode = /^[a-z0-9]{10,32}$/i.test(inviteToken) && !/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(inviteToken);
       var channelId = params.get('channel') || '';
 
-      var deepLink = 'echo://invite/' + encodeURIComponent(spaceId) + (channelId ? '?channel=' + encodeURIComponent(channelId) : '');
+      var deepLink = 'echo://invite/' + encodeURIComponent(inviteToken) + (channelId ? '?channel=' + encodeURIComponent(channelId) : '');
       var btnOpen = document.getElementById('btnOpenApp');
       btnOpen.href = deepLink;
 
@@ -484,22 +486,35 @@
         return gradients[Math.abs(hash) % gradients.length];
       }
 
-      if (spaceId) {
+      if (inviteToken && !isInviteCode) {
+        document.getElementById('serverName').textContent = 'Link de convite antigo';
+        var oldDesc = document.getElementById('serverDesc');
+        oldDesc.textContent = 'Este link não vale mais. Peça um novo link a quem te convidou.';
+        oldDesc.style.display = 'block';
+      }
+
+      if (isInviteCode) {
         var supabaseUrl = 'https://fcgizoopltqrldixvyve.supabase.co';
         var supabaseKey = 'sb_publishable_O75gPLOo_oZ2Uy-47UvBDw_MR4cBY8K';
 
-        // Chama a RPC get_space_invite_details para obter dados reais completos do servidor
-        fetch(supabaseUrl + '/rest/v1/rpc/get_space_invite_details', {
+        // Chama a RPC get_invite_details: só devolve dados de convites válidos (não expirados nem revogados)
+        fetch(supabaseUrl + '/rest/v1/rpc/get_invite_details', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'apikey': supabaseKey,
             'Authorization': 'Bearer ' + supabaseKey
           },
-          body: JSON.stringify({ p_space_id: spaceId })
+          body: JSON.stringify({ p_code: inviteToken.toLowerCase() })
         })
         .then(function(res) { return res.json(); })
         .then(function(space) {
+          if (!space || !space.name) {
+            document.getElementById('serverName').textContent = 'Convite inválido ou expirado';
+            var badDesc = document.getElementById('serverDesc');
+            badDesc.textContent = 'Peça um novo link a quem te convidou.';
+            badDesc.style.display = 'block';
+          }
           if (space && space.name) {
             document.getElementById('serverName').textContent = space.name;
             document.title = 'Convite: ' + space.name + ' | Echo';

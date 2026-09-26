@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { Space, Channel, ServerAuditLog, FriendshipRequest, RolePermissions } from '../types'
 import { getPublicInviteUrl } from '../lib/invite'
+import { getOrCreateSpaceInvite } from '../lib/spaceInvites'
 
 export interface UseEchoSpaceSettingsOptions {
   user: User
@@ -617,8 +618,10 @@ export function useEchoSpaceSettings({
     try {
       const spObj = spaces.find(s => s.id === spaceId)
       const spaceName = spObj?.name || 'servidor'
-      const inviteUrl = getPublicInviteUrl(spaceId)
-      const msg = `👋 Olá! Convidei você para o espaço "${spaceName}" no Echo!\n🔗 Clique no convite abaixo para entrar:\n${inviteUrl}\n🔑 Código do Espaço: ${spaceId}`
+      // O convite vem do servidor (código com expiração e revogação); o ID do espaço não serve mais de convite
+      const invite = await getOrCreateSpaceInvite(supabase, spaceId)
+      const inviteUrl = getPublicInviteUrl(invite.code)
+      const msg = `👋 Olá! Convidei você para o espaço "${spaceName}" no Echo!\n🔗 Clique no convite abaixo para entrar:\n${inviteUrl}\n🔑 Código de convite: ${invite.code}`
 
       // Envia a mensagem direta com o link de convite oficial
       const { error: dmError } = await supabase.from('direct_messages').insert({

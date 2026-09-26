@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { copyToClipboard } from '../../lib/clipboard'
-import { getPublicInviteUrl } from '../../lib/invite'
+import { useSpaceInviteLink } from '../../hooks/useSpaceInviteLink'
 import { getServerGradient, getServerInitials } from '../../lib/formatters'
 import {
   UserPlusIcon,
@@ -42,10 +42,12 @@ export function SpaceAddMembersModal({
   const [copiedCode, setCopiedCode] = useState(false)
   const [copiedMessage, setCopiedMessage] = useState(false)
 
-  const inviteLink = getPublicInviteUrl(space.id)
-  const formattedInviteMsg = `Entre no meu espaço "${space.name}" no Echo!\n🔗 Link Direto: ${inviteLink}\n🔑 Código do Espaço: ${space.id}`
+  const { code: inviteCode, url: inviteLink, loading: inviteLoading, error: inviteError } = useSpaceInviteLink(space.id)
+  const inviteReady = Boolean(inviteCode && inviteLink)
+  const formattedInviteMsg = `Entre no meu espaço "${space.name}" no Echo!\n🔗 Link Direto: ${inviteLink}\n🔑 Código de convite: ${inviteCode}`
 
   const handleCopyLink = () => {
+    if (!inviteReady) return
     copyToClipboard(inviteLink)
     setCopiedLink(true)
     showToast('Link Copiado!', `Link de convite do espaço "${space.name}" copiado com sucesso.`, 'info')
@@ -53,13 +55,15 @@ export function SpaceAddMembersModal({
   }
 
   const handleCopyCode = () => {
-    copyToClipboard(space.id)
+    if (!inviteCode) return
+    copyToClipboard(inviteCode)
     setCopiedCode(true)
-    showToast('Código Copiado!', `Código do espaço copiado. Cole no botão "+" do Echo.`, 'info')
+    showToast('Código Copiado!', `Código de convite copiado. Cole no botão "+" do Echo.`, 'info')
     setTimeout(() => setCopiedCode(false), 2500)
   }
 
   const handleCopyMessage = () => {
+    if (!inviteReady) return
     copyToClipboard(formattedInviteMsg)
     setCopiedMessage(true)
     showToast('Mensagem Copiada!', 'Texto completo de convite copiado.', 'info')
@@ -512,7 +516,7 @@ export function SpaceAddMembersModal({
               <LinkIcon style={{ width: '14px', height: '14px', color: '#38bdf8', flexShrink: 0 }} />
               <input 
                 readOnly 
-                value={inviteLink}
+                value={inviteLoading ? 'Gerando link de convite...' : (inviteLink || inviteError || 'Não foi possível gerar o link de convite.')}
                 style={{
                   flex: 1,
                   background: 'none',
@@ -527,6 +531,7 @@ export function SpaceAddMembersModal({
               <button
                 type="button"
                 onClick={handleCopyLink}
+                disabled={!inviteReady}
                 style={{
                   padding: '7px 16px',
                   borderRadius: '7px',
@@ -564,6 +569,7 @@ export function SpaceAddMembersModal({
             <button
               type="button"
               onClick={handleCopyCode}
+              disabled={!inviteCode}
               style={{
                 flex: 1,
                 padding: '9px 12px',
@@ -595,7 +601,7 @@ export function SpaceAddMembersModal({
               ) : (
                 <>
                   <KeyIcon style={{ width: '13px', height: '13px', color: '#38bdf8' }} />
-                  <span>Código: {space.id.slice(0, 8)}...</span>
+                  <span>Código: {inviteCode ?? '...'}</span>
                 </>
               )}
             </button>
@@ -603,6 +609,7 @@ export function SpaceAddMembersModal({
             <button
               type="button"
               onClick={handleCopyMessage}
+              disabled={!inviteReady}
               style={{
                 flex: 1,
                 padding: '9px 12px',

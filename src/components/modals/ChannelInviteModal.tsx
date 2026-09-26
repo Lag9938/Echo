@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { copyToClipboard } from '../../lib/clipboard'
-import { getPublicInviteUrl } from '../../lib/invite'
+import { useSpaceInviteLink } from '../../hooks/useSpaceInviteLink'
 import type { Channel, Space, FriendshipRequest } from '../../types'
 
 export interface ChannelInviteModalProps {
@@ -25,10 +25,13 @@ export function ChannelInviteModal({
   const [invitedFriends, setInvitedFriends] = useState<Record<string, boolean>>({})
 
   const isVoice = channel.type === 'voice'
-  const inviteLink = getPublicInviteUrl(space.id, channel.id)
-  const formattedInviteMsg = `Entre no meu espaço "${space.name}" no Echo!\n🔗 Link de Convite: ${inviteLink}\n🔑 Código do Espaço: ${space.id}`
+  const { code: inviteCode, url: generatedLink, loading: inviteLoading, error: inviteError } = useSpaceInviteLink(space.id, channel.id)
+  const inviteLink = generatedLink
+  const inviteReady = Boolean(inviteCode && inviteLink)
+  const formattedInviteMsg = `Entre no meu espaço "${space.name}" no Echo!\n🔗 Link de Convite: ${inviteLink}\n🔑 Código de convite: ${inviteCode}`
 
   const handleCopy = () => {
+    if (!inviteReady) return
     copyToClipboard(inviteLink)
     setCopied(true)
     showToast('Link Copiado!', `Link direto para ${isVoice ? 'a chamada' : 'o canal'} ${channel.name} copiado.`, 'info')
@@ -36,18 +39,20 @@ export function ChannelInviteModal({
   }
 
   const handleCopyCode = () => {
-    copyToClipboard(space.id)
+    if (!inviteCode) return
+    copyToClipboard(inviteCode)
     setCopiedCode(true)
-    showToast('Código Copiado!', `Código do espaço copiado. Cole no botão "+" do Echo.`, 'info')
+    showToast('Código Copiado!', `Código de convite copiado. Cole no botão "+" do Echo.`, 'info')
     setTimeout(() => setCopiedCode(false), 2500)
   }
 
   const handleInviteFriend = async (friend: FriendshipRequest) => {
+    if (!inviteReady) return
     try {
       setInvitedFriends(prev => ({ ...prev, [friend.user.id]: true }))
       const msg = isVoice 
-        ? `🔊 Entre na chamada "${channel.name}" comigo no espaço "${space.name}"!\nClique para entrar: ${inviteLink}\nOu cole o código: ${space.id}`
-        : `💬 Participe do canal #${channel.name} no espaço "${space.name}"!\nClique para entrar: ${inviteLink}\nOu cole o código: ${space.id}`
+        ? `🔊 Entre na chamada "${channel.name}" comigo no espaço "${space.name}"!\nClique para entrar: ${inviteLink}\nOu cole o código: ${inviteCode}`
+        : `💬 Participe do canal #${channel.name} no espaço "${space.name}"!\nClique para entrar: ${inviteLink}\nOu cole o código: ${inviteCode}`
       await onSendDMInvite(friend.user.id, msg)
       showToast('Convite Enviado!', `Convite enviado para @${friend.user.display_name}.`, 'friend')
     } catch {
@@ -123,7 +128,7 @@ export function ChannelInviteModal({
           }}>
             <input 
               readOnly 
-              value={inviteLink}
+              value={inviteLoading ? 'Gerando link de convite...' : (inviteLink || inviteError || 'Não foi possível gerar o link de convite.')}
               style={{
                 flex: 1,
                 background: 'none',
@@ -138,6 +143,7 @@ export function ChannelInviteModal({
             <button
               type="button"
               onClick={handleCopy}
+              disabled={!inviteReady}
               style={{
                 padding: '8px 18px',
                 borderRadius: '8px',
@@ -162,7 +168,7 @@ export function ChannelInviteModal({
         {/* Código do Espaço Box */}
         <div>
           <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted, #94a3b8)', marginBottom: '6px', letterSpacing: '0.5px' }}>
-            CÓDIGO DE ENTRADA DO ESPAÇO (COLE EM "+ ENTRAR EM UM ESPAÇO")
+            CÓDIGO DE CONVITE (COLE EM "+ ENTRAR EM UM ESPAÇO")
           </label>
           <div style={{
             display: 'flex',
@@ -175,7 +181,8 @@ export function ChannelInviteModal({
           }}>
             <input 
               readOnly 
-              value={space.id}
+              value={inviteCode ?? ''}
+              placeholder={inviteLoading ? 'Gerando...' : ''}
               style={{
                 flex: 1,
                 background: 'none',
@@ -191,6 +198,7 @@ export function ChannelInviteModal({
             <button
               type="button"
               onClick={handleCopyCode}
+              disabled={!inviteCode}
               style={{
                 padding: '8px 16px',
                 borderRadius: '8px',
@@ -214,7 +222,9 @@ export function ChannelInviteModal({
 
         <button
           type="button"
+          disabled={!inviteReady}
           onClick={() => {
+            if (!inviteReady) return
             copyToClipboard(formattedInviteMsg)
             showToast('Mensagem Copiada!', 'Texto de convite copiado com link e código.', 'info')
           }}

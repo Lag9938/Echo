@@ -1,10 +1,18 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "jsr:@supabase/supabase-js@2"
+import { authorizeRoom } from "./authorize.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS"
+}
+
+function json(status: number, body: Record<string, unknown>): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" }
+  })
 }
 
 function base64UrlEncodeBytes(bytes: Uint8Array): string {
@@ -27,10 +35,7 @@ Deno.serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get("Authorization")
     if (!authHeader) {
-      return new Response(JSON.stringify({ success: false, error: "Missing authorization header" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      })
+      return json(401, { success: false, error: "Missing authorization header" })
     }
 
     const supabaseClient = createClient(
@@ -41,71 +46,47 @@ Deno.serve(async (req: Request) => {
 
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
     if (authError || !user) {
-      return new Response(JSON.stringify({ success: false, error: "Invalid or expired session" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      })
+      return json(401, { success: false, error: "Invalid or expired session" })
     }
 
     const body = await req.json().catch(() => ({}))
-    const { room, identity, name, avatarUrl } = body || {}
+    const { room, name, avatarUrl } = body || {}
 
-    // Validação estrita de autorização para a sala solicitada
-    if (room && typeof room === "string") {
-      if (room.startsWith("dm-call-")) {
-        // Para chamadas diretas privadas, garante que o usuário requisitante é um dos participantes
-        if (!room.includes(user.id)) {
-          return new Response(JSON.stringify({ success: false, error: "Acesso negado a esta chamada direta." }), {
-            status: 403,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          })
-        }
-      } else {
-        // Consulta se é um canal de servidor registrado no banco
-        const { data: channel } = await supabaseClient
+    // A consulta usa o token do próprio usuário, então a RLS se aplica: canais de servidores dos quais ele
+    // não faz parte voltam vazios e authorizeRoom nega. Erros de banco viram exceção (500), nunca acesso.
+    const access = await authorizeRoom(room, user.id, {
+      getChannel: async (roomId) => {
+        const { data, error } = await supabaseClient
           .from("channels")
-          .select("id, space_id, is_private, allowed_role_ids")
-          .eq("id", room)
+          .select("id, space_id, type, is_private, allowed_role_ids")
+          .eq("id", roomId)
           .maybeSingle()
-
-        if (channel && channel.space_id) {
-          // Checa se o usuário é membro do servidor
-          const { data: membership } = await supabaseClient
-            .from("space_members")
-            .select("role")
-            .eq("space_id", channel.space_id)
-            .eq("user_id", user.id)
-            .maybeSingle()
-
-          if (!membership) {
-            return new Response(JSON.stringify({ success: false, error: "Você não é membro deste servidor." }), {
-              status: 403,
-              headers: { ...corsHeaders, "Content-Type": "application/json" }
-            })
-          }
-
-          // Se for canal privado, valida se o usuário possui cargo autorizado ou privilégios de administração
-          if (channel.is_private && membership.role !== "owner" && membership.role !== "admin") {
-            const allowedRoles: string[] = Array.isArray(channel.allowed_role_ids) ? channel.allowed_role_ids : []
-            if (allowedRoles.length > 0) {
-              const { data: memberRoles } = await supabaseClient
-                .from("space_member_roles")
-                .select("role_id")
-                .eq("space_id", channel.space_id)
-                .eq("user_id", user.id)
-
-              const userRoleIds = (memberRoles || []).map((r: any) => r.role_id)
-              const hasRoleAccess = allowedRoles.some((rid: string) => userRoleIds.includes(rid))
-              if (!hasRoleAccess) {
-                return new Response(JSON.stringify({ success: false, error: "Acesso não autorizado a este canal privado." }), {
-                  status: 403,
-                  headers: { ...corsHeaders, "Content-Type": "application/json" }
-                })
-              }
-            }
-          }
-        }
+        if (error) throw new Error(error.message)
+        return data ?? null
+      },
+      getMembershipRole: async (spaceId, userId) => {
+        const { data, error } = await supabaseClient
+          .from("space_members")
+          .select("role")
+          .eq("space_id", spaceId)
+          .eq("user_id", userId)
+          .maybeSingle()
+        if (error) throw new Error(error.message)
+        return data?.role ?? null
+      },
+      getMemberRoleIds: async (spaceId, userId) => {
+        const { data, error } = await supabaseClient
+          .from("space_member_roles")
+          .select("role_id")
+          .eq("space_id", spaceId)
+          .eq("user_id", userId)
+        if (error) throw new Error(error.message)
+        return (data || []).map((r: { role_id: string }) => r.role_id)
       }
+    })
+
+    if (!access.ok) {
+      return json(access.status, { success: false, error: access.error })
     }
 
     // Sem fallback hardcoded: uma API key/secret fixos no código-fonte ficam
@@ -119,14 +100,15 @@ Deno.serve(async (req: Request) => {
     const apiSecret = Deno.env.get("LIVEKIT_API_SECRET")
 
     if (!livekitUrl || !apiKey || !apiSecret) {
-      return new Response(JSON.stringify({
+      return json(500, {
         success: false,
         error: "LiveKit não está configurado corretamente no servidor (variáveis de ambiente ausentes)."
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
       })
     }
+
+    // Nome e avatar vêm do cliente: limita o tamanho para não inflar o token
+    const safeName = typeof name === "string" && name.trim() ? name.trim().slice(0, 64) : null
+    const safeAvatar = typeof avatarUrl === "string" ? avatarUrl.slice(0, 2048) : ""
 
     const now = Math.floor(Date.now() / 1000)
     const header = { alg: "HS256", typ: "JWT" }
@@ -134,11 +116,11 @@ Deno.serve(async (req: Request) => {
       exp: now + 24 * 3600,
       iss: apiKey,
       nbf: now - 3600, // Margem para tolerância de relógios locais
-      sub: user.id || identity || "anonymous",
-      name: name || user.user_metadata?.display_name || "Membro",
-      metadata: JSON.stringify({ avatarUrl: avatarUrl || user.user_metadata?.avatar_url || "" }),
+      sub: user.id,
+      name: safeName || user.user_metadata?.display_name || "Membro",
+      metadata: JSON.stringify({ avatarUrl: safeAvatar || user.user_metadata?.avatar_url || "" }),
       video: {
-        room: room || "general",
+        room,
         roomJoin: true,
         canPublish: true,
         canSubscribe: true,
@@ -159,13 +141,8 @@ Deno.serve(async (req: Request) => {
     const signature = base64UrlEncodeBytes(new Uint8Array(signatureBuffer))
     const token = `${unsigned}.${signature}`
 
-    return new Response(JSON.stringify({ success: true, url: livekitUrl, token }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    })
+    return json(200, { success: true, url: livekitUrl, token })
   } catch (err: any) {
-    return new Response(JSON.stringify({ success: false, error: err?.message || "Internal server error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    })
+    return json(500, { success: false, error: err?.message || "Internal server error" })
   }
 })

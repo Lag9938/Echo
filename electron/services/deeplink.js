@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import path from 'node:path'
 
-let pendingInviteUrl = process.argv.find(arg => typeof arg === 'string' && (arg.startsWith('echo://') || arg.includes('/Echo/invite') || (arg.includes('/invite') && arg.includes('space=')))) || null
+let pendingInviteUrl = process.argv.find(arg => typeof arg === 'string' && (arg.startsWith('echo://') || arg.includes('/Echo/invite') || (arg.includes('/invite') && (arg.includes('code=') || arg.includes('space='))))) || null
 
 export function getPendingInviteUrl() {
   return pendingInviteUrl
@@ -19,7 +19,7 @@ export function setupDeeplink(getMainWindow, createWindow) {
   }
 
   app.on('second-instance', (_event, commandLine) => {
-    const inviteArg = commandLine.find(arg => typeof arg === 'string' && (arg.startsWith('echo://') || arg.includes('/Echo/invite') || (arg.includes('/invite') && arg.includes('space='))))
+    const inviteArg = commandLine.find(arg => typeof arg === 'string' && (arg.startsWith('echo://') || arg.includes('/Echo/invite') || (arg.includes('/invite') && (arg.includes('code=') || arg.includes('space=')))))
     if (inviteArg) {
       pendingInviteUrl = inviteArg
     }

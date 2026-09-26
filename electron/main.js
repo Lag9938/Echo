@@ -82,7 +82,7 @@ export function createWindow() {
   mainWindow.setMenu(null)
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.includes('/Echo/invite') || url.startsWith('echo://invite') || (url.includes('/invite') && url.includes('space='))) {
+    if (url.includes('/Echo/invite') || url.startsWith('echo://invite') || (url.includes('/invite') && (url.includes('code=') || url.includes('space=')))) {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('deep-link-invite', url)
       }

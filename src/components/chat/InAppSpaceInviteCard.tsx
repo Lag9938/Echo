@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { extractSpaceIdFromInvite, triggerInAppInvite } from '../../lib/invite'
+import { parseInvite, triggerInAppInvite } from '../../lib/invite'
+import { getInviteDetails } from '../../lib/spaceInvites'
 import { useSpacesStore } from '../../stores/useSpacesStore'
 import { SparklesIcon, UsersIcon, CheckIcon } from '../icons'
 
@@ -25,86 +26,62 @@ export const InAppSpaceInviteCard: React.FC<InAppSpaceInviteCardProps> = ({ invi
   const [isJoining, setIsJoining] = useState(false)
 
   const spaces = useSpacesStore((s) => s.spaces)
-  const parsed = extractSpaceIdFromInvite(inviteUrl)
-  const spaceId = parsed?.spaceId || ''
+  const parsed = parseInvite(inviteUrl)
+  const code = parsed?.code
+  const legacySpaceId = parsed?.legacySpaceId
   const channelId = parsed?.channelId
 
-  // Verifica se o usuário já é membro deste espaço
-  const memberSpace = spaces.find((s) => s.id === spaceId)
+  // Verifica se o usuário já é membro deste espaço (pelo id devolvido pelo convite ou pelo link antigo)
+  const memberSpace = spaces.find((s) => s.id === (spaceInfo?.id || legacySpaceId))
   const isAlreadyMember = Boolean(memberSpace)
 
   useEffect(() => {
     let isMounted = true
-    if (!spaceId) {
+
+    // Link antigo (UUID do espaço): só dá para mostrar se o usuário já for membro
+    if (!code) {
+      const legacyMember = spaces.find((s) => s.id === legacySpaceId)
+      if (legacyMember) {
+        setSpaceInfo({
+          id: legacyMember.id,
+          name: legacyMember.name,
+          description: (legacyMember as any).description || null,
+          icon_url: (legacyMember as any).icon_url || null,
+          member_count: undefined
+        })
+        setError(false)
+      } else {
+        setError(true)
+      }
       setLoading(false)
-      setError(true)
       return
     }
 
-    // Se já estiver na lista de espaços locais do usuário, usa dados locais imediatamente
-    if (memberSpace) {
-      setSpaceInfo({
-        id: memberSpace.id,
-        name: memberSpace.name,
-        description: (memberSpace as any).description || null,
-        icon_url: (memberSpace as any).icon_url || null,
-        member_count: undefined
-      })
-    }
-
-    // Busca detalhes públicos via RPC segura do Supabase (get_space_invite_details) ou fallback
+    // Detalhes públicos do convite: o servidor só responde para convites válidos
+    // (existentes, não expirados, não revogados e com usos disponíveis)
     async function fetchDetails() {
       if (!supabase) return
       try {
-        const { data, error: rpcError } = await supabase.rpc('get_space_invite_details', {
-          p_space_id: spaceId
-        })
-
+        const detail = await getInviteDetails(supabase, code as string)
         if (!isMounted) return
 
-        const detail = Array.isArray(data) ? data[0] : data
-
-        if (!rpcError && detail && (detail.name || detail.id)) {
-          setSpaceInfo((prev) => ({
-            id: detail.id || spaceId,
-            name: detail.name || prev?.name || 'Espaço Echo',
-            description: detail.description ?? prev?.description,
-            icon_url: detail.icon_url ?? prev?.icon_url,
-            banner_url: detail.banner_url ?? prev?.banner_url,
-            banner_theme: detail.banner_theme ?? prev?.banner_theme,
+        if (detail) {
+          setSpaceInfo({
+            id: detail.id,
+            name: detail.name || 'Espaço Echo',
+            description: detail.description,
+            icon_url: detail.icon_url,
+            banner_url: detail.banner_url,
+            banner_theme: detail.banner_theme,
             member_count: Number(detail.member_count) || 1
-          }))
+          })
           setError(false)
         } else {
-          // Fallback para consulta direta na tabela spaces
-          const { data: spaceData, error: spaceError } = await supabase
-            .from('spaces')
-            .select('id, name, description, icon_url, banner_url, banner_theme')
-            .eq('id', spaceId)
-            .maybeSingle()
-
-          if (!isMounted) return
-
-          if (!spaceError && spaceData) {
-            setSpaceInfo((prev) => ({
-              id: spaceData.id,
-              name: spaceData.name || prev?.name || 'Espaço Echo',
-              description: spaceData.description ?? prev?.description,
-              icon_url: spaceData.icon_url ?? prev?.icon_url,
-              banner_url: spaceData.banner_url ?? prev?.banner_url,
-              banner_theme: spaceData.banner_theme ?? prev?.banner_theme,
-              member_count: prev?.member_count || 1
-            }))
-            setError(false)
-          } else if (!memberSpace) {
-            setError(true)
-          }
+          setError(true)
         }
       } catch (err) {
         console.warn('[InAppSpaceInviteCard] Falha ao carregar detalhes do convite:', err)
-        if (!memberSpace && isMounted) {
-          setError(true)
-        }
+        if (isMounted) setError(true)
       } finally {
         if (isMounted) setLoading(false)
       }
@@ -115,7 +92,7 @@ export const InAppSpaceInviteCard: React.FC<InAppSpaceInviteCardProps> = ({ invi
     return () => {
       isMounted = false
     }
-  }, [spaceId, memberSpace])
+  }, [code, legacySpaceId, spaces])
 
   const handleActionClick = (e: React.MouseEvent) => {
     e.stopPropagation()

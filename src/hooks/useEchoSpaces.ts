@@ -3,7 +3,8 @@ import type { User } from '@supabase/supabase-js'
 import type { Space, Channel } from '../types'
 import { useSpacesStore } from '../stores/useSpacesStore'
 import { playJoinSound } from '../lib/soundEffects'
-import { extractSpaceIdFromInvite } from '../lib/invite'
+import { parseInvite } from '../lib/invite'
+import { joinSpaceWithInvite } from '../lib/spaceInvites'
 import { installPresenceTrackThrottle } from '../lib/presenceThrottle'
 
 export interface UseEchoSpacesOptions {
@@ -607,61 +608,66 @@ export function useEchoSpaces({
     setJoining(true)
     setError('')
 
-    const parsed = extractSpaceIdFromInvite(rawInput)
-    let spaceId = parsed?.spaceId || rawInput.trim()
+    const parsed = parseInvite(rawInput)
     const targetChannelId = parsed?.channelId || null
 
-    try {
-      let spaceName = ''
+    const fail = (message: string) => {
+      setError(message)
+      showToast('Convite Inválido', message, 'info')
+      setJoining(false)
+    }
 
-      // 1. Tenta consulta direta na tabela spaces
-      const { data: space, error: spaceError } = await supabase
-        .from('spaces')
-        .select('id, name')
-        .eq('id', spaceId)
-        .maybeSingle()
-        
-      if (space && !spaceError) {
-        spaceName = space.name
-        spaceId = space.id
+    if (!parsed) {
+      fail('Link ou código de convite inválido.')
+      return
+    }
+
+    try {
+      let spaceId: string
+      let spaceName: string
+      let alreadyMember: boolean
+
+      if (parsed.code) {
+        // A entrada acontece no servidor, que valida expiração, limite de usos e revogação
+        // (e já atribui o cargo padrão do espaço ao novo membro).
+        const joined = await joinSpaceWithInvite(supabase, parsed.code)
+        spaceId = joined.spaceId
+        spaceName = joined.name
+        alreadyMember = joined.alreadyMember
       } else {
-        // Fallback seguro via RPC pública get_space_invite_details (suporta objeto JSON ou array)
-        const { data: rpcData, error: rpcError } = await supabase.rpc('get_space_invite_details', { p_space_id: spaceId })
-        const rpcDetail = Array.isArray(rpcData) ? rpcData[0] : rpcData
-        if (!rpcError && rpcDetail && (rpcDetail.name || rpcDetail.id)) {
-          spaceName = rpcDetail.name || 'Espaço Echo'
-          spaceId = rpcDetail.id || spaceId
-        } else {
-          setError('Link de convite inválido ou espaço não encontrado.')
-          showToast('Convite Inválido', 'Espaço ou canal não encontrado.', 'info')
-          setJoining(false)
+        // Link antigo (traz o UUID do espaço): só serve para quem já é membro. Quem não é precisa de um convite novo.
+        const legacyId = parsed.legacySpaceId as string
+        const { data: member } = await supabase
+          .from('space_members')
+          .select('space_id')
+          .eq('space_id', legacyId)
+          .eq('user_id', user.id)
+          .maybeSingle()
+
+        if (!member) {
+          fail('Este link de convite é antigo e não vale mais. Peça um novo link a quem te convidou.')
           return
         }
+        spaceId = legacyId
+        spaceName = spaces.find(s => s.id === legacyId)?.name || 'Espaço Echo'
+        alreadyMember = true
       }
-      
-      // 2. Verifica se o usuário já faz parte deste espaço
-      const { data: member } = await supabase
-        .from('space_members')
-        .select('space_id')
-        .eq('space_id', spaceId)
-        .eq('user_id', user.id)
-        .maybeSingle()
-        
-      if (member) {
-        setShowAddSpaceModal(false)
-        setJoinSpaceCode('')
-        setJoining(false)
-        // ESSENCIAL: Recarrega os espaços para que a lista local tenha o servidor imediatamente
-        await loadSpaces()
-        setPage('Servidores')
-        setExpandedSpace(spaceId)
-        const loadedChs = await loadChannelsForSpace(spaceId)
 
-        const chs = (loadedChs && loadedChs.length > 0) ? loadedChs : (spaceChannels[spaceId] || [])
-        const chToJoin = targetChannelId 
-          ? chs.find(c => c.id === targetChannelId)
-          : (chs.find(c => c.type === 'voice') || chs.find(c => c.type === 'text') || chs[0])
+      setShowAddSpaceModal(false)
+      setJoinSpaceCode('')
+      setJoining(false)
+      // ESSENCIAL: Recarrega os espaços para que a lista local tenha o servidor imediatamente
+      await loadSpaces()
+      setPage('Servidores')
+      setExpandedSpace(spaceId)
+      const loadedChs = await loadChannelsForSpace(spaceId)
 
+      const chs = (loadedChs && loadedChs.length > 0) ? loadedChs : (spaceChannels[spaceId] || [])
+      const chToJoin = targetChannelId
+        ? chs.find(c => c.id === targetChannelId)
+        : (chs.find(c => c.type === 'voice') || chs.find(c => c.type === 'text') || chs[0])
+
+      if (alreadyMember) {
         if (chToJoin) {
           setSelectedChannel(chToJoin)
           if (chToJoin.type === 'voice') {
@@ -675,52 +681,6 @@ export function useEchoSpaces({
         }
         return
       }
-      
-      // 3. Usuário novo: Insere como membro
-      const { error: insertError } = await supabase
-        .from('space_members')
-        .insert({ space_id: spaceId, user_id: user.id, role: 'member' })
-        
-      if (insertError) {
-        console.error('[processSpaceInvite] Erro ao entrar:', insertError)
-        setError(insertError.message)
-        showToast('Erro ao entrar', insertError.message || 'Não foi possível entrar no espaço.', 'info')
-        setJoining(false)
-        return
-      }
-
-      // Atribuição automática do Cargo Padrão do Espaço para novos membros
-      try {
-        const { data: defaultRoles } = await supabase
-          .from('space_roles')
-          .select('id')
-          .eq('space_id', spaceId)
-          .eq('is_default', true)
-          .limit(1)
-
-        if (defaultRoles && defaultRoles.length > 0) {
-          await supabase.from('space_member_roles').insert({
-            space_id: spaceId,
-            user_id: user.id,
-            role_id: defaultRoles[0].id
-          })
-        }
-      } catch (errDefault) {
-        console.warn('Erro ao atribuir cargo padrão ao novo membro:', errDefault)
-      }
-      
-      setShowAddSpaceModal(false)
-      setJoinSpaceCode('')
-      setJoining(false)
-      await loadSpaces()
-      setPage('Servidores')
-      setExpandedSpace(spaceId)
-      const freshChannels = await loadChannelsForSpace(spaceId)
-
-      const chs = (freshChannels && freshChannels.length > 0) ? freshChannels : (spaceChannels[spaceId] || [])
-      const chToJoin = targetChannelId 
-        ? chs.find(c => c.id === targetChannelId)
-        : (chs.find(c => c.type === 'voice') || chs.find(c => c.type === 'text') || chs[0])
 
       if (chToJoin) {
         setSelectedChannel(chToJoin)
@@ -735,9 +695,10 @@ export function useEchoSpaces({
 
       showToast("Bem-vindo!", `Você entrou no espaço "${spaceName}".`, "info")
     } catch (err: any) {
-      console.error('[processSpaceInvite] Exceção:', err)
-      setError(err.message || 'Erro ao entrar no espaço.')
-      showToast('Erro ao entrar', err.message || 'Não foi possível entrar no espaço.', 'info')
+      console.error('[processSpaceInvite] Erro ao entrar:', err)
+      const message = err?.message || 'Erro ao entrar no espaço.'
+      setError(message)
+      showToast('Erro ao entrar', message, 'info')
       setJoining(false)
     }
   }

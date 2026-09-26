@@ -1,26 +1,33 @@
 /**
  * Utilitários de Convites para Espaços e Canais do Echo
- * 
- * Gera links HTTPS universais que são 100% clicáveis no WhatsApp, Discord, Telegram,
- * Instagram, Twitter e navegadores, direcionando para a página web que aciona o app desktop (echo://invite/...).
+ *
+ * Um convite é um CÓDIGO aleatório (12 caracteres) gerado no servidor, com expiração, limite de usos e
+ * revogação — não mais o UUID do espaço. Os links HTTPS são clicáveis em qualquer app e abrem a página
+ * web que aciona o app desktop (echo://invite/<código>).
+ *
+ * Links antigos (que traziam o UUID do espaço) ainda são reconhecidos, mas só servem para quem já é
+ * membro; quem não é precisa de um convite novo.
  */
 
 export const ECHO_INVITE_WEB_BASE = 'https://lag9938.github.io/Echo/invite/'
 
-export function getPublicInviteUrl(spaceId: string, channelId?: string): string {
-  if (!spaceId) return ''
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const CODE_RE = /^[a-z0-9]{10,32}$/i
+
+export function getPublicInviteUrl(code: string, channelId?: string): string {
+  if (!code) return ''
   const params = new URLSearchParams()
-  params.set('space', spaceId)
+  params.set('code', code)
   if (channelId) {
     params.set('channel', channelId)
   }
-  params.set('v', '2')
+  params.set('v', '3')
   return `${ECHO_INVITE_WEB_BASE}?${params.toString()}`
 }
 
-export function getDeepLinkInviteUrl(spaceId: string, channelId?: string): string {
-  if (!spaceId) return ''
-  return `echo://invite/${spaceId}${channelId ? `?channel=${channelId}` : ''}`
+export function getDeepLinkInviteUrl(code: string, channelId?: string): string {
+  if (!code) return ''
+  return `echo://invite/${code}${channelId ? `?channel=${channelId}` : ''}`
 }
 
 /**
@@ -38,73 +45,92 @@ export function isEchoInviteUrl(url: string | null | undefined): boolean {
   )
 }
 
+export interface ParsedInvite {
+  /** Código de convite atual (sempre em minúsculas) */
+  code?: string
+  /** UUID de um espaço, vindo de um link antigo */
+  legacySpaceId?: string
+  channelId?: string
+}
+
+function classify(token: string): Pick<ParsedInvite, 'code' | 'legacySpaceId'> | null {
+  const value = token.trim()
+  if (UUID_RE.test(value)) return { legacySpaceId: value.toLowerCase() }
+  if (CODE_RE.test(value)) return { code: value.toLowerCase() }
+  return null
+}
+
 /**
- * Extrai o ID do espaço e opcionalmente o ID do canal a partir de qualquer formato de convite do Echo
+ * Interpreta qualquer formato de convite do Echo: só o código, um link web, um deep link, um link antigo
+ * com o UUID do espaço ou uma mensagem inteira colada que contenha um desses.
  */
-export function extractSpaceIdFromInvite(rawInput: string | null | undefined): { spaceId: string; channelId?: string } | null {
+export function parseInvite(rawInput: string | null | undefined): ParsedInvite | null {
   if (!rawInput || typeof rawInput !== 'string') return null
   const trimmed = rawInput.trim()
+  if (!trimmed) return null
 
-  let spaceId = ''
+  // 1. Só o código (ou o UUID antigo) colado direto
+  const bare = classify(trimmed)
+  if (bare) return bare
+
+  let token: string | null = null
   let channelId: string | undefined
 
-  // 1. Tenta analisar via construtor URL padrão caso seja URL ou Deep Link
+  // 2. URL padrão ou deep link
   try {
-    const urlStringToParse = trimmed.startsWith('echo://')
+    const href = trimmed.startsWith('echo://')
       ? trimmed.replace(/^echo:\/\//i, 'http://echo/')
-      : (trimmed.startsWith('http://') || trimmed.startsWith('https://') ? trimmed : `http://dummy.local/${trimmed}`)
+      : /^https?:\/\//i.test(trimmed) ? trimmed : null
 
-    const parsedUrl = new URL(urlStringToParse)
-    const spParam = parsedUrl.searchParams.get('space') || parsedUrl.searchParams.get('code') || parsedUrl.searchParams.get('id')
-    const chParam = parsedUrl.searchParams.get('channel')
-
-    if (spParam) {
-      // Valida se é um identificador aceitável
-      const cleanSp = spParam.split('&')[0].trim()
-      if (cleanSp) spaceId = cleanSp
-    }
-
-    if (chParam) {
-      const cleanCh = chParam.split('&')[0].trim()
-      if (cleanCh) channelId = cleanCh
-    }
-
-    // Se o path tiver /invite/{uuid}
-    if (!spaceId) {
-      const pathMatch = parsedUrl.pathname.match(/\/invite\/([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
-      if (pathMatch && pathMatch[1]) {
-        spaceId = pathMatch[1]
+    if (href) {
+      const url = new URL(href)
+      token = url.searchParams.get('code') || url.searchParams.get('space') || url.searchParams.get('id')
+      const ch = url.searchParams.get('channel')
+      if (ch && UUID_RE.test(ch.trim())) channelId = ch.trim().toLowerCase()
+      if (!token) {
+        const pathMatch = url.pathname.match(/\/invite\/([^/?#]+)/i)
+        if (pathMatch) token = decodeURIComponent(pathMatch[1])
       }
     }
-  } catch {}
+  } catch {
+    // cai nos fallbacks abaixo
+  }
 
-  // 2. Fallbacks via Regex caso o URL parsing não encontre
+  if (token) {
+    const parsed = classify(token)
+    if (parsed) return { ...parsed, channelId }
+  }
+
+  // 3. Fallbacks para texto solto (ex.: a mensagem de convite inteira colada)
   if (!channelId) {
-    const chMatch = trimmed.match(/[?&]channel=([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
-    if (chMatch && chMatch[1]) {
-      channelId = chMatch[1]
-    }
+    const chMatch = trimmed.match(/[?&]channel=([0-9a-f-]{36})/i)
+    if (chMatch) channelId = chMatch[1].toLowerCase()
   }
 
-  if (!spaceId) {
-    const spMatch = trimmed.match(/[?&]space=([a-f0-9-]{36}|[a-zA-Z0-9_-]{10,})/i)
-    if (spMatch && spMatch[1]) {
-      spaceId = spMatch[1]
-    } else {
-      const urlMatch = trimmed.match(/(?:invite\/|^)([a-f0-9-]{36})/i)
-      if (urlMatch && urlMatch[1]) {
-        spaceId = urlMatch[1]
-      } else {
-        // Fallback: UUID puro de 36 caracteres em qualquer parte do texto
-        const uuidMatch = trimmed.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i)
-        if (uuidMatch && uuidMatch[1]) {
-          spaceId = uuidMatch[1]
-        }
-      }
-    }
+  const codeParam = trimmed.match(/[?&]code=([a-z0-9-]{10,36})/i)
+  if (codeParam) {
+    const parsed = classify(codeParam[1])
+    if (parsed) return { ...parsed, channelId }
   }
 
-  return spaceId ? { spaceId, channelId } : null
+  const spaceParam = trimmed.match(/[?&](?:space|id)=([0-9a-f-]{36})/i)
+  if (spaceParam) {
+    const parsed = classify(spaceParam[1])
+    if (parsed) return { ...parsed, channelId }
+  }
+
+  const inviteSegment = trimmed.match(/invite\/([a-z0-9-]{10,36})/i)
+  if (inviteSegment) {
+    const parsed = classify(inviteSegment[1])
+    if (parsed) return { ...parsed, channelId }
+  }
+
+  const uuidAnywhere = trimmed.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)
+  if (uuidAnywhere) {
+    return { legacySpaceId: uuidAnywhere[1].toLowerCase(), channelId }
+  }
+
+  return null
 }
 
 /**
@@ -115,4 +141,3 @@ export function triggerInAppInvite(rawInput: string): void {
     window.dispatchEvent(new CustomEvent('echo-process-invite', { detail: { input: rawInput.trim() } }))
   }
 }
-

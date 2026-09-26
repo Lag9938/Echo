@@ -18,11 +18,43 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.37.0',
+    title: 'Echo v0.37.0 - Convites de Verdade & Servidores Realmente Privados',
+    date: '25 de Setembro de 2026',
+    tagline: 'Só entra no seu espaço quem recebe o seu convite: links com código, validade, revogação e proteção contra entrada não autorizada em servidores e chamadas de voz.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🔑',
+        badge: 'NOVIDADE',
+        title: 'Convites com Código, Validade e Revogação',
+        description: 'Os links de convite agora usam um código próprio. O dono gera links que nunca expiram, os demais membros geram links de 7 dias, e o dono pode revogar todos os links de uma vez em Configurações do Espaço > Convites.'
+      },
+      {
+        icon: '🔒',
+        badge: 'SEGURANÇA',
+        title: 'Servidores Realmente Privados',
+        description: 'Antes, quem soubesse o identificador de um servidor conseguia entrar nele. Agora a entrada só acontece por um convite válido, e a lista de servidores só é visível para os membros. Links antigos deixam de valer para quem ainda não é membro: peça um novo link.'
+      },
+      {
+        icon: '🎧',
+        badge: 'SEGURANÇA',
+        title: 'Chamadas de Voz Só para Membros',
+        description: 'O acesso às chamadas de voz passou a ser conferido no servidor: só entra quem é membro do espaço (e tem acesso ao canal, se for privado).'
+      },
+      {
+        icon: '🚪',
+        badge: 'CORREÇÃO',
+        title: 'Sair de Espaços e Auditoria Protegida',
+        description: 'Qualquer membro agora consegue sair de um espaço, e o registro de auditoria de cada espaço só pode ser lido e escrito por seus próprios membros.'
+      }
+    ]
+  },
+  {
     version: '0.36.1',
     title: 'Echo v0.36.1 - Presença Estável, Câmera em Tela Grande & Chamadas Mais Leves',
     date: '24 de Setembro de 2026',
     tagline: 'Amigos que sumiam da lista da chamada e o jogo que não aparecia foram corrigidos, a câmera agora ocupa o card inteiro e as chamadas de vídeo consomem menos banda e se recuperam melhor de quedas de rede.',
-    isLatest: true,
     highlights: [
       {
         icon: '🟢',

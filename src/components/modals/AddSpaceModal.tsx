@@ -188,7 +188,7 @@ export function AddSpaceModal({
                 <input 
                   value={joinSpaceCode} 
                   onChange={(e) => setJoinSpaceCode(e.target.value)} 
-                  placeholder="https://lag9938.github.io/Echo/invite/?space=... ou código" 
+                  placeholder="Cole o link de convite ou o código" 
                   required 
                   style={{ width: '100%', padding: '11px 14px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(0, 242, 254, 0.25)', color: '#fff', fontSize: '13px' }}
                 />
