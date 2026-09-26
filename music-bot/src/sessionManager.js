@@ -12,6 +12,23 @@ import {
 import { postBotMessage } from './supabaseClient.js'
 import { publishState, cancelPublish } from './state.js'
 import { watchEmptyRoom } from './emptyRoomGuard.js'
+import { parseControlMessage } from './liveControl.js'
+
+const isBotIdentity = (identity) => typeof identity === 'string' && identity.startsWith('music-bot-')
+
+/**
+ * Volume em tempo real vindo do painel (mensagem de dados do LiveKit, sem passar pelo banco): aplica na
+ * hora e só republica o estado. Comandos de chat (!volume) continuam funcionando como antes.
+ */
+function attachLiveControl(session, room) {
+  room.on('dataReceived', (payload, participant, _kind, topic) => {
+    if (!participant || isBotIdentity(participant.identity)) return
+    const control = parseControlMessage(payload, topic)
+    if (control?.cmd !== 'volume') return
+    session.volume = control.percent / 100
+    publishState(session)
+  })
+}
 import { newQueueItem, queueLabel, findQueueIndex, removeAt, moveToFront } from './queueOps.js'
 
 const MAX_HISTORY = 8
@@ -141,6 +158,7 @@ export async function handlePlay(channelId, query) {
         created.disconnectFn = joinRes.disconnect
         created.initialAudio = audioRes
 
+        attachLiveControl(created, joinRes.room)
         if (config.emptyRoomSeconds > 0) {
           created.stopEmptyGuard = watchEmptyRoom(joinRes.room, {
             graceMs: config.emptyRoomSeconds * 1000,
@@ -273,6 +291,7 @@ async function handlePlaylistPlay(channelId, query) {
         created.disconnectFn = joinRes.disconnect
         created.initialAudio = audioRes
 
+        attachLiveControl(created, joinRes.room)
         if (config.emptyRoomSeconds > 0) {
           created.stopEmptyGuard = watchEmptyRoom(joinRes.room, {
             graceMs: config.emptyRoomSeconds * 1000,
@@ -383,6 +402,9 @@ function prewarmNextProcess(session) {
 
   session.prewarmed = prewarm
 
+  const tPrewarmStart = Date.now()
+  console.log(`[Prewarm] ⏳ Pré-aquecendo próxima faixa em segundo plano: "${nextTitle || nextUrl}"`)
+
   prewarm.readyPromise = (async () => {
     let info = session.resolved.get(nextUrl)
     if (!info) {
@@ -408,9 +430,10 @@ function prewarmNextProcess(session) {
 
     prewarm.proc = proc
     prewarm.info = info
+    console.log(`[Prewarm] ✅ Faixa pronta no buffer do pipe (${Date.now() - tPrewarmStart}ms): "${info.title || targetUrl}"`)
     return prewarm
   })().catch(err => {
-    console.warn(`[Session ${session.channelId}] Prewarm falhou para ${nextUrl}:`, err.message)
+    console.warn(`[Prewarm] ⚠️ Falha ao pré-aquecer "${nextUrl}":`, err.message)
     prewarm.stop()
   })
 }
@@ -451,6 +474,7 @@ async function playNext(session) {
       if (prewarm.proc && !prewarm.stopped && prewarm.proc.ffmpeg?.exitCode === null && !prewarm.proc.ffmpeg?.killed) {
         info = prewarm.info
         proc = prewarm.proc
+        console.log(`[Playback] ⚡ Transição instantânea (prewarm adotado com 0ms de espera): "${info.title}"`)
       }
     } catch {
       // Falha no prewarm: continua no fluxo padrão abaixo
@@ -488,26 +512,37 @@ async function playNext(session) {
     durationSeconds: info.durationSeconds || null,
     source: info.source || null
   }
-  session.trackStartedAt = Date.now()
-  session.loading = false
+  // IMPORTANTE: trackStartedAt fica null e loading=true até o PRIMEIRO quadro de áudio
+  // realmente chegar e ser publicado no LiveKit. Isso evita que o timer do app dispare
+  // enquanto o áudio ainda está sendo baixado/decodificado.
+  session.trackStartedAt = null
+  session.loading = true
   publishState(session)
 
-  // O atalho do oEmbed não traz duração: busca em segundo plano e atualiza a barra de progresso quando chegar
+  // Delay de 10s para buscar a duração em background, sem concorrer com a largada do áudio
   if (!session.current.durationSeconds) {
     const trackRef = session.current
-    fetchDurationSeconds(targetUrl).then(seconds => {
-      if (seconds && session.current === trackRef) {
-        trackRef.durationSeconds = seconds
-        publishState(session)
+    setTimeout(() => {
+      if (session.current === trackRef && !trackRef.durationSeconds) {
+        fetchDurationSeconds(targetUrl).then(seconds => {
+          if (seconds && session.current === trackRef) {
+            trackRef.durationSeconds = seconds
+            publishState(session)
+          }
+        }).catch(() => {})
       }
-    }).catch(() => {})
+    }, 10000)
   }
 
   const badge = info.source === 'soundcloud' ? ' (via SoundCloud ☁️)' : ''
   await postBotMessage(channelId, `🎵 Tocando agora: **${info.title}**${badge}`)
 
-  // Pré-aquece a faixa seguinte em segundo plano enquanto esta toca
-  prewarmNextProcess(session)
+  // Pré-aquece a faixa seguinte em segundo plano após 5s para não concorrer na largada
+  setTimeout(() => {
+    if (sessions.get(channelId) === session && session.current?.proc === proc) {
+      prewarmNextProcess(session)
+    }
+  }, 5000)
 
   // Watchdog de segurança: corta a faixa se passar do tempo máximo
   // configurado, pra nenhum processo (travado ou uma live "infinita")
@@ -520,7 +555,13 @@ async function playNext(session) {
   try {
     await pumpPcmToSource(proc.ffmpeg.stdout, session.source, {
       getVolume: () => session.volume,
-      isPaused: () => session.paused
+      isPaused: () => session.paused,
+      onFirstFrame: () => {
+        session.trackStartedAt = Date.now()
+        session.loading = false
+        publishState(session)
+        console.log(`[Playback] 🔊 Áudio começou a tocar na chamada: "${info.title}"`)
+      }
     })
   } catch (err) {
     console.error(`[Session ${channelId}] Erro durante playback:`, err)

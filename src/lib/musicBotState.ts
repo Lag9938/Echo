@@ -6,6 +6,15 @@
 export const MUSIC_BOT_IDENTITY_PREFIX = 'music-bot-'
 export const MUSIC_BOT_STATE_VERSION = 1
 
+/** Assunto das mensagens de dados de controle enviadas ao bot (veja music-bot/src/liveControl.js) */
+export const MUSIC_BOT_CONTROL_TOPIC = 'echo-music-bot'
+
+/** Mensagem de dados que muda o volume do bot na hora, sem passar pelo banco */
+export function encodeMusicBotVolume(percent: number): Uint8Array<ArrayBuffer> {
+  const value = Math.min(200, Math.max(0, Math.round(percent)))
+  return new TextEncoder().encode(JSON.stringify({ cmd: 'volume', value }))
+}
+
 export type MusicBotStatus = 'loading' | 'playing' | 'paused' | 'idle'
 
 export interface MusicBotTrack {
@@ -32,6 +41,8 @@ export interface MusicBotState {
   status: MusicBotStatus
   /** 0 a 200 (100 = normal) */
   volume: number
+  /** O bot entende o volume em tempo real (mensagem de dados); um bot mais antigo só obedece ao "!volume" no chat */
+  liveVolume: boolean
   current: MusicBotTrack | null
   queue: MusicBotQueueItem[]
   /** Total real da fila (a lista publicada é cortada em 30 itens) */
@@ -101,6 +112,7 @@ export function parseMusicBotState(raw: string | null | undefined): MusicBotStat
     v: MUSIC_BOT_STATE_VERSION,
     status: STATUSES.has(data.status) ? (data.status as MusicBotStatus) : 'idle',
     volume: Math.min(200, Math.max(0, Math.round(asNumber(data.volume, 100)))),
+    liveVolume: data.liveVolume === true,
     current,
     queue,
     queueTotal: Math.max(queue.length, Math.round(asNumber(data.queueTotal, queue.length))),

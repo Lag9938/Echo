@@ -13,6 +13,7 @@ import { setupLivekitIpc, ensureLocalLivekitServer, getLivekitProcess } from './
 import { setupUpdatesIpc } from './ipc/updates.js'
 import { setupAudioIpc, stopAudioCapture } from './ipc/audio.js'
 import { setupWindowIpc } from './ipc/window.js'
+import { appendUpdateLog } from './services/updateRelaunch.js'
 
 process.on('uncaughtException', (err) => console.error('[Echo Main] Uncaught Exception:', err))
 process.on('unhandledRejection', (reason) => console.warn('[Echo Main] Unhandled Rejection:', reason))
@@ -307,6 +308,9 @@ if (setupDeeplink(getMainWindow, createWindow)) {
     Menu.setApplicationMenu(null)
     ensureLocalLivekitServer(rootDir)
     createWindow()
+    if (!isDevelopment) {
+      appendUpdateLog(path.join(app.getPath('userData'), 'update.log'), `Echo iniciado (versão ${app.getVersion()})`)
+    }
 
     try {
       const autostartConfigFile = path.join(app.getPath('userData'), 'autostart_preference.json')

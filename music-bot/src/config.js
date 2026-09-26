@@ -29,6 +29,11 @@ export const config = {
   ytdlpCookiesFile: (process.env.YTDLP_COOKIES_FILE || '').trim(),
   ytdlpExtraArgs: (process.env.YTDLP_EXTRA_ARGS || '').split(/\s+/).filter(Boolean),
 
+  // Quanto áudio o bot deixa na fila de envio (ms). É também o atraso entre pedir "volume" ou "pausar" e ouvir:
+  // o que já está na fila toca como estava. O padrão da biblioteca é 1000; menor responde mais rápido,
+  // mas com servidor sobrecarregado pode picotar (aumente se acontecer).
+  audioQueueMs: parseInt(process.env.AUDIO_QUEUE_MS || '400', 10),
+
   // Áudio: 48kHz é o padrão que o LiveKit espera para publicação de tracks.
   sampleRate: 48000,
   channels: 2

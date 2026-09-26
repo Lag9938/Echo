@@ -19,9 +19,11 @@ async function mintBotToken(roomName, identity) {
     room: roomName,
     roomJoin: true,
     canPublish: true,
-    // O bot não precisa ouvir ninguém, só publicar a música — economiza
-    // banda/CPU não assinando as faixas dos outros participantes.
-    canSubscribe: false,
+    // O bot não escuta ninguém: conecta com autoSubscribe desligado e nunca assina faixas dos outros
+    // (não gasta banda nem CPU com isso). A permissão fica ligada porque o servidor só entrega as
+    // mensagens de dados (controle de volume vindo do painel) a quem pode assinar.
+    canSubscribe: true,
+    canPublishData: true,
     // Permite publicar o estado (fila, faixa atual...) nos metadados do próprio participante,
     // que o app do Echo lê para montar o painel do bot (veja state.js).
     canUpdateOwnMetadata: true
@@ -41,7 +43,7 @@ export async function joinAndPublish(roomName) {
   const room = new Room()
   await room.connect(config.livekitUrl, token, { autoSubscribe: false, dynacast: true })
 
-  const source = new AudioSource(config.sampleRate, config.channels)
+  const source = new AudioSource(config.sampleRate, config.channels, config.audioQueueMs)
   const track = LocalAudioTrack.createAudioTrack('music', source)
 
   const publishOptions = new TrackPublishOptions()
@@ -70,10 +72,11 @@ export async function joinAndPublish(roomName) {
  */
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-export async function pumpPcmToSource(ffmpegStdout, source, { getVolume, isPaused } = {}) {
+export async function pumpPcmToSource(ffmpegStdout, source, { getVolume, isPaused, onFirstFrame } = {}) {
   const frameBytes = frameByteLength()
   const samplesPerChannel = frameBytes / BYTES_PER_SAMPLE / config.channels
   let buffered = Buffer.alloc(0)
+  let firstFrameReported = false
 
   for await (const chunk of ffmpegStdout) {
     buffered = Buffer.concat([buffered, chunk])
@@ -103,6 +106,11 @@ export async function pumpPcmToSource(ffmpegStdout, source, { getVolume, isPause
 
       const frame = new AudioFrame(int16, config.sampleRate, config.channels, samplesPerChannel)
       await source.captureFrame(frame)
+
+      if (!firstFrameReported) {
+        firstFrameReported = true
+        if (onFirstFrame) onFirstFrame()
+      }
     }
   }
 }

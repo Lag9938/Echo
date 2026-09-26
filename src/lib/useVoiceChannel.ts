@@ -21,7 +21,7 @@ import rnnoiseSimdWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise_simd.w
 import { playJoinSound, playLeaveSound, playSoundboardEffect } from './soundEffects'
 import { trackVoiceJoined, trackVoiceLeft, trackScreenShareStarted, trackScreenShareStopped } from './analytics'
 import { installPresenceTrackThrottle } from './presenceThrottle'
-import { isMusicBotIdentity, parseMusicBotState } from './musicBotState'
+import { isMusicBotIdentity, parseMusicBotState, encodeMusicBotVolume, MUSIC_BOT_CONTROL_TOPIC } from './musicBotState'
 import { useMusicBotStore } from '../stores/useMusicBotStore'
 
 export type VoiceParticipant = {
@@ -1146,6 +1146,24 @@ export function useVoiceChannel(options?: {
         }
       })
       roomRef.current = room
+
+      // Volume do bot de música em tempo real: mensagem de dados direto ao bot na sala, sem banco nem chat
+      useMusicBotStore.getState().setSendVolume(async (percent: number) => {
+        const target = roomRef.current
+        if (!target) return false
+        const bot = Array.from(target.remoteParticipants.values()).find(rp => isMusicBotIdentity(rp.identity))
+        if (!bot) return false
+        try {
+          await target.localParticipant.publishData(encodeMusicBotVolume(percent), {
+            reliable: true,
+            topic: MUSIC_BOT_CONTROL_TOPIC,
+            destinationIdentities: [bot.identity]
+          })
+          return true
+        } catch {
+          return false
+        }
+      })
 
       // Setup LiveKit room events
       room.on(RoomEvent.Connected, () => {

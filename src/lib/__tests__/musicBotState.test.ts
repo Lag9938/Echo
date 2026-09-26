@@ -1,11 +1,31 @@
 import { describe, it, expect } from 'vitest'
 import {
+  encodeMusicBotVolume,
   formatClock,
   getCurrentPositionMs,
   isMusicBotIdentity,
+  MUSIC_BOT_CONTROL_TOPIC,
   parseMusicBotState,
   type MusicBotState
 } from '../musicBotState'
+
+describe('controle de volume em tempo real', () => {
+  it('só considera o bot compatível quando ele avisa liveVolume: true', () => {
+    const base = { v: 1, status: 'idle', volume: 100, queue: [], history: [] }
+    expect(parseMusicBotState(JSON.stringify({ ...base, liveVolume: true }))?.liveVolume).toBe(true)
+    expect(parseMusicBotState(JSON.stringify(base))?.liveVolume).toBe(false)
+    expect(parseMusicBotState(JSON.stringify({ ...base, liveVolume: 'sim' }))?.liveVolume).toBe(false)
+  })
+
+  it('monta a mensagem de volume no formato que o bot lê, limitando 0 a 200', () => {
+    const decode = (bytes: Uint8Array) => JSON.parse(new TextDecoder().decode(bytes))
+    expect(decode(encodeMusicBotVolume(35))).toEqual({ cmd: 'volume', value: 35 })
+    expect(decode(encodeMusicBotVolume(12.6))).toEqual({ cmd: 'volume', value: 13 })
+    expect(decode(encodeMusicBotVolume(500))).toEqual({ cmd: 'volume', value: 200 })
+    expect(decode(encodeMusicBotVolume(-4))).toEqual({ cmd: 'volume', value: 0 })
+    expect(MUSIC_BOT_CONTROL_TOPIC).toBe('echo-music-bot')
+  })
+})
 
 const valid = {
   v: 1,

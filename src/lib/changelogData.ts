@@ -18,11 +18,43 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.38.1',
+    title: 'Echo v0.38.1 - Volume do Bot em Tempo Real & Atualização que Reabre o Echo',
+    date: '26 de Setembro de 2026',
+    tagline: 'O volume do Bot de Música agora acompanha o controle na hora, com ajuste de 1 em 1%, e depois de atualizar o Echo garante que o app volte a abrir sozinho.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🔊',
+        badge: 'MELHORIA',
+        title: 'Volume do Bot em Tempo Real',
+        description: 'Ao arrastar o volume do Bot de Música, a mudança acontece na hora, sem esperar você soltar o controle e sem mensagens no chat. O ajuste agora é de 1 em 1% (antes era de 5 em 5).'
+      },
+      {
+        icon: '🔄',
+        badge: 'CORREÇÃO',
+        title: 'O Echo Volta a Abrir Depois de Atualizar',
+        description: 'Ao atualizar pelo botão de reiniciar, se o Echo não reabrir sozinho depois da instalação, ele agora é aberto automaticamente.'
+      },
+      {
+        icon: '👋',
+        badge: 'MELHORIA',
+        title: 'Bot Sai Quando Todo Mundo Sai da Chamada',
+        description: 'Se ninguém ficar na chamada por 1 minuto, o Bot de Música para de tocar e sai do canal, em vez de continuar tocando para uma sala vazia.'
+      },
+      {
+        icon: '⏱️',
+        badge: 'MELHORIA',
+        title: 'Progresso da Música Completo',
+        description: 'A barra de progresso do Bot de Música agora mostra também a duração total da música, e o botão "tocar agora" na fila toca a música escolhida na hora.'
+      }
+    ]
+  },
+  {
     version: '0.38.0',
     title: 'Echo v0.38.0 - Bot de Música com Fila & Chat Sem Sobreposição',
     date: '26 de Setembro de 2026',
     tagline: 'O painel do Bot de Música foi refeito com fila, progresso ao vivo e controle de qual música toca a seguir, o chat de texto não deixa mais mensagens se sobrepondo e os canais abrem mais rápido.',
-    isLatest: true,
     highlights: [
       {
         icon: '🎵',

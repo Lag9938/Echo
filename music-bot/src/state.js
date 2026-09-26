@@ -60,6 +60,8 @@ export function buildSnapshot(session, now = Date.now()) {
     v: STATE_VERSION,
     status: deriveStatus(session),
     volume: Math.round((session.volume ?? 1) * 100),
+    // Avisa o app de que este bot entende o controle de volume em tempo real (liveControl.js)
+    liveVolume: true,
     current,
     queue,
     queueTotal: (session.queue || []).length,

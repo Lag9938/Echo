@@ -337,6 +337,13 @@
   color: var(--text-secondary);
 }
 
+.music-bot-hint {
+  margin: -6px 0 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
 /* Fila e recentes: abas no mesmo formato de .type-btn / .type-active */
 .music-bot-list {
   display: flex;

@@ -26,6 +26,12 @@ export interface MusicBotModalProps {
 const MAX_QUERY_LENGTH = 300
 const DEFAULT_VOLUME = 100
 const STATUS_TIMEOUT_MS = 3500
+/** Intervalo mínimo entre mensagens de volume enquanto a pessoa arrasta o controle */
+const LIVE_VOLUME_INTERVAL_MS = 90
+/** Quanto esperar o bot confirmar o volume no estado dele antes de cair no comando de chat */
+const LIVE_VOLUME_VERIFY_MS = 2000
+/** Logo depois de mexer, o painel ignora o volume que o bot devolve (pode ser um valor intermediário) */
+const LOCAL_VOLUME_GRACE_MS = 900
 
 type ListTab = 'queue' | 'recent'
 
@@ -50,6 +56,7 @@ export function MusicBotModal({ isOpen, onClose, channelId, userId, channelName 
   const [tab, setTab] = useState<ListTab>('queue')
   const [now, setNow] = useState(() => Date.now())
   const draggingVolume = useRef(false)
+  const lastLocalVolumeAt = useRef(0)
 
   const botPresent = useMusicBotStore((s) => s.present)
   const botState = useMusicBotStore((s) => s.state)
@@ -82,12 +89,25 @@ export function MusicBotModal({ isOpen, onClose, channelId, userId, channelName 
     return () => clearInterval(timer)
   }, [isOpen, isPlaying])
 
-  // O volume real vem do bot (outra pessoa pode ter mudado); não mexe enquanto o usuário arrasta
+  // O volume real vem do bot (outra pessoa pode ter mudado); não mexe enquanto o usuário arrasta nem logo
+  // depois de ele mexer (o bot ainda pode estar devolvendo um valor intermediário do arrasto)
   const botVolume = botState?.volume
   useEffect(() => {
     if (botVolume === undefined || draggingVolume.current) return
+    if (Date.now() - lastLocalVolumeAt.current < LOCAL_VOLUME_GRACE_MS) return
     setVolume(botVolume)
   }, [botVolume])
+
+  // Volume em tempo real: vai direto ao bot pela sala (sem banco nem mensagem no chat), enquanto arrasta
+  const sendLiveVolume = useMusicBotStore((s) => s.sendVolume)
+  const liveVolumeSupported = botState?.liveVolume === true && sendLiveVolume !== null
+  const lastLiveSendAt = useRef(0)
+  const liveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const verifyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (liveTimer.current) clearTimeout(liveTimer.current)
+    if (verifyTimer.current) clearTimeout(verifyTimer.current)
+  }, [])
 
   if (!isOpen) return null
 
@@ -144,8 +164,44 @@ export function MusicBotModal({ isOpen, onClose, channelId, userId, channelName 
     if (await sendCommand('!stop', 'Bot desconectado do canal.')) setLocalPaused(false)
   }
 
+  // Durante o arrasto: no máximo uma mensagem a cada LIVE_VOLUME_INTERVAL_MS (a última sempre chega)
+  const handleVolumeChange = (value: number) => {
+    lastLocalVolumeAt.current = Date.now()
+    setVolume(value)
+    if (!liveVolumeSupported || !sendLiveVolume) return
+
+    if (liveTimer.current) clearTimeout(liveTimer.current)
+    const wait = LIVE_VOLUME_INTERVAL_MS - (Date.now() - lastLiveSendAt.current)
+    const send = () => {
+      lastLiveSendAt.current = Date.now()
+      liveTimer.current = null
+      void sendLiveVolume(value)
+    }
+    if (wait <= 0) send()
+    else liveTimer.current = setTimeout(send, wait)
+  }
+
   const commitVolume = (value: number) => {
-    void sendCommand(`!volume ${value}`, `Volume em ${value}%.`)
+    lastLocalVolumeAt.current = Date.now()
+    if (!liveVolumeSupported || !sendLiveVolume) {
+      void sendCommand(`!volume ${value}`, `Volume em ${value}%.`)
+      return
+    }
+
+    if (liveTimer.current) clearTimeout(liveTimer.current)
+    liveTimer.current = null
+    lastLiveSendAt.current = Date.now()
+    void sendLiveVolume(value).then((sent) => {
+      if (!sent) void sendCommand(`!volume ${value}`, `Volume em ${value}%.`)
+    })
+
+    // Se o bot não devolver o novo volume no estado dele (mensagem de dados perdida ou bloqueada),
+    // cai no comando de chat, que é mais lento mas sempre funcionou
+    if (verifyTimer.current) clearTimeout(verifyTimer.current)
+    verifyTimer.current = setTimeout(() => {
+      const current = useMusicBotStore.getState().state
+      if (current && current.volume !== value) void sendCommand(`!volume ${value}`, `Volume em ${value}%.`)
+    }, LIVE_VOLUME_VERIFY_MS)
   }
 
   const handleToggleMute = () => {
@@ -327,16 +383,21 @@ export function MusicBotModal({ isOpen, onClose, channelId, userId, channelName 
             type="range"
             min={0}
             max={200}
-            step={5}
+            step={1}
             value={volume}
             aria-label="Volume do bot"
             onPointerDown={() => { draggingVolume.current = true }}
-            onChange={(e) => setVolume(Number(e.target.value))}
+            onChange={(e) => handleVolumeChange(Number(e.target.value))}
             onPointerUp={() => { draggingVolume.current = false; commitVolume(volume) }}
             onKeyUp={() => commitVolume(volume)}
           />
           <span className="music-bot-volume-value">{volume}%</span>
         </div>
+        {botState && !liveVolumeSupported && (
+          <p className="music-bot-hint">
+            O volume demora a mudar porque o bot no servidor é uma versão antiga. Atualize o bot para o volume em tempo real.
+          </p>
+        )}
 
         <div className="music-bot-list">
           <div className="music-bot-tabs" role="tablist">
