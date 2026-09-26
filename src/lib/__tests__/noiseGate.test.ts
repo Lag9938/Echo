@@ -55,6 +55,16 @@ describe('NoiseGate', () => {
     expect(gate.isOpen).toBe(true)
   })
 
+  it('histerese reinicia o hold: pausas curtas entre sílabas baixas não se somam', () => {
+    const gate = new NoiseGate(SR)
+    run(gate, -20, 20)
+    for (let k = 0; k < 6; k++) {
+      run(gate, -60, msToBlocks(100)) // pausa de 100 ms (abaixo do ponto de fechamento)
+      run(gate, -48, msToBlocks(150)) // sílaba baixa, dentro da histerese
+    }
+    expect(gate.isOpen).toBe(true)
+  })
+
   it('o limiar escolhido é respeitado', () => {
     const sensitive = new NoiseGate(SR)
     run(sensitive, -50, 5, -55)

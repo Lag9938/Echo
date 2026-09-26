@@ -165,10 +165,17 @@ async function createStudioMicrophoneDSP(
     gate = new AudioWorkletNode(audioCtx, NOISE_GATE_PROCESSOR, {
       numberOfInputs: 1,
       numberOfOutputs: 1,
-      outputChannelCount: [1]
+      outputChannelCount: [1],
+      // O processador só lê o canal 0: o navegador mistura a entrada em mono antes (como o compressor fazia),
+      // senão um microfone estéreo perderia o canal direito mesmo com o portão desligado
+      channelCount: 1,
+      channelCountMode: 'explicit',
+      channelInterpretation: 'speakers'
     });
     applyNoiseGateParams(gate, gateParams);
     gate.port.onmessage = (event) => onGateChange?.(!!event.data?.open);
+    // O portão novo começa fechado: não herda o estado do microfone anterior
+    onGateChange?.(false);
     gate.connect(compressor);
   } catch (err) {
     console.warn('[NoiseGate] Falha ao carregar o portão de ruído:', err);
@@ -1122,6 +1129,8 @@ export function useVoiceChannel(options?: {
         )
         localDspCtxRef.current = audioCtx
         localDspNodesRef.current = nodes
+        // O portão pode ter mudado nas configurações enquanto o worklet carregava
+        applyNoiseGateParams(nodes.gate, noiseGateRef.current)
         finalStream = dspStream
         if (isMutedRef.current && audioCtx.state === 'running') {
           audioCtx.suspend().catch(() => {})
@@ -2177,6 +2186,8 @@ export function useVoiceChannel(options?: {
         )
         localDspCtxRef.current = audioCtx
         localDspNodesRef.current = nodes
+        // O portão pode ter mudado nas configurações enquanto o worklet carregava
+        applyNoiseGateParams(nodes.gate, noiseGateRef.current)
         finalStream = dspStream
         if (isMutedRef.current && audioCtx.state === 'running') {
           audioCtx.suspend().catch(() => {})
