@@ -232,7 +232,7 @@ export function StreamTile({
         videoEl.removeEventListener('waiting', handleAutoResume)
       }
     }
-  }, [participant.screenStream, isLocalSharer, showLocalPreview, participant.isDeafened])
+  }, [participant.screenStream, isLocalSharer, showLocalPreview, isDeafened])
 
   // Ajuste em tempo real do volume no elemento de vídeo
   useEffect(() => {
@@ -272,7 +272,7 @@ export function StreamTile({
           ref={videoRef}
           autoPlay 
           playsInline 
-          muted={isLocalSharer || (participant.isDeafened || false)}
+          muted={isLocalSharer || isDeafened}
           className="screen-share-video-el"
         />
       )}

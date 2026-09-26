@@ -954,6 +954,8 @@ function Echo({ user }: { user: User }) {
     getSelectedOutputId: () => selectedOutputIdRef.current,
     getNoiseSuppressionEnabled: () => noiseSuppressionEnabledRef.current,
     getEchoCancellationEnabled: () => echoCancellationEnabledRef.current,
+    noiseGateEnabled,
+    noiseGateThreshold,
     getActiveSharingSource: () => activeSharingSourceRef.current,
     onBeforeJoinVoice: () => {
       lastActivityRef.current = Date.now()

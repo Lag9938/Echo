@@ -18,11 +18,55 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.39.0',
+    title: 'Echo v0.39.0 - Cargos no Estilo Discord, Portão de Ruído & Áudio do Membro Renovado',
+    date: '26 de Setembro de 2026',
+    tagline: 'Os cargos do espaço agora têm permissões e hierarquia que o servidor realmente respeita, o microfone ganhou um portão de ruído e a tela de áudio de cada membro ficou mais simples de usar.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🏷️',
+        badge: 'NOVIDADE',
+        title: 'Cargos com Permissões e Hierarquia de Verdade',
+        description: 'Cada espaço tem um cargo @everyone, e os cargos somam permissões (expulsar, gerenciar canais, cargos, mensagens, convites, voz e outras). Quem tem "Gerenciar Cargos" dá e tira cargos abaixo do seu, e ninguém concede uma permissão que não tem. Tudo isso é conferido no servidor, não só na tela.'
+      },
+      {
+        icon: '🎛️',
+        badge: 'NOVIDADE',
+        title: 'Nova Tela para Gerenciar Cargos',
+        description: 'Em Configurações do Espaço, crie, edite, reordene e apague cargos, escolha as permissões e defina quais aparecem separados na lista de membros. Canais privados passam a ser liberados por cargo.'
+      },
+      {
+        icon: '🎙️',
+        badge: 'NOVIDADE',
+        title: 'Portão de Ruído do Microfone',
+        description: 'Em Configurações > Voz, o portão de ruído corta o som do microfone quando você não está falando. O filtro de ruído por IA agora só é carregado quando está ligado, deixando a entrada na chamada mais leve.'
+      },
+      {
+        icon: '🎧',
+        badge: 'MELHORIA',
+        title: 'Áudio do Membro Mais Simples',
+        description: 'A tela de volume de cada pessoa na chamada foi refeita, com ícones no lugar de emojis e o visual do seu tema: volume com atalhos, posição no fone com explicação e moderação recolhida. Só você ouve esses ajustes.'
+      },
+      {
+        icon: '🔇',
+        badge: 'CORREÇÃO',
+        title: 'Quem Ensurdeceu Aparece Igual para Todos',
+        description: 'Antes, quem estava na chamada via só o microfone cortado de quem ensurdeceu, enquanto quem estava fora via o fone cortado. Agora todos veem o mesmo estado.'
+      },
+      {
+        icon: '✉️',
+        badge: 'MELHORIA',
+        title: 'Aviso Quando Você Não Pode Enviar Mensagens',
+        description: 'Se os seus cargos não permitem enviar mensagens no espaço, o campo de mensagem mostra isso em vez de falhar ao enviar.'
+      }
+    ]
+  },
+  {
     version: '0.38.2',
     title: 'Echo v0.38.2 - Cargos do Espaço Funcionando & Transferência de Posse',
     date: '26 de Setembro de 2026',
     tagline: 'Dar e tirar cargos dos membros voltou a funcionar, o Echo avisa quando o servidor recusa uma mudança em vez de fingir que deu certo, e transferir a posse do espaço agora funciona de verdade.',
-    isLatest: true,
     highlights: [
       {
         icon: '🏷️',

@@ -1810,10 +1810,14 @@
   white-space: nowrap;
   line-height: 1.2;
 }
+/* O nome do jogo tem prioridade: antes o tempo ("há 1h 8m") e o ícone de voz ficavam na mesma linha e o
+   nome virava "Jogando ...". Agora a pílula quebra e o tempo desce quando não cabe ao lado do nome inteiro. */
 .member-status-text.activity-game {
   display: inline-flex;
+  flex-wrap: wrap;
+  white-space: normal;
   align-items: center;
-  gap: 5px;
+  gap: 1px 5px;
   color: #cbd5e1;
   font-weight: 500;
   max-width: 100%;
@@ -1834,6 +1838,9 @@
   overflow: hidden;
 }
 .member-game-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: calc(100% - 19px); /* sobra a logo ao lado; nomes enormes ainda cortam com reticências */
   color: #f1f5f9;
   font-weight: 600;
   font-size: 11px;
@@ -1846,6 +1853,7 @@
   font-size: 9.5px;
   font-weight: 400;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 .member-status-text.activity-voice {
   color: #22c55e;
