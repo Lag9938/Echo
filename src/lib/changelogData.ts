@@ -18,11 +18,31 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.39.1',
+    title: 'Echo v0.39.1 - Moderação de Voz Segura',
+    date: '26 de Setembro de 2026',
+    tagline: 'Silenciar, mover e tirar alguém da chamada agora é conferido no servidor: só quem tem o cargo certo, acima do alvo na hierarquia, consegue.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🛡️',
+        badge: 'SEGURANÇA',
+        title: 'Só Quem Pode Modera a Chamada',
+        description: 'Antes, os comandos de moderação de voz saíam do próprio app e qualquer pessoa na chamada conseguia silenciar, mover ou derrubar outra. Agora o servidor confere o cargo (Silenciar, Desconectar ou Mover Membros) e a hierarquia antes de executar, e o dono do espaço nunca pode ser alvo.'
+      },
+      {
+        icon: '⚠️',
+        badge: 'MELHORIA',
+        title: 'Avisos Claros na Moderação',
+        description: 'Se a ação for recusada, a tela de áudio do membro avisa o motivo em vez de fingir que deu certo.'
+      }
+    ]
+  },
+  {
     version: '0.39.0',
     title: 'Echo v0.39.0 - Cargos no Estilo Discord, Portão de Ruído & Áudio do Membro Renovado',
     date: '26 de Setembro de 2026',
     tagline: 'Os cargos do espaço agora têm permissões e hierarquia que o servidor realmente respeita, o microfone ganhou um portão de ruído e a tela de áudio de cada membro ficou mais simples de usar.',
-    isLatest: true,
     highlights: [
       {
         icon: '🏷️',
