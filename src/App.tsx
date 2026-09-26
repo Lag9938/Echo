@@ -373,9 +373,11 @@ function Echo({ user }: { user: User }) {
   // Roles & Permissions Hook
   const {
     serverRoles,
+    editingRoles,
     selectedRoleId,
     setSelectedRoleId,
     memberRoleMap,
+    editingMemberRoleMap,
     loadSpaceRoles,
     loadMemberRoles,
     handleCreateRole,
@@ -384,10 +386,17 @@ function Echo({ user }: { user: User }) {
     moveRole,
     toggleMemberRole,
     getUserHighestRole,
-    canUserDo
+    getMemberPermissions,
+    canUserDo,
+    canManageRole,
+    canManageMember,
+    canKickMember,
+    canViewChannel
   } = useEchoRolesAndPermissions({
     editingSpace,
     spaces,
+    currentSpaceId: expandedSpace || selectedChannel?.space_id || null,
+    currentUserId: user?.id ?? null,
     addAuditLog,
     showToast,
     supabase
@@ -947,6 +956,8 @@ function Echo({ user }: { user: User }) {
     getSelectedOutputId: () => selectedOutputIdRef.current,
     getNoiseSuppressionEnabled: () => noiseSuppressionEnabledRef.current,
     getEchoCancellationEnabled: () => echoCancellationEnabledRef.current,
+    noiseGateEnabled,
+    noiseGateThreshold,
     getActiveSharingSource: () => activeSharingSourceRef.current,
     onBeforeJoinVoice: () => {
       lastActivityRef.current = Date.now()
@@ -2067,6 +2078,7 @@ function Echo({ user }: { user: User }) {
             stopCallRecording={stopCallRecording}
             recordingDuration={recordingDuration}
             canUserDo={canUserDo}
+            canViewChannel={canViewChannel}
             setVolumeControlUser={setVolumeControlUser}
             isConnected={isConnected}
             showToast={showToast}
@@ -2556,12 +2568,12 @@ function Echo({ user }: { user: User }) {
         showSpaceSettingsModal={showSpaceSettingsModal}
         setShowSpaceSettingsModal={setShowSpaceSettingsModal}
         editingSpace={editingSpace}
-        serverRoles={serverRoles}
+        serverRoles={editingRoles}
         serverEmojis={serverEmojis}
         serverAuditLogs={serverAuditLogs}
         editingSpaceMembers={editingSpaceMembers}
         loadingEditingMembers={loadingEditingMembers}
-        memberRoleMap={memberRoleMap}
+        memberRoleMap={editingMemberRoleMap}
         mutedSpaces={mutedSpaces}
         toggleMuteSpace={toggleMuteSpace}
         activeSpaceTab={activeSpaceTab}
@@ -2612,6 +2624,10 @@ function Echo({ user }: { user: User }) {
         deleteChannel={deleteChannel}
         getUserHighestRole={getUserHighestRole}
         canUserDo={canUserDo}
+        getMemberPermissions={getMemberPermissions}
+        canManageRole={canManageRole}
+        canManageMember={canManageMember}
+        canKickMember={canKickMember}
         toggleMemberRole={toggleMemberRole}
         handleRoleChange={handleRoleChange}
         handleKickMember={handleKickMember}

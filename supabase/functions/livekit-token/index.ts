@@ -82,6 +82,13 @@ Deno.serve(async (req: Request) => {
           .eq("user_id", userId)
         if (error) throw new Error(error.message)
         return (data || []).map((r: { role_id: string }) => r.role_id)
+      },
+      getChannelPermissions: async (channelId) => {
+        const { data, error } = await supabaseClient.rpc("get_my_channel_permissions", { p_channel_id: channelId })
+        // Função ainda não existe (banco antes da migração 11): usa a regra antiga
+        if (error?.code === "PGRST202") return null
+        if (error) throw new Error(error.message)
+        return (data ?? {}) as Record<string, boolean>
       }
     })
 
@@ -122,7 +129,8 @@ Deno.serve(async (req: Request) => {
       video: {
         room,
         roomJoin: true,
-        canPublish: true,
+        // Sem a permissão "Falar" o token não publica áudio/vídeo (continua ouvindo e mandando dados)
+        canPublish: !access.listenOnly,
         canSubscribe: true,
         canPublishData: true
       }

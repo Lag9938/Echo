@@ -18,6 +18,9 @@ import { RnnoiseWorkletNode, loadRnnoise } from '@sapphi-red/web-noise-suppresso
 import rnnoiseWorkletPath from '@sapphi-red/web-noise-suppressor/rnnoiseWorklet.js?url'
 import rnnoiseWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise.wasm?url'
 import rnnoiseSimdWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise_simd.wasm?url'
+import noiseGateWorkletPath from './audio/noiseGateWorklet.ts?worker&url'
+import { NOISE_GATE_PROCESSOR, type NoiseGateParams } from './audio/noiseGate'
+import { browserNoiseSuppression } from './audio/noiseSuppression'
 import { playJoinSound, playLeaveSound, playSoundboardEffect } from './soundEffects'
 import { trackVoiceJoined, trackVoiceLeft, trackScreenShareStarted, trackScreenShareStopped } from './analytics'
 import { installPresenceTrackThrottle } from './presenceThrottle'
@@ -46,7 +49,22 @@ export interface StudioMicrophoneDSPNodes {
   limiter: DynamicsCompressorNode;
   dest: MediaStreamAudioDestinationNode;
   rnnoiseNode: any | null;
+  /** Noise Gate (null se o worklet não carregou: o áudio segue sem portão) */
+  gate: AudioWorkletNode | null;
   audioCtx: AudioContext;
+}
+
+const DEFAULT_NOISE_GATE: NoiseGateParams = { enabled: false, thresholdDb: -45 }
+
+function applyNoiseGateParams(gate: AudioWorkletNode | null, params: NoiseGateParams) {
+  if (!gate) return
+  const now = gate.context.currentTime
+  // Valor salvo inválido (ex.: NaN no localStorage) volta para o padrão em vez de derrubar o áudio
+  const threshold = Number.isFinite(params.thresholdDb)
+    ? Math.min(0, Math.max(-100, params.thresholdDb))
+    : DEFAULT_NOISE_GATE.thresholdDb
+  gate.parameters.get('enabled')?.setValueAtTime(params.enabled ? 1 : 0, now)
+  gate.parameters.get('thresholdDb')?.setValueAtTime(threshold, now)
 }
 
 let rnnoiseWasmBinaryCache: ArrayBuffer | null = null
@@ -61,7 +79,12 @@ async function getRnnoiseWasmBinary(): Promise<ArrayBuffer> {
   return rnnoiseWasmBinaryCache
 }
 
-async function createStudioMicrophoneDSP(stream: MediaStream, enableAi = false): Promise<{ 
+async function createStudioMicrophoneDSP(
+  stream: MediaStream,
+  enableAi = false,
+  gateParams: NoiseGateParams = DEFAULT_NOISE_GATE,
+  onGateChange?: (open: boolean) => void
+): Promise<{
   finalStream: MediaStream; 
   audioCtx: AudioContext; 
   nodes: StudioMicrophoneDSPNodes 
@@ -116,33 +139,49 @@ async function createStudioMicrophoneDSP(stream: MediaStream, enableAi = false):
   source.connect(highpass);
   highpass.connect(lowpass);
 
+  // O modelo de IA só é carregado quando a supressão por IA está ligada (antes carregava em toda chamada)
   let rnnoiseNode: any = null;
-  try {
-    const wasmBinary = await getRnnoiseWasmBinary();
-    await audioCtx.audioWorklet.addModule(rnnoiseWorkletPath);
-    rnnoiseNode = new RnnoiseWorkletNode(audioCtx, {
-      wasmBinary,
-      maxChannels: 1
-    });
-  } catch (err) {
-    console.warn('[RNNoise] Falha ao carregar worklet de IA:', err);
-    rnnoiseNode = null;
+  if (enableAi) {
+    try {
+      const wasmBinary = await getRnnoiseWasmBinary();
+      await audioCtx.audioWorklet.addModule(rnnoiseWorkletPath);
+      rnnoiseNode = new RnnoiseWorkletNode(audioCtx, {
+        wasmBinary,
+        maxChannels: 1
+      });
+    } catch (err) {
+      console.warn('[RNNoise] Falha ao carregar worklet de IA:', err);
+      rnnoiseNode = null;
+    }
   }
 
-  if (enableAi && rnnoiseNode) {
-    lowpass.connect(rnnoiseNode);
-    rnnoiseNode.connect(compressor);
-  } else {
-    lowpass.connect(compressor);
+  // Noise Gate depois da IA (mede a voz já sem o ruído de fundo) e antes do compressor (que levantaria o ruído)
+  let gate: AudioWorkletNode | null = null;
+  try {
+    await audioCtx.audioWorklet.addModule(noiseGateWorkletPath);
+    gate = new AudioWorkletNode(audioCtx, NOISE_GATE_PROCESSOR, {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      outputChannelCount: [1]
+    });
+    applyNoiseGateParams(gate, gateParams);
+    gate.port.onmessage = (event) => onGateChange?.(!!event.data?.open);
+    gate.connect(compressor);
+  } catch (err) {
+    console.warn('[NoiseGate] Falha ao carregar o portão de ruído:', err);
+    gate = null;
   }
+
+  const nodes: StudioMicrophoneDSPNodes = { source, highpass, lowpass, compressor, limiter, dest, rnnoiseNode, gate, audioCtx };
+  routeAiDenoise(nodes, enableAi);
 
   compressor.connect(limiter);
   limiter.connect(dest);
 
-  return { 
-    finalStream: dest.stream, 
+  return {
+    finalStream: dest.stream,
     audioCtx,
-    nodes: { source, highpass, lowpass, compressor, limiter, dest, rnnoiseNode, audioCtx }
+    nodes
   };
 }
 
@@ -153,11 +192,12 @@ function routeAiDenoise(nodes: StudioMicrophoneDSPNodes, enabled: boolean) {
       try { nodes.rnnoiseNode.disconnect(); } catch (e) {}
     }
 
+    const next: AudioNode = nodes.gate ?? nodes.compressor;
     if (enabled && nodes.rnnoiseNode) {
       nodes.lowpass.connect(nodes.rnnoiseNode);
-      nodes.rnnoiseNode.connect(nodes.compressor);
+      nodes.rnnoiseNode.connect(next);
     } else {
-      nodes.lowpass.connect(nodes.compressor);
+      nodes.lowpass.connect(next);
     }
   } catch (err) {
     console.warn('[RNNoise] Erro ao alternar roteamento:', err);
@@ -174,6 +214,8 @@ export function useVoiceChannel(options?: {
   onKickedFromVoice?: () => void;
   onMovedToVoiceChannel?: (targetChannelId: string, targetChannelName?: string) => void;
   onReconnectMediaNotice?: (title: string, message: string) => void;
+  /** Portão de ruído das Configurações > Voz (aplicado ao vivo, sem reconectar) */
+  noiseGate?: NoiseGateParams;
 }) {
   const onDisconnectedRef = useRef(options?.onDisconnected)
   useEffect(() => {
@@ -227,6 +269,20 @@ export function useVoiceChannel(options?: {
   })
   const isAiDenoiseEnabledRef = useRef(isAiDenoiseEnabled)
 
+  // Preferências do navegador (supressão/eco) em uso, para recriar o microfone ao alternar a IA
+  const noiseSuppressionPrefRef = useRef(true)
+  const echoCancellationPrefRef = useRef(true)
+
+  // Noise Gate: parâmetros atuais e se o portão está aberto (o indicador de "falando" segue o portão)
+  const noiseGateEnabled = options?.noiseGate?.enabled ?? DEFAULT_NOISE_GATE.enabled
+  const noiseGateThresholdDb = options?.noiseGate?.thresholdDb ?? DEFAULT_NOISE_GATE.thresholdDb
+  const noiseGateRef = useRef<NoiseGateParams>({ enabled: noiseGateEnabled, thresholdDb: noiseGateThresholdDb })
+  const isGateOpenRef = useRef(false)
+  const rebuildMicrophoneRef = useRef<(() => Promise<void>) | null>(null)
+  const handleGateChange = useCallback((open: boolean) => {
+    isGateOpenRef.current = open
+  }, [])
+
   // Soundboard
   const [lastSoundboardEvent, setLastSoundboardEvent] = useState<{ soundId: string; userId: string; displayName: string; timestamp: number } | null>(null)
 
@@ -260,6 +316,12 @@ export function useVoiceChannel(options?: {
   const localRawStreamRef = useRef<MediaStream | null>(null)
   const localDspCtxRef = useRef<AudioContext | null>(null)
   const localDspNodesRef = useRef<StudioMicrophoneDSPNodes | null>(null)
+
+  // Mudou o portão nas configurações: aplica na hora no microfone em uso
+  useEffect(() => {
+    noiseGateRef.current = { enabled: noiseGateEnabled, thresholdDb: noiseGateThresholdDb }
+    applyNoiseGateParams(localDspNodesRef.current?.gate ?? null, noiseGateRef.current)
+  }, [noiseGateEnabled, noiseGateThresholdDb])
   const localScreenStreamRef = useRef<MediaStream | null>(null)
 
   // Supabase presence channel
@@ -536,6 +598,7 @@ export function useVoiceChannel(options?: {
           avatarUrl: finalAvatarUrl,
           isSpeaking,
           isMuted,
+          // O LiveKit não sabe disso: useEchoVoiceSession completa com a presença do Supabase
           isDeafened: false,
           screenStream,
           isScreenSharing,
@@ -675,7 +738,9 @@ export function useVoiceChannel(options?: {
           sum += dataArr[i]
         }
         const avg = sum / dataArr.length
-        const speaking = avg > 11
+        // Com o portão ativo, só conta como falando quando o som realmente está sendo transmitido
+        const gateActive = noiseGateRef.current.enabled && !!localDspNodesRef.current?.gate
+        const speaking = avg > 11 && (!gateActive || isGateOpenRef.current)
 
         if (speaking !== isLocalSpeakingRef.current) {
           isLocalSpeakingRef.current = speaking
@@ -712,33 +777,10 @@ export function useVoiceChannel(options?: {
       localStorage.setItem('echo-ai-denoise-enabled', nextVal ? 'true' : 'false')
     } catch (e) {}
 
-    if (localDspNodesRef.current) {
-      if (nextVal && !localDspNodesRef.current.rnnoiseNode && localDspNodesRef.current.audioCtx) {
-        try {
-          const wasmBinary = await getRnnoiseWasmBinary()
-          await localDspNodesRef.current.audioCtx.audioWorklet.addModule(rnnoiseWorkletPath)
-          localDspNodesRef.current.rnnoiseNode = new RnnoiseWorkletNode(localDspNodesRef.current.audioCtx, {
-            wasmBinary,
-            maxChannels: 1
-          })
-        } catch (err) {
-          console.warn('[RNNoise] Falha ao carregar worklet de IA:', err)
-        }
-      }
-      routeAiDenoise(localDspNodesRef.current, nextVal)
-    } else if (localRawStreamRef.current && isConnected) {
-      try {
-        const { finalStream: dspStream, audioCtx, nodes } = await createStudioMicrophoneDSP(localRawStreamRef.current, nextVal)
-        localDspCtxRef.current = audioCtx
-        localDspNodesRef.current = nodes
-        localStreamRef.current = dspStream
-        const newTrack = dspStream.getAudioTracks()[0]
-        if (newTrack && localAudioTrackRef.current) {
-          await localAudioTrackRef.current.replaceTrack(newTrack, true)
-        }
-      } catch (err) {
-        console.error('[RNNoise] Erro ao instanciar DSP no toggle:', err)
-      }
+    // Em chamada: recria o microfone. Além de ligar/desligar o RNNoise, isso liga/desliga a supressão do
+    // navegador (que não pode ser trocada num microfone já aberto) para as duas não rodarem juntas.
+    if (localRawStreamRef.current && isConnected) {
+      await rebuildMicrophoneRef.current?.()
     }
   }, [isConnected])
 
@@ -1027,12 +1069,16 @@ export function useVoiceChannel(options?: {
       if (inputId) selectedInputIdRef.current = inputId
       if (outputId) selectedOutputIdRef.current = outputId
 
+      noiseSuppressionPrefRef.current = noiseSuppression
+      echoCancellationPrefRef.current = echoCancellation
+      const browserNs = browserNoiseSuppression(noiseSuppression, isAiDenoiseEnabledRef.current)
+
       // Obter microfone com cancelamento de ruído e eco de alta qualidade
       const constraints = {
         audio: {
           deviceId: inputId && inputId !== 'default' ? { exact: inputId } : undefined,
           echoCancellation,
-          noiseSuppression,
+          noiseSuppression: browserNs,
           autoGainControl: true,
           channelCount: 1
         } as any,
@@ -1047,7 +1093,7 @@ export function useVoiceChannel(options?: {
         rawStream = await navigator.mediaDevices.getUserMedia({
           audio: {
             echoCancellation,
-            noiseSuppression,
+            noiseSuppression: browserNs,
             autoGainControl: true
           },
           video: false
@@ -1065,8 +1111,10 @@ export function useVoiceChannel(options?: {
       let finalStream = rawStream
       try {
         const { finalStream: dspStream, audioCtx, nodes } = await createStudioMicrophoneDSP(
-          rawStream, 
-          isAiDenoiseEnabledRef.current
+          rawStream,
+          isAiDenoiseEnabledRef.current,
+          noiseGateRef.current,
+          handleGateChange
         )
         localDspCtxRef.current = audioCtx
         localDspNodesRef.current = nodes
@@ -1396,8 +1444,16 @@ export function useVoiceChannel(options?: {
         }
       }
 
+      // Sem a permissão "Falar" (cargos do espaço) o token não deixa publicar: entra só ouvindo
+      const canPublish = room.localParticipant.permissions?.canPublish !== false
+      if (room.state === 'connected' && !canPublish) {
+        setIsMuted(true)
+        isMutedRef.current = true
+        onReconnectMediaNoticeRef.current?.('Somente ouvindo', 'Seus cargos neste espaço não têm a permissão "Falar".')
+      }
+
       // Publica microfone do usuário
-      if (room.state === 'connected') {
+      if (room.state === 'connected' && canPublish) {
         try {
           const micTrack = finalStream.getAudioTracks()[0]
           if (micTrack) {
@@ -2059,6 +2115,8 @@ export function useVoiceChannel(options?: {
   // Change input microphone device
   const changeInputDevice = useCallback(async (deviceId: string, noiseSuppression = true, echoCancellation = true) => {
     selectedInputIdRef.current = deviceId
+    noiseSuppressionPrefRef.current = noiseSuppression
+    echoCancellationPrefRef.current = echoCancellation
     if (!isConnected || !localRawStreamRef.current) return
 
     try {
@@ -2076,7 +2134,7 @@ export function useVoiceChannel(options?: {
         audio: {
           deviceId: deviceId !== 'default' ? { exact: deviceId } : undefined,
           echoCancellation,
-          noiseSuppression,
+          noiseSuppression: browserNoiseSuppression(noiseSuppression, isAiDenoiseEnabledRef.current),
           autoGainControl: true,
           channelCount: 1
         }
@@ -2087,8 +2145,10 @@ export function useVoiceChannel(options?: {
       let finalStream = newStream
       try {
         const { finalStream: dspStream, audioCtx, nodes } = await createStudioMicrophoneDSP(
-          newStream, 
-          isAiDenoiseEnabledRef.current
+          newStream,
+          isAiDenoiseEnabledRef.current,
+          noiseGateRef.current,
+          handleGateChange
         )
         localDspCtxRef.current = audioCtx
         localDspNodesRef.current = nodes
@@ -2108,7 +2168,16 @@ export function useVoiceChannel(options?: {
     } catch (err) {
       console.error('Failed to change input device:', err)
     }
-  }, [isConnected, startLocalVad])
+  }, [isConnected, startLocalVad, handleGateChange])
+
+  // Usado pela alternância da IA: recria o microfone atual com as mesmas preferências
+  useEffect(() => {
+    rebuildMicrophoneRef.current = () => changeInputDevice(
+      selectedInputIdRef.current || 'default',
+      noiseSuppressionPrefRef.current,
+      echoCancellationPrefRef.current
+    )
+  }, [changeInputDevice])
 
   // Change speaker output device
   const changeOutputDevice = useCallback(async (deviceId: string) => {

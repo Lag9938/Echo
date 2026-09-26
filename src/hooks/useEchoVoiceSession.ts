@@ -25,6 +25,9 @@ export interface UseEchoVoiceSessionOptions {
   getSelectedOutputId?: () => string
   getNoiseSuppressionEnabled?: () => boolean
   getEchoCancellationEnabled?: () => boolean
+  /** Portão de ruído (Configurações > Voz) */
+  noiseGateEnabled?: boolean
+  noiseGateThreshold?: number
   spaces: Space[]
   spaceChannelsRef: React.MutableRefObject<Record<string, Channel[]>>
   selectedChannel: Channel | null
@@ -55,6 +58,8 @@ export function useEchoVoiceSession({
   getSelectedOutputId,
   getNoiseSuppressionEnabled,
   getEchoCancellationEnabled,
+  noiseGateEnabled = false,
+  noiseGateThreshold = -45,
   spaces,
   spaceChannelsRef,
   selectedChannel,
@@ -96,7 +101,7 @@ export function useEchoVoiceSession({
 
   // Voice hook and state
   const {
-    participants,
+    participants: rawParticipants,
     isMuted,
     isDeafened,
     isConnected,
@@ -146,6 +151,7 @@ export function useEchoVoiceSession({
   } = useVoiceChannel({
     onDisconnected: handleVoiceDisconnected,
     sfxVolume,
+    noiseGate: { enabled: noiseGateEnabled, thresholdDb: noiseGateThreshold },
     onReconnectMediaNotice: (title, message) => {
       showToast?.(title, message, 'info')
     },
@@ -333,6 +339,20 @@ export function useEchoVoiceSession({
       })
     }
   }, [presenceData])
+
+  // O LiveKit só sabe se o microfone está desligado; "ensurdecido" (áudio dos outros mutado) vem da
+  // presença que cada cliente publica (inclusive versões antigas). Sem isso, quem estava na chamada via
+  // só o microfone cortado de quem ensurdeceu, enquanto quem estava fora via o fone cortado.
+  const participants = useMemo(() => {
+    const presenceUsers = activeVoiceChannelId ? spaceVoiceUsers[activeVoiceChannelId] || [] : []
+    if (presenceUsers.length === 0) return rawParticipants
+    const deafenedIds = new Set(presenceUsers.filter(u => u.isDeafened).map(u => u.userId))
+    return rawParticipants.map(p =>
+      p.userId !== user?.id && !p.isDeafened && deafenedIds.has(p.userId)
+        ? { ...p, isDeafened: true, isMuted: true, isSpeaking: false }
+        : p
+    )
+  }, [rawParticipants, spaceVoiceUsers, activeVoiceChannelId, user?.id])
 
   handleJoinVoiceRef.current = handleJoinVoice
   handleLeaveVoiceRef.current = handleLeaveVoice

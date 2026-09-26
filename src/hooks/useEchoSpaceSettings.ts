@@ -311,7 +311,7 @@ export function useEchoSpaceSettings({
     const client = supabase
     const currentSpace = editingSpace
 
-    const canKick = canUserDo(currentSpace.id, user.id, 'kickMembers') || currentSpace.creator_id === user.id
+    const canKick = canUserDo(currentSpace.id, user.id, 'kickMembers') && memberUserId !== currentSpace.creator_id
     if (!canKick) {
       showToast('Permissão Negada', 'Você não tem permissão para expulsar membros deste espaço.', 'info')
       return
@@ -325,14 +325,18 @@ export function useEchoSpaceSettings({
       cancelText: 'Não, Cancelar',
       isDanger: true,
       onConfirm: async () => {
-        const { error: kickErr } = await client
+        // .select() devolve as linhas apagadas: vazio = o banco recusou (hierarquia ou falta de permissão)
+        const { data: kicked, error: kickErr } = await client
           .from('space_members')
           .delete()
           .eq('space_id', currentSpace.id)
           .eq('user_id', memberUserId)
+          .select('user_id')
 
         if (kickErr) {
           showToast('Erro ao expulsar', kickErr.message, 'info')
+        } else if (!kicked || kicked.length === 0) {
+          showToast('Não foi possível expulsar', 'Você só pode expulsar membros abaixo do seu cargo mais alto.', 'info')
         } else {
           addAuditLog(currentSpace.id, `Expulsou o membro "${memberName}" do espaço`)
           showToast('Membro Expulso', `${memberName} foi removido do espaço.`, 'info')

@@ -1,8 +1,9 @@
 import { memo } from 'react'
 import type { User } from '@supabase/supabase-js'
-import type { Space, ServerRole, RolePermissions } from '../../../types'
+import type { Space, ServerRole } from '../../../types'
 import {
   CrownIcon,
+  LockIcon,
   UserMinusIcon
 } from '../../icons'
 
@@ -18,7 +19,9 @@ export interface SpaceMembersTabProps {
   getUserHighestRole: (spaceId: string, userId: string) => ServerRole | null
   memberRoleMap: Record<string, string[]>
   serverRoles: ServerRole[]
-  canUserDo: (spaceId: string, userId: string, perm: keyof RolePermissions) => boolean
+  canManageRole: (role: ServerRole) => boolean
+  canManageMember: (memberUserId: string) => boolean
+  canKickMember: (memberUserId: string) => boolean
   toggleMemberRole: (memberUserId: string, roleId: string, memberName?: string) => void
   handleRoleChange: (memberUserId: string, newRole: 'owner' | 'moderator' | 'member', memberName: string) => void
   handleKickMember: (memberId: string, memberName: string) => void
@@ -36,11 +39,15 @@ export const SpaceMembersTab = memo(function SpaceMembersTab({
   getUserHighestRole,
   memberRoleMap,
   serverRoles,
-  canUserDo,
+  canManageRole,
+  canManageMember,
+  canKickMember,
   toggleMemberRole,
   handleRoleChange,
   handleKickMember
 }: SpaceMembersTabProps) {
+  const assignableRoles = serverRoles.filter(r => !r.isEveryone)
+
   return (
     <div className="space-settings-tab-pane">
       <div className="space-settings-pane-header">
@@ -71,8 +78,9 @@ export const SpaceMembersTab = memo(function SpaceMembersTab({
               const isSelf = member.user?.id === user.id
               const highestRole = member.user?.id ? getUserHighestRole(editingSpace.id, member.user.id) : null
               const assignedRoleIds = memberRoleMap[member.user?.id] || []
-              const assignedRoles = serverRoles.filter(r => assignedRoleIds.includes(r.id))
-              const canKick = (editingSpace.creator_id === user.id && !isOwner && !isSelf) || (canUserDo(editingSpace.id, user.id, 'kickMembers') && !isOwner && !isSelf)
+              const assignedRoles = assignableRoles.filter(r => assignedRoleIds.includes(r.id))
+              const canKick = !!member.user?.id && canKickMember(member.user.id)
+              const memberManageable = !!member.user?.id && canManageMember(member.user.id)
 
               const isSelected = selectedMemberId === member.user?.id
 
@@ -159,34 +167,40 @@ export const SpaceMembersTab = memo(function SpaceMembersTab({
                       {/* Atribuição de Cargos do Espaço */}
                       <div className="member-mgmt-section">
                         <label className="member-mgmt-label">Cargos do Espaço</label>
-                        {editingSpace.creator_id !== user.id && (
+                        {!memberManageable && (
                           <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-                            Só o dono do espaço pode dar ou tirar cargos.
+                            {isOwner
+                              ? 'Os cargos do dono só podem ser alterados por ele mesmo.'
+                              : 'Esta pessoa está no seu nível ou acima na hierarquia: você não pode alterar os cargos dela.'}
                           </span>
                         )}
                         <div className="member-mgmt-roles-grid">
-                          {serverRoles.filter(r => r.id !== 'role-owner').map(r => {
+                          {assignableRoles.map(r => {
                             const hasRole = assignedRoleIds.includes(r.id)
+                            const allowed = memberManageable && canManageRole(r)
                             return (
                               <button
                                 key={r.id}
                                 type="button"
-                                disabled={editingSpace.creator_id !== user.id}
+                                disabled={!allowed}
+                                title={allowed ? undefined : 'Só dá para atribuir cargos abaixo do seu cargo mais alto (e a quem está abaixo de você).'}
                                 className={`member-mgmt-role-pill ${hasRole ? 'active' : ''}`}
                                 style={{
                                   borderColor: hasRole ? r.color : 'var(--border-color)',
                                   color: hasRole ? r.color : 'var(--text-secondary)',
-                                  background: hasRole ? `${r.color}22` : 'rgba(255, 255, 255, 0.04)'
+                                  background: hasRole ? `${r.color}22` : 'rgba(255, 255, 255, 0.04)',
+                                  opacity: allowed ? 1 : 0.55
                                 }}
                                 onClick={() => toggleMemberRole(member.user?.id, r.id, member.user?.display_name)}
                               >
                                 <span className="role-pill-check">{hasRole ? '✓' : '＋'}</span>
                                 <span className="role-pill-dot" style={{ background: r.color }} />
                                 <span>{r.name}</span>
+                                {!allowed && <LockIcon style={{ width: '11px', height: '11px' }} />}
                               </button>
                             )
                           })}
-                          {serverRoles.filter(r => r.id !== 'role-owner').length === 0 && (
+                          {assignableRoles.length === 0 && (
                             <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Nenhum cargo personalizado criado neste espaço.</span>
                           )}
                         </div>

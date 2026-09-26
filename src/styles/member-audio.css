@@ -1,0 +1,437 @@
+/* Áudio de um membro na chamada (volume só para mim, posição no fone e moderação).
+ *
+ * Mesma linguagem do painel do Bot de Música: só variáveis de tema, sem cores fixas de superfície, então
+ * acompanha todos os temas.
+ *  - fundo: .modal-backdrop (global)
+ *  - cartões: --bg-tertiary + borda --border-color, raio 12px
+ *  - destaque: --accent-color / --accent-light
+ */
+
+.member-audio-modal {
+  width: min(420px, 92vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  color: var(--text-primary);
+  animation: modalScaleSpring 0.26s var(--ease-spring);
+}
+
+/* Cabeçalho: quem é a pessoa */
+.member-audio-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.member-audio-avatar {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent-color);
+  background: var(--accent-light);
+}
+
+.member-audio-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.member-audio-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.member-audio-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-audio-subtitle {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.member-audio-close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.member-audio-close:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* Cartões */
+.member-audio-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+}
+
+.member-audio-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.member-audio-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.member-audio-value {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.member-audio-value.boosted { color: #f59e0b; }
+.member-audio-value.muted { color: var(--text-muted); }
+
+.member-audio-value.small {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.member-audio-value.small.active { color: var(--accent-color); }
+
+/* Volume: botão de silenciar + controle */
+.member-audio-slider-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.member-audio-mute {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.member-audio-mute:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.member-audio-mute.active {
+  color: #ef4444;
+  border-color: color-mix(in srgb, #ef4444 45%, var(--border-color));
+  background: color-mix(in srgb, #ef4444 10%, var(--bg-secondary));
+}
+
+.member-audio-slider-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Controle: faixa preenchida com a cor de destaque (o preenchimento vem das variáveis --fill / --from / --to) */
+.member-audio-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 34px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.member-audio-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--accent-color) var(--fill, 50%), var(--border-color) var(--fill, 50%));
+}
+
+.member-audio-slider.pan::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    to right,
+    var(--border-color) var(--from, 50%),
+    var(--accent-color) var(--from, 50%),
+    var(--accent-color) var(--to, 50%),
+    var(--border-color) var(--to, 50%)
+  );
+}
+
+.member-audio-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-color);
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.3));
+  transition: transform 0.12s ease;
+}
+
+.member-audio-slider:hover::-webkit-slider-thumb { transform: scale(1.12); }
+.member-audio-slider:active::-webkit-slider-thumb { transform: scale(1.2); }
+
+.member-audio-slider:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Marca do volume normal (100%), no meio do controle */
+.member-audio-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: -6px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.member-audio-scale .mid {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.member-audio-slider-wrap { position: relative; }
+
+/* Atalhos de volume */
+.member-audio-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.member-audio-chip {
+  padding: 5px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.member-audio-chip:hover { color: var(--text-primary); border-color: var(--text-muted); }
+
+.member-audio-chip.active {
+  color: var(--accent-color);
+  background: var(--accent-light);
+  border-color: var(--accent-color);
+}
+
+.member-audio-hint {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* Posição no fone */
+.member-audio-pan-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.member-audio-side {
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.member-audio-help {
+  margin: -4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Botões */
+.member-audio-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.member-audio-btn {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.member-audio-btn:hover:not(:disabled) { border-color: var(--text-muted); }
+
+.member-audio-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.member-audio-btn.primary {
+  flex: 0 0 auto;
+  color: #fff;
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.member-audio-btn.primary:hover:not(:disabled) { background: var(--accent-hover, var(--accent-color)); }
+
+.member-audio-btn.danger {
+  color: #ef4444;
+  border-color: color-mix(in srgb, #ef4444 35%, var(--border-color));
+  background: color-mix(in srgb, #ef4444 8%, var(--bg-secondary));
+}
+
+.member-audio-btn.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, #ef4444 16%, var(--bg-secondary));
+}
+
+.member-audio-btn.danger.confirm {
+  color: #fff;
+  background: #ef4444;
+  border-color: #ef4444;
+}
+
+.member-audio-btn.danger.done {
+  color: #22c55e;
+  border-color: color-mix(in srgb, #22c55e 40%, var(--border-color));
+  background: color-mix(in srgb, #22c55e 10%, var(--bg-secondary));
+}
+
+/* Moderação: recolhida por padrão, só aparece para quem tem permissão */
+.member-audio-mod {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.member-audio-mod-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.member-audio-mod-toggle:hover { background: var(--bg-tertiary); }
+
+.member-audio-mod-toggle .member-audio-mod-note {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.member-audio-mod-toggle svg:last-child { transition: transform 0.18s ease; }
+.member-audio-mod-toggle svg.open { transform: rotate(180deg); }
+
+.member-audio-mod-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 14px 14px;
+}
+
+.member-audio-move {
+  display: flex;
+  gap: 8px;
+}
+
+.member-audio-select {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.member-audio-close:focus-visible,
+.member-audio-mute:focus-visible,
+.member-audio-chip:focus-visible,
+.member-audio-btn:focus-visible,
+.member-audio-mod-toggle:focus-visible,
+.member-audio-select:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .member-audio-modal { animation: none; }
+  .member-audio-slider::-webkit-slider-thumb,
+  .member-audio-mod-toggle svg:last-child { transition: none; }
+}

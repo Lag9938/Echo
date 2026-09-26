@@ -1,9 +1,20 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { Channel, RolePermissions } from '../../types'
+import {
+  ChevronDownIcon,
+  CloseXIcon,
+  HeadphonesIcon,
+  LogOutIcon,
+  MicOffIcon,
+  ShieldIcon,
+  VolumeIcon,
+  VolumeXIcon
+} from '../icons'
 
 export interface VolumeControlUser {
   userId: string
   displayName: string
+  avatarUrl?: string
 }
 
 export interface VolumeControlModalProps {
@@ -28,6 +39,30 @@ export interface VolumeControlModalProps {
   moveParticipant?: (userId: string, targetChannelId: string, targetChannelName?: string) => void
 }
 
+const DEFAULT_VOLUME = 100
+const VOLUME_PRESETS = [50, 100, 150]
+const CONFIRM_WINDOW_MS = 3000
+
+function volumeHint(volume: number): string {
+  if (volume === 0) return 'Mudo só para você'
+  if (volume < DEFAULT_VOLUME) return 'Mais baixo que o normal'
+  if (volume === DEFAULT_VOLUME) return 'Volume normal'
+  return 'Amplificado: acima de 100% pode distorcer'
+}
+
+function panLabel(pan: number): string {
+  const percent = Math.round(Math.abs(pan) * 100)
+  if (percent === 0) return 'Centro'
+  return pan < 0 ? `${percent}% para a esquerda` : `${percent}% para a direita`
+}
+
+/** Faixa preenchida do controle de posição: parte do centro e vai até o valor (esquerda ou direita) */
+function panTrackStyle(pan: number): CSSProperties {
+  const from = 50 + Math.min(0, pan) * 50
+  const to = 50 + Math.max(0, pan) * 50
+  return { '--from': `${from}%`, '--to': `${to}%` } as CSSProperties
+}
+
 export function VolumeControlModal({
   volumeControlUser,
   onClose,
@@ -48,300 +83,291 @@ export function VolumeControlModal({
   disconnectParticipant,
   moveParticipant
 }: VolumeControlModalProps) {
+  const [moderationOpen, setModerationOpen] = useState(false)
   const [mutedFeedback, setMutedFeedback] = useState(false)
+  const [confirmingKick, setConfirmingKick] = useState(false)
   const [selectedMoveChannelId, setSelectedMoveChannelId] = useState('')
+  // Volume de antes de silenciar: o botão de silenciar devolve a pessoa a esse volume, e não a 100%
+  const volumeBeforeMute = useRef(DEFAULT_VOLUME)
+  const userId = volumeControlUser?.userId
+
+  // Ao trocar de pessoa, volta ao estado inicial
+  useEffect(() => {
+    setModerationOpen(false)
+    setMutedFeedback(false)
+    setConfirmingKick(false)
+    setSelectedMoveChannelId('')
+    volumeBeforeMute.current = DEFAULT_VOLUME
+  }, [userId])
+
+  useEffect(() => {
+    if (!userId) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [userId, onClose])
+
+  useEffect(() => {
+    if (!confirmingKick) return
+    const timer = setTimeout(() => setConfirmingKick(false), CONFIRM_WINDOW_MS)
+    return () => clearTimeout(timer)
+  }, [confirmingKick])
 
   if (!volumeControlUser) return null
 
+  const peerId = volumeControlUser.userId
+  const volume = userVolumes[peerId] !== undefined ? userVolumes[peerId] : DEFAULT_VOLUME
+  const pan = userStereoPans[peerId] !== undefined ? userStereoPans[peerId] : 0
+  const otherPeers = participants.filter(p => p.userId !== currentUserId)
+  const initial = (volumeControlUser.displayName || '?').trim().charAt(0).toUpperCase()
+
+  const setVolume = (value: number) => {
+    const next = { ...userVolumes, [peerId]: value }
+    setUserVolumes(next)
+    localStorage.setItem('echo-user-volumes', JSON.stringify(next))
+  }
+
+  const toggleMute = () => {
+    if (volume > 0) {
+      volumeBeforeMute.current = volume
+      setVolume(0)
+    } else {
+      setVolume(volumeBeforeMute.current || DEFAULT_VOLUME)
+    }
+  }
+
+  const enableSpatialAudio = () => {
+    if (spatialAudioEnabled) return
+    setSpatialAudioEnabledState(true)
+    localStorage.setItem('echo-spatial-audio-enabled', 'true')
+  }
+
+  const setPan = (value: number) => {
+    const next = { ...userStereoPans, [peerId]: value }
+    setUserStereoPans(next)
+    localStorage.setItem('echo-user-stereo-pans', JSON.stringify(next))
+    changePeerPan(peerId, value)
+    enableSpatialAudio()
+  }
+
+  const spreadEveryone = () => {
+    const count = otherPeers.length
+    const next = { ...userStereoPans }
+    otherPeers.forEach((p, idx) => {
+      const value = count === 1 ? 0 : -0.75 + (1.5 / (count - 1)) * idx
+      const rounded = Math.round(value * 100) / 100
+      next[p.userId] = rounded
+      changePeerPan(p.userId, rounded)
+    })
+    setUserStereoPans(next)
+    localStorage.setItem('echo-user-stereo-pans', JSON.stringify(next))
+    enableSpatialAudio()
+  }
+
+  const isOwnerOrAdmin = isSpaceOwner || (canUserDo && spaceId && currentUserId ? canUserDo(spaceId, currentUserId, 'administrator') : false)
+  const can = (perm: keyof RolePermissions) =>
+    isOwnerOrAdmin || (canUserDo && spaceId && currentUserId ? canUserDo(spaceId, currentUserId, perm) : false)
+  const canMute = can('muteMembers')
+  const canDisconnect = can('disconnectMembers')
+  const canMove = can('moveMembers') && !!availableVoiceChannels && availableVoiceChannels.length > 0
+  const canModerateAny = peerId !== currentUserId && (canMute || canDisconnect || canMove)
+
+  const VolumeStateIcon = volume === 0 ? VolumeXIcon : VolumeIcon
+
   return (
-    <div className="screen-picker-overlay" onClick={onClose}>
-      <div className="screen-picker-modal volume-control-modal" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ margin: 0, fontSize: '18px' }}>Áudio & Posição 3D</h2>
-          <button className="picker-close-btn" style={{ margin: 0, padding: '4px 8px' }} onClick={onClose}>✕</button>
-        </div>
-        <p style={{ margin: '6px 0 16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-          Ajuste o volume e o posicionamento estéreo da voz de <strong>{volumeControlUser.displayName}</strong>.
-        </p>
-        
-        {/* Section 1: Volume */}
-        <div className="volume-slider-container" style={{ margin: '14px 0', padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13.5px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-            <span>🔊 Volume de Voz</span>
-            <span style={{ color: (userVolumes[volumeControlUser.userId] || 100) > 100 ? '#ff9f43' : 'inherit' }}>
-              {userVolumes[volumeControlUser.userId] !== undefined ? userVolumes[volumeControlUser.userId] : 100}%
-            </span>
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="member-audio-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Áudio de ${volumeControlUser.displayName}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="member-audio-header">
+          <div className="member-audio-avatar">
+            {volumeControlUser.avatarUrl ? <img src={volumeControlUser.avatarUrl} alt="" /> : <span>{initial}</span>}
           </div>
-          <input 
-            type="range" 
-            min="0" 
-            max="200" 
-            value={userVolumes[volumeControlUser.userId] !== undefined ? userVolumes[volumeControlUser.userId] : 100}
-            onChange={(e) => {
-              const val = parseInt(e.target.value)
-              const newVols = { ...userVolumes, [volumeControlUser.userId]: val }
-              setUserVolumes(newVols)
-              localStorage.setItem('echo-user-volumes', JSON.stringify(newVols))
-            }}
-            style={{ width: '100%', accentColor: 'var(--accent-color)', cursor: 'pointer' }}
-          />
-
-          {(() => {
-            const curVol = userVolumes[volumeControlUser.userId] !== undefined ? userVolumes[volumeControlUser.userId] : 100
-            const isLocallyMuted = curVol === 0
-            return (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: isLocallyMuted ? '#f87171' : 'var(--text-secondary)' }}>
-                  <input
-                    type="checkbox"
-                    checked={isLocallyMuted}
-                    onChange={(e) => {
-                      const shouldMute = e.target.checked
-                      const newVol = shouldMute ? 0 : 100
-                      const newVols = { ...userVolumes, [volumeControlUser.userId]: newVol }
-                      setUserVolumes(newVols)
-                      localStorage.setItem('echo-user-volumes', JSON.stringify(newVols))
-                    }}
-                    style={{ cursor: 'pointer', accentColor: '#f87171' }}
-                  />
-                  <span style={{ fontWeight: 600 }}>🔇 Silenciar Membro (Localmente)</span>
-                </label>
-                {isLocallyMuted && (
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#f87171', background: 'rgba(248, 113, 113, 0.15)', padding: '2px 8px', borderRadius: '4px' }}>
-                    Silenciado
-                  </span>
-                )}
-              </div>
-            )
-          })()}
+          <div className="member-audio-heading">
+            <h3 className="member-audio-title" title={volumeControlUser.displayName}>{volumeControlUser.displayName}</h3>
+            <span className="member-audio-subtitle">Só você ouve estes ajustes</span>
+          </div>
+          <button type="button" className="member-audio-close" onClick={onClose} aria-label="Fechar">
+            <CloseXIcon />
+          </button>
         </div>
 
-        {/* Section 2: 3D Spatial Stereo Panning */}
-        <div className="volume-slider-container" style={{ margin: '14px 0', padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '13.5px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>🎧 Posicionamento Estéreo (3D)</span>
-            </span>
-            <span style={{ fontSize: '12px', color: (userStereoPans[volumeControlUser.userId] || 0) === 0 ? '#10b981' : '#00f2fe', fontWeight: 600 }}>
-              {(userStereoPans[volumeControlUser.userId] || 0) === 0 && '● Centro (Neutro)'}
-              {(userStereoPans[volumeControlUser.userId] || 0) < 0 && `⬅️ ${Math.round(Math.abs(userStereoPans[volumeControlUser.userId]) * 100)}% Esquerda`}
-              {(userStereoPans[volumeControlUser.userId] || 0) > 0 && `➡️ ${Math.round((userStereoPans[volumeControlUser.userId]) * 100)}% Direita`}
-            </span>
+        <section className="member-audio-card">
+          <div className="member-audio-card-head">
+            <span className="member-audio-card-title">Volume</span>
+            <span className={`member-audio-value${volume > DEFAULT_VOLUME ? ' boosted' : ''}${volume === 0 ? ' muted' : ''}`}>{volume}%</span>
           </div>
 
-          <input 
-            type="range" 
-            min="-100" 
-            max="100" 
-            step="5"
-            value={Math.round((userStereoPans[volumeControlUser.userId] !== undefined ? userStereoPans[volumeControlUser.userId] : 0) * 100)}
-            onChange={(e) => {
-              const rawVal = parseInt(e.target.value, 10) / 100
-              const newPans = { ...userStereoPans, [volumeControlUser.userId]: rawVal }
-              setUserStereoPans(newPans)
-              localStorage.setItem('echo-user-stereo-pans', JSON.stringify(newPans))
-              changePeerPan(volumeControlUser.userId, rawVal)
-              if (!spatialAudioEnabled) {
-                setSpatialAudioEnabledState(true)
-                localStorage.setItem('echo-spatial-audio-enabled', 'true')
-              }
-            }}
-            style={{ width: '100%', accentColor: '#00f2fe', cursor: 'pointer' }}
-          />
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            <span>100% Esquerda</span>
-            <span>Centro</span>
-            <span>100% Direita</span>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+          <div className="member-audio-slider-row">
             <button
               type="button"
-              onClick={() => {
-                const newPans = { ...userStereoPans, [volumeControlUser.userId]: 0 }
-                setUserStereoPans(newPans)
-                localStorage.setItem('echo-user-stereo-pans', JSON.stringify(newPans))
-                changePeerPan(volumeControlUser.userId, 0)
-              }}
-              style={{
-                flex: 1,
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-primary)',
-                padding: '6px',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
+              className={`member-audio-mute${volume === 0 ? ' active' : ''}`}
+              onClick={toggleMute}
+              title={volume === 0 ? 'Voltar a ouvir' : 'Silenciar só para mim'}
+              aria-label={volume === 0 ? 'Voltar a ouvir' : 'Silenciar só para mim'}
+              aria-pressed={volume === 0}
             >
-              🔄 Centralizar
+              <VolumeStateIcon style={{ width: 18, height: 18 }} />
             </button>
+            <div className="member-audio-slider-wrap">
+              <input
+                className="member-audio-slider"
+                type="range"
+                min={0}
+                max={200}
+                step={1}
+                value={volume}
+                aria-label={`Volume de ${volumeControlUser.displayName}`}
+                style={{ '--fill': `${volume / 2}%` } as CSSProperties}
+                onChange={(e) => setVolume(Number(e.target.value))}
+              />
+              <div className="member-audio-scale" aria-hidden="true">
+                <span>0</span>
+                <span className="mid">normal</span>
+                <span>200</span>
+              </div>
+            </div>
+          </div>
 
-            {participants.filter(p => p.userId !== currentUserId).length > 1 && (
+          <div className="member-audio-chips">
+            {VOLUME_PRESETS.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                className={`member-audio-chip${volume === preset ? ' active' : ''}`}
+                onClick={() => setVolume(preset)}
+              >
+                {preset}%
+              </button>
+            ))}
+            <span className="member-audio-hint">{volumeHint(volume)}</span>
+          </div>
+        </section>
+
+        <section className="member-audio-card">
+          <div className="member-audio-card-head">
+            <span className="member-audio-card-title">
+              <HeadphonesIcon style={{ width: 15, height: 15 }} />
+              Posição no fone
+            </span>
+            <span className={`member-audio-value small${pan !== 0 ? ' active' : ''}`}>{panLabel(pan)}</span>
+          </div>
+
+          <div className="member-audio-pan-row">
+            <span className="member-audio-side" aria-hidden="true">E</span>
+            <input
+              className="member-audio-slider pan"
+              type="range"
+              min={-100}
+              max={100}
+              step={1}
+              value={Math.round(pan * 100)}
+              aria-label={`Posição de ${volumeControlUser.displayName} no fone`}
+              aria-valuetext={panLabel(pan)}
+              style={panTrackStyle(pan)}
+              onChange={(e) => setPan(Number(e.target.value) / 100)}
+            />
+            <span className="member-audio-side" aria-hidden="true">D</span>
+          </div>
+          <p className="member-audio-help">Escolha de que lado do fone você ouve esta pessoa.</p>
+
+          <div className="member-audio-actions">
+            <button type="button" className="member-audio-btn" onClick={() => setPan(0)} disabled={pan === 0}>
+              Centralizar
+            </button>
+            {otherPeers.length > 1 && (
               <button
                 type="button"
-                onClick={() => {
-                  const otherPeers = participants.filter(p => p.userId !== currentUserId)
-                  const count = otherPeers.length
-                  const newPans = { ...userStereoPans }
-                  otherPeers.forEach((p, idx) => {
-                    const panVal = count === 1 ? 0 : -0.75 + (1.5 / (count - 1)) * idx
-                    const rounded = Math.round(panVal * 100) / 100
-                    newPans[p.userId] = rounded
-                    changePeerPan(p.userId, rounded)
-                  })
-                  setUserStereoPans(newPans)
-                  localStorage.setItem('echo-user-stereo-pans', JSON.stringify(newPans))
-                  if (!spatialAudioEnabled) {
-                    setSpatialAudioEnabledState(true)
-                    localStorage.setItem('echo-spatial-audio-enabled', 'true')
-                  }
-                }}
-                style={{
-                  flex: 1,
-                  background: 'rgba(0, 242, 254, 0.12)',
-                  border: '1px solid rgba(0, 242, 254, 0.3)',
-                  color: '#00f2fe',
-                  padding: '6px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-                title="Distribui todos os membros do squad em semicírculo no seu fone"
+                className="member-audio-btn"
+                onClick={spreadEveryone}
+                title="Espalha todas as pessoas da chamada da esquerda para a direita, para você distinguir quem fala"
               >
-                🌐 Distribuir Squad 3D
+                Espalhar todos
               </button>
             )}
           </div>
-        </div>
+        </section>
 
-        {/* Section 3: Voice Moderation (Moderação da Chamada) */}
-        {(() => {
-          const isOwnerOrAdmin = isSpaceOwner || (canUserDo && spaceId && currentUserId ? canUserDo(spaceId, currentUserId, 'administrator') : false)
-          const canMute = isOwnerOrAdmin || (canUserDo && spaceId && currentUserId ? canUserDo(spaceId, currentUserId, 'muteMembers') : false)
-          const canDisconnect = isOwnerOrAdmin || (canUserDo && spaceId && currentUserId ? canUserDo(spaceId, currentUserId, 'disconnectMembers') : false)
-          const canMove = isOwnerOrAdmin || (canUserDo && spaceId && currentUserId ? canUserDo(spaceId, currentUserId, 'moveMembers') : false)
-          const canModerateAny = volumeControlUser.userId !== currentUserId && (canMute || canDisconnect || canMove)
+        {canModerateAny && (
+          <section className="member-audio-mod">
+            <button
+              type="button"
+              className="member-audio-mod-toggle"
+              onClick={() => setModerationOpen((open) => !open)}
+              aria-expanded={moderationOpen}
+            >
+              <ShieldIcon style={{ width: 15, height: 15 }} />
+              <span>Moderação</span>
+              <span className="member-audio-mod-note">afeta todos na chamada</span>
+              <ChevronDownIcon style={{ width: 16, height: 16 }} className={moderationOpen ? 'open' : ''} />
+            </button>
 
-          if (!canModerateAny) return null
-
-          return (
-            <div className="volume-moderation-container" style={{ margin: '14px 0', padding: '14px', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', fontSize: '13px', fontWeight: 700, color: '#f87171' }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                </svg>
-                <span>Moderação da Chamada</span>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', gap: '8px' }}>
+            {moderationOpen && (
+              <div className="member-audio-mod-body">
+                <div className="member-audio-actions">
                   {canMute && (
                     <button
                       type="button"
+                      className={`member-audio-btn danger${mutedFeedback ? ' done' : ''}`}
                       onClick={() => {
-                        serverMuteParticipant?.(volumeControlUser.userId)
+                        serverMuteParticipant?.(peerId)
                         setMutedFeedback(true)
                         setTimeout(() => setMutedFeedback(false), 2500)
                       }}
-                      style={{
-                        flex: 1,
-                        background: mutedFeedback ? '#10b981' : 'rgba(239, 68, 68, 0.15)',
-                        border: '1px solid rgba(239, 68, 68, 0.35)',
-                        color: mutedFeedback ? '#ffffff' : '#fca5a5',
-                        padding: '7px 10px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px'
-                      }}
                     >
-                      <span>🔇</span>
-                      <span>{mutedFeedback ? 'Silenciado!' : 'Mutar no Servidor'}</span>
+                      <MicOffIcon style={{ width: 15, height: 15 }} />
+                      {mutedFeedback ? 'Silenciado' : 'Silenciar para todos'}
                     </button>
                   )}
 
                   {canDisconnect && (
                     <button
                       type="button"
+                      className={`member-audio-btn danger${confirmingKick ? ' confirm' : ''}`}
                       onClick={() => {
-                        disconnectParticipant?.(volumeControlUser.userId)
+                        if (!confirmingKick) {
+                          setConfirmingKick(true)
+                          return
+                        }
+                        disconnectParticipant?.(peerId)
                         onClose()
                       }}
-                      style={{
-                        flex: 1,
-                        background: 'rgba(239, 68, 68, 0.15)',
-                        border: '1px solid rgba(239, 68, 68, 0.35)',
-                        color: '#fca5a5',
-                        padding: '7px 10px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px'
-                      }}
                     >
-                      <span>🚪</span>
-                      <span>Expulsar da Chamada</span>
+                      <LogOutIcon />
+                      {confirmingKick ? 'Clique para confirmar' : 'Tirar da chamada'}
                     </button>
                   )}
                 </div>
 
-                {canMove && availableVoiceChannels && availableVoiceChannels.length > 0 && (
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
+                {canMove && availableVoiceChannels && (
+                  <div className="member-audio-move">
                     <select
+                      className="member-audio-select"
                       value={selectedMoveChannelId}
                       onChange={(e) => setSelectedMoveChannelId(e.target.value)}
-                      style={{
-                        flex: 1,
-                        background: 'var(--bg-secondary, #1e1f22)',
-                        border: '1px solid var(--border-color, rgba(255,255,255,0.12))',
-                        color: 'var(--text-primary, #ffffff)',
-                        padding: '7px 10px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        outline: 'none',
-                        cursor: 'pointer'
-                      }}
+                      aria-label="Canal de voz de destino"
                     >
-                      <option value="">Mover para canal de voz...</option>
-                      {availableVoiceChannels.map(ch => (
-                        <option key={ch.id} value={ch.id}>🔊 {ch.name}</option>
+                      <option value="">Mover para outro canal de voz…</option>
+                      {availableVoiceChannels.map((ch) => (
+                        <option key={ch.id} value={ch.id}>{ch.name}</option>
                       ))}
                     </select>
-
                     <button
                       type="button"
+                      className="member-audio-btn primary"
                       disabled={!selectedMoveChannelId}
                       onClick={() => {
-                        const targetCh = availableVoiceChannels.find(c => c.id === selectedMoveChannelId)
-                        if (targetCh) {
-                          moveParticipant?.(volumeControlUser.userId, targetCh.id, targetCh.name)
+                        const target = availableVoiceChannels.find((c) => c.id === selectedMoveChannelId)
+                        if (target) {
+                          moveParticipant?.(peerId, target.id, target.name)
                           onClose()
                         }
-                      }}
-                      style={{
-                        background: selectedMoveChannelId ? 'var(--accent-color, #5865f2)' : 'rgba(255,255,255,0.05)',
-                        border: 'none',
-                        color: selectedMoveChannelId ? '#ffffff' : 'var(--text-muted, #72767d)',
-                        padding: '7px 14px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: selectedMoveChannelId ? 'pointer' : 'not-allowed',
-                        transition: 'all 0.2s ease'
                       }}
                     >
                       Mover
@@ -349,13 +375,9 @@ export function VolumeControlModal({
                   </div>
                 )}
               </div>
-            </div>
-          )
-        })()}
-
-        <button className="picker-close-btn" style={{ width: '100%', margin: '6px 0 0 0' }} onClick={onClose}>
-          Pronto
-        </button>
+            )}
+          </section>
+        )}
       </div>
     </div>
   )

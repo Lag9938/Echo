@@ -17,9 +17,16 @@ export interface RoomAuthDeps {
   getChannel(roomId: string): Promise<ChannelRow | null>
   getMembershipRole(spaceId: string, userId: string): Promise<string | null>
   getMemberRoleIds(spaceId: string, userId: string): Promise<string[]>
+  /**
+   * Permissões efetivas do usuário no canal, calculadas pelo banco (get_my_channel_permissions):
+   * @everyone + cargos, administrador, canal privado. null = banco sem o sistema de cargos novo
+   * (antes da migração 11): cai na regra antiga de canal privado.
+   */
+  getChannelPermissions?(channelId: string): Promise<Record<string, boolean> | null>
 }
 
-export type RoomAuthResult = { ok: true } | { ok: false; status: number; error: string }
+/** listenOnly: pode entrar, mas sem a permissão "Falar" (token sem canPublish) */
+export type RoomAuthResult = { ok: true; listenOnly?: boolean } | { ok: false; status: number; error: string }
 
 const UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
 const UUID_RE = new RegExp(`^${UUID}$`)
@@ -61,6 +68,15 @@ export async function authorizeRoom(room: unknown, userId: string, deps: RoomAut
   const role = await deps.getMembershipRole(channel.space_id, userId)
   if (!role) {
     return deny(403, 'Você não é membro deste servidor.')
+  }
+
+  // Regra de cargos do banco: Ver Canais + Conectar para entrar, Falar para transmitir
+  const perms = deps.getChannelPermissions ? await deps.getChannelPermissions(channel.id) : null
+  if (perms) {
+    if (!perms.viewChannels || !perms.connect) {
+      return deny(403, 'Seus cargos não permitem entrar neste canal de voz.')
+    }
+    return perms.speak ? { ok: true } : { ok: true, listenOnly: true }
   }
 
   // Canal privado: só dono/admin ou quem tem um cargo autorizado (sem cargos autorizados, só dono/admin)

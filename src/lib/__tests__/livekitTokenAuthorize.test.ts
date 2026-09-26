@@ -98,6 +98,32 @@ describe('authorizeRoom — canais privados', () => {
   })
 })
 
+describe('authorizeRoom — permissões de cargos (migração 11)', () => {
+  const withPerms = (perms: Record<string, boolean> | null, channel?: Partial<ChannelRow>) => ({
+    ...makeDeps({ channel }),
+    getChannelPermissions: vi.fn().mockResolvedValue(perms)
+  })
+
+  it('entra e fala com Ver Canais + Conectar + Falar', async () => {
+    expect(await authorizeRoom(CHANNEL, USER, withPerms({ viewChannels: true, connect: true, speak: true }))).toEqual({ ok: true })
+  })
+
+  it('sem Falar entra só ouvindo', async () => {
+    expect(await authorizeRoom(CHANNEL, USER, withPerms({ viewChannels: true, connect: true }))).toEqual({ ok: true, listenOnly: true })
+  })
+
+  it('NEGA sem Conectar ou sem acesso ao canal (permissões vazias)', async () => {
+    expect(await authorizeRoom(CHANNEL, USER, withPerms({ viewChannels: true, speak: true }))).toMatchObject({ ok: false, status: 403 })
+    expect(await authorizeRoom(CHANNEL, USER, withPerms({}, { is_private: true, allowed_role_ids: ['r1'] }))).toMatchObject({ ok: false, status: 403 })
+  })
+
+  it('banco antigo (sem a função) cai na regra antiga de canal privado', async () => {
+    const deps = withPerms(null, { is_private: true, allowed_role_ids: ['r1'] })
+    deps.getMemberRoleIds.mockResolvedValue(['r1'])
+    expect(await authorizeRoom(CHANNEL, USER, deps)).toEqual({ ok: true })
+  })
+})
+
 describe('authorizeRoom — chamadas diretas', () => {
   const room = (a: string, b: string) => `dm-call-${[a, b].sort().join('-')}`
 

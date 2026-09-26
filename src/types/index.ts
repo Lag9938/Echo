@@ -1,24 +1,41 @@
 import type { User } from '@supabase/supabase-js'
 import type { VoiceParticipant } from '../lib/useVoiceChannel'
 
+// Chaves iguais às do banco (space_permission_keys em migration_11_discord_roles.sql)
 export interface RolePermissions {
   administrator?: boolean;
+  viewChannels?: boolean;
   manageChannels?: boolean;
-  manageMessages?: boolean;
+  manageRoles?: boolean;
+  manageEmojis?: boolean;
+  viewAuditLog?: boolean;
+  manageSpace?: boolean;
+  createInvite?: boolean;
   kickMembers?: boolean;
+  sendMessages?: boolean;
+  sendInAnnouncementChannels?: boolean;
+  attachFiles?: boolean;
+  manageMessages?: boolean;
+  connect?: boolean;
+  speak?: boolean;
   muteMembers?: boolean;
   moveMembers?: boolean;
   disconnectMembers?: boolean;
-  sendInAnnouncementChannels?: boolean;
 }
 
 export interface ServerRole {
   id: string;
   name: string;
   color: string;
+  /** 0 é o topo da hierarquia */
   position: number;
   permissions: RolePermissions;
+  /** Atribuído automaticamente a quem entra no espaço */
   isDefault?: boolean;
+  /** Cargo @everyone: vale para todos os membros, sem atribuição */
+  isEveryone?: boolean;
+  /** Exibir os membros separadamente na lista de membros */
+  hoist?: boolean;
 }
 
 export interface ServerAuditLog {

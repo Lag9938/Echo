@@ -13,6 +13,7 @@ import type {
   RolePermissions 
 } from '../../types'
 import { supabase } from '../../lib/supabase'
+import type { EffectivePermissions } from '../../lib/permissions'
 import { useUIStore } from '../../stores/useUIStore'
 
 import { HoveredMemberPopover } from '../sidebar/HoveredMemberPopover'
@@ -150,9 +151,9 @@ export interface ModalManagerProps {
   handleSpaceBannerUpload: (file: File) => void
   handleRemoveSpaceBanner: () => void
   handleSaveSpaceSettings: (e?: FormEvent) => void
-  handleCreateRole: () => void
-  handleUpdateRole: (roleId: string, updates: Partial<ServerRole>) => void
-  handleDeleteRole: (roleId: string) => void
+  handleCreateRole: () => Promise<ServerRole | null>
+  handleUpdateRole: (roleId: string, updates: Partial<ServerRole>) => Promise<boolean>
+  handleDeleteRole: (roleId: string) => Promise<boolean>
   moveRole: (roleId: string, dir: 'up' | 'down') => void
   handleCreateEmoji: (file: File, name: string) => void
   handleDeleteEmoji: (emojiId: string) => void
@@ -162,6 +163,10 @@ export interface ModalManagerProps {
   deleteChannel: (channelId: string) => void
   getUserHighestRole: (spaceId: string, userId: string) => ServerRole | null
   canUserDo: (spaceId: string, userId: string, perm: keyof RolePermissions) => boolean
+  getMemberPermissions: (spaceId: string, userId: string) => EffectivePermissions
+  canManageRole: (spaceId: string, role: ServerRole) => boolean
+  canManageMember: (spaceId: string, targetUserId: string) => boolean
+  canKickMember: (spaceId: string, targetUserId: string) => boolean
   toggleMemberRole: (memberUserId: string, roleId: string, memberName?: string) => void
   handleRoleChange: (memberUserId: string, newRole: 'owner' | 'moderator' | 'member', memberName: string) => void
   handleKickMember: (memberId: string, memberName: string) => void
@@ -361,6 +366,10 @@ export function ModalManager(props: ModalManagerProps) {
     deleteChannel,
     getUserHighestRole,
     canUserDo,
+    getMemberPermissions,
+    canManageRole,
+    canManageMember,
+    canKickMember,
     toggleMemberRole,
     handleRoleChange,
     handleKickMember,
@@ -537,7 +546,10 @@ export function ModalManager(props: ModalManagerProps) {
           renameChannel={renameChannel}
           deleteChannel={deleteChannel}
           getUserHighestRole={getUserHighestRole}
-          canUserDo={canUserDo}
+          getMemberPermissions={getMemberPermissions}
+          canManageRole={canManageRole}
+          canManageMember={canManageMember}
+          canKickMember={canKickMember}
           toggleMemberRole={toggleMemberRole}
           handleRoleChange={handleRoleChange}
           handleKickMember={handleKickMember}

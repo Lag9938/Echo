@@ -42,6 +42,8 @@ export const SpaceChannelsTab = memo(function SpaceChannelsTab({
   renameChannel,
   updateChannelSettings
 }: SpaceChannelsTabProps) {
+  // Liberar o @everyone num canal privado equivaleria a torná-lo público
+  const accessRoles = serverRoles.filter(r => !r.isEveryone)
   return (
     <div className="space-settings-tab-pane">
       <div className="space-settings-pane-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -265,11 +267,11 @@ export const SpaceChannelsTab = memo(function SpaceChannelsTab({
                           <span style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
                             Cargos com Permissão de Acesso:
                           </span>
-                          {serverRoles.length === 0 ? (
+                          {accessRoles.length === 0 ? (
                             <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>Nenhum cargo configurado no servidor. Crie cargos na aba "Cargos & Acessos".</p>
                           ) : (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                              {serverRoles.map(role => {
+                              {accessRoles.map(role => {
                                 const allowed = (ch.allowed_role_ids || []).includes(role.id)
                                 return (
                                   <button

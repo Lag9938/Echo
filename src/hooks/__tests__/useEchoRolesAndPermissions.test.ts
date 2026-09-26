@@ -4,17 +4,33 @@ import { useEchoRolesAndPermissions } from '../useEchoRolesAndPermissions'
 
 const SPACE = { id: 'space-1', name: 'Espaço', creator_id: 'owner-1' } as any
 
-/** Cadeia mínima do supabase-js para space_member_roles: insert e delete().match().select() */
-function makeSupabase(result: { insertError?: any; deleted?: any[] | null; deleteError?: any }) {
-  const insert = vi.fn().mockResolvedValue({ error: result.insertError ?? null })
-  const select = vi.fn().mockResolvedValue({ data: result.deleted ?? [], error: result.deleteError ?? null })
-  const match = vi.fn().mockReturnValue({ select })
-  const del = vi.fn().mockReturnValue({ match })
-  const from = vi.fn().mockReturnValue({ insert, delete: del })
-  return { client: { from }, insert, match }
+const ROLE_ROWS = [
+  { id: 'everyone', name: '@everyone', color: '#99aab5', position: 2147483647, is_everyone: true, permissions: { viewChannels: true, sendMessages: true } },
+  { id: 'gestor', name: 'Gestor', color: '#22c55e', position: 0, hoist: true, permissions: { manageRoles: true, kickMembers: true } },
+  { id: 'baixo', name: 'Baixo', color: '#ef4444', position: 1, permissions: {} }
+]
+const MEMBER_ROLE_ROWS = [
+  { user_id: 'user-b', role_id: 'gestor' },
+  { user_id: 'user-c', role_id: 'baixo' }
+]
+
+/** supabase-js mínimo: leituras de space_roles / space_member_roles e rpc() */
+function makeSupabase(rpcResult: (fn: string, args: any) => { data?: any; error?: any } = () => ({ data: true })) {
+  const rpc = vi.fn(async (fn: string, args: any) => ({ data: null, error: null, ...rpcResult(fn, args) }))
+  const from = vi.fn((table: string) => {
+    const rows = table === 'space_roles' ? ROLE_ROWS : MEMBER_ROLE_ROWS
+    const chain: any = {
+      select: () => chain,
+      eq: () => chain,
+      order: async () => ({ data: rows, error: null }),
+      then: (resolve: any) => resolve({ data: rows, error: null })
+    }
+    return chain
+  })
+  return { client: { from, rpc }, rpc, from }
 }
 
-describe('useEchoRolesAndPermissions.toggleMemberRole', () => {
+describe('useEchoRolesAndPermissions', () => {
   let addAuditLog: any
   let showToast: any
 
@@ -24,46 +40,120 @@ describe('useEchoRolesAndPermissions.toggleMemberRole', () => {
     showToast = vi.fn()
   })
 
-  const setup = (supabase: any) =>
-    renderHook(() => useEchoRolesAndPermissions({ editingSpace: SPACE, spaces: [SPACE], addAuditLog, showToast, supabase }))
+  const setup = (supabase: any, currentUserId = 'owner-1') =>
+    renderHook(() => useEchoRolesAndPermissions({
+      editingSpace: SPACE,
+      spaces: [SPACE],
+      currentSpaceId: SPACE.id,
+      currentUserId,
+      addAuditLog,
+      showToast,
+      supabase
+    }))
 
-  it('grava o cargo para a pessoa certa (a ordem dos argumentos é usuário, cargo, nome)', async () => {
-    const { client, insert } = makeSupabase({})
+  const load = async (result: any) => {
+    await act(async () => {
+      await result.current.loadSpaceRoles(SPACE.id)
+      await result.current.loadMemberRoles(SPACE.id)
+    })
+  }
+
+  it('não semeia cargos no cliente (o banco cria @everyone e Moderador com o espaço)', async () => {
+    const { client, rpc } = makeSupabase()
     const { result } = setup(client)
-
-    await act(async () => { await result.current.toggleMemberRole('user-9', 'role-3', 'Fulano') })
-
-    expect(insert).toHaveBeenCalledWith({ space_id: 'space-1', user_id: 'user-9', role_id: 'role-3' })
-    expect(result.current.memberRoleMap['user-9']).toEqual(['role-3'])
-    expect(addAuditLog).toHaveBeenCalledWith('space-1', expect.stringContaining('Fulano'))
-    expect(showToast).not.toHaveBeenCalled()
+    await load(result)
+    expect(rpc).not.toHaveBeenCalled()
+    expect(result.current.serverRoles.map(r => r.id)).toEqual(['gestor', 'baixo', 'everyone'])
   })
 
-  it('se o banco recusar (RLS), desfaz a mudança, avisa e não registra ação que não aconteceu', async () => {
-    const { client } = makeSupabase({ insertError: { code: '42501', message: 'new row violates row-level security policy' } })
+  it('permissões: @everyone + cargos; dono tem tudo', async () => {
+    const { client } = makeSupabase()
     const { result } = setup(client)
+    await load(result)
+    expect(result.current.canUserDo(SPACE.id, 'user-x', 'sendMessages')).toBe(true)
+    expect(result.current.canUserDo(SPACE.id, 'user-x', 'kickMembers')).toBe(false)
+    expect(result.current.canUserDo(SPACE.id, 'user-b', 'kickMembers')).toBe(true)
+    expect(result.current.canUserDo(SPACE.id, 'owner-1', 'manageSpace')).toBe(true)
+  })
 
-    await act(async () => { await result.current.toggleMemberRole('user-9', 'role-3', 'Fulano') })
+  it('hierarquia para quem está usando o app (B = Gestor)', async () => {
+    const { client } = makeSupabase()
+    const { result } = setup(client, 'user-b')
+    await load(result)
+    const [gestor, baixo] = result.current.serverRoles
+    expect(result.current.canManageRole(SPACE.id, baixo)).toBe(true)
+    expect(result.current.canManageRole(SPACE.id, gestor)).toBe(false)
+    expect(result.current.canKickMember(SPACE.id, 'user-c')).toBe(true)
+    expect(result.current.canKickMember(SPACE.id, 'owner-1')).toBe(false)
+    expect(result.current.canKickMember(SPACE.id, 'user-b')).toBe(false)
+  })
 
-    expect(result.current.memberRoleMap['user-9'] ?? []).toEqual([])
-    expect(showToast).toHaveBeenCalledWith('Não foi possível alterar o cargo', expect.stringContaining('dono'), 'info')
+  it('dono sem cargos aparece com o cargo de exibição dourado', async () => {
+    const { client } = makeSupabase()
+    const { result } = setup(client)
+    await load(result)
+    expect(result.current.getUserHighestRole(SPACE.id, 'owner-1')?.color).toBe('#eab308')
+    expect(result.current.getUserHighestRole(SPACE.id, 'user-c')?.id).toBe('baixo')
+    expect(result.current.getUserHighestRole(SPACE.id, 'user-x')).toBeNull()
+  })
+
+  it('atribuir cargo chama set_space_member_role com a pessoa certa', async () => {
+    const { client, rpc } = makeSupabase()
+    const { result } = setup(client)
+    await load(result)
+    await act(async () => { await result.current.toggleMemberRole('user-x', 'baixo', 'Fulano') })
+    expect(rpc).toHaveBeenCalledWith('set_space_member_role', { p_space_id: 'space-1', p_user_id: 'user-x', p_role_id: 'baixo', p_assign: true })
+    expect(result.current.memberRoleMap['user-x']).toEqual(['baixo'])
+    expect(addAuditLog).toHaveBeenCalledWith('space-1', expect.stringContaining('Fulano'))
+  })
+
+  it('se o banco recusar pela hierarquia, desfaz, explica e não registra ação', async () => {
+    const { client } = makeSupabase(() => ({ error: { code: '42501', message: 'role_hierarchy' } }))
+    const { result } = setup(client, 'user-b')
+    await load(result)
+    await act(async () => { await result.current.toggleMemberRole('user-c', 'baixo', 'Ciclano') })
+    expect(result.current.memberRoleMap['user-c']).toEqual(['baixo'])
+    expect(showToast).toHaveBeenCalledWith('Não foi possível alterar o cargo', expect.stringContaining('abaixo do seu cargo'), 'info')
     expect(addAuditLog).not.toHaveBeenCalled()
   })
 
-  it('remover: o banco devolve as linhas apagadas; vazio significa que não deixou e a mudança é desfeita', async () => {
-    const ok = makeSupabase({ deleted: [{ role_id: 'role-3' }] })
-    const first = setup(ok.client)
-    await act(async () => { await first.result.current.toggleMemberRole('user-9', 'role-3', 'Fulano') }) // atribui
-    await act(async () => { await first.result.current.toggleMemberRole('user-9', 'role-3', 'Fulano') }) // remove
-    expect(ok.match).toHaveBeenCalledWith({ space_id: 'space-1', user_id: 'user-9', role_id: 'role-3' })
-    expect(first.result.current.memberRoleMap['user-9']).toEqual([])
+  it('salvar cargo manda só o que mudou e aplica a resposta do banco', async () => {
+    const { client, rpc } = makeSupabase((fn, args) => fn === 'update_space_role'
+      ? { data: { ...ROLE_ROWS[2], name: args.p_changes.name, permissions: args.p_changes.permissions } }
+      : { data: true })
+    const { result } = setup(client)
+    await load(result)
+    let ok = false
+    await act(async () => { ok = await result.current.handleUpdateRole('baixo', { name: 'Novato', color: '#ef4444', permissions: { kickMembers: true, speak: false } as any }) })
+    expect(ok).toBe(true)
+    expect(rpc).toHaveBeenCalledWith('update_space_role', { p_role_id: 'baixo', p_changes: { name: 'Novato', permissions: { kickMembers: true } } })
+    expect(result.current.serverRoles.find(r => r.id === 'baixo')?.name).toBe('Novato')
+  })
 
-    const blocked = makeSupabase({ deleted: [] })
-    const second = setup(blocked.client)
-    await act(async () => { await second.result.current.toggleMemberRole('user-9', 'role-3', 'Fulano') }) // atribui
-    showToast.mockClear()
-    await act(async () => { await second.result.current.toggleMemberRole('user-9', 'role-3', 'Fulano') }) // tenta remover
-    expect(second.result.current.memberRoleMap['user-9']).toEqual(['role-3'])
-    expect(showToast).toHaveBeenCalledWith('Não foi possível alterar o cargo', expect.any(String), 'info')
+  it('reordenar manda a lista completa (sem o @everyone) e desfaz se recusado', async () => {
+    const { client, rpc } = makeSupabase(() => ({ error: { message: 'role_hierarchy' } }))
+    const { result } = setup(client)
+    await load(result)
+    await act(async () => { await result.current.moveRole('baixo', 'up') })
+    expect(rpc).toHaveBeenCalledWith('reorder_space_roles', { p_space_id: 'space-1', p_role_ids: ['baixo', 'gestor'] })
+    expect(result.current.serverRoles.map(r => r.id)).toEqual(['gestor', 'baixo', 'everyone'])
+  })
+
+  it('@everyone não pode ser excluído', async () => {
+    const { client, rpc } = makeSupabase()
+    const { result } = setup(client)
+    await load(result)
+    await act(async () => { await result.current.handleDeleteRole('everyone') })
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('canal privado só aparece para cargos liberados', async () => {
+    const { client } = makeSupabase()
+    const { result } = setup(client)
+    await load(result)
+    const channel = { id: 'c1', name: 'secreto', type: 'text', space_id: SPACE.id, is_private: true, allowed_role_ids: ['baixo'] } as any
+    expect(result.current.canViewChannel(channel, 'user-c')).toBe(true)
+    expect(result.current.canViewChannel(channel, 'user-b')).toBe(false)
+    expect(result.current.canViewChannel(channel, 'owner-1')).toBe(true)
   })
 })

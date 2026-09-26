@@ -5,6 +5,7 @@ import type { VoiceParticipant } from '../../lib/useVoiceChannel'
 import type { Space, Channel, Page, RolePermissions, ServerRole } from '../../types'
 import { UnifiedUserProfileFooter } from './UnifiedUserProfileFooter'
 import { useSpacesStore } from '../../stores/useSpacesStore'
+import { SPACE_SETTINGS_PERMISSIONS } from '../../lib/permissions'
 import {
   BellIcon,
   BellOffIcon,
@@ -100,6 +101,7 @@ export interface ChannelsSidebarProps {
   stopCallRecording: () => void
   recordingDuration: number
   canUserDo: (spaceId: string, userId: string, perm: keyof RolePermissions) => boolean
+  canViewChannel?: (channel: Channel, userId: string) => boolean
   setVolumeControlUser: (user: any) => void
   spaceMembers?: any[]
   isConnected: boolean
@@ -209,7 +211,7 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
     newChannelAllowedRoles,
     setNewChannelAllowedRoles,
     serverRoles,
-    memberRoleMap,
+    canViewChannel,
     onWatchStream,
     onInspectMember,
     onOpenDM,
@@ -339,19 +341,15 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
           }
 
           const channels = spaceChannels[activeSpace.id] ?? []
-          const userRoleIds = memberRoleMap?.[user.id] || []
-          const isOwner = activeSpace.creator_id === user.id
-          const isAdmin = canUserDo(activeSpace.id, user.id, 'administrator')
-          const canMove = isOwner || isAdmin || canUserDo(activeSpace.id, user.id, 'moveMembers')
-          const canMute = isOwner || isAdmin || canUserDo(activeSpace.id, user.id, 'muteMembers')
-          const canDisconnect = isOwner || isAdmin || canUserDo(activeSpace.id, user.id, 'disconnectMembers')
+          // canUserDo já considera dono, administrador e o @everyone
+          const canMove = canUserDo(activeSpace.id, user.id, 'moveMembers')
+          const canMute = canUserDo(activeSpace.id, user.id, 'muteMembers')
+          const canDisconnect = canUserDo(activeSpace.id, user.id, 'disconnectMembers')
+          const canOpenSpaceSettings = SPACE_SETTINGS_PERMISSIONS.some(p => canUserDo(activeSpace.id, user.id, p))
+          const canCreateInvite = canUserDo(activeSpace.id, user.id, 'createInvite')
 
-          const visibleChannels = channels.filter(ch => {
-            if (!ch.is_private) return true
-            if (isOwner || isAdmin) return true
-            const allowed = ch.allowed_role_ids || []
-            return userRoleIds.some(roleId => allowed.includes(roleId))
-          })
+          // Mesma regra do banco: Ver Canais + cargos liberados nos privados (o banco já nem devolve os outros)
+          const visibleChannels = channels.filter(ch => canViewChannel ? canViewChannel(ch, user.id) : true)
 
           const voiceChannels = visibleChannels.filter(ch => ch.type === 'voice')
 
@@ -697,7 +695,7 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                       </div>
                     </div>
 
-                    {(activeSpace.creator_id === user.id || canUserDo(activeSpace.id, user.id, 'administrator')) && (
+                    {canOpenSpaceSettings && (
                       <button 
                         type="button" 
                         className="server-dropdown-item" 
@@ -707,19 +705,21 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                         <span>Configurações do Espaço</span>
                       </button>
                     )}
-                    <button 
-                      type="button" 
-                      className="server-dropdown-item" 
-                      onClick={() => {
-                        setShowServerDropdown(false)
-                        setSpaceForAddMembers(activeSpace)
-                      }}
-                      style={{ color: 'var(--accent-color, #00f2fe)', fontWeight: 600 }}
-                    >
-                      <UserPlusIcon style={{ width: '15px', height: '15px', color: 'var(--accent-color, #00f2fe)' }} />
-                      <span>Convidar Pessoas</span>
-                    </button>
-                    {(activeSpace.creator_id === user.id || canUserDo(activeSpace.id, user.id, 'manageChannels')) && (
+                    {canCreateInvite && (
+                      <button
+                        type="button"
+                        className="server-dropdown-item"
+                        onClick={() => {
+                          setShowServerDropdown(false)
+                          setSpaceForAddMembers(activeSpace)
+                        }}
+                        style={{ color: 'var(--accent-color, #00f2fe)', fontWeight: 600 }}
+                      >
+                        <UserPlusIcon style={{ width: '15px', height: '15px', color: 'var(--accent-color, #00f2fe)' }} />
+                        <span>Convidar Pessoas</span>
+                      </button>
+                    )}
+                    {canUserDo(activeSpace.id, user.id, 'manageChannels') && (
                       <button 
                         type="button" 
                         className="server-dropdown-item" 
@@ -1007,13 +1007,13 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                                   <div style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
                                     Quem pode acessar este canal?
                                   </div>
-                                  {(!serverRoles || serverRoles.length === 0) ? (
+                                  {!(serverRoles || []).some(r => !r.isEveryone) ? (
                                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                                       Nenhum cargo disponível. O dono e administradores terão acesso automático.
                                     </div>
                                   ) : (
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                      {serverRoles.map(role => {
+                                      {(serverRoles || []).filter(r => !r.isEveryone).map(role => {
                                         const isSelected = (newChannelAllowedRoles || []).includes(role.id)
                                         return (
                                           <button
