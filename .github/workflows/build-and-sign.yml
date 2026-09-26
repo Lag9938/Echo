@@ -9,7 +9,12 @@ permissions:
   contents: write
 
 jobs:
+  # Typecheck, lint e todos os testes. Se algo falhar, nada é publicado.
+  ci:
+    uses: ./.github/workflows/ci.yml
+
   build-and-release:
+    needs: ci
     runs-on: windows-latest
 
     steps:
