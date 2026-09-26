@@ -139,10 +139,7 @@ export function useEchoVoiceSession({
     reconnectCountdown: voiceReconnectCountdown,
     reconnectAttempt: voiceReconnectAttempt,
     retryVoiceReconnect,
-    cancelVoiceReconnect,
-    serverMuteParticipant,
-    disconnectParticipant,
-    moveParticipant
+    cancelVoiceReconnect
   } = useVoiceChannel({
     onDisconnected: handleVoiceDisconnected,
     sfxVolume,
@@ -531,9 +528,6 @@ export function useEchoVoiceSession({
     handleJoinVoice,
     handleLeaveVoice,
     handleToggleMute,
-    handleToggleDeafen,
-    serverMuteParticipant,
-    disconnectParticipant,
-    moveParticipant
+    handleToggleDeafen
   }
 }

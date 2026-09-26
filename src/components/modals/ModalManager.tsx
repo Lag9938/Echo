@@ -184,9 +184,9 @@ export interface ModalManagerProps {
   changePeerPan: (userId: string, pan: number) => void
   spatialAudioEnabled: boolean
   setSpatialAudioEnabledState: (enabled: boolean) => void
-  handleServerMute: (userId: string) => void
-  handleDisconnectParticipant: (userId: string) => void
-  handleMoveParticipant: (userId: string, targetChannelId: string, targetChannelName?: string) => void
+  handleServerMute: (userId: string) => Promise<boolean>
+  handleDisconnectParticipant: (userId: string) => Promise<boolean>
+  handleMoveParticipant: (userId: string, targetChannelId: string, targetChannelName?: string) => Promise<boolean>
 
   // Confirm Modal
   confirmModalConfig: any

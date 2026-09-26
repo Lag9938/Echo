@@ -34,9 +34,9 @@ export interface VolumeControlModalProps {
   isSpaceOwner?: boolean
   canUserDo?: (spaceId: string, userId: string, perm: keyof RolePermissions) => boolean
   availableVoiceChannels?: Channel[]
-  serverMuteParticipant?: (userId: string) => void
-  disconnectParticipant?: (userId: string) => void
-  moveParticipant?: (userId: string, targetChannelId: string, targetChannelName?: string) => void
+  serverMuteParticipant?: (userId: string) => Promise<boolean>
+  disconnectParticipant?: (userId: string) => Promise<boolean>
+  moveParticipant?: (userId: string, targetChannelId: string, targetChannelName?: string) => Promise<boolean>
 }
 
 const DEFAULT_VOLUME = 100
@@ -316,9 +316,11 @@ export function VolumeControlModal({
                       type="button"
                       className={`member-audio-btn danger${mutedFeedback ? ' done' : ''}`}
                       onClick={() => {
-                        serverMuteParticipant?.(peerId)
-                        setMutedFeedback(true)
-                        setTimeout(() => setMutedFeedback(false), 2500)
+                        serverMuteParticipant?.(peerId).then(ok => {
+                          if (!ok) return
+                          setMutedFeedback(true)
+                          setTimeout(() => setMutedFeedback(false), 2500)
+                        })
                       }}
                     >
                       <MicOffIcon style={{ width: 15, height: 15 }} />

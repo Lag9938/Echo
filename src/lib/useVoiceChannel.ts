@@ -11,8 +11,10 @@ import {
   RemoteTrackPublication,
   RemoteParticipant,
   Participant,
+  TrackPublication,
   ConnectionQuality,
-  VideoQuality
+  VideoQuality,
+  DisconnectReason
 } from 'livekit-client'
 import { RnnoiseWorkletNode, loadRnnoise } from '@sapphi-red/web-noise-suppressor'
 import rnnoiseWorkletPath from '@sapphi-red/web-noise-suppressor/rnnoiseWorklet.js?url'
@@ -23,6 +25,7 @@ import { trackVoiceJoined, trackVoiceLeft, trackScreenShareStarted, trackScreenS
 import { installPresenceTrackThrottle } from './presenceThrottle'
 import { isMusicBotIdentity, parseMusicBotState, encodeMusicBotVolume, MUSIC_BOT_CONTROL_TOPIC } from './musicBotState'
 import { useMusicBotStore } from '../stores/useMusicBotStore'
+import { parseModerationNotice } from './voiceModeration'
 
 export type VoiceParticipant = {
   userId: string
@@ -384,6 +387,7 @@ export function useVoiceChannel(options?: {
   } | null>(null)
   const startReconnectionLoopRef = useRef<() => void>(() => {})
   const attemptReconnectRef = useRef<() => Promise<void>>(async () => {})
+  const toggleMuteRef = useRef<() => void>(() => {})
 
   const applyScreenAudioDelayToTrack = useCallback((track: any, delayMs: number) => {
     if (!track) return
@@ -1216,6 +1220,15 @@ export function useVoiceChannel(options?: {
           return
         }
 
+        // Removido da sala pela API de servidor (moderação): não é queda de rede, então não reconecta.
+        // Só o servidor produz esse motivo; um participante comum não consegue forjá-lo.
+        if (reason === DisconnectReason.PARTICIPANT_REMOVED) {
+          leaveVoice()
+          onDisconnectedRef.current?.()
+          onKickedFromVoiceRef.current?.()
+          return
+        }
+
         // Queda inesperada (perda de Wi-Fi, roteador reiniciando, queda de rede prolongada)
         // Dispara o loop contínuo de reconexão
         startReconnectionLoopRef.current()
@@ -1322,8 +1335,36 @@ export function useVoiceChannel(options?: {
         syncParticipants()
       })
 
-      room.on(RoomEvent.ParticipantMetadataChanged, () => syncParticipants())
-      room.on(RoomEvent.TrackMuted, () => syncParticipants())
+      // Aviso de moderação: vem nos metadados do PRÓPRIO participante, que só a API de servidor do LiveKit
+      // escreve (Edge Function voice-moderation, depois de conferir cargo e hierarquia de quem pediu)
+      const handledModerationIds = new Set<string>()
+      room.on(RoomEvent.ParticipantMetadataChanged, (_prevMetadata: string | undefined, participant: Participant) => {
+        if (participant === room.localParticipant) {
+          const notice = parseModerationNotice(participant.metadata)
+          if (notice && !handledModerationIds.has(notice.id)) {
+            handledModerationIds.add(notice.id)
+            if (notice.type === 'mute') {
+              if (!isMutedRef.current) toggleMuteRef.current()
+              onServerMutedRef.current?.()
+            } else if (notice.type === 'disconnect') {
+              leaveVoice()
+              onKickedFromVoiceRef.current?.()
+            } else if (notice.channelId) {
+              leaveVoice()
+              onMovedToVoiceChannelRef.current?.(notice.channelId, notice.channelName)
+            }
+          }
+        }
+        syncParticipants()
+      })
+      room.on(RoomEvent.TrackMuted, (publication: TrackPublication, participant: Participant) => {
+        // Microfone silenciado pelo SFU (moderação) sem passar por toggleMute: acompanha o estado para a
+        // interface e a presença não mostrarem o microfone aberto
+        if (participant === room.localParticipant && publication.source === Track.Source.Microphone && !isMutedRef.current) {
+          toggleMuteRef.current()
+        }
+        syncParticipants()
+      })
       room.on(RoomEvent.TrackUnmuted, () => syncParticipants())
 
       room.on(RoomEvent.DataReceived, (payload: Uint8Array, participant?: RemoteParticipant) => {
@@ -1350,26 +1391,9 @@ export function useVoiceChannel(options?: {
               })
               syncParticipants()
             }
-          } else if (data.type === 'server_mute') {
-            if (data.targetUserId === myInfoRef.current?.userId) {
-              if (localAudioTrackRef.current) {
-                localAudioTrackRef.current.mute().catch(() => {})
-              }
-              setIsMuted(true)
-              isMutedRef.current = true
-              onServerMutedRef.current?.()
-            }
-          } else if (data.type === 'disconnect_member') {
-            if (data.targetUserId === myInfoRef.current?.userId) {
-              leaveVoice()
-              onKickedFromVoiceRef.current?.()
-            }
-          } else if (data.type === 'move_member') {
-            if (data.targetUserId === myInfoRef.current?.userId && data.targetChannelId) {
-              leaveVoice()
-              onMovedToVoiceChannelRef.current?.(data.targetChannelId, data.targetChannelName)
-            }
           }
+          // Comandos de moderação (server_mute/disconnect_member/move_member) que chegam por aqui são
+          // ignorados de propósito: qualquer participante consegue forjá-los. A moderação vem do servidor.
         } catch (e) {}
       })
 
@@ -1677,6 +1701,7 @@ export function useVoiceChannel(options?: {
 
     syncParticipants()
   }, [syncParticipants, sendVoicePresence])
+  toggleMuteRef.current = toggleMute
 
   // Toggle Deafen
   const toggleDeafen = useCallback(() => {
@@ -2352,35 +2377,6 @@ export function useVoiceChannel(options?: {
     syncParticipants()
   }, [syncParticipants])
 
-  const sendVoiceModerationCommand = useCallback((command: {
-    type: 'server_mute' | 'disconnect_member' | 'move_member'
-    targetUserId: string
-    targetChannelId?: string
-    targetChannelName?: string
-  }) => {
-    const room = roomRef.current
-    if (!room || !room.localParticipant) return
-    try {
-      const payload = JSON.stringify(command)
-      const encoder = new TextEncoder()
-      room.localParticipant.publishData(encoder.encode(payload), { reliable: true }).catch((err) => {
-        console.warn('[LiveKit] Falha ao enviar comando de moderação:', err)
-      })
-    } catch (e) {}
-  }, [])
-
-  const serverMuteParticipant = useCallback((targetUserId: string) => {
-    sendVoiceModerationCommand({ type: 'server_mute', targetUserId })
-  }, [sendVoiceModerationCommand])
-
-  const disconnectParticipant = useCallback((targetUserId: string) => {
-    sendVoiceModerationCommand({ type: 'disconnect_member', targetUserId })
-  }, [sendVoiceModerationCommand])
-
-  const moveParticipant = useCallback((targetUserId: string, targetChannelId: string, targetChannelName?: string) => {
-    sendVoiceModerationCommand({ type: 'move_member', targetUserId, targetChannelId, targetChannelName })
-  }, [sendVoiceModerationCommand])
-
   // Auto leave on unmount (usando ref estável para NUNCA disparar em re-renderizações normais)
   const leaveVoiceRef = useRef(leaveVoice)
   useEffect(() => {
@@ -2437,9 +2433,6 @@ export function useVoiceChannel(options?: {
     reconnectCountdown,
     reconnectAttempt,
     retryVoiceReconnect,
-    cancelVoiceReconnect,
-    serverMuteParticipant,
-    disconnectParticipant,
-    moveParticipant
+    cancelVoiceReconnect
   }
 }

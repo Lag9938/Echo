@@ -116,9 +116,9 @@ export interface ChannelsSidebarProps {
   onInspectMember?: (member: any) => void
   onOpenDM?: (userId: string) => void
   presenceData?: Record<string, any>
-  moveParticipant?: (userId: string, targetChannelId: string, targetChannelName?: string) => void
-  serverMuteParticipant?: (userId: string) => void
-  disconnectParticipant?: (userId: string) => void
+  moveParticipant?: (userId: string, targetChannelId: string, targetChannelName?: string) => Promise<boolean>
+  serverMuteParticipant?: (userId: string) => Promise<boolean>
+  disconnectParticipant?: (userId: string) => Promise<boolean>
   isPiPActive?: boolean
   setIsPiPActive?: (val: boolean) => void
   activeScreenSharers?: VoiceParticipant[]
@@ -486,8 +486,9 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                     if (!raw) return
                     const data = JSON.parse(raw)
                     if (!data.userId || data.fromChannelId === ch.id) return
-                    moveParticipant?.(data.userId, ch.id, ch.name)
-                    showToast('Membro Movido', `${data.displayName} foi movido para o canal #${ch.name}.`, 'info')
+                    moveParticipant?.(data.userId, ch.id, ch.name).then(ok => {
+                      if (ok) showToast('Membro Movido', `${data.displayName} foi movido para o canal #${ch.name}.`, 'info')
+                    })
                   } catch (err) {}
                 }}
               >
@@ -1322,8 +1323,10 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                                     type="button"
                                     className="voice-user-menu-item voice-channel-move-item"
                                     onClick={() => {
-                                      moveParticipant?.(voiceUserMenu.participant.userId, vc.id, vc.name)
-                                      showToast('Membro Movido', `${voiceUserMenu.participant.displayName} foi movido para #${vc.name}.`, 'info')
+                                      const { displayName } = voiceUserMenu.participant
+                                      moveParticipant?.(voiceUserMenu.participant.userId, vc.id, vc.name).then(ok => {
+                                        if (ok) showToast('Membro Movido', `${displayName} foi movido para #${vc.name}.`, 'info')
+                                      })
                                       setVoiceUserMenu(null)
                                     }}
                                   >
@@ -1341,8 +1344,10 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                           type="button"
                           className="voice-user-menu-item"
                           onClick={() => {
-                            serverMuteParticipant?.(voiceUserMenu.participant.userId)
-                            showToast('Membro Silenciado', `${voiceUserMenu.participant.displayName} foi silenciado no servidor.`, 'info')
+                            const { displayName } = voiceUserMenu.participant
+                            serverMuteParticipant?.(voiceUserMenu.participant.userId).then(ok => {
+                              if (ok) showToast('Membro Silenciado', `${displayName} foi silenciado no servidor.`, 'info')
+                            })
                             setVoiceUserMenu(null)
                           }}
                         >
@@ -1359,8 +1364,10 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                           type="button"
                           className="voice-user-menu-item"
                           onClick={() => {
-                            disconnectParticipant?.(voiceUserMenu.participant.userId)
-                            showToast('Desconectado', `${voiceUserMenu.participant.displayName} foi desconectado da chamada.`, 'info')
+                            const { displayName } = voiceUserMenu.participant
+                            disconnectParticipant?.(voiceUserMenu.participant.userId).then(ok => {
+                              if (ok) showToast('Desconectado', `${displayName} foi desconectado da chamada.`, 'info')
+                            })
                             setVoiceUserMenu(null)
                           }}
                         >

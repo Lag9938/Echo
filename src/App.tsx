@@ -23,6 +23,7 @@ import { ModalManager } from './components/modals/ModalManager'
 import { useSpacesStore } from './stores/useSpacesStore'
 import { useUIStore } from './stores/useUIStore'
 import { isMusicBotIdentity } from './lib/musicBotState'
+import { requestVoiceModeration, type VoiceModerationRequest } from './lib/voiceModeration'
 import { useEchoAfkDetector } from './hooks/useEchoAfkDetector'
 import { useEchoToasts } from './hooks/useEchoToasts'
 import { useEchoSavedMessages } from './hooks/useEchoSavedMessages'
@@ -943,10 +944,7 @@ function Echo({ user }: { user: User }) {
     handleJoinVoice,
     handleLeaveVoice,
     handleToggleMute,
-    handleToggleDeafen,
-    serverMuteParticipant,
-    disconnectParticipant,
-    moveParticipant
+    handleToggleDeafen
   } = useEchoVoiceSession({
     user,
     profileDisplayName,
@@ -980,56 +978,42 @@ function Echo({ user }: { user: User }) {
     useSpacesStore.getState().setSpaceVoiceUsers(spaceVoiceUsers)
   }, [spaceVoiceUsers])
   handleJoinVoiceRef.current = handleJoinVoice
-  const handleLeaveVoiceRef = useRef(handleLeaveVoice)
-  handleLeaveVoiceRef.current = handleLeaveVoice
-  const handleToggleMuteRef = useRef(handleToggleMute)
-  handleToggleMuteRef.current = handleToggleMute
-  const isMutedRef = useRef(isMuted)
-  isMutedRef.current = isMuted
 
-  const handleServerMute = useCallback((targetUserId: string) => {
-    serverMuteParticipant(targetUserId)
-    try {
-      socialChannelRef.current?.send({
-        type: 'broadcast',
-        event: 'voice-moderation',
-        payload: {
-          type: 'server_mute',
-          targetUserId
-        }
-      })
-    } catch (e) {}
-  }, [serverMuteParticipant])
+  // Moderação de voz: o servidor confere cargo e hierarquia e executa (Edge Function voice-moderation)
+  const findVoiceChannelOf = useCallback((targetUserId: string): string | null => {
+    if (activeVoiceChannelId && participants.some(p => p.userId === targetUserId)) return activeVoiceChannelId
+    const entry = Object.entries(spaceVoiceUsers).find(([, users]) => users.some(u => u.userId === targetUserId))
+    return entry ? entry[0] : null
+  }, [activeVoiceChannelId, participants, spaceVoiceUsers])
 
-  const handleDisconnectParticipant = useCallback((targetUserId: string) => {
-    disconnectParticipant(targetUserId)
-    try {
-      socialChannelRef.current?.send({
-        type: 'broadcast',
-        event: 'voice-moderation',
-        payload: {
-          type: 'disconnect_member',
-          targetUserId
-        }
-      })
-    } catch (e) {}
-  }, [disconnectParticipant])
+  const moderateVoice = useCallback(async (request: Omit<VoiceModerationRequest, 'channelId'>): Promise<boolean> => {
+    const channelId = findVoiceChannelOf(request.targetUserId)
+    if (!channelId) {
+      showToast?.('Moderação', 'Essa pessoa não está mais em um canal de voz.', 'info')
+      return false
+    }
+    const result = await requestVoiceModeration(supabase, { ...request, channelId })
+    if (!result.ok) {
+      showToast?.('Moderação', result.error, 'info')
+      return false
+    }
+    return true
+  }, [findVoiceChannelOf, showToast])
 
-  const handleMoveParticipant = useCallback((targetUserId: string, targetChannelId: string, targetChannelName?: string) => {
-    moveParticipant(targetUserId, targetChannelId, targetChannelName)
-    try {
-      socialChannelRef.current?.send({
-        type: 'broadcast',
-        event: 'voice-moderation',
-        payload: {
-          type: 'move_member',
-          targetUserId,
-          targetChannelId,
-          targetChannelName
-        }
-      })
-    } catch (e) {}
-  }, [moveParticipant])
+  const handleServerMute = useCallback(
+    (targetUserId: string) => moderateVoice({ action: 'mute', targetUserId }),
+    [moderateVoice]
+  )
+
+  const handleDisconnectParticipant = useCallback(
+    (targetUserId: string) => moderateVoice({ action: 'disconnect', targetUserId }),
+    [moderateVoice]
+  )
+
+  const handleMoveParticipant = useCallback(
+    (targetUserId: string, targetChannelId: string) => moderateVoice({ action: 'move', targetUserId, targetChannelId }),
+    [moderateVoice]
+  )
 
   // Sincroniza canal de voz ativo com a presença global instantaneamente
   useEffect(() => {
@@ -1657,22 +1641,6 @@ function Echo({ user }: { user: User }) {
       })
       .on('broadcast', { event: 'group-typing' }, (payload: any) => {
         handleGroupTypingBroadcast(payload?.payload)
-      })
-      .on('broadcast', { event: 'voice-moderation' }, (payload: any) => {
-        const data = payload?.payload
-        if (data?.targetUserId === user?.id) {
-          if (data.type === 'move_member' && data.targetChannelId) {
-            handleLeaveVoiceRef.current?.()
-            showToast?.('Movido de Canal', `Você foi movido para o canal ${data.targetChannelName || ''}.`, 'info')
-            handleJoinVoiceRef.current?.(data.targetChannelId)
-          } else if (data.type === 'disconnect_member') {
-            handleLeaveVoiceRef.current?.()
-            showToast?.('Desconectado da Chamada', 'Você foi desconectado da chamada por um moderador.', 'info')
-          } else if (data.type === 'server_mute') {
-            if (!isMutedRef.current) handleToggleMuteRef.current?.()
-            showToast?.('Silenciado no Servidor', 'Um moderador silenciou seu microfone.', 'info')
-          }
-        }
       })
       .subscribe()
 
