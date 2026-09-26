@@ -6,9 +6,9 @@ import type {
   Channel,
   ServerRole,
   ServerEmoji,
-  ServerAuditLog,
-  RolePermissions
+  ServerAuditLog
 } from '../../types'
+import type { EffectivePermissions } from '../../lib/permissions'
 import {
   getServerGradient,
   getServerInitials
@@ -87,9 +87,9 @@ export interface SpaceStudioModalProps {
   handleSpaceBannerUpload: (file: File) => void
   handleRemoveSpaceBanner: () => void
   handleSaveSpaceSettings: (e?: FormEvent) => void
-  handleCreateRole: () => void
-  handleUpdateRole: (roleId: string, updates: Partial<ServerRole>) => void
-  handleDeleteRole: (roleId: string) => void
+  handleCreateRole: () => Promise<ServerRole | null>
+  handleUpdateRole: (roleId: string, updates: Partial<ServerRole>) => Promise<boolean>
+  handleDeleteRole: (roleId: string) => Promise<boolean>
   moveRole: (roleId: string, direction: 'up' | 'down') => void
   handleCreateEmoji: (file: File, name: string) => void
   handleDeleteEmoji: (emojiId: string) => void
@@ -98,7 +98,10 @@ export interface SpaceStudioModalProps {
   renameChannel: (channelId: string, newName: string) => void
   deleteChannel: (channelId: string) => void
   getUserHighestRole: (spaceId: string, userId: string) => ServerRole | null
-  canUserDo: (spaceId: string, userId: string, perm: keyof RolePermissions) => boolean
+  getMemberPermissions: (spaceId: string, userId: string) => EffectivePermissions
+  canManageRole: (spaceId: string, role: ServerRole) => boolean
+  canManageMember: (spaceId: string, targetUserId: string) => boolean
+  canKickMember: (spaceId: string, targetUserId: string) => boolean
   toggleMemberRole: (memberUserId: string, roleId: string, memberName?: string) => void
   handleRoleChange: (memberUserId: string, newRole: 'owner' | 'moderator' | 'member', memberName: string) => void
   handleKickMember: (memberId: string, memberName: string) => void
@@ -171,7 +174,10 @@ export function SpaceStudioModal({
   renameChannel,
   deleteChannel,
   getUserHighestRole,
-  canUserDo,
+  getMemberPermissions,
+  canManageRole,
+  canManageMember,
+  canKickMember,
   toggleMemberRole,
   handleRoleChange,
   handleKickMember,
@@ -186,6 +192,22 @@ export function SpaceStudioModal({
   const navScrollLeftRef = useRef(0)
 
   if (!isOpen || !editingSpace) return null
+
+  // Como no Discord: cada aba aparece só para quem tem a permissão correspondente
+  const myPerms = getMemberPermissions(editingSpace.id, user.id)
+  const isOwner = editingSpace.creator_id === user.id
+  const tabAllowed: Record<SpaceStudioModalProps['activeSpaceTab'], boolean> = {
+    geral: myPerms.manageSpace,
+    roles: myPerms.manageRoles,
+    channels: myPerms.manageChannels,
+    emojis: myPerms.manageEmojis,
+    members: myPerms.kickMembers || myPerms.manageRoles,
+    audit: myPerms.viewAuditLog,
+    invites: myPerms.createInvite || myPerms.manageSpace,
+    danger: isOwner
+  }
+  const tabOrder: SpaceStudioModalProps['activeSpaceTab'][] = ['geral', 'roles', 'channels', 'emojis', 'members', 'audit', 'invites', 'danger']
+  const currentTab = tabAllowed[activeSpaceTab] ? activeSpaceTab : (tabOrder.find(t => tabAllowed[t]) ?? null)
 
   return (
     <div className="space-studio-overlay">
@@ -268,83 +290,97 @@ export function SpaceStudioModal({
               isDraggingNavRef.current = false
             }}
           >
-            <button 
-              type="button" 
-              className={`space-studio-tab-btn ${activeSpaceTab === 'geral' ? 'active' : ''}`}
-              onClick={() => setActiveSpaceTab('geral')}
-            >
-              <SettingsIcon style={{ width: '15px', height: '15px' }} />
-              <span>Identidade & Perfil</span>
-            </button>
+            {tabAllowed.geral && (
+              <button
+                type="button"
+                className={`space-studio-tab-btn ${currentTab === 'geral' ? 'active' : ''}`}
+                onClick={() => setActiveSpaceTab('geral')}
+              >
+                <SettingsIcon style={{ width: '15px', height: '15px' }} />
+                <span>Identidade & Perfil</span>
+              </button>
+            )}
 
-            <button 
-              type="button" 
-              className={`space-studio-tab-btn ${activeSpaceTab === 'roles' ? 'active' : ''}`}
-              onClick={() => setActiveSpaceTab('roles')}
-            >
-              <ShieldIcon style={{ width: '15px', height: '15px' }} />
-              <span>Cargos & Acessos</span>
-              {serverRoles.length > 0 && <span className="space-studio-tab-badge">{serverRoles.length}</span>}
-            </button>
+            {tabAllowed.roles && (
+              <button
+                type="button"
+                className={`space-studio-tab-btn ${currentTab === 'roles' ? 'active' : ''}`}
+                onClick={() => setActiveSpaceTab('roles')}
+              >
+                <ShieldIcon style={{ width: '15px', height: '15px' }} />
+                <span>Cargos & Acessos</span>
+                {serverRoles.length > 0 && <span className="space-studio-tab-badge">{serverRoles.length}</span>}
+              </button>
+            )}
 
-            <button 
-              type="button" 
-              className={`space-studio-tab-btn ${activeSpaceTab === 'channels' ? 'active' : ''}`}
-              onClick={() => setActiveSpaceTab('channels')}
-            >
-              <HashtagIcon style={{ width: '15px', height: '15px' }} />
-              <span>Canais</span>
-              <span className="space-studio-tab-badge">{(spaceChannels[editingSpace.id] ?? []).length}</span>
-            </button>
+            {tabAllowed.channels && (
+              <button
+                type="button"
+                className={`space-studio-tab-btn ${currentTab === 'channels' ? 'active' : ''}`}
+                onClick={() => setActiveSpaceTab('channels')}
+              >
+                <HashtagIcon style={{ width: '15px', height: '15px' }} />
+                <span>Canais</span>
+                <span className="space-studio-tab-badge">{(spaceChannels[editingSpace.id] ?? []).length}</span>
+              </button>
+            )}
 
-            <button 
-              type="button" 
-              className={`space-studio-tab-btn ${activeSpaceTab === 'emojis' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveSpaceTab('emojis')
-                loadSpaceEmojis(editingSpace.id)
-              }}
-            >
-              <SmileIcon style={{ width: '15px', height: '15px' }} />
-              <span>Emojis</span>
-              {serverEmojis.length > 0 && <span className="space-studio-tab-badge">{serverEmojis.length}</span>}
-            </button>
+            {tabAllowed.emojis && (
+              <button
+                type="button"
+                className={`space-studio-tab-btn ${currentTab === 'emojis' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveSpaceTab('emojis')
+                  loadSpaceEmojis(editingSpace.id)
+                }}
+              >
+                <SmileIcon style={{ width: '15px', height: '15px' }} />
+                <span>Emojis</span>
+                {serverEmojis.length > 0 && <span className="space-studio-tab-badge">{serverEmojis.length}</span>}
+              </button>
+            )}
 
-            <button 
-              type="button" 
-              className={`space-studio-tab-btn ${activeSpaceTab === 'members' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveSpaceTab('members')
-                loadEditingSpaceMembers(editingSpace.id)
-              }}
-            >
-              <UsersIcon style={{ width: '15px', height: '15px' }} />
-              <span>Integrantes</span>
-              <span className="space-studio-tab-badge">{editingSpaceMembers.length || 1}</span>
-            </button>
+            {tabAllowed.members && (
+              <button
+                type="button"
+                className={`space-studio-tab-btn ${currentTab === 'members' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveSpaceTab('members')
+                  loadEditingSpaceMembers(editingSpace.id)
+                }}
+              >
+                <UsersIcon style={{ width: '15px', height: '15px' }} />
+                <span>Integrantes</span>
+                <span className="space-studio-tab-badge">{editingSpaceMembers.length || 1}</span>
+              </button>
+            )}
 
-            <button 
-              type="button" 
-              className={`space-studio-tab-btn ${activeSpaceTab === 'audit' ? 'active' : ''}`}
-              onClick={() => setActiveSpaceTab('audit')}
-            >
-              <FileTextIcon style={{ width: '15px', height: '15px' }} />
-              <span>Registro de Ações</span>
-            </button>
+            {tabAllowed.audit && (
+              <button
+                type="button"
+                className={`space-studio-tab-btn ${currentTab === 'audit' ? 'active' : ''}`}
+                onClick={() => setActiveSpaceTab('audit')}
+              >
+                <FileTextIcon style={{ width: '15px', height: '15px' }} />
+                <span>Registro de Ações</span>
+              </button>
+            )}
 
-            <button 
-              type="button" 
-              className={`space-studio-tab-btn ${activeSpaceTab === 'invites' ? 'active' : ''}`}
-              onClick={() => setActiveSpaceTab('invites')}
-            >
-              <LinkIcon style={{ width: '15px', height: '15px' }} />
-              <span>Convites</span>
-            </button>
+            {tabAllowed.invites && (
+              <button
+                type="button"
+                className={`space-studio-tab-btn ${currentTab === 'invites' ? 'active' : ''}`}
+                onClick={() => setActiveSpaceTab('invites')}
+              >
+                <LinkIcon style={{ width: '15px', height: '15px' }} />
+                <span>Convites</span>
+              </button>
+            )}
 
-            {editingSpace.creator_id === user.id && (
+            {tabAllowed.danger && (
               <button 
                 type="button" 
-                className={`space-studio-tab-btn danger ${activeSpaceTab === 'danger' ? 'active' : ''}`}
+                className={`space-studio-tab-btn danger ${currentTab === 'danger' ? 'active' : ''}`}
                 onClick={() => setActiveSpaceTab('danger')}
               >
                 <UserMinusIcon style={{ width: '15px', height: '15px' }} />
@@ -365,7 +401,7 @@ export function SpaceStudioModal({
 
         {/* Studio Content Body */}
         <div className="space-studio-content-body">
-          {activeSpaceTab === 'geral' && (
+          {currentTab === 'geral' && (
             <SpaceOverviewTab
               editingSpace={editingSpace}
               editingSpaceName={editingSpaceName}
@@ -393,21 +429,30 @@ export function SpaceStudioModal({
             />
           )}
 
-          {activeSpaceTab === 'roles' && (
+          {currentTab === 'roles' && (
             <SpaceRolesTab
+              editingSpace={editingSpace}
+              user={user}
               serverRoles={serverRoles}
+              memberRoleMap={memberRoleMap}
+              editingSpaceMembers={editingSpaceMembers}
               selectedRoleId={selectedRoleId}
               setSelectedRoleId={setSelectedRoleId}
               handleCreateRole={handleCreateRole}
               handleUpdateRole={handleUpdateRole}
               handleDeleteRole={handleDeleteRole}
               moveRole={moveRole}
+              myPermissions={myPerms}
+              canManageRole={(role) => canManageRole(editingSpace.id, role)}
+              canManageMember={(memberId) => canManageMember(editingSpace.id, memberId)}
+              toggleMemberRole={toggleMemberRole}
               profileDisplayName={profileDisplayName}
               displayName={displayName}
+              showToast={showToast}
             />
           )}
 
-          {activeSpaceTab === 'channels' && (
+          {currentTab === 'channels' && (
             <SpaceChannelsTab
               editingSpace={editingSpace}
               spaceChannels={spaceChannels}
@@ -425,7 +470,7 @@ export function SpaceStudioModal({
             />
           )}
 
-          {activeSpaceTab === 'emojis' && (
+          {currentTab === 'emojis' && (
             <SpaceEmojisTab
               newEmojiName={newEmojiName}
               setNewEmojiName={setNewEmojiName}
@@ -437,7 +482,7 @@ export function SpaceStudioModal({
             />
           )}
 
-          {activeSpaceTab === 'members' && (
+          {currentTab === 'members' && (
             <SpaceMembersTab
               editingSpace={editingSpace}
               editingSpaceMembers={editingSpaceMembers}
@@ -450,25 +495,36 @@ export function SpaceStudioModal({
               getUserHighestRole={getUserHighestRole}
               memberRoleMap={memberRoleMap}
               serverRoles={serverRoles}
-              canUserDo={canUserDo}
+              canManageRole={(role) => canManageRole(editingSpace.id, role)}
+              canManageMember={(memberId) => canManageMember(editingSpace.id, memberId)}
+              canKickMember={(memberId) => canKickMember(editingSpace.id, memberId)}
               toggleMemberRole={toggleMemberRole}
               handleRoleChange={handleRoleChange}
               handleKickMember={handleKickMember}
             />
           )}
 
-          {activeSpaceTab === 'audit' && (
+          {currentTab === 'audit' && (
             <SpaceAuditTab serverAuditLogs={serverAuditLogs} />
           )}
 
-          {activeSpaceTab === 'invites' && (
+          {currentTab === 'invites' && (
             <SpaceInvitesTab
               editingSpace={editingSpace}
               showToast={showToast}
             />
           )}
 
-          {activeSpaceTab === 'danger' && editingSpace.creator_id === user.id && (
+          {currentTab === null && (
+            <div className="space-settings-tab-pane">
+              <div className="space-settings-pane-header">
+                <h2>Sem acesso</h2>
+                <p>Seus cargos não dão permissão para gerenciar nada neste espaço.</p>
+              </div>
+            </div>
+          )}
+
+          {currentTab === 'danger' && isOwner && (
             <SpaceDangerTab handleDeleteSpace={handleDeleteSpace} />
           )}
         </div>

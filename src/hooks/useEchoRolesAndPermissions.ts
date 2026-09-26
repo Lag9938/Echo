@@ -1,5 +1,19 @@
-import { useState, useCallback } from 'react'
-import type { ServerRole, RolePermissions, Space } from '../types'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
+import type { ServerRole, RolePermissions, Space, Channel } from '../types'
+import {
+  OWNER_DISPLAY_ROLE,
+  canManageMember as canManageMemberRule,
+  canManageRole as canManageRoleRule,
+  canViewChannel as canViewChannelRule,
+  computePermissions,
+  describeRoleError,
+  getHighestRole,
+  getHoistedRole,
+  sanitizePermissions,
+  sortRoles,
+  type EffectivePermissions,
+  type MemberContext
+} from '../lib/permissions'
 
 export const ROLE_COLOR_PRESETS = [
   '#f97316',
@@ -13,440 +27,332 @@ export const ROLE_COLOR_PRESETS = [
 export interface UseEchoRolesAndPermissionsOptions {
   editingSpace: Space | null
   spaces: Space[]
+  /** Espaço aberto na tela (cargos exibidos no chat e na lista de membros) */
+  currentSpaceId?: string | null
+  currentUserId?: string | null
   addAuditLog: (spaceId: string, action: string) => void
   showToast: (title: string, message: string, type?: any) => void
   supabase: any
 }
 
+// v2: o cache antigo tinha cargos inventados pelo cliente (ex.: "role-owner" com administrador)
+const ROLES_CACHE_KEY = 'echo-spaces-roles-v2'
+const memberRolesCacheKey = (spaceId: string) => `echo-member-roles-v2-${spaceId}`
+
+function readCache<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function writeCache(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {}
+}
+
+function mapRoleRow(r: any): ServerRole {
+  return {
+    id: r.id,
+    name: r.name,
+    color: r.color,
+    position: r.position,
+    permissions: r.permissions || {},
+    isDefault: !!r.is_default,
+    isEveryone: !!r.is_everyone,
+    hoist: !!r.hoist
+  }
+}
+
 export function useEchoRolesAndPermissions({
   editingSpace,
   spaces,
+  currentSpaceId = null,
+  currentUserId = null,
   addAuditLog,
   showToast,
   supabase
 }: UseEchoRolesAndPermissionsOptions) {
-  const [serverRoles, setServerRoles] = useState<ServerRole[]>([])
+  // Cargos e atribuições de cada espaço carregado (não só do último), para as checagens não
+  // misturarem o espaço aberto com o espaço sendo editado nas configurações
+  const [rolesBySpace, setRolesBySpace] = useState<Record<string, ServerRole[]>>({})
+  const [memberRolesBySpace, setMemberRolesBySpace] = useState<Record<string, Record<string, string[]>>>({})
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
-  const [memberRoleMap, setMemberRoleMap] = useState<Record<string, string[]>>({}) // userId -> roleIds[]
+  const rolesBySpaceRef = useRef(rolesBySpace)
+  const memberRolesBySpaceRef = useRef(memberRolesBySpace)
+  useEffect(() => {
+    rolesBySpaceRef.current = rolesBySpace
+    memberRolesBySpaceRef.current = memberRolesBySpace
+  }, [rolesBySpace, memberRolesBySpace])
 
-  function saveRolesForSpace(spaceId: string, updatedRoles: ServerRole[]) {
-    let rolesMap: Record<string, ServerRole[]> = {}
-    try {
-      rolesMap = JSON.parse(localStorage.getItem('echo-spaces-roles') || '{}')
-    } catch {
-      rolesMap = {}
+  const rolesFor = useCallback((spaceId: string): ServerRole[] => {
+    return rolesBySpace[spaceId] ?? sortRoles(readCache<Record<string, ServerRole[]>>(ROLES_CACHE_KEY, {})[spaceId] ?? [])
+  }, [rolesBySpace])
+
+  const memberRolesFor = useCallback((spaceId: string): Record<string, string[]> => {
+    return memberRolesBySpace[spaceId] ?? readCache<Record<string, string[]>>(memberRolesCacheKey(spaceId), {})
+  }, [memberRolesBySpace])
+
+  const applyRoles = useCallback((spaceId: string, roles: ServerRole[]) => {
+    const sorted = sortRoles(roles)
+    setRolesBySpace(prev => ({ ...prev, [spaceId]: sorted }))
+    const cache = readCache<Record<string, ServerRole[]>>(ROLES_CACHE_KEY, {})
+    cache[spaceId] = sorted
+    writeCache(ROLES_CACHE_KEY, cache)
+    return sorted
+  }, [])
+
+  const applyMemberRoles = useCallback((spaceId: string, map: Record<string, string[]>) => {
+    setMemberRolesBySpace(prev => ({ ...prev, [spaceId]: map }))
+    writeCache(memberRolesCacheKey(spaceId), map)
+  }, [])
+
+  const loadSpaceRoles = useCallback(async (spaceId: string): Promise<ServerRole[]> => {
+    const cached = readCache<Record<string, ServerRole[]>>(ROLES_CACHE_KEY, {})[spaceId]
+    if (cached && !rolesBySpaceRef.current[spaceId]) {
+      setRolesBySpace(prev => ({ ...prev, [spaceId]: sortRoles(cached) }))
     }
-    rolesMap[spaceId] = updatedRoles
-    localStorage.setItem('echo-spaces-roles', JSON.stringify(rolesMap))
-    setServerRoles(updatedRoles)
-  }
+    if (!supabase) return sortRoles(cached ?? [])
 
-  async function loadSpaceRoles(spaceId: string): Promise<ServerRole[]> {
-    let rolesMap: Record<string, ServerRole[]> = {}
-    try {
-      rolesMap = JSON.parse(localStorage.getItem('echo-spaces-roles') || '{}')
-    } catch {
-      rolesMap = {}
+    // Os cargos padrão (@everyone + Moderador) são criados pelo banco junto com o espaço: o cliente
+    // não semeia mais nada (a semeadura no cliente criava cargos duplicados)
+    const { data, error } = await supabase
+      .from('space_roles')
+      .select('*')
+      .eq('space_id', spaceId)
+      .order('position', { ascending: true })
+
+    if (error || !data) {
+      if (error) console.warn('Supabase load roles error:', error)
+      return sortRoles(cached ?? [])
     }
-    let localRoles = rolesMap[spaceId] || []
-    if (localRoles.length > 0) {
-      setServerRoles(localRoles)
-      if (!selectedRoleId || !localRoles.some(r => r.id === selectedRoleId)) {
-        setSelectedRoleId(localRoles[0].id)
-      }
+    const roles = applyRoles(spaceId, data.map(mapRoleRow))
+    setSelectedRoleId(current => (current && roles.some(r => r.id === current)) ? current : (roles[0]?.id ?? null))
+    return roles
+  }, [supabase, applyRoles])
+
+  const loadMemberRoles = useCallback(async (spaceId: string) => {
+    const cached = readCache<Record<string, string[]> | null>(memberRolesCacheKey(spaceId), null)
+    if (cached && !memberRolesBySpaceRef.current[spaceId]) {
+      setMemberRolesBySpace(prev => ({ ...prev, [spaceId]: cached }))
     }
+    if (!supabase) return
 
-    if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('space_roles')
-          .select('*')
-          .eq('space_id', spaceId)
-          .order('position', { ascending: true })
+    const { data, error } = await supabase
+      .from('space_member_roles')
+      .select('user_id, role_id')
+      .eq('space_id', spaceId)
 
-        if (!error && data && data.length > 0) {
-          const dbRoles: ServerRole[] = data.map((r: any) => ({
-            id: r.id,
-            name: r.name,
-            color: r.color,
-            position: r.position,
-            permissions: r.permissions || {},
-            isDefault: !!(r.is_default || r.isDefault)
-          }))
-          setServerRoles(dbRoles)
-          rolesMap[spaceId] = dbRoles
-          localStorage.setItem('echo-spaces-roles', JSON.stringify(rolesMap))
-          if (!selectedRoleId || !dbRoles.some(r => r.id === selectedRoleId)) {
-            setSelectedRoleId(dbRoles[0].id)
-          }
-          return dbRoles
-        } else if (!error && (!data || data.length === 0)) {
-          // Seed default roles in Supabase
-          const defaultRoles = [
-            {
-              space_id: spaceId,
-              name: '👑 Dono',
-              color: '#eab308',
-              position: 0,
-              permissions: {
-                administrator: true,
-                manageChannels: true,
-                manageMessages: true,
-                kickMembers: true,
-                muteMembers: true,
-                moveMembers: true,
-                disconnectMembers: true,
-                sendInAnnouncementChannels: true
-              },
-              is_default: false
-            },
-            {
-              space_id: spaceId,
-              name: '🛡️ Moderador',
-              color: '#3b82f6',
-              position: 1,
-              permissions: {
-                manageChannels: true,
-                manageMessages: true,
-                kickMembers: true,
-                muteMembers: true,
-                moveMembers: true,
-                disconnectMembers: true,
-                sendInAnnouncementChannels: true
-              },
-              is_default: false
-            },
-            {
-              space_id: spaceId,
-              name: '👤 Membro',
-              color: '#99aab5',
-              position: 2,
-              permissions: {
-                sendInAnnouncementChannels: false,
-                muteMembers: false,
-                moveMembers: false,
-                disconnectMembers: false
-              },
-              is_default: true
-            }
-          ]
-
-          const { data: inserted } = await supabase
-            .from('space_roles')
-            .insert(defaultRoles)
-            .select()
-
-          if (inserted && inserted.length > 0) {
-            const formatted: ServerRole[] = inserted.map((r: any) => ({
-              id: r.id,
-              name: r.name,
-              color: r.color,
-              position: r.position,
-              permissions: r.permissions || {},
-              isDefault: !!(r.is_default || r.isDefault)
-            }))
-            setServerRoles(formatted)
-            rolesMap[spaceId] = formatted
-            localStorage.setItem('echo-spaces-roles', JSON.stringify(rolesMap))
-            setSelectedRoleId(formatted[0].id)
-            return formatted
-          }
-        }
-      } catch (err) {
-        console.warn("Supabase load roles error:", err)
-      }
-    }
-
-    if (!localRoles || localRoles.length === 0) {
-      localRoles = [
-        {
-          id: 'role-owner',
-          name: '👑 Dono',
-          color: '#eab308',
-          position: 0,
-          permissions: {
-            administrator: true,
-            manageChannels: true,
-            manageMessages: true,
-            kickMembers: true,
-            muteMembers: true,
-            moveMembers: true,
-            disconnectMembers: true,
-            sendInAnnouncementChannels: true
-          }
-        },
-        {
-          id: 'role-mod',
-          name: '🛡️ Moderador',
-          color: '#3b82f6',
-          position: 1,
-          permissions: {
-            manageChannels: true,
-            manageMessages: true,
-            kickMembers: true,
-            muteMembers: true,
-            moveMembers: true,
-            disconnectMembers: true,
-            sendInAnnouncementChannels: true
-          }
-        },
-        {
-          id: 'role-member',
-          name: '👤 Membro',
-          color: '#99aab5',
-          position: 2,
-          permissions: {
-            sendInAnnouncementChannels: false,
-            muteMembers: false,
-            moveMembers: false,
-            disconnectMembers: false
-          }
-        }
-      ]
-      rolesMap[spaceId] = localRoles
-      localStorage.setItem('echo-spaces-roles', JSON.stringify(rolesMap))
-    }
-    setServerRoles(localRoles)
-    if (!selectedRoleId || !localRoles.some(r => r.id === selectedRoleId)) {
-      setSelectedRoleId(localRoles[0].id)
-    }
-    return localRoles
-  }
-
-  async function loadMemberRoles(spaceId: string) {
-    try {
-      const map = JSON.parse(localStorage.getItem(`echo-member-roles-${spaceId}`) || '{}')
-      setMemberRoleMap(map)
-    } catch {
-      setMemberRoleMap({})
-    }
-
-    if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('space_member_roles')
-          .select('user_id, role_id')
-          .eq('space_id', spaceId)
-
-        if (!error && data) {
-          const map: Record<string, string[]> = {}
-          data.forEach((row: any) => {
-            if (!map[row.user_id]) map[row.user_id] = []
-            map[row.user_id].push(row.role_id)
-          })
-          setMemberRoleMap(map)
-          localStorage.setItem(`echo-member-roles-${spaceId}`, JSON.stringify(map))
-        }
-      } catch (err) {
-        console.warn("Supabase load member roles error:", err)
-      }
-    }
-  }
-
-  async function handleCreateRole() {
-    if (!editingSpace) return
-    const newName = 'Novo Cargo'
-    const newColor = ROLE_COLOR_PRESETS[Math.floor(Math.random() * ROLE_COLOR_PRESETS.length)]
-    const newPosition = serverRoles.length
-    const newPerms = {
-      manageChannels: false,
-      manageMessages: false,
-      kickMembers: false,
-      muteMembers: false,
-      moveMembers: false,
-      disconnectMembers: false,
-      sendInAnnouncementChannels: false
-    }
-
-    if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('space_roles')
-          .insert({
-            space_id: editingSpace.id,
-            name: newName,
-            color: newColor,
-            position: newPosition,
-            permissions: newPerms
-          })
-          .select()
-          .single()
-
-        if (!error && data) {
-          const createdRole: ServerRole = {
-            id: data.id,
-            name: data.name,
-            color: data.color,
-            position: data.position,
-            permissions: data.permissions || {}
-          }
-          const updated = [...serverRoles, createdRole]
-          setServerRoles(updated)
-          setSelectedRoleId(createdRole.id)
-          saveRolesForSpace(editingSpace.id, updated)
-          addAuditLog(editingSpace.id, `Criou o cargo "${createdRole.name}"`)
-          showToast("Cargo Criado!", `Cargo "${createdRole.name}" foi adicionado.`, "info")
-          return
-        }
-      } catch (err) {
-        console.warn("Supabase create role error:", err)
-      }
-    }
-
-    const newRole: ServerRole = {
-      id: `role-${Date.now()}`,
-      name: newName,
-      color: newColor,
-      position: newPosition,
-      permissions: newPerms
-    }
-    const updated = [...serverRoles, newRole]
-    saveRolesForSpace(editingSpace.id, updated)
-    setSelectedRoleId(newRole.id)
-    addAuditLog(editingSpace.id, `Criou o cargo "${newRole.name}"`)
-    showToast("Cargo Criado!", `Cargo "${newRole.name}" foi adicionado.`, "info")
-  }
-
-  async function handleUpdateRole(roleId: string, updates: Partial<ServerRole>) {
-    if (!editingSpace) return
-    let updated = serverRoles.map(r => r.id === roleId ? { ...r, ...updates } : r)
-    if (updates.isDefault) {
-      updated = updated.map(r => r.id === roleId ? { ...r, isDefault: true } : { ...r, isDefault: false })
-    }
-    saveRolesForSpace(editingSpace.id, updated)
-
-    if (supabase && !roleId.startsWith('role-')) {
-      try {
-        const dbPayload: any = {}
-        if (updates.name !== undefined) dbPayload.name = updates.name
-        if (updates.color !== undefined) dbPayload.color = updates.color
-        if (updates.position !== undefined) dbPayload.position = updates.position
-        if (updates.permissions !== undefined) dbPayload.permissions = updates.permissions
-        if (updates.isDefault !== undefined) {
-          if (updates.isDefault) {
-            await supabase.from('space_roles').update({ is_default: false }).eq('space_id', editingSpace.id)
-          }
-          dbPayload.is_default = updates.isDefault
-        }
-        await supabase
-          .from('space_roles')
-          .update(dbPayload)
-          .eq('id', roleId)
-      } catch (err) {
-        console.warn("Supabase update role error:", err)
-      }
-    }
-  }
-
-  async function handleDeleteRole(roleId: string) {
-    if (!editingSpace) return
-    const roleToDelete = serverRoles.find(r => r.id === roleId)
-    if (!roleToDelete) return
-    if (roleToDelete.position === 0 || roleToDelete.name.toLowerCase().includes('dono') || roleToDelete.name.toLowerCase().includes('membro')) {
-      showToast("Ação Bloqueada", "Cargos essenciais do sistema não podem ser excluídos.", "info")
+    if (error || !data) {
+      if (error) console.warn('Supabase load member roles error:', error)
       return
     }
-    const updated = serverRoles.filter(r => r.id !== roleId)
-    saveRolesForSpace(editingSpace.id, updated)
-    if (selectedRoleId === roleId) {
-      setSelectedRoleId(updated[0]?.id || null)
-    }
-    // Remove from member roles
-    const memberMap = { ...memberRoleMap }
-    Object.keys(memberMap).forEach(uid => {
-      memberMap[uid] = memberMap[uid].filter(id => id !== roleId)
+    const map: Record<string, string[]> = {}
+    data.forEach((row: any) => {
+      if (!map[row.user_id]) map[row.user_id] = []
+      map[row.user_id].push(row.role_id)
     })
-    setMemberRoleMap(memberMap)
-    localStorage.setItem(`echo-member-roles-${editingSpace.id}`, JSON.stringify(memberMap))
+    applyMemberRoles(spaceId, map)
+  }, [supabase, applyMemberRoles])
 
-    if (supabase && !roleId.startsWith('role-')) {
-      try {
-        await supabase.from('space_roles').delete().eq('id', roleId)
-        await supabase.from('space_member_roles').delete().eq('role_id', roleId)
-      } catch (err) {
-        console.warn("Supabase delete role error:", err)
-      }
+  // ─── Contexto de permissões ────────────────────────────────────────────────
+
+  const getMemberContext = useCallback((spaceId: string, userId: string): MemberContext => {
+    const space = spaces.find(s => s.id === spaceId)
+    return {
+      isOwner: !!space && space.creator_id === userId,
+      roles: rolesFor(spaceId),
+      assignedRoleIds: memberRolesFor(spaceId)[userId] || []
+    }
+  }, [spaces, rolesFor, memberRolesFor])
+
+  const getMemberPermissions = useCallback((spaceId: string, userId: string): EffectivePermissions => {
+    return computePermissions(getMemberContext(spaceId, userId))
+  }, [getMemberContext])
+
+  const canUserDo = useCallback((spaceId: string, userId: string, permissionKey: keyof RolePermissions): boolean => {
+    return getMemberPermissions(spaceId, userId)[permissionKey]
+  }, [getMemberPermissions])
+
+  /** Cargo mais alto (cor do nome e insígnia). O dono sem cargos aparece com o cargo de exibição dourado. */
+  const getUserHighestRole = useCallback((spaceId: string, userId: string): ServerRole | null => {
+    const ctx = getMemberContext(spaceId, userId)
+    const highest = getHighestRole(ctx.roles, ctx.assignedRoleIds)
+    if (highest) return highest
+    return ctx.isOwner ? OWNER_DISPLAY_ROLE : null
+  }, [getMemberContext])
+
+  /** Cargo usado para agrupar a pessoa na lista de membros (o mais alto marcado "exibir separadamente") */
+  const getUserHoistedRole = useCallback((spaceId: string, userId: string): ServerRole | null => {
+    const ctx = getMemberContext(spaceId, userId)
+    return getHoistedRole(ctx.roles, ctx.assignedRoleIds)
+  }, [getMemberContext])
+
+  const canManageRole = useCallback((spaceId: string, role: ServerRole): boolean => {
+    if (!currentUserId) return false
+    return canManageRoleRule(getMemberContext(spaceId, currentUserId), role)
+  }, [currentUserId, getMemberContext])
+
+  const canManageMember = useCallback((spaceId: string, targetUserId: string): boolean => {
+    if (!currentUserId) return false
+    return canManageMemberRule(
+      getMemberContext(spaceId, currentUserId),
+      getMemberContext(spaceId, targetUserId),
+      targetUserId === currentUserId
+    )
+  }, [currentUserId, getMemberContext])
+
+  const canKickMember = useCallback((spaceId: string, targetUserId: string): boolean => {
+    if (!currentUserId || targetUserId === currentUserId) return false
+    const target = getMemberContext(spaceId, targetUserId)
+    if (target.isOwner) return false
+    return canUserDo(spaceId, currentUserId, 'kickMembers') && canManageMember(spaceId, targetUserId)
+  }, [currentUserId, getMemberContext, canUserDo, canManageMember])
+
+  const canViewChannel = useCallback((channel: Channel, userId: string): boolean => {
+    return canViewChannelRule(channel, getMemberContext(channel.space_id, userId))
+  }, [getMemberContext])
+
+  // ─── Gestão de cargos (tudo passa pelas funções do banco, que aplicam a hierarquia) ─────────
+
+  const reportError = useCallback((title: string, error: any) => {
+    console.warn(`${title}:`, error)
+    showToast(title, describeRoleError(error), 'info')
+  }, [showToast])
+
+  async function handleCreateRole(): Promise<ServerRole | null> {
+    if (!editingSpace || !supabase) return null
+    const spaceId = editingSpace.id
+    const color = ROLE_COLOR_PRESETS[Math.floor(Math.random() * ROLE_COLOR_PRESETS.length)]
+    const { data, error } = await supabase.rpc('create_space_role', {
+      p_space_id: spaceId,
+      p_name: 'Novo cargo',
+      p_color: color,
+      p_permissions: {},
+      p_hoist: false
+    })
+    if (error || !data) {
+      reportError('Não foi possível criar o cargo', error)
+      return null
+    }
+    const created = mapRoleRow(data)
+    applyRoles(spaceId, [...rolesFor(spaceId).filter(r => r.id !== created.id), created])
+    setSelectedRoleId(created.id)
+    addAuditLog(spaceId, `Criou o cargo "${created.name}"`)
+    return created
+  }
+
+  async function handleUpdateRole(roleId: string, updates: Partial<ServerRole>): Promise<boolean> {
+    if (!editingSpace || !supabase) return false
+    const spaceId = editingSpace.id
+    const before = rolesFor(spaceId).find(r => r.id === roleId)
+    if (!before) return false
+
+    const changes: Record<string, unknown> = {}
+    if (updates.name !== undefined && updates.name !== before.name) changes.name = updates.name.trim()
+    if (updates.color !== undefined && updates.color !== before.color) changes.color = updates.color
+    if (updates.hoist !== undefined && updates.hoist !== !!before.hoist) changes.hoist = updates.hoist
+    if (updates.isDefault !== undefined && updates.isDefault !== !!before.isDefault) changes.is_default = updates.isDefault
+    if (updates.permissions !== undefined) changes.permissions = sanitizePermissions(updates.permissions)
+    if (Object.keys(changes).length === 0) return true
+
+    const { data, error } = await supabase.rpc('update_space_role', { p_role_id: roleId, p_changes: changes })
+    if (error || !data) {
+      reportError('Não foi possível salvar o cargo', error)
+      return false
+    }
+    const updated = mapRoleRow(data)
+    applyRoles(spaceId, rolesFor(spaceId).map(r => {
+      if (r.id === roleId) return updated
+      // O banco só deixa um cargo automático por espaço
+      return updated.isDefault && r.isDefault ? { ...r, isDefault: false } : r
+    }))
+    addAuditLog(spaceId, `Editou o cargo "${updated.name}"`)
+    return true
+  }
+
+  async function handleDeleteRole(roleId: string): Promise<boolean> {
+    if (!editingSpace || !supabase) return false
+    const spaceId = editingSpace.id
+    const role = rolesFor(spaceId).find(r => r.id === roleId)
+    if (!role) return false
+    if (role.isEveryone) {
+      showToast('Ação bloqueada', 'O @everyone não pode ser excluído.', 'info')
+      return false
     }
 
-    addAuditLog(editingSpace.id, `Excluiu o cargo "${roleToDelete.name}"`)
-    showToast("Cargo Excluído", `O cargo "${roleToDelete.name}" foi removido.`, "info")
+    const { error } = await supabase.rpc('delete_space_role', { p_role_id: roleId })
+    if (error) {
+      reportError('Não foi possível excluir o cargo', error)
+      return false
+    }
+    const remaining = rolesFor(spaceId)
+      .filter(r => r.id !== roleId)
+      .map(r => (!r.isEveryone && r.position > role.position ? { ...r, position: r.position - 1 } : r))
+    const sorted = applyRoles(spaceId, remaining)
+    const map = memberRolesFor(spaceId)
+    applyMemberRoles(spaceId, Object.fromEntries(Object.entries(map).map(([uid, ids]) => [uid, ids.filter(id => id !== roleId)])))
+    if (selectedRoleId === roleId) setSelectedRoleId(sorted[0]?.id ?? null)
+    addAuditLog(spaceId, `Excluiu o cargo "${role.name}"`)
+    showToast('Cargo excluído', `O cargo "${role.name}" foi removido.`, 'info')
+    return true
   }
 
   async function moveRole(roleId: string, direction: 'up' | 'down') {
-    if (!editingSpace) return
-    const list = [...serverRoles]
-    const index = list.findIndex(r => r.id === roleId)
-    if (index === -1) return
-    if (direction === 'up' && index === 0) return
-    if (direction === 'down' && index === list.length - 1) return
-    const targetIdx = direction === 'up' ? index - 1 : index + 1
-    const temp = list[index]
-    list[index] = list[targetIdx]
-    list[targetIdx] = temp
-    list.forEach((r, idx) => { r.position = idx })
-    saveRolesForSpace(editingSpace.id, list)
+    if (!editingSpace || !supabase) return
+    const spaceId = editingSpace.id
+    const ordered = rolesFor(spaceId).filter(r => !r.isEveryone)
+    const index = ordered.findIndex(r => r.id === roleId)
+    const target = direction === 'up' ? index - 1 : index + 1
+    if (index === -1 || target < 0 || target >= ordered.length) return
 
-    if (supabase) {
-      try {
-        for (const r of list) {
-          if (!r.id.startsWith('role-')) {
-            await supabase.from('space_roles').update({ position: r.position }).eq('id', r.id)
-          }
-        }
-      } catch (err) {
-        console.warn("Supabase move role error:", err)
-      }
+    const next = ordered.slice()
+    ;[next[index], next[target]] = [next[target], next[index]]
+    const previous = rolesFor(spaceId)
+    const everyone = previous.filter(r => r.isEveryone)
+    applyRoles(spaceId, [...next.map((r, i) => ({ ...r, position: i })), ...everyone])
+
+    const { error } = await supabase.rpc('reorder_space_roles', { p_space_id: spaceId, p_role_ids: next.map(r => r.id) })
+    if (error) {
+      applyRoles(spaceId, previous)
+      reportError('Não foi possível mover o cargo', error)
+      return
     }
+    addAuditLog(spaceId, `Reordenou o cargo "${ordered[index].name}"`)
   }
 
   async function toggleMemberRole(memberUserId: string, roleId: string, memberName?: string) {
-    if (!editingSpace) return
+    if (!editingSpace || !supabase) return
     const spaceId = editingSpace.id
-    const previousMap = memberRoleMap
-    const currentList = memberRoleMap[memberUserId] || []
-    const roleObj = serverRoles.find(r => r.id === roleId)
-    const roleLabel = roleObj?.name || roleId
+    const previousMap = memberRolesFor(spaceId)
+    const currentList = previousMap[memberUserId] || []
+    const role = rolesFor(spaceId).find(r => r.id === roleId)
+    const roleLabel = role?.name || roleId
     const isRemoving = currentList.includes(roleId)
     const nextList = isRemoving ? currentList.filter(id => id !== roleId) : [...currentList, roleId]
 
     // Mostra a mudança na hora (otimista) e desfaz se o servidor recusar
-    const applyMap = (map: Record<string, string[]>) => {
-      setMemberRoleMap(map)
-      localStorage.setItem(`echo-member-roles-${spaceId}`, JSON.stringify(map))
-    }
-    applyMap({ ...memberRoleMap, [memberUserId]: nextList })
+    applyMemberRoles(spaceId, { ...previousMap, [memberUserId]: nextList })
 
-    if (!supabase) return
-
-    let failure: string | null = null
+    let failure: any = null
     try {
-      if (isRemoving) {
-        // .select() devolve as linhas apagadas: vazio significa que o banco não deixou (só o dono mexe em cargos)
-        const { data, error } = await supabase
-          .from('space_member_roles')
-          .delete()
-          .match({ space_id: spaceId, user_id: memberUserId, role_id: roleId })
-          .select('role_id')
-        if (error) failure = error.message
-        else if (!data || data.length === 0) failure = 'Só o dono do espaço pode alterar cargos de membros.'
-      } else {
-        const { error } = await supabase
-          .from('space_member_roles')
-          .insert({ space_id: spaceId, user_id: memberUserId, role_id: roleId })
-        if (error) {
-          failure = error.code === '42501'
-            ? 'Só o dono do espaço pode alterar cargos de membros.'
-            : error.message
-        }
-      }
+      const { error } = await supabase.rpc('set_space_member_role', {
+        p_space_id: spaceId,
+        p_user_id: memberUserId,
+        p_role_id: roleId,
+        p_assign: !isRemoving
+      })
+      failure = error
     } catch (err: any) {
-      failure = err?.message || 'Falha de conexão.'
+      failure = { message: err?.message || 'Falha de conexão.' }
     }
 
     if (failure) {
-      console.warn('Supabase toggle member role error:', failure)
-      applyMap(previousMap)
-      showToast('Não foi possível alterar o cargo', failure, 'info')
+      applyMemberRoles(spaceId, previousMap)
+      reportError('Não foi possível alterar o cargo', failure)
       return
     }
 
@@ -458,85 +364,33 @@ export function useEchoRolesAndPermissions({
     )
   }
 
-  const getUserHighestRole = useCallback((spaceId: string, userId: string): ServerRole | null => {
-    const space = spaces.find(s => s.id === spaceId)
-    let roles = serverRoles
-    if (!roles || roles.length === 0) {
-      try {
-        const rolesMap = JSON.parse(localStorage.getItem('echo-spaces-roles') || '{}')
-        roles = rolesMap[spaceId] || []
-      } catch {}
-    }
-    
-    // If user is owner
-    if (space && space.creator_id === userId) {
-      const ownerRole = roles.find(r => r.id === 'role-owner' || r.permissions?.administrator || r.name.toLowerCase().includes('dono'))
-      if (ownerRole) return ownerRole
-      return {
-        id: 'role-owner',
-        name: '👑 Dono',
-        color: '#eab308',
-        position: 0,
-        permissions: { administrator: true }
-      }
-    }
-
-    let memberRoles: Record<string, string[]> = memberRoleMap
-    if (!memberRoles[userId]) {
-      try {
-        const stored = JSON.parse(localStorage.getItem(`echo-member-roles-${spaceId}`) || '{}')
-        if (stored[userId]) memberRoles = stored
-      } catch {}
-    }
-    const assignedIds = memberRoles[userId] || []
-    if (assignedIds.length === 0) return null
-
-    const matched = roles.filter(r => assignedIds.includes(r.id)).sort((a, b) => a.position - b.position)
-    return matched[0] || null
-  }, [spaces, serverRoles, memberRoleMap])
-
-  const canUserDo = useCallback((spaceId: string, userId: string, permissionKey: keyof RolePermissions): boolean => {
-    const space = spaces.find(s => s.id === spaceId)
-    if (space && space.creator_id === userId) return true
-
-    let roles = serverRoles
-    if (!roles || roles.length === 0) {
-      try {
-        const rolesMap = JSON.parse(localStorage.getItem('echo-spaces-roles') || '{}')
-        roles = rolesMap[spaceId] || []
-      } catch {}
-    }
-
-    let memberRoles: Record<string, string[]> = memberRoleMap
-    if (!memberRoles[userId]) {
-      try {
-        const stored = JSON.parse(localStorage.getItem(`echo-member-roles-${spaceId}`) || '{}')
-        if (stored[userId]) memberRoles = stored
-      } catch {}
-    }
-    const assignedIds = memberRoles[userId] || []
-    const userRoles = roles.filter(r => assignedIds.includes(r.id))
-
-    return userRoles.some(r => r.permissions?.administrator || r.permissions?.[permissionKey])
-  }, [spaces, serverRoles, memberRoleMap])
+  const serverRoles = useMemo(() => (currentSpaceId ? rolesFor(currentSpaceId) : []), [currentSpaceId, rolesFor])
+  const memberRoleMap = useMemo(() => (currentSpaceId ? memberRolesFor(currentSpaceId) : {}), [currentSpaceId, memberRolesFor])
+  const editingRoles = useMemo(() => (editingSpace ? rolesFor(editingSpace.id) : []), [editingSpace, rolesFor])
+  const editingMemberRoleMap = useMemo(() => (editingSpace ? memberRolesFor(editingSpace.id) : {}), [editingSpace, memberRolesFor])
 
   return {
     serverRoles,
-    setServerRoles,
+    memberRoleMap,
+    editingRoles,
+    editingMemberRoleMap,
     selectedRoleId,
     setSelectedRoleId,
-    memberRoleMap,
-    setMemberRoleMap,
     loadSpaceRoles,
     loadServerRoles: loadSpaceRoles,
     loadMemberRoles,
-    saveRolesForSpace,
     handleCreateRole,
     handleUpdateRole,
     handleDeleteRole,
     moveRole,
     toggleMemberRole,
     getUserHighestRole,
-    canUserDo
+    getUserHoistedRole,
+    getMemberPermissions,
+    canUserDo,
+    canManageRole,
+    canManageMember,
+    canKickMember,
+    canViewChannel
   }
 }

@@ -1396,8 +1396,16 @@ export function useVoiceChannel(options?: {
         }
       }
 
+      // Sem a permissão "Falar" (cargos do espaço) o token não deixa publicar: entra só ouvindo
+      const canPublish = room.localParticipant.permissions?.canPublish !== false
+      if (room.state === 'connected' && !canPublish) {
+        setIsMuted(true)
+        isMutedRef.current = true
+        onReconnectMediaNoticeRef.current?.('Somente ouvindo', 'Seus cargos neste espaço não têm a permissão "Falar".')
+      }
+
       // Publica microfone do usuário
-      if (room.state === 'connected') {
+      if (room.state === 'connected' && canPublish) {
         try {
           const micTrack = finalStream.getAudioTracks()[0]
           if (micTrack) {

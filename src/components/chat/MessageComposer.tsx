@@ -152,6 +152,14 @@ export const MessageComposer = memo(function MessageComposer({
   supabase,
   postChannelMessage
 }: MessageComposerProps) {
+  if (currentSpace && !canUserDo(currentSpace.id, user.id, 'sendMessages')) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px 20px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '13px', margin: '0 16px 16px 16px' }}>
+        <span>🔒 Você não tem permissão para enviar mensagens neste espaço.</span>
+      </div>
+    )
+  }
+
   if (selectedChannel.is_announcement && currentSpace && !canUserDo(currentSpace.id, user.id, 'sendInAnnouncementChannels')) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px 20px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '13px', margin: '0 16px 16px 16px' }}>

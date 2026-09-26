@@ -8,6 +8,7 @@ import { formatGameDuration } from '../../lib/formatters'
 import { NAME_EFFECTS } from '../../lib/cosmeticsData'
 import { CommunityBadge } from '../CommunityBadge'
 import { useSpacesStore } from '../../stores/useSpacesStore'
+import { getHoistedRole, sortRoles } from '../../lib/permissions'
 
 const AVATAR_GRADIENTS = [
   'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)',   // Cyan / Blue
@@ -410,7 +411,8 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
     const buckets: { role: ServerRole; members: any[] }[] = []
     const unassigned: any[] = []
 
-    const spaceRoles = (serverRoles || []).slice().sort((a, b) => a.position - b.position)
+    // Como no Discord: só cargos marcados "exibir separadamente" viram grupo; o resto fica em "Online"
+    const spaceRoles = sortRoles(serverRoles || []).filter(r => !r.isEveryone && r.hoist)
     spaceRoles.forEach(r => {
       buckets.push({ role: r, members: [] })
     })
@@ -420,8 +422,8 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
         creatorOnline.push(m)
         return
       }
-      const highestRole = getUserHighestRole(currentSpace.id, m.user.id)
-      const targetBucket = highestRole ? buckets.find(b => b.role.id === highestRole.id) : null
+      const hoistedRole = getHoistedRole(serverRoles || [], memberRoleMap[m.user.id] || [])
+      const targetBucket = hoistedRole ? buckets.find(b => b.role.id === hoistedRole.id) : null
       if (targetBucket) {
         targetBucket.members.push(m)
       } else {
@@ -434,7 +436,7 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
       roleBuckets: buckets,
       unassignedOnlineMembers: unassigned
     }
-  }, [onlineList, serverRoles, currentSpace.creator_id, currentSpace.id, getUserHighestRole])
+  }, [onlineList, serverRoles, memberRoleMap, currentSpace.creator_id])
 
   // Search Filtering
   const cleanQuery = searchQuery.trim().toLowerCase()

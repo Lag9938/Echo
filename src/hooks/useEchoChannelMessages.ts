@@ -379,6 +379,11 @@ export function useEchoChannelMessages({
   // Upload attachment file (images or documents)
   async function handleChatFileUpload(file: File, caption?: string, sizePreference?: string) {
     if (!supabase || !selectedChannel) return
+    const uploadSpace = spaces.find(s => s.id === selectedChannel.space_id) ?? null
+    if (uploadSpace && !canUserDo(uploadSpace.id, user.id, 'attachFiles')) {
+      showToast('Permissão negada', 'Seus cargos não permitem anexar arquivos neste espaço.', 'info')
+      return
+    }
     setIsUploading(true)
     setError('')
     try {
@@ -519,7 +524,7 @@ export function useEchoChannelMessages({
 
     const currentSp = spaces.find(s => s.id === selectedChannel.space_id) ?? null
     const isAuthor = msgToDelete.author_id === user.id
-    const canManage = currentSp && (canUserDo(currentSp.id, user.id, 'manageMessages') || currentSp.creator_id === user.id)
+    const canManage = currentSp && canUserDo(currentSp.id, user.id, 'manageMessages')
     if (!isAuthor && !canManage) {
       showToast('Permissão Negada', 'Você só pode excluir suas próprias mensagens.', 'info')
       return
@@ -555,6 +560,10 @@ export function useEchoChannelMessages({
   async function send(event: FormEvent) {
     event.preventDefault(); if (!supabase || !selectedChannel || !draft.trim()) return
     const currentSp = spaces.find(s => s.id === selectedChannel.space_id) ?? null
+    if (currentSp && !canUserDo(currentSp.id, user.id, 'sendMessages')) {
+      showToast('Permissão negada', 'Seus cargos não permitem enviar mensagens neste espaço.', 'info')
+      return
+    }
     if (currentSp && selectedChannel.is_announcement && !canUserDo(currentSp.id, user.id, 'sendInAnnouncementChannels')) {
       showToast('Canal de Anúncios', 'Apenas administradores e moderadores podem enviar mensagens neste canal.', 'info')
       return
