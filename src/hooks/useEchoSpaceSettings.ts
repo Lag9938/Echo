@@ -266,52 +266,46 @@ export function useEchoSpaceSettings({
     })
   }, [])
 
+  // Hoje só a transferência de posse passa por aqui (os demais cargos são os "Cargos do Espaço").
+  // A troca de dono é feita por uma função do banco, de uma vez só: o dono não tem permissão para
+  // alterar spaces.creator_id nem space_members diretamente.
   const handleRoleChange = useCallback((memberUserId: string, newRole: 'owner' | 'moderator' | 'member', memberName: string) => {
     if (!editingSpace || !supabase) return
     const client = supabase
     const currentSpace = editingSpace
 
     if (currentSpace.creator_id !== user.id) {
-      showToast('Permissão Negada', 'Apenas o Dono pode alterar cargos ou transferir a posse.', 'info')
+      showToast('Permissão Negada', 'Apenas o Dono pode transferir a posse.', 'info')
       return
     }
+    if (newRole !== 'owner') return
 
-    if (newRole === 'owner') {
-      setConfirmModalConfig({
-        isOpen: true,
-        title: 'Transferir Posse do Espaço',
-        message: `Tem certeza de que deseja transferir a posse do espaço "${currentSpace.name}" para "${memberName}"? Você deixará de ser o Dono e passará a ser um Moderador.`,
-        confirmText: 'Sim, Transferir',
-        cancelText: 'Não, Cancelar',
-        isDanger: false,
-        onConfirm: async () => {
-          await client.from('spaces').update({ creator_id: memberUserId }).eq('id', currentSpace.id)
-          await client.from('space_members').update({ role: 'owner' }).eq('space_id', currentSpace.id).eq('user_id', memberUserId)
-          await client.from('space_members').update({ role: 'moderator' }).eq('space_id', currentSpace.id).eq('user_id', user.id)
-
-          addAuditLog(currentSpace.id, `Transferiu a posse do espaço para ${memberName}`)
-          showToast('Posse Transferida!', `${memberName} agora é o dono do espaço.`, 'info')
-          setEditingSpace(prev => prev ? { ...prev, creator_id: memberUserId } : null)
-          await loadEditingSpaceMembers(currentSpace.id)
-          await loadSpaces()
-          setConfirmModalConfig(null)
+    setConfirmModalConfig({
+      isOpen: true,
+      title: 'Transferir Posse do Espaço',
+      message: `Tem certeza de que deseja transferir a posse do espaço "${currentSpace.name}" para "${memberName}"? Você deixará de ser o Dono e passará a ser um membro.`,
+      confirmText: 'Sim, Transferir',
+      cancelText: 'Não, Cancelar',
+      isDanger: false,
+      onConfirm: async () => {
+        const { error } = await client.rpc('transfer_space_ownership', {
+          p_space_id: currentSpace.id,
+          p_new_owner: memberUserId
+        })
+        setConfirmModalConfig(null)
+        if (error) {
+          showToast('Não foi possível transferir', error.message, 'info')
+          return
         }
-      })
-      return
-    }
 
-    client.from('space_members').update({ role: newRole }).eq('space_id', currentSpace.id).eq('user_id', memberUserId).then(({ error }: any) => {
-      if (error) {
-        showToast('Erro ao mudar cargo', error.message, 'info')
-      } else {
-        addAuditLog(currentSpace.id, `Alterou o cargo básico de ${memberName} para ${newRole === 'moderator' ? 'Moderador' : 'Membro'}`)
-        showToast('Cargo Atualizado', `O cargo de ${memberName} foi alterado para ${newRole === 'moderator' ? 'Moderador' : 'Membro'}.`, 'info')
-        loadEditingSpaceMembers(currentSpace.id)
-        loadSpaceMembers(currentSpace.id)
+        addAuditLog(currentSpace.id, `Transferiu a posse do espaço para ${memberName}`)
+        showToast('Posse Transferida!', `${memberName} agora é o dono do espaço.`, 'info')
+        setEditingSpace(prev => prev ? { ...prev, creator_id: memberUserId } : null)
+        await loadEditingSpaceMembers(currentSpace.id)
+        await loadSpaces()
       }
     })
-  }, [editingSpace, supabase, user?.id, showToast, setConfirmModalConfig, addAuditLog, loadEditingSpaceMembers, loadSpaces, loadSpaceMembers])
-
+  }, [editingSpace, supabase, user?.id, showToast, setConfirmModalConfig, addAuditLog, loadEditingSpaceMembers, loadSpaces])
   const handleKickMember = useCallback((memberUserId: string, memberName: string) => {
     if (!editingSpace || !supabase) return
     const client = supabase

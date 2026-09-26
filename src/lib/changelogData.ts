@@ -18,11 +18,37 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.38.2',
+    title: 'Echo v0.38.2 - Cargos do Espaço Funcionando & Transferência de Posse',
+    date: '26 de Setembro de 2026',
+    tagline: 'Dar e tirar cargos dos membros voltou a funcionar, o Echo avisa quando o servidor recusa uma mudança em vez de fingir que deu certo, e transferir a posse do espaço agora funciona de verdade.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🏷️',
+        badge: 'CORREÇÃO',
+        title: 'Cargos do Espaço Voltam a Funcionar',
+        description: 'Desde a versão 0.35.2, dar um cargo (como Moderador) a um membro não gravava nada. Agora o cargo é atribuído e removido corretamente, e só o dono do espaço pode fazer isso.'
+      },
+      {
+        icon: '⚠️',
+        badge: 'CORREÇÃO',
+        title: 'Avisos Honestos ao Mudar Cargos',
+        description: 'Se o servidor recusar a mudança, o Echo desfaz na tela e mostra o motivo, em vez de mostrar "Cargo atualizado" sem ter mudado nada.'
+      },
+      {
+        icon: '👑',
+        badge: 'CORREÇÃO',
+        title: 'Transferir a Posse do Espaço',
+        description: 'A transferência de posse para outro membro agora funciona, de uma vez só: o novo dono assume e você vira membro. O antigo botão "Cargo Básico: Moderador" saiu, porque Moderador é um dos Cargos do Espaço.'
+      }
+    ]
+  },
+  {
     version: '0.38.1',
     title: 'Echo v0.38.1 - Volume do Bot em Tempo Real & Atualização que Reabre o Echo',
     date: '26 de Setembro de 2026',
     tagline: 'O volume do Bot de Música agora acompanha o controle na hora, com ajuste de 1 em 1%, e depois de atualizar o Echo garante que o app volte a abrir sozinho.',
-    isLatest: true,
     highlights: [
       {
         icon: '🔊',

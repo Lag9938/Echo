@@ -346,5 +346,44 @@ console.log('\n[spaces]')
   check('anon ainda lê detalhes de convite válido', (await rpc('anon', 'get_invite_details', inv)).data?.name === 'Servidor 1')
 }
 
+// ---------------------------------------------------------------------------
+console.log('\n[Migração 10 — transferência de posse]')
+const sql10 = fs.readFileSync(`${REPO}/migration_10_transfer_space_ownership.sql`, 'utf8')
+const S3 = (await admin("insert into public.spaces(name, creator_id) values ('Servidor 3', $1) returning id", [U.A])).rows[0].id
+await admin("insert into public.space_members(space_id, user_id, role) values ($1, $2, 'owner'), ($1, $3, 'member'), ($1, $4, 'member')", [S3, U.A, U.B, U.D])
+const roleOf = async (u) => (await admin('select role from public.space_members where space_id = $1 and user_id = $2', [S3, u])).rows[0]?.role
+const creatorOf = async () => (await admin('select creator_id from public.spaces where id = $1', [S3])).rows[0].creator_id
+{
+  // O que o app fazia antes: passos soltos, e os dois falham (um com erro, o outro em silêncio)
+  const directOwner = await asUser('A', 'update public.spaces set creator_id = $1 where id = $2 returning id', [U.B, S3])
+  check('ANTES: o dono NÃO consegue trocar spaces.creator_id direto (RLS exige creator_id = ele mesmo)', !!directOwner.error, directOwner.error)
+  const directRole = await asUser('A', "update public.space_members set role = 'owner' where space_id = $1 and user_id = $2 returning user_id", [S3, U.B])
+  check('ANTES: UPDATE em space_members altera 0 linhas, sem erro (o bug silencioso)', !directRole.error && directRole.rows.length === 0, directRole.error)
+
+  const r = await applyScript(sql10)
+  check('migração 10 aplica sem erros', !r.error, r.error)
+  const again = await applyScript(sql10)
+  check('migração 10 é idempotente (roda 2x)', !again.error, again.error)
+
+  check('membro NÃO transfere a posse', !!(await rpc('B', 'transfer_space_ownership', S3, U.B)).error)
+  check('não-membro NÃO transfere a posse', !!(await rpc('F', 'transfer_space_ownership', S3, U.F)).error)
+  check('anon NÃO executa', !!(await rpc('anon', 'transfer_space_ownership', S3, U.B)).error)
+  check('dono NÃO transfere para si mesmo', !!(await rpc('A', 'transfer_space_ownership', S3, U.A)).error)
+  check('dono NÃO transfere para quem não é membro', !!(await rpc('A', 'transfer_space_ownership', S3, U.F)).error)
+  check('nada mudou depois das tentativas recusadas', (await creatorOf()) === U.A && (await roleOf(U.A)) === 'owner' && (await roleOf(U.B)) === 'member')
+
+  const done = await rpc('A', 'transfer_space_ownership', S3, U.B)
+  check('dono transfere a posse para um membro', !done.error, done.error)
+  check('spaces.creator_id passou para o novo dono', (await creatorOf()) === U.B)
+  check('novo dono ficou com cargo owner e o antigo virou member', (await roleOf(U.B)) === 'owner' && (await roleOf(U.A)) === 'member')
+  check('o antigo dono NÃO transfere de novo', !!(await rpc('A', 'transfer_space_ownership', S3, U.A)).error)
+  check('o novo dono consegue transferir', !(await rpc('B', 'transfer_space_ownership', S3, U.D)).error)
+  check('depois da segunda transferência D é o dono', (await creatorOf()) === U.D && (await roleOf(U.D)) === 'owner' && (await roleOf(U.B)) === 'member')
+
+  // Não abriu nenhuma brecha nova
+  check('space_members continua sem UPDATE direto (dono)', (await asUser('D', "update public.space_members set role = 'owner' where space_id = $1 and user_id = $2 returning user_id", [S3, U.A])).rows.length === 0)
+  check('função não é executável por anon nem por public', (await admin("select has_function_privilege('anon', 'public.transfer_space_ownership(uuid, uuid)', 'execute') as a")).rows[0].a === false)
+}
+
 console.log(`\n${passed} passaram, ${failed} falharam`)
 process.exit(failed ? 1 : 0)

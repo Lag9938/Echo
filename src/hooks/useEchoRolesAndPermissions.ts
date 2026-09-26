@@ -401,42 +401,61 @@ export function useEchoRolesAndPermissions({
 
   async function toggleMemberRole(memberUserId: string, roleId: string, memberName?: string) {
     if (!editingSpace) return
+    const spaceId = editingSpace.id
+    const previousMap = memberRoleMap
     const currentList = memberRoleMap[memberUserId] || []
-    let nextList: string[] = []
     const roleObj = serverRoles.find(r => r.id === roleId)
+    const roleLabel = roleObj?.name || roleId
     const isRemoving = currentList.includes(roleId)
+    const nextList = isRemoving ? currentList.filter(id => id !== roleId) : [...currentList, roleId]
 
-    if (isRemoving) {
-      nextList = currentList.filter(id => id !== roleId)
-      addAuditLog(editingSpace.id, `Removeu o cargo "${roleObj?.name || roleId}" de ${memberName || memberUserId}`)
-    } else {
-      nextList = [...currentList, roleId]
-      addAuditLog(editingSpace.id, `Atribuiu o cargo "${roleObj?.name || roleId}" para ${memberName || memberUserId}`)
+    // Mostra a mudança na hora (otimista) e desfaz se o servidor recusar
+    const applyMap = (map: Record<string, string[]>) => {
+      setMemberRoleMap(map)
+      localStorage.setItem(`echo-member-roles-${spaceId}`, JSON.stringify(map))
     }
-    const updatedMap = { ...memberRoleMap, [memberUserId]: nextList }
-    setMemberRoleMap(updatedMap)
-    localStorage.setItem(`echo-member-roles-${editingSpace.id}`, JSON.stringify(updatedMap))
+    applyMap({ ...memberRoleMap, [memberUserId]: nextList })
 
-    if (supabase) {
-      try {
-        if (isRemoving) {
-          await supabase
-            .from('space_member_roles')
-            .delete()
-            .match({ space_id: editingSpace.id, user_id: memberUserId, role_id: roleId })
-        } else {
-          await supabase
-            .from('space_member_roles')
-            .insert({
-              space_id: editingSpace.id,
-              user_id: memberUserId,
-              role_id: roleId
-            })
+    if (!supabase) return
+
+    let failure: string | null = null
+    try {
+      if (isRemoving) {
+        // .select() devolve as linhas apagadas: vazio significa que o banco não deixou (só o dono mexe em cargos)
+        const { data, error } = await supabase
+          .from('space_member_roles')
+          .delete()
+          .match({ space_id: spaceId, user_id: memberUserId, role_id: roleId })
+          .select('role_id')
+        if (error) failure = error.message
+        else if (!data || data.length === 0) failure = 'Só o dono do espaço pode alterar cargos de membros.'
+      } else {
+        const { error } = await supabase
+          .from('space_member_roles')
+          .insert({ space_id: spaceId, user_id: memberUserId, role_id: roleId })
+        if (error) {
+          failure = error.code === '42501'
+            ? 'Só o dono do espaço pode alterar cargos de membros.'
+            : error.message
         }
-      } catch (err) {
-        console.warn("Supabase toggle member role error:", err)
       }
+    } catch (err: any) {
+      failure = err?.message || 'Falha de conexão.'
     }
+
+    if (failure) {
+      console.warn('Supabase toggle member role error:', failure)
+      applyMap(previousMap)
+      showToast('Não foi possível alterar o cargo', failure, 'info')
+      return
+    }
+
+    addAuditLog(
+      spaceId,
+      isRemoving
+        ? `Removeu o cargo "${roleLabel}" de ${memberName || memberUserId}`
+        : `Atribuiu o cargo "${roleLabel}" para ${memberName || memberUserId}`
+    )
   }
 
   const getUserHighestRole = useCallback((spaceId: string, userId: string): ServerRole | null => {

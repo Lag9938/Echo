@@ -38,3 +38,8 @@ src/native/**/bin/*
 # Local Tools
 tools/
 supabase/.temp/
+
+# Security and secrets
+*.key
+*.pem
+cookies.txt

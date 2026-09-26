@@ -99,7 +99,7 @@ export interface SpaceStudioModalProps {
   deleteChannel: (channelId: string) => void
   getUserHighestRole: (spaceId: string, userId: string) => ServerRole | null
   canUserDo: (spaceId: string, userId: string, perm: keyof RolePermissions) => boolean
-  toggleMemberRole: (spaceId: string, targetUserId: string, roleId: string) => void
+  toggleMemberRole: (memberUserId: string, roleId: string, memberName?: string) => void
   handleRoleChange: (memberUserId: string, newRole: 'owner' | 'moderator' | 'member', memberName: string) => void
   handleKickMember: (memberId: string, memberName: string) => void
   handleDeleteSpace: () => void

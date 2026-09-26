@@ -19,7 +19,7 @@ export interface SpaceMembersTabProps {
   memberRoleMap: Record<string, string[]>
   serverRoles: ServerRole[]
   canUserDo: (spaceId: string, userId: string, perm: keyof RolePermissions) => boolean
-  toggleMemberRole: (spaceId: string, targetUserId: string, roleId: string) => void
+  toggleMemberRole: (memberUserId: string, roleId: string, memberName?: string) => void
   handleRoleChange: (memberUserId: string, newRole: 'owner' | 'moderator' | 'member', memberName: string) => void
   handleKickMember: (memberId: string, memberName: string) => void
 }
@@ -159,6 +159,11 @@ export const SpaceMembersTab = memo(function SpaceMembersTab({
                       {/* Atribuição de Cargos do Espaço */}
                       <div className="member-mgmt-section">
                         <label className="member-mgmt-label">Cargos do Espaço</label>
+                        {editingSpace.creator_id !== user.id && (
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+                            Só o dono do espaço pode dar ou tirar cargos.
+                          </span>
+                        )}
                         <div className="member-mgmt-roles-grid">
                           {serverRoles.filter(r => r.id !== 'role-owner').map(r => {
                             const hasRole = assignedRoleIds.includes(r.id)
@@ -166,13 +171,14 @@ export const SpaceMembersTab = memo(function SpaceMembersTab({
                               <button
                                 key={r.id}
                                 type="button"
+                                disabled={editingSpace.creator_id !== user.id}
                                 className={`member-mgmt-role-pill ${hasRole ? 'active' : ''}`}
                                 style={{
                                   borderColor: hasRole ? r.color : 'var(--border-color)',
                                   color: hasRole ? r.color : 'var(--text-secondary)',
                                   background: hasRole ? `${r.color}22` : 'rgba(255, 255, 255, 0.04)'
                                 }}
-                                onClick={() => toggleMemberRole(editingSpace.id, member.user?.id, r.id)}
+                                onClick={() => toggleMemberRole(member.user?.id, r.id, member.user?.display_name)}
                               >
                                 <span className="role-pill-check">{hasRole ? '✓' : '＋'}</span>
                                 <span className="role-pill-dot" style={{ background: r.color }} />
@@ -186,28 +192,12 @@ export const SpaceMembersTab = memo(function SpaceMembersTab({
                         </div>
                       </div>
 
-                      {/* Permissão Básica / Moderação */}
-                      <div className="member-mgmt-section">
-                        <label className="member-mgmt-label">Cargo Básico</label>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                          <button
-                            type="button"
-                            className={`member-mgmt-role-pill ${member.role === 'member' && !isOwner ? 'active' : ''}`}
-                            onClick={() => handleRoleChange(member.user?.id, 'member', member.user?.display_name)}
-                            disabled={isOwner}
-                          >
-                            <span>Membro</span>
-                          </button>
-                          <button
-                            type="button"
-                            className={`member-mgmt-role-pill ${member.role === 'moderator' ? 'active' : ''}`}
-                            onClick={() => handleRoleChange(member.user?.id, 'moderator', member.user?.display_name)}
-                            disabled={isOwner}
-                          >
-                            <span>Moderador</span>
-                          </button>
-
-                          {editingSpace.creator_id === user.id && !isOwner && (
+                      {/* Posse do espaço. (Moderador e outros cargos são os "Cargos do Espaço" acima: o banco só
+                          conhece "dono" e "membro" como cargo básico, então não há mais "Cargo Básico: Moderador".) */}
+                      {editingSpace.creator_id === user.id && !isOwner && (
+                        <div className="member-mgmt-section">
+                          <label className="member-mgmt-label">Posse do Espaço</label>
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                             <button
                               type="button"
                               className="member-mgmt-role-pill"
@@ -216,9 +206,9 @@ export const SpaceMembersTab = memo(function SpaceMembersTab({
                             >
                               <span>👑 Transferir Posse</span>
                             </button>
-                          )}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Zona de Moderação / Expulsar */}
                       {canKick && (
