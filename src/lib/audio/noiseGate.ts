@@ -74,9 +74,15 @@ export class NoiseGate {
     if (level >= params.thresholdDb) {
       this.open = true
       this.holdLeft = this.holdSamples
-    } else if (this.open && level < params.thresholdDb - this.hysteresisDb) {
-      this.holdLeft -= input.length
-      if (this.holdLeft <= 0) this.open = false
+    } else if (this.open) {
+      if (level < params.thresholdDb - this.hysteresisDb) {
+        this.holdLeft -= input.length
+        if (this.holdLeft <= 0) this.open = false
+      } else {
+        // Ainda acima do ponto de fechamento: o hold recomeça (senão pausas curtas entre sílabas baixas se
+        // somavam e o portão fechava no meio da frase)
+        this.holdLeft = this.holdSamples
+      }
     }
 
     const target = this.open ? 1 : 0
