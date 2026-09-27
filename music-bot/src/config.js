@@ -28,6 +28,10 @@ export const config = {
   // Um arquivo de cookies (formato Netscape) e/ou argumentos extras resolvem — veja o README.
   ytdlpCookiesFile: (process.env.YTDLP_COOKIES_FILE || '').trim(),
   ytdlpExtraArgs: (process.env.YTDLP_EXTRA_ARGS || '').split(/\s+/).filter(Boolean),
+  // Com cookies de uma conta sem Premium o YouTube serve um anúncio antes do vídeo e o yt-dlp ESPERA 3 a 6 segundos
+  // antes de baixar (o link dá 403 nesse intervalo). Estes argumentos pulam o anúncio e cortam essa espera.
+  // Desligue com YTDLP_FAST_YOUTUBE=0 se os cookies forem de uma conta Premium.
+  ytdlpFastYoutube: (process.env.YTDLP_FAST_YOUTUBE || '1').trim() !== '0',
 
   // Quanto áudio o bot deixa na fila de envio (ms). É também o atraso entre pedir "volume" ou "pausar" e ouvir:
   // o que já está na fila toca como estava. O padrão da biblioteca é 1000; menor responde mais rápido,

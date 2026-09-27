@@ -17,6 +17,7 @@ import {
   playScreenStopSound
 } from './lib/soundEffects'
 import { APP_CURRENT_VERSION } from './lib/version'
+import { startBackgroundSync } from './lib/backgroundSync'
 import { initAnalytics, identifyUser, resetUser, trackAppOpened } from './lib/analytics'
 
 import { ModalManager } from './components/modals/ModalManager'
@@ -1652,19 +1653,15 @@ function Echo({ user }: { user: User }) {
     }
   }, [handleFriendshipPostgresChanges, handleFriendEvent, handleDMBroadcast, handleDMDeleteBroadcast, handleCallEvent, handleDMTypingBroadcast, handleGroupMessageBroadcast, handleGroupTypingBroadcast, supabase, user])
 
-  // Resilient background sync interval (every 60 seconds)
+  // Sincronização de redundância (o normal já chega em tempo real): a cada 5 min com a janela visível e ao voltar para ela
   useEffect(() => {
-    const syncInterval = setInterval(() => {
+    return startBackgroundSync(() => {
       loadFriendships()
       loadGroupChats()
       if (selectedDMUserIdRef.current) {
         loadDirectMessages(selectedDMUserIdRef.current)
       }
-    }, 60000)
-
-    return () => {
-      clearInterval(syncInterval)
-    }
+    })
   }, [loadFriendships, loadGroupChats, loadDirectMessages, selectedDMUserIdRef])
 
   useEffect(() => {
@@ -1959,6 +1956,7 @@ function Echo({ user }: { user: User }) {
         unreadChannels={unreadChannels}
         spaceVoiceUsers={spaceVoiceUsers}
         activeVoiceChannelId={activeVoiceChannelId}
+        isVoiceConnected={isConnected}
         participants={participants}
         setAddSpaceModalTab={setAddSpaceModalTab}
         setShowAddSpaceModal={setShowAddSpaceModal}

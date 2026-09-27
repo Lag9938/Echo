@@ -23,6 +23,7 @@ import rnnoiseSimdWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise_simd.w
 import noiseGateWorkletPath from './audio/noiseGateWorklet.ts?worker&url'
 import { NOISE_GATE_PROCESSOR, type NoiseGateParams } from './audio/noiseGate'
 import { browserNoiseSuppression } from './audio/noiseSuppression'
+import { PeerBoost } from './audio/peerBoost'
 import { playJoinSound, playLeaveSound, playSoundboardEffect } from './soundEffects'
 import { trackVoiceJoined, trackVoiceLeft, trackScreenShareStarted, trackScreenShareStopped } from './analytics'
 import { installPresenceTrackThrottle } from './presenceThrottle'
@@ -339,6 +340,8 @@ export function useVoiceChannel(options?: {
   
   // Audio playback elements & volume/pan
   const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map())
+  const peerBoostRef = useRef<PeerBoost>(null as unknown as PeerBoost)
+  if (!peerBoostRef.current) peerBoostRef.current = new PeerBoost()
   const peerVolumesRef = useRef<Map<string, number>>(new Map())
   const peerScreenVolumesRef = useRef<Map<string, number>>(new Map())
   const peerPansRef = useRef<Map<string, number>>(new Map())
@@ -1030,6 +1033,7 @@ export function useVoiceChannel(options?: {
 
     activeStreamTilesRef.current.clear()
 
+    peerBoostRef.current.releaseAll()
     audioElementsRef.current.forEach(audio => {
       audio.srcObject = null
       audio.remove()
@@ -1352,6 +1356,7 @@ export function useVoiceChannel(options?: {
         const screenKey = `${participant.identity}-screen`
 
         const vAudio = audioElementsRef.current.get(voiceKey)
+        peerBoostRef.current.release(voiceKey)
         if (vAudio) { vAudio.srcObject = null; vAudio.remove(); audioElementsRef.current.delete(voiceKey) }
         const sAudio = audioElementsRef.current.get(screenKey)
         if (sAudio) { sAudio.srcObject = null; sAudio.remove(); audioElementsRef.current.delete(screenKey) }
@@ -1388,6 +1393,8 @@ export function useVoiceChannel(options?: {
           }
 
           track.attach(audio)
+          // Depois do attach (que liga a MediaStream ao elemento): volume salvo acima de 100% entra no ganho
+          if (!isScreen) peerBoostRef.current.apply(key, audio, savedVol, isDeafenedRef.current)
 
           if (typeof (audio as any).setSinkId === 'function' && selectedOutputIdRef.current !== 'default') {
             ;(audio as any).setSinkId(selectedOutputIdRef.current).catch(() => {})
@@ -1405,6 +1412,7 @@ export function useVoiceChannel(options?: {
           const isScreen = track.source === Track.Source.ScreenShareAudio
           const key = isScreen ? `${participant.identity}-screen` : `${participant.identity}-voice`
           const audio = audioElementsRef.current.get(key)
+          if (!isScreen) peerBoostRef.current.release(key)
           if (audio) {
             track.detach(audio)
             audioElementsRef.current.delete(key)
@@ -1710,6 +1718,7 @@ export function useVoiceChannel(options?: {
     setReconnectAttempt(prev => prev + 1)
 
     // Limpa instâncias antigas de áudio para evitar ruído órfão
+    peerBoostRef.current.releaseAll()
     audioElementsRef.current.forEach(audio => {
       audio.srcObject = null
       audio.remove()
@@ -1813,7 +1822,7 @@ export function useVoiceChannel(options?: {
       } else {
         const participantId = key.replace(/-voice$/, '')
         const vVol = peerVolumesRef.current.get(participantId) ?? 1.0
-        audio.muted = next || vVol === 0
+        peerBoostRef.current.apply(key, audio, vVol, next)
       }
     })
 
@@ -2254,6 +2263,7 @@ export function useVoiceChannel(options?: {
   // Change speaker output device
   const changeOutputDevice = useCallback(async (deviceId: string) => {
     selectedOutputIdRef.current = deviceId
+    peerBoostRef.current.setSinkId(deviceId)
     for (const audio of audioElementsRef.current.values()) {
       if (typeof (audio as any).setSinkId === 'function') {
         try {
@@ -2269,11 +2279,10 @@ export function useVoiceChannel(options?: {
   const changePeerVolume = useCallback((peerId: string, volume: number) => {
     const clamped = Math.max(0, Math.min(2, volume))
     peerVolumesRef.current.set(peerId, clamped)
-    const audio = audioElementsRef.current.get(`${peerId}-voice`)
-    if (audio) {
-      audio.volume = Math.max(0, Math.min(1, clamped))
-      audio.muted = isDeafenedRef.current || clamped === 0
-    }
+    const key = `${peerId}-voice`
+    const audio = audioElementsRef.current.get(key)
+    // Acima de 100% o <audio> não passa de 1: o reforço vem do ganho do Web Audio (veja peerBoost.ts)
+    if (audio) peerBoostRef.current.apply(key, audio, clamped, isDeafenedRef.current)
   }, [])
 
   const changePeerScreenVolume = useCallback((peerId: string, volume: number) => {

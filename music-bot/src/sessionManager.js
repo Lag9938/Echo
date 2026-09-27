@@ -134,6 +134,10 @@ export async function handlePlay(channelId, query) {
     // rodando o startup do yt-dlp em paralelo com o handshake WebRTC do LiveKit!
     let initialProc = null
     created.ready = (async () => {
+      // O áudio começa a ser buscado JÁ, sem esperar os metadados: links de canal/busca precisavam de uma
+      // extração do yt-dlp só para descobrir o título (~6s) e outra para baixar, uma depois da outra.
+      initialProc = startAudioProcess(query)
+
       const resolvePromise = resolveTrackInfo(query).catch(err => {
         err.stage = 'resolve'
         throw err
@@ -146,8 +150,11 @@ export async function handlePlay(channelId, query) {
 
       const audioSpawnPromise = resolvePromise.then(info => {
         created.resolved.set(query, info)
-        const targetUrl = info?.webpageUrl || query
-        initialProc = startAudioProcess(targetUrl)
+        // O YouTube bloqueou e os metadados vieram do SoundCloud: o processo já aberto aponta para o link errado
+        if (info?.source === 'soundcloud') {
+          try { initialProc.stop() } catch {}
+          initialProc = startAudioProcess(info.webpageUrl || query)
+        }
         return { info, proc: initialProc }
       })
 
@@ -535,7 +542,8 @@ async function playNext(session) {
   }
 
   const badge = info.source === 'soundcloud' ? ' (via SoundCloud ☁️)' : ''
-  await postBotMessage(channelId, `🎵 Tocando agora: **${info.title}**${badge}`)
+  // Sem await: a mensagem (0,5 a 1s no Supabase) não pode atrasar o começo do áudio nem abrir buraco entre músicas
+  void postBotMessage(channelId, `🎵 Tocando agora: **${info.title}**${badge}`).catch(() => {})
 
   // Pré-aquece a faixa seguinte em segundo plano após 5s para não concorrer na largada
   setTimeout(() => {

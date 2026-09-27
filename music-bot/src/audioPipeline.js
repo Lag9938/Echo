@@ -102,9 +102,14 @@ export function ytdlpBaseArgs() {
     '--playlist-items', '1'
   ]
   if (config.ytdlpCookiesFile) args.push('--cookies', config.ytdlpCookiesFile)
+  if (config.ytdlpFastYoutube) args.push('--extractor-args', FAST_YOUTUBE_ARGS)
+  // Os argumentos do administrador vêm por último para poderem sobrescrever os de cima
   args.push(...config.ytdlpExtraArgs)
   return args
 }
+
+// web_music e mweb aceitam o "contexto de anúncio": sem o anúncio inicial não há espera obrigatória antes do download
+export const FAST_YOUTUBE_ARGS = 'youtube:player_client=web_music,mweb;use_ad_playback_context=true'
 
 /**
  * Converte o erro cru do yt-dlp numa mensagem curta e útil para o chat.

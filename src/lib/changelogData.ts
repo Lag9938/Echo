@@ -18,11 +18,55 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.40.1',
+    title: 'Echo v0.40.1 - Voz Mais Alta, Cartões Novos e App Mais Leve',
+    date: '27 de Setembro de 2026',
+    tagline: 'O volume acima de 100% agora funciona de verdade, a chamada ganhou cartões novos e o app faz bem menos requisições ao servidor.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🔊',
+        badge: 'CORREÇÃO',
+        title: 'Volume Acima de 100% Funciona',
+        description: 'Ao aumentar o volume de alguém até 200%, a voz ficava igual ao normal. Agora o som é amplificado de verdade, com um limitador suave para não estalar.'
+      },
+      {
+        icon: '🎭',
+        badge: 'VISUAL',
+        title: 'Cartões da Chamada em Palco',
+        description: 'Cada pessoa aparece num cartão com a própria foto desfocada ao fundo, nome e estado (mutado, ao vivo) num rótulo discreto, e contorno na cor do tema para quem está falando.'
+      },
+      {
+        icon: '🧭',
+        badge: 'VISUAL',
+        title: 'Barra Superior com Nome do Espaço',
+        description: 'O espaço selecionado mostra o nome ao lado do ícone e, durante uma chamada, uma pílula leva de volta a ela com um clique. Fotos de perfil do chat, do cartão de perfil e das abas de transmissão ficaram 100% redondas.'
+      },
+      {
+        icon: '👥',
+        badge: 'CORREÇÃO',
+        title: 'Grupos de Conversa Voltam a Funcionar',
+        description: 'Uma regra de segurança do banco entrava em loop e impedia criar e listar grupos. Foi corrigida, e o criador vê o grupo assim que o cria.'
+      },
+      {
+        icon: '⚡',
+        badge: 'MELHORIA',
+        title: 'Menos Requisições ao Servidor',
+        description: 'Amigos, grupos e membros do espaço deixaram de ser relidos a cada minuto: agora só a cada 5 minutos com a janela visível e ao voltar para o app. O uso de dados e de logs cai bastante.'
+      },
+      {
+        icon: '🎵',
+        badge: 'MELHORIA',
+        title: 'Bot de Música Começa Mais Rápido',
+        description: 'A música passa a tocar em cerca de 5 segundos, em vez de 10 a 15: o bot pula a espera do anúncio do YouTube e busca o áudio em paralelo com o título.'
+      }
+    ]
+  },
+  {
     version: '0.40.0',
     title: 'Echo v0.40.0 - Chamadas e Chat Renovados',
     date: '26 de Setembro de 2026',
     tagline: 'A lista de chamada, o topo e a barra da transmissão, o chat de texto e o mini player do bot de música ganharam um visual novo, com a qualidade da conexão medida de verdade.',
-    isLatest: true,
     highlights: [
       {
         icon: '📶',

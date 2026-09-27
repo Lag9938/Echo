@@ -999,3 +999,127 @@
   margin: 0;
 }
 
+
+/* ── Cartões da chamada em "Palco": tiles 16:10 com a foto da pessoa desfocada ao fundo ── */
+.participants-grid .participant-card:not(.has-camera) {
+  flex: 1 1 300px;
+  max-width: 340px;
+  min-width: 240px;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  padding: 0;
+  gap: 0;
+  border-radius: 18px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  background: var(--bg-tertiary);
+  box-shadow: none;
+  transform: none;
+}
+.participants-grid .participant-card:not(.has-camera):hover {
+  transform: none;
+  background: var(--bg-tertiary);
+  border-color: color-mix(in srgb, var(--text-primary) 25%, var(--border-color));
+}
+.participant-card-backdrop {
+  position: absolute;
+  inset: -20%;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--pc-bg, linear-gradient(135deg, var(--accent-color), #c75a4a)) center / cover;
+  filter: blur(34px) saturate(1.2);
+  opacity: 0.42;
+}
+.participants-grid .participant-card:not(.has-camera) .participant-avatar-large {
+  position: relative;
+  z-index: 1;
+  width: 72px;
+  height: 72px;
+  border: 0;
+  border-radius: 50% !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  animation: none;
+}
+.participants-grid .participant-card:not(.has-camera) .avatar-initial-large { font-size: 26px; }
+
+/* Nome (e estado) em um rótulo de vidro no canto de baixo */
+.participants-grid .participant-card:not(.has-camera) .participant-card-bottom-info {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 2;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: auto;
+  pointer-events: none;
+}
+.participants-grid .participant-card:not(.has-camera) .participant-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: auto;
+  max-width: 100%;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #000 55%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 12.5px;
+  text-align: left;
+}
+.participant-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.participant-name-state { width: 13px; height: 13px; flex-shrink: 0; color: #fca5a5; }
+.participants-grid .participant-card:not(.has-camera) .watch-stream-badge-btn {
+  pointer-events: auto;
+  margin-top: 0;
+  padding: 4px 11px;
+  flex-shrink: 0;
+}
+
+/* Quem está falando: contorno e rótulo na cor de destaque do tema (sem o azul e o verde fixos) */
+.participants-grid .participant-card.speaking:not(.has-camera) {
+  border-color: var(--accent-color);
+  background: var(--bg-tertiary);
+  box-shadow: 0 0 0 2px var(--accent-color), 0 10px 30px color-mix(in srgb, var(--accent-color) 30%, transparent);
+}
+.participants-grid .participant-card.speaking:not(.has-camera) .participant-name {
+  background: var(--accent-color);
+}
+.participants-grid .participant-card.speaking:not(.has-camera) .participant-avatar-large {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 55%, transparent), 0 6px 18px rgba(0, 0, 0, 0.35);
+  transform: none;
+  animation: none;
+}
+.participants-grid .participant-card.has-live-screen:not(.has-camera) {
+  border-color: color-mix(in srgb, var(--accent-color) 60%, var(--border-color));
+}
+.participants-grid .participant-card.has-live-screen:not(.has-camera):hover {
+  border-color: var(--accent-color);
+}
+.participants-grid .participant-card.is-muted:not(.has-camera) .participant-avatar-large { filter: saturate(0.7); }
+.participant-live-badge {
+  background: var(--accent-color);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent-color) 45%, transparent);
+  z-index: 2;
+}
+@media (prefers-reduced-motion: reduce) {
+  .participant-card-backdrop { filter: blur(34px); }
+}
+
+.participants-grid .participant-card:not(.has-camera) .watch-stream-badge-btn {
+  background: color-mix(in srgb, #000 55%, transparent);
+  border-color: var(--accent-color);
+  color: #fff;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.participants-grid .participant-card:not(.has-camera) .watch-stream-badge-btn:hover {
+  background: var(--accent-color);
+  box-shadow: none;
+  transform: none;
+}

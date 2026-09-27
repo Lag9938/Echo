@@ -222,9 +222,9 @@ export function createWindow() {
   setGameScanInterval(setInterval(() => scanRunningGames(getMainWindow, rootDir), 5000))
   setTimeout(() => scanRunningGames(getMainWindow, rootDir), 1500)
 
+  const devUrl = 'http://127.0.0.1:5173'
+  let retries = 0
   if (isDevelopment) {
-    const devUrl = 'http://127.0.0.1:5173'
-    let retries = 0
     const loadDev = () => {
       mainWindow.loadURL(devUrl).catch(() => {
         if (retries++ < 15 && mainWindow && !mainWindow.isDestroyed()) {
@@ -239,10 +239,18 @@ export function createWindow() {
     })
   }
 
-  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    // Só a página principal importa; -3 (ERR_ABORTED) é recarregar (Ctrl+R) ou navegar no meio do carregamento, não uma falha
+    if (isMainFrame === false || errorCode === -3) return
     console.error('Falha ao carregar conteúdo da janela:', errorCode, errorDescription, validatedURL)
     if (mainWindow && !mainWindow.isDestroyed()) {
       setTimeout(() => {
+        if (!mainWindow || mainWindow.isDestroyed()) return
+        if (isDevelopment) {
+          // Em desenvolvimento nunca cai para o build antigo em dist (ele nunca mais mostraria as edições): tenta o Vite de novo
+          if (retries++ < 15) mainWindow.loadURL(devUrl).catch(() => {})
+          return
+        }
         mainWindow.loadFile(path.join(rootDir, 'dist', 'index.html')).catch(() => {})
       }, 1000)
     }

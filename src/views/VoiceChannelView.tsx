@@ -706,7 +706,7 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                   return (
                                     <div
                                       key={p.userId}
-                                      className={`participant-card ${p.isSpeaking ? 'speaking' : ''} ${isSharer ? 'has-live-screen' : ''} ${hasCam ? 'has-camera' : ''}`}
+                                      className={`participant-card ${p.isSpeaking ? 'speaking' : ''} ${isSharer ? 'has-live-screen' : ''} ${hasCam ? 'has-camera' : ''} ${p.isMuted ? 'is-muted' : ''}`}
                                       onClick={() => {
                                         if (isSharer) {
                                           setSelectedScreenSharerUserId(p.userId)
@@ -716,9 +716,15 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                           setVolumeControlUser(p)
                                         }
                                       }}
-                                      style={{ cursor: 'pointer', position: 'relative' }}
+                                      style={{
+                                        cursor: 'pointer',
+                                        position: 'relative',
+                                        // Fundo desfocado do cartão: a própria foto da pessoa (sem foto, a cor de destaque)
+                                        ...(p.avatarUrl ? { ['--pc-bg' as any]: `url(${JSON.stringify(p.avatarUrl)})` } : {})
+                                      }}
                                       title={isSharer ? `Clique para assistir a tela de ${p.displayName}` : (p.userId !== user.id ? "Ajustar volume de áudio" : "")}
                                     >
+                                      {!hasCam && <span className="participant-card-backdrop" aria-hidden="true" />}
                                       {isSharer && (
                                         <div className="participant-live-badge">
                                           <span className="live-dot-pulse" /> AO VIVO
@@ -752,33 +758,16 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                           const deco = presenceData[p.userId]?.avatar_decoration || spaceMembers.find(m => (m.user?.id || m.id) === p.userId)?.user?.avatar_decoration || (p.userId === user.id ? avatarDecoration : null)
                                           return deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null
                                         })()}
-                                        {(p.isDeafened || p.isMuted) && (
-                                          <div className="participant-avatar-badge" style={{
-                                            position: 'absolute',
-                                            bottom: '-4px',
-                                            right: '-4px',
-                                            background: '#e0554c',
-                                            borderRadius: p.isDeafened && p.isMuted ? '12px' : '50%',
-                                            width: p.isDeafened && p.isMuted ? 'auto' : '24px',
-                                            padding: p.isDeafened && p.isMuted ? '2px 6px' : '0',
-                                            height: '24px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '3px',
-                                            color: '#fff',
-                                            boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
-                                            border: '2px solid var(--bg-primary)'
-                                          }}>
-                                            {p.isMuted && <MicOffIcon style={{ width: '13px', height: '13px' }} />}
-                                            {p.isDeafened && <HeadphonesOffIcon style={{ width: '13px', height: '13px' }} />}
-                                          </div>
-                                        )}
                                       </div>
-                                      <div className="participant-card-bottom-info" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', width: '100%' }}>
+                                      <div className="participant-card-bottom-info">
                                         <span className="participant-name">
-                                          {p.displayName}
-                                          {p.userId === user.id && " (Você)"}
+                                          {/* Mutado/ensurdecido ficam no rótulo do nome (com câmera, o selo do topo já mostra) */}
+                                          {!hasCam && p.isMuted && <MicOffIcon className="participant-name-state" />}
+                                          {!hasCam && p.isDeafened && <HeadphonesOffIcon className="participant-name-state" />}
+                                          <span className="participant-name-text">
+                                            {p.displayName}
+                                            {p.userId === user.id && " (Você)"}
+                                          </span>
                                         </span>
                                         {isSharer && (
                                           <button

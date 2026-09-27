@@ -9,7 +9,7 @@ process.env.SUPABASE_URL = 'https://example.invalid'
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'k'
 process.env.BOT_AUTHOR_ID = '00000000-0000-4000-8000-000000000000'
 
-const { describePlayError, ytdlpBaseArgs } = await import('../src/audioPipeline.js')
+const { describePlayError, ytdlpBaseArgs, FAST_YOUTUBE_ARGS } = await import('../src/audioPipeline.js')
 const { config } = await import('../src/config.js')
 
 const BOT_CHECK = new Error(
@@ -44,6 +44,7 @@ test('outros erros mostram só a primeira linha ERROR: e a consulta', () => {
 })
 
 test('ytdlpBaseArgs inclui cookies e argumentos extras configurados', () => {
+  config.ytdlpFastYoutube = false
   config.ytdlpCookiesFile = ''
   config.ytdlpExtraArgs = []
   assert.deepEqual(ytdlpBaseArgs(), ['--no-playlist', '--playlist-items', '1'])
@@ -51,4 +52,15 @@ test('ytdlpBaseArgs inclui cookies e argumentos extras configurados', () => {
   config.ytdlpCookiesFile = '/opt/echo/cookies.txt'
   config.ytdlpExtraArgs = ['--extractor-args', 'youtube:player_client=tv']
   assert.deepEqual(ytdlpBaseArgs(), ['--no-playlist', '--playlist-items', '1', '--cookies', '/opt/echo/cookies.txt', '--extractor-args', 'youtube:player_client=tv'])
+})
+
+test('modo rápido do YouTube pula o anúncio (sem a espera de 3 a 6 s) e os argumentos do administrador vêm depois', () => {
+  config.ytdlpFastYoutube = true
+  config.ytdlpCookiesFile = '/opt/echo/cookies.txt'
+  config.ytdlpExtraArgs = ['--extractor-args', 'youtube:player_client=tv']
+  const args = ytdlpBaseArgs()
+  assert.deepEqual(args.slice(0, 6), ['--no-playlist', '--playlist-items', '1', '--cookies', '/opt/echo/cookies.txt', '--extractor-args'])
+  assert.equal(args[6], FAST_YOUTUBE_ARGS)
+  assert.match(FAST_YOUTUBE_ARGS, /use_ad_playback_context=true/)
+  assert.deepEqual(args.slice(7), ['--extractor-args', 'youtube:player_client=tv'])
 })
