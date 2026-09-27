@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - 'v*'
+  # Disparo manual (aba Actions > Run workflow): cria a tag e o release a partir do commit escolhido.
+  # A tag precisa bater com a versão do package.json (ex.: v0.40.2).
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag do release (ex.: v0.40.2)'
+        required: true
 
 permissions:
   contents: write
@@ -16,6 +23,8 @@ jobs:
   build-and-release:
     needs: ci
     runs-on: windows-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
     steps:
       - name: Checkout code
@@ -30,12 +39,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check tag matches package.json version
+        shell: bash
+        run: |
+          expected="v$(node -p "require('./package.json').version")"
+          if [ "$RELEASE_TAG" != "$expected" ]; then
+            echo "A tag $RELEASE_TAG não bate com a versão do package.json ($expected)." >&2
+            exit 1
+          fi
+
       - name: Ensure GitHub Release exists
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          gh release view ${{ github.ref_name }} || gh release create ${{ github.ref_name }} --title "${{ github.ref_name }}" --notes "Release ${{ github.ref_name }}"
+          gh release view "$RELEASE_TAG" || gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "$RELEASE_TAG" --notes "Release $RELEASE_TAG"
 
       - name: Build and publish
         env:
