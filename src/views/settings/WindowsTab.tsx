@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react'
 import { ColoredWindowsIcon, ColoredTrayIcon } from '../../components/ColoredIcons'
 
-export interface WindowsTabProps {
-  onToggleOverlay?: () => void
-}
+export interface WindowsTabProps {}
 
-export function WindowsTab({ onToggleOverlay }: WindowsTabProps) {
+export function WindowsTab(_props: WindowsTabProps) {
   const [autoStartEnabled, setAutoStartEnabled] = useState(false)
   const [openAsHidden, setOpenAsHidden] = useState(false)
   const [loadingAutoStart, setLoadingAutoStart] = useState(false)
@@ -208,42 +206,6 @@ export function WindowsTab({ onToggleOverlay }: WindowsTabProps) {
           <span className="echo-slider"></span>
         </label>
       </div>
-
-      {/* Mini Overlay de Jogo */}
-      {onToggleOverlay && (
-        <div
-          style={{
-            marginTop: '16px',
-            background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01))',
-            padding: '20px 22px',
-            borderRadius: '14px',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '16px',
-            flexWrap: 'wrap',
-          }}
-        >
-          <div style={{ maxWidth: '540px' }}>
-            <h3 style={{ margin: '0 0 6px', fontSize: '16px', color: 'var(--text-primary)' }}>
-              🎮 Mini Overlay Flutuante de Jogo
-            </h3>
-            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-              Abre uma janela translúcida compacta que permanece sempre no topo sobre seus jogos (Valorant, CS2, etc.), mostrando quem está falando no canal de voz.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="echo-btn-primary"
-            onClick={onToggleOverlay}
-            style={{ padding: '8px 16px', fontSize: '13px' }}
-          >
-            Abrir Mini Overlay
-          </button>
-        </div>
-      )}
     </div>
   )
 }

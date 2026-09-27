@@ -85,20 +85,23 @@ export function parseKeyboardEventToAccelerator(e: KeyboardEvent): { accelerator
 
   if (!keyName) return { accelerator: null }
 
-  // Teclas que podem ser usadas sozinhas globalmente sem travar a escrita em jogos
+  // Teclas que o Windows deixa registrar sozinhas, sem modificador, sem sequestrar a tecla de todo mundo
   const isAllowedSingleKey =
     /^F([1-9]|1[0-9]|2[0-4])$/i.test(keyName) ||
     ['Insert', 'Delete', 'Home', 'End', 'PageUp', 'PageDown', 'Pause', 'PrintScreen', 'ScrollLock', 'num0', 'num1', 'num2', 'num3', 'num4', 'num5', 'num6', 'num7', 'num8', 'num9', 'numadd', 'numsub', 'nummult', 'numdiv'].includes(keyName)
 
+  // A pessoa escolhe a tecla que quiser — o Echo não troca nem completa nada sozinho. Só avisa quando a
+  // escolha vai virar um atalho SEM modificador (ex.: só "C"): o sistema operacional então sequestra essa
+  // tecla de todo teclado, em todo programa, o tempo todo (nem dá pra digitar um "c" em outro app), porque
+  // é assim que atalho global sem Ctrl/Alt/Shift funciona no Windows — não é uma regra do Echo.
+  const accelerator = [...modifiers, keyName].join('+')
   if (modifiers.length === 0 && !isAllowedSingleKey) {
-    // Para teclados 60% e letras comuns: adiciona Alt por padrão para evitar travar digitação no PC
     return {
-      accelerator: `Alt+${keyName}`,
-      warning: `Para a tecla "${keyName}", adicionamos Alt ("Alt+${keyName}") para não bloquear sua digitação no Windows e nos jogos.`
+      accelerator,
+      warning: `"${keyName}" sozinha vira um atalho sem modificador: o Windows vai capturar essa tecla em QUALQUER programa enquanto o Echo estiver aberto (você não vai conseguir mais digitar "${keyName.toLowerCase()}" em lugar nenhum). Se não é isso que você quer, seguure Ctrl, Alt ou Shift junto.`
     }
   }
 
-  const accelerator = [...modifiers, keyName].join('+')
   return { accelerator }
 }
 

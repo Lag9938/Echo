@@ -482,7 +482,10 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
     const el = messagesContainerRef.current
     if (!el) return
     const toBottom = () => {
-      if (stickToBottomRef.current) el.scrollTop = el.scrollHeight
+      // behavior 'instant' ignora o scroll-behavior:smooth do CSS de propósito: aqui é "grudar no fim",
+      // não um passeio suave, e chamar isso várias vezes com scroll suave reinicia a animação no meio do
+      // caminho (o chat parece "tremer").
+      if (stickToBottomRef.current) el.scrollTo({ top: el.scrollHeight, behavior: 'instant' })
     }
     toBottom()
     const timers = [50, 160, 400, 900].map(ms => setTimeout(toBottom, ms))

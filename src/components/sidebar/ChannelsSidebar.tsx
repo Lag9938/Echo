@@ -35,6 +35,7 @@ import {
   VolumeIcon
 } from '../icons'
 import { AvatarDecoration } from '../AvatarDecoration'
+import { CallElapsed } from '../voice/CallHeaderMeta'
 
 export interface ChannelsSidebarProps {
   spaces?: Space[]
@@ -1089,12 +1090,27 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
               {activeVoiceChannelId && (
                   <div className={`voice-status-panel ${isViewingActiveVoiceChannel ? 'compact' : ''}`}>
                     <div className="voice-status-header-row">
-                      <div className="voice-status-info">
-                        <div className="connection-quality-indicator" style={{ position: 'relative', cursor: 'pointer' }}>
+                      <div
+                        className={`voice-status-info ${!isViewingActiveVoiceChannel ? 'clickable' : ''}`}
+                        onClick={() => {
+                          if (!isViewingActiveVoiceChannel && activeVoiceChannel) {
+                            setSelectedChannel(activeVoiceChannel)
+                          }
+                        }}
+                        title={!isViewingActiveVoiceChannel ? "Clique para voltar à chamada" : undefined}
+                      >
+                        <span className={`voice-status-live-dot ${isVoiceReconnecting ? 'reconnecting' : ''}`} />
+                        <div className="voice-status-text">
+                          <span className="voice-status-channel" title={activeVoiceChannel?.name}>{activeVoiceChannel?.name}</span>
+                          <span className="voice-status-label" style={isVoiceReconnecting ? { color: '#f0b232' } : undefined}>
+                            {isVoiceReconnecting ? 'Reconectando…' : <CallElapsed />}
+                          </span>
+                        </div>
+                        <div className="connection-quality-indicator" style={{ position: 'relative', cursor: 'pointer' }} onClick={(e) => e.stopPropagation()}>
                           <div className={`connection-bars ${isVoiceReconnecting ? 'reconnecting' : (rtcStats && rtcStats.ping < 100 ? 'good' : rtcStats && rtcStats.ping < 200 ? 'medium' : 'bad')}`}>
                             <i /><i /><i />
                           </div>
-                          
+
                           {/* Tooltip de Estatísticas RTC */}
                           <div className="connection-stats-tooltip">
                             <strong>Conexão RTC</strong>
@@ -1103,31 +1119,15 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                             <div className="stat-row"><span>Perda de Pacotes:</span> <strong>{rtcStats ? `${rtcStats.packetLoss} %` : '0 %'}</strong></div>
                           </div>
                         </div>
-                        <div 
-                          className={`voice-status-text ${!isViewingActiveVoiceChannel ? 'clickable' : ''}`}
-                          onClick={() => {
-                            if (!isViewingActiveVoiceChannel && activeVoiceChannel) {
-                              setSelectedChannel(activeVoiceChannel)
-                            }
-                          }}
-                          style={{ cursor: !isViewingActiveVoiceChannel ? 'pointer' : 'default' }}
-                          title={!isViewingActiveVoiceChannel ? "Clique para voltar à chamada" : undefined}
-                        >
-                          <span className="voice-status-label" style={isVoiceReconnecting ? { color: '#f59e0b', fontWeight: 600 } : undefined}>
-                            {isVoiceReconnecting ? 'Reconectando...' : 'Voz conectada'}
-                          </span>
-                          <span className="voice-status-channel" title={activeVoiceChannel?.name}>{activeVoiceChannel?.name}</span>
-                        </div>
                       </div>
 
-                      <button 
-                        type="button" 
-                        className="voice-disconnect-btn" 
-                        onClick={handleLeaveVoice} 
+                      <button
+                        type="button"
+                        className="voice-disconnect-btn"
+                        onClick={handleLeaveVoice}
                         title="Desconectar da chamada de voz"
                       >
-                        <PhoneOffIcon style={{ width: '12px', height: '12px' }} />
-                        <span>Sair</span>
+                        <PhoneOffIcon style={{ width: '13px', height: '13px' }} />
                       </button>
                     </div>
 
@@ -1143,7 +1143,7 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                     )}
 
                     {!isViewingActiveVoiceChannel && (
-                      <div className="voice-status-actions-grid">
+                      <div className="voice-status-actions-strip">
                         <button className={`voice-action-btn ${isMuted ? 'muted' : ''}`} onClick={handleToggleMute} title={isMuted ? "Desmutar microfone" : "Mutar microfone"}>
                           {isMuted ? <MicOffIcon /> : <MicIcon />}
                         </button>
@@ -1157,9 +1157,9 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                           <RecordCallIcon isRecording={isRecordingCall} />
                         </button>
                         {activeScreenSharers && activeScreenSharers.length > 0 && (
-                          <button 
-                            className={`voice-action-btn ${isPiPActive ? 'active' : ''}`} 
-                            onClick={() => setIsPiPActive?.(!isPiPActive)} 
+                          <button
+                            className={`voice-action-btn ${isPiPActive ? 'active' : ''}`}
+                            onClick={() => setIsPiPActive?.(!isPiPActive)}
                             title={isPiPActive ? "Fechar Mini Player" : "Abrir Mini Player Flutuante da Transmissão"}
                             style={{ color: isPiPActive ? '#1eb4ff' : undefined }}
                           >

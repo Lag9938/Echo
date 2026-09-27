@@ -10,7 +10,13 @@
   pointer-events: auto;
 }
 
-/* ── Topbar (Modern Desktop Header: 3-Zone with Horizontal Servers) ── */
+/* ── Topbar (Modern Desktop Header: 3-Zone with Horizontal Servers) ──
+   Sempre "position: fixed" (flutua por cima, nunca no fluxo do documento): quando ela aparecia/sumia
+   ficando de fato no fluxo (com margin-top negativo), TUDO abaixo dela — inclusive o chat — era
+   empurrado 52px para cima ou para baixo a cada vez, e como isso reage ao mouse chegando perto do topo
+   (sem estar fixada), bastava passar o cursor por ali para o app inteiro "pular". Fixa (barra sempre
+   ligada), a página reserva o espaço com .topbar-spacer (veja abaixo) e nunca acontece de novo; sem
+   fixar, a barra some/aparece flutuando por cima do conteúdo, sem empurrar nada. */
 .topbar {
   height: 52px;
   min-height: 52px;
@@ -27,39 +33,56 @@
   flex-shrink: 0;
   user-select: none;
   -webkit-app-region: drag;
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 1000;
   box-sizing: border-box;
   transform-origin: top center;
   overflow: visible;
-  margin-top: 0;
-  transition: margin-top 0.44s cubic-bezier(0.16, 1, 0.3, 1),
-              opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.4s ease,
+  transform: translateY(0);
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.25s ease,
+              box-shadow 0.32s ease,
               border-color 0.4s ease,
               background 0.25s ease;
 }
 
 .topbar.auto-hidden {
-  margin-top: -52px !important;
+  transform: translateY(-100%) !important;
   opacity: 0 !important;
   pointer-events: none !important;
   box-shadow: 0 0 0 rgba(0, 0, 0, 0) !important;
   border-bottom-color: transparent !important;
-  transition: margin-top 0.44s cubic-bezier(0.16, 1, 0.3, 1),
+  transition: transform 0.44s cubic-bezier(0.16, 1, 0.3, 1),
               opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1),
               box-shadow 0.4s ease,
               border-color 0.4s ease;
 }
 
 .topbar.visible {
-  margin-top: 0 !important;
+  transform: translateY(0) !important;
   opacity: 1 !important;
   pointer-events: auto !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 20px rgba(0, 0, 0, 0.28);
-  transition: margin-top 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1),
               opacity 0.25s ease,
               box-shadow 0.32s ease;
+}
+
+/* Reserva o lugar da barra no fluxo normal da página (ela mesma não ocupa mais espaço, por ser fixed).
+   Acompanha se a barra está à vista agora (fixada OU aparecida com o mouse), não só se está fixada —
+   por isso some/aparece na mesma velocidade que a barra desliza, para nunca cobrir o cabeçalho do canal
+   por baixo dela nem deixar um vão em branco no topo quando ela se esconde. */
+.topbar-spacer {
+  flex-shrink: 0;
+  height: 52px;
+  transition: height 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.topbar-spacer.collapsed {
+  height: 0;
+  transition: height 0.44s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .topbar-left-zone,

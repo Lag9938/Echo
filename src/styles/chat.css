@@ -12,11 +12,10 @@
   flex-shrink: 0;
   display: flex; flex-direction: column; gap: 2px;
 }
-/* Em conversas longas, o navegador pula desenhar o que está fora da tela (e lembra o tamanho real depois) */
-.messages-flow.long > .msg-row {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 72px;
-}
+/* Removido "content-visibility: auto" em conversas longas: a altura de cada mensagem varia demais (uma
+   linha, várias, imagem, incorporação, reações) para um "chute" de tamanho funcionar. Na prática, toda
+   mensagem nunca antes desenhada trocava de 72px pro tamanho real ao entrar perto da tela — um pequeno
+   salto por mensagem que, ao rolar uma conversa longa, parecia o chat inteiro tremendo. */
 .msg-card {
   display: flex; gap: 14px; padding: 6px 12px;
   border-radius: 8px; width: 100%; max-width: 100%;

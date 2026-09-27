@@ -18,11 +18,49 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.40.2',
+    title: 'Echo v0.40.2 - Chat Estável, Atalhos Livres e Menos Bugs',
+    date: '27 de Setembro de 2026',
+    tagline: 'O chat parava de tremer quando a barra superior flutuava por cima do conteúdo, os atalhos de teclado agora respeitam a tecla exata que você escolhe, e a detecção de jogo parou de se enganar com o título de outras janelas.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🩹',
+        badge: 'CORREÇÃO',
+        title: 'Chat Parava de Tremer',
+        description: 'A barra superior, quando não fixada, empurrava o chat inteiro 52px pra cima ou pra baixo cada vez que aparecia ou sumia sobre o cursor. Agora ela sempre flutua por cima sem empurrar nada. Também corrigidos: o cartão de convite pulava de tamanho ao carregar, e imagens no chat "estouravam" de repente pro tamanho real.'
+      },
+      {
+        icon: '⌨️',
+        badge: 'CORREÇÃO',
+        title: 'Atalhos de Teclado com Liberdade Total',
+        description: 'Escolher uma tecla sozinha (sem Ctrl/Alt/Shift) virava "Alt+tecla" escondido, sem pedir permissão. Agora grava exatamente a tecla que você aperta. Também passou a avisar quando o Windows recusa registrar um atalho (ex.: já em uso por outro programa) — antes ficava "salvo" sem funcionar, sem nenhum aviso.'
+      },
+      {
+        icon: '🎮',
+        badge: 'CORREÇÃO',
+        title: 'Detecção de Jogo Mais Confiável',
+        description: '"Jogando X" podia aparecer sem o jogo estar aberto: bastava alguma janela do sistema (uma aba do navegador, um vídeo) ter o nome do jogo no título. Agora só conta o processo de verdade rodando.'
+      },
+      {
+        icon: '🎨',
+        badge: 'VISUAL',
+        title: 'Ícone do League of Legends e Barra da Chamada',
+        description: 'Ícone oficial do LoL nas pílulas de atividade. A barra de controles da chamada (mic, fone, câmera, tela, etc.) ganhou um novo agrupamento visual, com a qualidade da conexão ao lado do botão de sair.'
+      },
+      {
+        icon: '🧹',
+        badge: 'MELHORIA',
+        title: 'Configurações Mais Limpas',
+        description: 'Removida a função "Mini Overlay de Voz Gamer", que estava duplicada em três abas diferentes das configurações.'
+      }
+    ]
+  },
+  {
     version: '0.40.1',
     title: 'Echo v0.40.1 - Voz Mais Alta, Cartões Novos e App Mais Leve',
     date: '27 de Setembro de 2026',
     tagline: 'O volume acima de 100% agora funciona de verdade, a chamada ganhou cartões novos e o app faz bem menos requisições ao servidor.',
-    isLatest: true,
     highlights: [
       {
         icon: '🔊',

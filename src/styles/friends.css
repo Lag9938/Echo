@@ -2655,10 +2655,28 @@
 
 
 /* -- Message Attachment Preview ------------ */
+/* O wrapper reserva um espaço mínimo (largura e altura) enquanto a imagem baixa: sem isso ela ocupa 0px
+   e, ao carregar, "estoura" de repente pro tamanho real — empurrando tudo abaixo dela na conversa. Não dá
+   pra saber a proporção real antes de baixar (não é guardada no banco), então 220px é só um chute
+   melhor que zero; assim que carrega, o espaço reservado desaparece com uma transição suave. */
+.msg-attachment-wrap {
+  display: inline-block;
+  min-width: 220px;
+  min-height: 160px;
+  max-width: 100%;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  transition: min-height 0.25s ease, min-width 0.25s ease;
+  overflow: hidden;
+}
+.msg-attachment-wrap.loaded {
+  min-width: 0;
+  min-height: 0;
+  background: none;
+}
 .msg-attachment-img {
   max-width: min(100%, 520px);
   max-height: 400px;
-  min-height: 52px;
   border-radius: 10px;
   margin-top: 6px;
   cursor: pointer;
@@ -2666,7 +2684,11 @@
   background: rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.12);
   display: block;
-  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s ease, filter 0.18s ease;
+  opacity: 0;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s ease, filter 0.18s ease, opacity 0.2s ease;
+}
+.msg-attachment-wrap.loaded .msg-attachment-img {
+  opacity: 1;
 }
 .msg-attachment-img:hover {
   transform: translateY(-1px) scale(1.015);

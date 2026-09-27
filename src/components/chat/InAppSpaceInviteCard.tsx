@@ -113,28 +113,38 @@ export const InAppSpaceInviteCard: React.FC<InAppSpaceInviteCardProps> = ({ invi
   }
 
   if (loading && !spaceInfo) {
+    // Mesmo tamanho e formato do cartão carregado (tag no topo + linha com avatar de 48px): o convite é
+    // exatamente o tipo de mensagem que se repete numa conversa ativa, e cada vez que os detalhes chegavam
+    // esse esqueleto (bem mais baixo que o cartão final) dava um salto para o tamanho certo — isso empurrava
+    // as mensagens abaixo dele. Com a mesma altura, a resposta do convite só troca o conteúdo, não o espaço.
     return (
-      <div style={{
-        marginTop: '8px',
-        maxWidth: '440px',
-        padding: '12px 16px',
-        borderRadius: '12px',
-        background: 'rgba(18, 22, 32, 0.85)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px'
-      }}>
+      <div
+        className="in-app-space-invite-card"
+        style={{
+          marginTop: '8px',
+          maxWidth: '440px',
+          borderRadius: '14px',
+          overflow: 'hidden',
+          background: 'linear-gradient(145deg, rgba(20, 24, 36, 0.95), rgba(13, 16, 24, 0.98))',
+          border: '1px solid rgba(255, 255, 255, 0.08)'
+        }}
+      >
         <div style={{
-          width: '42px',
-          height: '42px',
-          borderRadius: '12px',
-          background: 'rgba(255, 255, 255, 0.05)',
-          animation: 'pulse 1.5s infinite'
-        }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ width: '120px', height: '14px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '4px', marginBottom: '6px' }} />
-          <div style={{ width: '70px', height: '11px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '4px' }} />
+          padding: '10px 14px 8px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '7px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
+        }}>
+          <div style={{ width: '13px', height: '13px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.08)', animation: 'pulse 1.5s infinite' }} />
+          <div style={{ width: '190px', height: '10px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.08)', animation: 'pulse 1.5s infinite' }} />
+        </div>
+        <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '13px', flexShrink: 0, background: 'rgba(255, 255, 255, 0.06)', animation: 'pulse 1.5s infinite' }} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '7px' }}>
+            <div style={{ width: '140px', height: '13px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }} />
+            <div style={{ width: '90px', height: '10px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }} />
+          </div>
         </div>
       </div>
     )

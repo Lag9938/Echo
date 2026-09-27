@@ -42,6 +42,15 @@ describe('Electron IPC - Game Detection', () => {
     expect(matchGameProcess('System Idle Process')).toBeNull()
   })
 
+  it('ignora o título da janela: uma aba do navegador ou qualquer app falando de um jogo não conta como "jogando"', () => {
+    // Bug real: o usuário não estava jogando League of Legends, mas a atividade aparecia porque alguma
+    // janela do sistema tinha esse texto no título (uma aba do navegador, um vídeo, esta conversa...).
+    expect(matchGameProcess('chrome.exe', 'League of Legends - YouTube')).toBeNull()
+    expect(matchGameProcess('Discord.exe', 'Falando sobre VALORANT no chat')).toBeNull()
+    expect(matchGameProcess(null, 'League of Legends')).toBeNull()
+    expect(matchGameProcess('', 'Counter-Strike 2 patch notes')).toBeNull()
+  })
+
   it('divide linhas de stdout do tasklist com CRLF corretamente', () => {
     const stdout = '"System Idle Process","0","Services","0","8 K"\r\n"System","4","Services","0","3,876 K"\r\n"VALORANT-Win64-Shipping.exe","1234","Console","1","2,000,000 K"\r\n'
     const lines = stdout.split(/\r?\n/)

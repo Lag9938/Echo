@@ -78,7 +78,6 @@ export interface SettingsViewProps {
   onPttModeChange?: (val: boolean) => void
   pttKey?: string
   onPttKeyChange?: (val: string) => void
-  onToggleOverlay?: () => void
   muteShortcut?: string
   onMuteShortcutChange?: (key: string) => void
   deafenShortcut?: string
@@ -161,7 +160,6 @@ export function SettingsView({
   onPttModeChange,
   pttKey,
   onPttKeyChange,
-  onToggleOverlay,
   muteShortcut,
   onMuteShortcutChange,
   deafenShortcut,
@@ -313,7 +311,6 @@ export function SettingsView({
             onPttModeChange={onPttModeChange}
             pttKey={pttKey}
             onPttKeyChange={onPttKeyChange}
-            onToggleOverlay={onToggleOverlay}
             muteShortcut={muteShortcut}
             deafenShortcut={deafenShortcut}
             aiDenoiseShortcut={aiDenoiseShortcut}
@@ -333,7 +330,6 @@ export function SettingsView({
             onDeafenShortcutChange={onDeafenShortcutChange}
             aiDenoiseShortcut={aiDenoiseShortcut}
             onAiDenoiseShortcutChange={onAiDenoiseShortcutChange}
-            onToggleOverlay={onToggleOverlay}
           />
         )}
 
@@ -352,7 +348,7 @@ export function SettingsView({
         )}
 
         {activeSettingsTab === 'windows' && (
-          <WindowsTab onToggleOverlay={onToggleOverlay} />
+          <WindowsTab />
         )}
 
         {activeSettingsTab === 'changelog' && (

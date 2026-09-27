@@ -1003,17 +1003,8 @@
 .fullscreen-toggle-btn:active {
   transform: scale(0.95);
 }
-.control-btn.screen-btn.sharing {
-  background: #edf7f2;
-  color: #4a8a6a;
-  border: 1px solid #d2ebd9;
-}
-.control-btn.camera-btn.sharing {
-  background: #edf7f2;
-  color: #4a8a6a;
-  border: 1px solid #d2ebd9;
-}
-
+/* .control-btn.screen-btn/.camera-btn.sharing agora vive em voice.css, com a cor de destaque do tema
+   em vez de um verde claro fixo (que só combinava com o tema claro). */
 
 /* ── Screenshare Quality Select Modal ───────────────── */
 .screenshare-quality-option {

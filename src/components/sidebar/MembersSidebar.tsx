@@ -2,7 +2,7 @@ import React from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { Space, Channel, ServerRole } from '../../types'
 import { UserPlusIcon, CrownIcon, VolumeIcon, SearchIcon, ChevronDownIcon } from '../icons'
-import { GameLogo } from '../GameLogos'
+import { GameLogo, getGameBrandColor } from '../GameLogos'
 import { AvatarDecoration } from '../AvatarDecoration'
 import { formatGameDuration } from '../../lib/formatters'
 import { NAME_EFFECTS } from '../../lib/cosmeticsData'
@@ -368,15 +368,22 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
           </div>
 
           {activeGame ? (
-            <span className="member-status-text activity-game" title={`Jogando ${activeGame}${activeGameStartedAt ? ` • ${formatGameDuration(activeGameStartedAt)}` : ''}`}>
-              <GameLogo gameName={activeGame} size={13} className="member-mini-game-logo" />
-              <span className="member-game-title">Jogando {activeGame}</span>
+            <span
+              className="member-status-text activity-game"
+              style={{ '--game-color': getGameBrandColor(activeGame) } as React.CSSProperties}
+              title={`Jogando ${activeGame}${activeGameStartedAt ? ` • ${formatGameDuration(activeGameStartedAt)}` : ''}`}
+            >
+              <span className="member-mini-game-logo">
+                <GameLogo gameName={activeGame} size={12} />
+              </span>
+              {/* Sem o prefixo "Jogando": o ícone já entrega isso, e sobra espaço pro nome do jogo não cortar feio */}
+              <span className="member-game-title">{activeGame}</span>
               {activeGameStartedAt && (
-                <span className="member-game-time">• {formatGameDuration(activeGameStartedAt)}</span>
+                <span className="member-game-time">{formatGameDuration(activeGameStartedAt).replace('há ', '')}</span>
               )}
               {isVoiceUser && (
-                <span className="member-status-voice-sub" title="Em chamada de voz" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '4px', color: '#22c55e' }}>
-                  <VolumeIcon style={{ width: '10px', height: '10px' }} />
+                <span className="member-status-voice-sub" title="Em chamada de voz">
+                  <VolumeIcon style={{ width: '9px', height: '9px' }} />
                 </span>
               )}
             </span>

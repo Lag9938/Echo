@@ -1,4 +1,5 @@
 import React from 'react'
+import lolIconUrl from '../assets/game-icons/lol.png'
 
 interface GameLogoProps {
   gameName?: string | null
@@ -81,28 +82,17 @@ function renderInlineVector(key: string, size: number) {
       )
 
     case 'lol':
+      // Ícone oficial (arquivo em src/assets/game-icons/lol.png): a versão desenhada à mão antes ficava
+      // com os detalhes borrados em 12-17px, o tamanho usado nas pílulas de "jogando".
       return (
-        <svg
+        <img
+          src={lolIconUrl}
+          alt="League of Legends"
           width={size}
           height={size}
-          viewBox="0 0 100 100"
           className="game-logo-svg game-logo-lol"
-        >
-          <defs>
-            <linearGradient id="inlineLolGold" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#f0e6d2" />
-              <stop offset="50%" stopColor="#c89b3c" />
-              <stop offset="100%" stopColor="#785a28" />
-            </linearGradient>
-            <linearGradient id="inlineLolBlue" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#0ac8b9" />
-              <stop offset="100%" stopColor="#005a82" />
-            </linearGradient>
-          </defs>
-          <polygon points="50,4 92,26 92,74 50,96 8,74 8,26" fill="#091428" stroke="url(#inlineLolGold)" strokeWidth="5" />
-          <path d="M34,22 L46,22 L46,64 L68,64 L68,76 L34,76 Z" fill="url(#inlineLolGold)" />
-          <polygon points="68,26 76,34 68,42 60,34" fill="url(#inlineLolBlue)" />
-        </svg>
+          style={{ objectFit: 'contain', borderRadius: '50%' }}
+        />
       )
 
     case 'cs2':

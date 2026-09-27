@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
-  KeyboardIcon,
-  OverlayPipIcon
+  KeyboardIcon
 } from '../../components/icons'
 import {
   ColoredPushToTalkIcon,
@@ -22,7 +21,6 @@ export interface KeybindsTabProps {
   onDeafenShortcutChange?: (key: string) => void
   aiDenoiseShortcut?: string
   onAiDenoiseShortcutChange?: (key: string) => void
-  onToggleOverlay?: () => void
 }
 
 export function KeybindsTab({
@@ -35,8 +33,7 @@ export function KeybindsTab({
   deafenShortcut = 'F9',
   onDeafenShortcutChange,
   aiDenoiseShortcut = 'F7',
-  onAiDenoiseShortcutChange,
-  onToggleOverlay
+  onAiDenoiseShortcutChange
 }: KeybindsTabProps) {
   // PTT State
   const [localPttMode, setLocalPttMode] = useState<boolean>(pttModeSetting)
@@ -379,62 +376,6 @@ export function KeybindsTab({
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Mini Overlay de Voz Gamer (Always-on-Top) */}
-      <div style={{
-        background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01))',
-        padding: '18px 20px',
-        borderRadius: '12px',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: '16px',
-        flexWrap: 'wrap'
-      }}>
-        <div style={{ maxWidth: '520px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-            <h3 style={{ margin: 0, fontSize: '15px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center' }}>
-              <OverlayPipIcon style={{ width: '18px', height: '18px', color: 'var(--accent-color, #00f2fe)', marginRight: 8 }} />
-              Mini Overlay de Voz Gamer (Always-on-Top)
-            </h3>
-            <span style={{
-              background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(0, 198, 255, 0.1))',
-              color: 'var(--accent-color, #00f2fe)',
-              fontSize: '10.5px',
-              fontWeight: 700,
-              padding: '2px 8px',
-              borderRadius: '10px',
-              border: '1px solid rgba(0, 242, 254, 0.3)'
-            }}>
-              SOBREPOSIÇÃO
-            </span>
-          </div>
-          <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-            Janela flutuante translúcida que fica sobreposta aos seus jogos. Exibe quem está falando em tempo real e permite mutar/desmutar sem sair da partida.
-          </p>
-        </div>
-
-        {onToggleOverlay && (
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={onToggleOverlay}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 16px',
-              fontSize: '12.5px',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            <OverlayPipIcon style={{ width: '14px', height: '14px' }} />
-            <span>Alternar Overlay</span>
-          </button>
-        )}
       </div>
     </div>
   )

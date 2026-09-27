@@ -1,8 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import {
-  OverlayPipIcon
-} from '../../components/icons'
-import {
   ColoredRefreshIcon,
   ColoredBrainAiIcon,
   ColoredHeadphonesIcon,
@@ -39,7 +36,6 @@ export interface AudioVideoTabProps {
   onPttModeChange?: (val: boolean) => void
   pttKey?: string
   onPttKeyChange?: (val: string) => void
-  onToggleOverlay?: () => void
   muteShortcut?: string
   deafenShortcut?: string
   aiDenoiseShortcut?: string
@@ -74,7 +70,6 @@ export function AudioVideoTab({
   onPttModeChange,
   pttKey,
   onPttKeyChange,
-  onToggleOverlay,
   muteShortcut,
   deafenShortcut,
   aiDenoiseShortcut,
@@ -518,67 +513,6 @@ export function AudioVideoTab({
               Abrir Teclas de Atalho →
             </button>
           )}
-        </div>
-
-        {/* Mini Overlay de Voz Gamer (Always-on-Top) */}
-        <div style={{
-          marginTop: '20px',
-          background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01))',
-          padding: '20px 22px',
-          borderRadius: '14px',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '16px',
-          flexWrap: 'wrap'
-        }}>
-          <div style={{ maxWidth: '540px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center' }}>
-                <OverlayPipIcon style={{ width: '20px', height: '20px', color: 'var(--accent-color, #00f2fe)', marginRight: 8 }} />
-                Mini Overlay de Voz Gamer (Always-on-Top)
-              </h3>
-              <span style={{
-                background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(0, 198, 255, 0.1))',
-                color: 'var(--accent-color, #00f2fe)',
-                fontSize: '11px',
-                fontWeight: 700,
-                padding: '2px 9px',
-                borderRadius: '12px',
-                border: '1px solid rgba(0, 242, 254, 0.3)',
-                letterSpacing: '0.5px'
-              }}>
-                GAMER PIP
-              </span>
-            </div>
-            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-              Janela translúcida flutuante que fica permanentemente sobreposta aos seus jogos (inclusive em tela cheia sem bordas / borderless). Mostra quem está falando em tempo real com pulso neon e permite mutar, desmutar e sair sem Alt+Tab.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={onToggleOverlay}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '9px 18px',
-                fontSize: '13px',
-                fontWeight: 600,
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
-              title="Alternar visibilidade do Mini Overlay"
-            >
-              <OverlayPipIcon style={{ width: '16px', height: '16px' }} />
-              <span>Abrir / Fechar Mini Overlay</span>
-            </button>
-          </div>
         </div>
       </div>
     </div>

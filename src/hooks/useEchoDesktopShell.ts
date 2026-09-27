@@ -92,7 +92,8 @@ export function useEchoDesktopShell({
   // Screen Share & Stream View States
   const [selectedScreenSharerUserId, setSelectedScreenSharerUserId] = useState<string | null>(null)
   const [screenShareViewMode, setScreenShareViewMode] = useState<'focus' | 'grid'>('focus')
-  const [isWatchingStreams, setIsWatchingStreams] = useState(true)
+  // Assistir a uma transmissão é sempre uma escolha explícita (clique em "Assistir"): nunca entra sozinho.
+  const [isWatchingStreams, setIsWatchingStreams] = useState(false)
   const [isPiPActive, setIsPiPActive] = useState(false)
 
   // Filter participants who have an active screenshare stream or are actively sharing their screen
@@ -101,14 +102,11 @@ export function useEchoDesktopShell({
   const hasActiveScreenSharers = activeScreenSharers.length > 0
   const [isScreenFullScreen, setIsScreenFullScreen] = useState(false)
 
-  // Auto-switch to watching streams only when a new stream starts
-  const prevSharersCountRef = useRef(0)
+  // Se a última pessoa parou de transmitir, sai do modo de assistir (nada para ver);
+  // uma transmissão nova NUNCA entra sozinha — só quando a pessoa clica em "Assistir".
   useEffect(() => {
-    if (activeScreenSharers.length > prevSharersCountRef.current && activeScreenSharers.length > 0) {
-      setIsWatchingStreams(true)
-    }
-    prevSharersCountRef.current = activeScreenSharers.length
-  }, [activeScreenSharers.length])
+    if (!hasActiveScreenSharers) setIsWatchingStreams(false)
+  }, [hasActiveScreenSharers])
 
   // Native Fullscreen Controller for Streams (Hides Windows Taskbar)
   const toggleScreenFullScreen = useCallback((targetVal?: boolean) => {

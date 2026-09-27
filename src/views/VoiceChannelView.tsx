@@ -806,48 +806,34 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                             {/* Controls bottom bar */}
                             {activeVoiceChannelId === selectedChannel.id && isConnected ? (
                               <div className="voice-controls-bar">
-                              <button 
-                                className={`control-btn mic-btn ${isMuted ? 'muted' : ''}`} 
+                              <div className="voice-controls-capsule">
+                              <button
+                                className={`control-btn mic-btn ${isMuted ? 'muted' : ''}`}
                                 onClick={handleToggleMute}
                                 title={isMuted ? "Desmutar microfone" : "Mutar microfone"}
                               >
                                 {isMuted ? <MicOffIcon /> : <MicIcon />}
                               </button>
 
-                              <button 
-                                className={`control-btn deafen-btn ${isDeafened ? 'muted' : ''}`} 
+                              <button
+                                className={`control-btn deafen-btn ${isDeafened ? 'muted' : ''}`}
                                 onClick={handleToggleDeafen}
                                 title={isDeafened ? "Desensurdecer" : "Ensurdecer (Silenciar chamada)"}
                               >
                                 {isDeafened ? <HeadphonesOffIcon /> : <HeadphonesIcon />}
                               </button>
 
+                              <span className="voice-controls-divider" />
+
                               {/* Quick AI Noise Suppression Toggle */}
-                              <button 
+                              <button
                                 type="button"
-                                className={`control-btn ai-btn ${isAiDenoiseEnabled ? 'active' : ''}`} 
+                                className={`control-btn ai-btn ${isAiDenoiseEnabled ? 'active' : ''}`}
                                 onClick={() => toggleAiDenoise()}
                                 title={isAiDenoiseEnabled ? "Supressão de Ruído por IA: ATIVADA (Clique para desligar)" : "Supressão de Ruído por IA: DESATIVADA (Clique para ligar)"}
-                                style={{
-                                  background: isAiDenoiseEnabled ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(99, 102, 241, 0.25))' : undefined,
-                                  borderColor: isAiDenoiseEnabled ? '#a855f7' : undefined,
-                                  color: isAiDenoiseEnabled ? '#c084fc' : undefined,
-                                  position: 'relative'
-                                }}
                               >
                                 <BrainIcon style={{ width: "16px", height: "16px" }} />
-                                {isAiDenoiseEnabled && (
-                                  <span style={{
-                                    position: 'absolute',
-                                    bottom: '5px',
-                                    right: '6px',
-                                    width: '6px',
-                                    height: '6px',
-                                    borderRadius: '50%',
-                                    backgroundColor: '#10b981',
-                                    boxShadow: '0 0 4px #10b981'
-                                  }} />
-                                )}
+                                {isAiDenoiseEnabled && <span className="control-btn-active-dot" />}
                               </button>
 
                               <button
@@ -921,9 +907,11 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                 )}
                               </div>
 
+                                <span className="voice-controls-divider" />
+
                                 {/* Soundboard Button */}
-                                <button 
-                                  className="control-btn" 
+                                <button
+                                  className="control-btn"
                                   onClick={() => setShowSoundboardModal(true)}
                                   title="Mesa de Efeitos Sonoros (Soundboard)"
                                 >
@@ -938,14 +926,19 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                 >
                                   <MusicIcon style={{ width: 18, height: 18 }} />
                                 </button>
+                              </div>
 
-                                <button 
-                                  className="control-btn leave-btn" 
+                              {/* Qualidade da conexão ao lado de sair, igual ao painel da barra lateral */}
+                              <div className="voice-controls-leave-group">
+                                <ConnectionPill />
+                                <button
+                                  className="control-btn leave-btn"
                                   onClick={handleLeaveVoice}
                                   title="Sair da chamada"
                                 >
                                   <PhoneOffIcon />
                                 </button>
+                              </div>
                               </div>
                             ) : null}
                           </div>
@@ -1025,23 +1018,28 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                       </div>
                                       {message.attachment_url && (message.attachment_type === 'image' || message.attachment_type?.startsWith('image')) ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                          <img
-                                            src={message.attachment_url}
-                                            alt="anexo"
-                                            className="msg-attachment-img"
-                                            style={{
-                                              maxWidth: message.attachment_type === 'image:small' ? '240px' :
-                                                        message.attachment_type === 'image:large' ? '680px' :
-                                                        message.attachment_type === 'image:original' ? 'min(100%, 880px)' :
-                                                        'min(100%, 460px)',
-                                              maxHeight: message.attachment_type === 'image:small' ? '240px' :
-                                                         message.attachment_type === 'image:large' ? '540px' :
-                                                         message.attachment_type === 'image:original' ? '700px' :
-                                                         '400px'
-                                            }}
-                                            onClick={() => openLightbox(message.attachment_url!)}
-                                            title="Clique para ampliar"
-                                          />
+                                          <div className="msg-attachment-wrap">
+                                            <img
+                                              src={message.attachment_url}
+                                              alt="anexo"
+                                              className="msg-attachment-img"
+                                              loading="lazy"
+                                              decoding="async"
+                                              style={{
+                                                maxWidth: message.attachment_type === 'image:small' ? '240px' :
+                                                          message.attachment_type === 'image:large' ? '680px' :
+                                                          message.attachment_type === 'image:original' ? 'min(100%, 880px)' :
+                                                          'min(100%, 460px)',
+                                                maxHeight: message.attachment_type === 'image:small' ? '240px' :
+                                                           message.attachment_type === 'image:large' ? '540px' :
+                                                           message.attachment_type === 'image:original' ? '700px' :
+                                                           '400px'
+                                              }}
+                                              onLoad={(e) => e.currentTarget.parentElement?.classList.add('loaded')}
+                                              onClick={() => openLightbox(message.attachment_url!)}
+                                              title="Clique para ampliar"
+                                            />
+                                          </div>
                                           {message.body && message.body !== 'Imagem' && !message.body.startsWith('http') && (
                                             <p>{formatMessageText(message.body, profileDisplayName)}</p>
                                           )}

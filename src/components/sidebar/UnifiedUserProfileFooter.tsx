@@ -1,7 +1,7 @@
 import { AvatarDecoration } from '../AvatarDecoration'
 import { GameLogo } from '../GameLogos'
 import { formatGameDuration } from '../../lib/formatters'
-import { SparklesIcon, SettingsIcon } from '../icons'
+import { SparklesIcon, SettingsIcon, CheckIcon } from '../icons'
 
 export interface UnifiedUserProfileFooterProps {
   displayName: string
@@ -66,34 +66,27 @@ export function UnifiedUserProfileFooter({
             </div>
             {showStatusMenu && (
               <div className="status-picker-popover" onClick={(e) => e.stopPropagation()}>
-                <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('online'); setShowStatusMenu?.(false); }}>
-                  <span className="status-dot-bullet online" />
-                  <div className="status-meta">
-                    <strong>Online</strong>
-                    <span>Disponível</span>
-                  </div>
-                </button>
-                <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('idle'); setShowStatusMenu?.(false); }}>
-                  <span className="status-dot-bullet idle" />
-                  <div className="status-meta">
-                    <strong>Ausente</strong>
-                    <span>Inativo</span>
-                  </div>
-                </button>
-                <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('dnd'); setShowStatusMenu?.(false); }}>
-                  <span className="status-dot-bullet dnd" />
-                  <div className="status-meta">
-                    <strong>Não perturbe</strong>
-                    <span>Silenciar</span>
-                  </div>
-                </button>
-                <button type="button" className="status-picker-option" onClick={() => { updatePresenceStatus('invisible'); setShowStatusMenu?.(false); }}>
-                  <span className="status-dot-bullet invisible" />
-                  <div className="status-meta">
-                    <strong>Invisível</strong>
-                    <span>Aparecer offline</span>
-                  </div>
-                </button>
+                <span className="status-picker-heading">Definir status</span>
+                {([
+                  ['online', 'Online', 'Disponível'],
+                  ['idle', 'Ausente', 'Inativo'],
+                  ['dnd', 'Não perturbe', 'Silenciar'],
+                  ['invisible', 'Invisível', 'Aparecer offline']
+                ] as const).map(([value, label, sub]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`status-picker-option ${value}${presenceStatus === value ? ' selected' : ''}`}
+                    onClick={() => { updatePresenceStatus(value); setShowStatusMenu?.(false); }}
+                  >
+                    <span className="status-dot-bullet" />
+                    <div className="status-meta">
+                      <strong>{label}</strong>
+                      <span>{sub}</span>
+                    </div>
+                    {presenceStatus === value && <CheckIcon className="status-picker-check" />}
+                  </button>
+                ))}
               </div>
             )}
           </div>

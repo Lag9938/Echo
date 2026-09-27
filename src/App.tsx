@@ -1035,23 +1035,28 @@ function Echo({ user }: { user: User }) {
     const api = (window as any).electronAPI
     if (!api?.onGlobalVoiceToggle) return
 
-    if (muteShortcut && muteShortcut !== 'none') {
-      api.registerGlobalVoiceShortcut?.('toggle-mute', muteShortcut)
-    } else {
-      api.unregisterGlobalVoiceShortcut?.('toggle-mute')
+    // Antes o resultado do registro era ignorado: se o Windows recusasse a tecla (já usada por outro
+    // programa, ou uma combinação que ele não deixa registrar sem Ctrl/Alt/Shift), a pessoa via o atalho
+    // "salvo" nas Configurações mas ele simplesmente não funcionava, sem nenhum aviso.
+    const registerOrWarn = (action: 'toggle-mute' | 'toggle-deafen' | 'toggle-ai-denoise', shortcut: string, label: string) => {
+      if (!shortcut || shortcut === 'none') {
+        api.unregisterGlobalVoiceShortcut?.(action)
+        return
+      }
+      Promise.resolve(api.registerGlobalVoiceShortcut?.(action, shortcut)).then((result: any) => {
+        if (result && result.success === false) {
+          showToast(
+            'Atalho não pôde ser ativado',
+            `"${shortcut}" para ${label} não funcionou — provavelmente já está em uso por outro programa aberto. Escolha outra tecla nas Configurações.`,
+            'info'
+          )
+        }
+      }).catch(() => {})
     }
 
-    if (deafenShortcut && deafenShortcut !== 'none') {
-      api.registerGlobalVoiceShortcut?.('toggle-deafen', deafenShortcut)
-    } else {
-      api.unregisterGlobalVoiceShortcut?.('toggle-deafen')
-    }
-
-    if (aiDenoiseShortcut && aiDenoiseShortcut !== 'none') {
-      api.registerGlobalVoiceShortcut?.('toggle-ai-denoise', aiDenoiseShortcut)
-    } else {
-      api.unregisterGlobalVoiceShortcut?.('toggle-ai-denoise')
-    }
+    registerOrWarn('toggle-mute', muteShortcut, 'Mutar Microfone')
+    registerOrWarn('toggle-deafen', deafenShortcut, 'Silenciar Fone')
+    registerOrWarn('toggle-ai-denoise', aiDenoiseShortcut, 'Filtro de Ruído IA')
 
     const removeListener = api.onGlobalVoiceToggle((action: string) => {
       if (action === 'toggle-mute') {
@@ -1297,7 +1302,6 @@ function Echo({ user }: { user: User }) {
 
   // Desktop Shell, Fullscreen & Stream Viewing Hook (Phase 19)
   const {
-    handleToggleOverlay,
     topbarPinned,
     setTopbarPinned: _setTopbarPinned,
     showTopbar,
@@ -1969,6 +1973,10 @@ function Echo({ user }: { user: User }) {
         unreadDMs={unreadDMs}
         currentUserId={user.id}
       />
+      {/* A barra é "position: fixed" (veja topbar.css). Este espaço acompanha se ela está À VISTA agora
+          (fixada OU o mouse passou perto do topo) — não só se está fixada — para nunca cobrir o que tem
+          embaixo (o cabeçalho do canal, por exemplo) quando ela aparece por cima ao passar o mouse. */}
+      <div className={`topbar-spacer${isTopbarVisible ? '' : ' collapsed'}`} />
 
       <section
         className="workspace"
@@ -2428,7 +2436,6 @@ function Echo({ user }: { user: User }) {
             onPttModeChange={setPttModeSetting}
             pttKey={pttKey}
             onPttKeyChange={setPttKey}
-            onToggleOverlay={handleToggleOverlay}
             muteShortcut={muteShortcut}
             onMuteShortcutChange={setMuteShortcut}
             deafenShortcut={deafenShortcut}

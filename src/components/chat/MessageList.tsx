@@ -37,9 +37,6 @@ function renderVoiceEvent(event: VoiceFeedEvent) {
   )
 }
 
-/** A partir daqui a lista pula a renderização das mensagens fora da tela (content-visibility) para ficar leve. */
-const LONG_LIST_THRESHOLD = 150
-
 function renderRichEmbed(body: string) {
   return <ChatLinkEmbed content={body} />
 }
@@ -208,7 +205,7 @@ export const MessageList = memo(function MessageList({
         incorporação mudava de altura depois de medida, as linhas seguintes ficavam por cima. No fluxo normal
         o navegador calcula a altura sozinho e a sobreposição não tem como acontecer.
       */}
-      <div className={`messages-flow${filteredMessages.length > LONG_LIST_THRESHOLD ? ' long' : ''}`}>
+      <div className="messages-flow">
         {filteredMessages.map((message, index) => {
           const prevMessage = index > 0 ? filteredMessages[index - 1] : null
           const msgDate = new Date(message.created_at)
@@ -477,22 +474,30 @@ export const MessageList = memo(function MessageList({
                       {/* Message content */}
                       {message.attachment_url && (message.attachment_type === 'image' || message.attachment_type?.startsWith('image')) ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          <img
-                            src={message.attachment_url}
-                            alt="anexo"
-                            className="msg-attachment-img"
-                            style={{
-                              maxWidth: message.attachment_type === 'image:small' ? '240px' :
-                                        message.attachment_type === 'image:large' ? '680px' :
-                                        message.attachment_type === 'image:original' ? 'min(100%, 880px)' :
-                                        'min(100%, 460px)',
-                              maxHeight: message.attachment_type === 'image:small' ? '240px' :
-                                         message.attachment_type === 'image:large' ? '540px' :
-                                         message.attachment_type === 'image:original' ? '700px' :
-                                         '400px'
-                            }}
-                            onClick={() => openLightbox(message.attachment_url!)}
-                          />
+                          {/* O wrapper reserva um espaço mínimo até a imagem carregar — sem isso, ela ocupava
+                              0px e "estourava" pro tamanho real de repente, empurrando tudo abaixo dela.
+                              É um chute (não sabemos a proporção real antes de baixar), mas evita o salto brusco. */}
+                          <div className="msg-attachment-wrap">
+                            <img
+                              src={message.attachment_url}
+                              alt="anexo"
+                              className="msg-attachment-img"
+                              loading="lazy"
+                              decoding="async"
+                              style={{
+                                maxWidth: message.attachment_type === 'image:small' ? '240px' :
+                                          message.attachment_type === 'image:large' ? '680px' :
+                                          message.attachment_type === 'image:original' ? 'min(100%, 880px)' :
+                                          'min(100%, 460px)',
+                                maxHeight: message.attachment_type === 'image:small' ? '240px' :
+                                           message.attachment_type === 'image:large' ? '540px' :
+                                           message.attachment_type === 'image:original' ? '700px' :
+                                           '400px'
+                              }}
+                              onLoad={(e) => e.currentTarget.parentElement?.classList.add('loaded')}
+                              onClick={() => openLightbox(message.attachment_url!)}
+                            />
+                          </div>
                           {!isAutoImageCaption(displayedBody) && (
                             <p>{formatMessageText(displayedBody, profileDisplayName, serverEmojis)}</p>
                           )}

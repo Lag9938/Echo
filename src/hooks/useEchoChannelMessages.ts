@@ -361,7 +361,9 @@ export function useEchoChannelMessages({
       requestAnimationFrame(() => {
         if (container) {
           const diff = container.scrollHeight - prevScrollHeight
-          container.scrollTop = prevScrollTop + diff
+          // 'instant' pula o scroll-behavior:smooth do CSS: isso é reancorar a posição depois de carregar
+          // mensagens antigas, não um passeio suave — animar aqui faria a tela "puxar" visivelmente.
+          container.scrollTo({ top: prevScrollTop + diff, behavior: 'instant' })
         }
         setTimeout(() => {
           isPrependingRef.current = false
@@ -769,24 +771,13 @@ export function useEchoChannelMessages({
     }).catch(() => {})
   }, [user?.id, profileDisplayName, displayName])
 
-  // Scroll to bottom on new messages (com suporte a renderização dinâmica do virtualizador)
-  useEffect(() => {
-    if (isPrependingRef.current) return
-    const el = messagesContainerRef.current
-    if (el) {
-      el.scrollTop = el.scrollHeight
-      const timer1 = setTimeout(() => {
-        if (el) el.scrollTop = el.scrollHeight
-      }, 50)
-      const timer2 = setTimeout(() => {
-        if (el) el.scrollTop = el.scrollHeight
-      }, 150)
-      return () => {
-        clearTimeout(timer1)
-        clearTimeout(timer2)
-      }
-    }
-  }, [messages])
+  // O rolar até o fim de verdade é feito pelo TextChannelView (só quando chega mensagem NOVA e a pessoa já
+  // estava perto do fim). Este hook não mexe mais no scroll: um efeito antigo daqui, que rodava a cada mudança
+  // no array `messages" (reação, edição, qualquer atualização em tempo real — não só mensagem nova) e ignorava
+  // se a pessoa tinha subido para ler o histórico, ficava forçando `scrollTop` de novo o tempo todo. Com
+  // `.messages-area { scroll-behavior: smooth }`, cada uma dessas chamadas reiniciava a animação de rolagem no
+  // meio do caminho — e isso é o que parecia o chat "tremendo": os avatares e as mensagens ficavam sendo
+  // arrastados por rolagens suaves que recomeçavam sem parar.
 
   const typingUsers = Object.values(typingUsersMap).map(u => u.name)
 

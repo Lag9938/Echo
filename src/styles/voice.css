@@ -1,28 +1,30 @@
-/* ── Voice Status Panel (Sidebar) ─────────────────── */
+/* ── Voice Status Panel (Sidebar) ─────────────────────────────────
+   Pílula na cor do tema em vez do cartão escuro + grade de botões quadrados com borda (o jeito Discord).
+   O nome do canal vira a informação principal (era um rótulo verde "VOZ CONECTADA" gritado em caixa alta,
+   com o nome pequeno do lado); o tempo de chamada usa o mesmo relógio do topo da própria chamada. */
 .voice-status-panel {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   margin: 8px 10px;
-  border-radius: 12px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: color-mix(in srgb, #22c55e 10%, var(--bg-primary));
+  border: 1px solid color-mix(in srgb, #22c55e 30%, var(--border-color));
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   transition: all 0.2s ease;
 }
 
 .voice-status-panel.compact {
   gap: 0;
-  padding: 8px 12px;
+  padding: 6px 8px 6px 10px;
+  border-radius: 999px;
 }
-
 
 .voice-status-header-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
   width: 100%;
 }
 
@@ -32,10 +34,34 @@
   gap: 8px;
   min-width: 0;
   flex: 1;
+  border-radius: 8px;
 }
 
-.voice-status-indicator { color: #5daa7e; font-size: 14px; animation: pulse-opacity 1.5s ease-in-out infinite; }
-@keyframes pulse-opacity { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }
+.voice-status-info.clickable {
+  cursor: pointer;
+}
+
+.voice-status-info.clickable:hover .voice-status-channel {
+  color: #22c55e;
+}
+
+.voice-status-live-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55);
+  animation: voiceStatusDotPulse 1.8s infinite;
+}
+.voice-status-live-dot.reconnecting {
+  background: #f0b232;
+  animation: none;
+}
+@keyframes voiceStatusDotPulse {
+  70% { box-shadow: 0 0 0 5px rgba(34, 197, 94, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
 
 .voice-status-text {
   display: flex;
@@ -44,21 +70,11 @@
   transition: opacity 0.15s ease;
 }
 
-.voice-status-text.clickable {
-  cursor: pointer;
-}
-
-.voice-status-text.clickable:hover .voice-status-channel {
-  color: var(--accent-primary, #5865f2);
-  text-decoration: underline;
-}
-
 .voice-status-label {
   font-size: 10.5px;
-  font-weight: 700;
-  color: #22c55e;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .voice-status-channel {
@@ -74,66 +90,65 @@
 .voice-disconnect-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 9px;
-  border-radius: 6px;
-  background: rgba(239, 68, 68, 0.14);
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  color: #f87171;
-  font-size: 11px;
-  font-weight: 700;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: none;
+  color: #fff;
   cursor: pointer;
   transition: all 0.15s ease;
   flex-shrink: 0;
 }
 
 .voice-disconnect-btn:hover {
-  background: #ef4444;
-  color: #fff;
-  border-color: #ef4444;
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+  transform: scale(1.06);
 }
 
-.voice-status-actions-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+.voice-status-actions-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
   width: 100%;
+  padding: 3px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
 }
 
 .voice-action-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  flex: 1;
   height: 30px;
   border-radius: 8px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .voice-action-btn:hover {
-  border-color: var(--text-secondary);
   background: var(--bg-tertiary);
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .voice-action-btn.muted {
   background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.4);
   color: #f87171;
 }
 
 .voice-action-btn.recording {
   background: rgba(239, 68, 68, 0.25);
-  border-color: #ef4444;
   color: #ef4444;
   animation: pulse-opacity 1s infinite;
 }
+@keyframes pulse-opacity { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }
 
 /* ── Voice Room ───────────────────────────────────── */
 .voice-room {
@@ -599,51 +614,79 @@
   transform: scale(1.08);
 }
 
-/* Call Controls & Dropdown */
+/* Call Controls & Dropdown — uma cápsula só agrupando os botões relacionados (com divisores finos entre
+   grupos), em vez de círculos soltos espalhados com espaço igual entre todos (o jeito Discord). A conexão
+   e o botão de sair ficam à parte, à direita, como no painel compacto da barra lateral. */
 .voice-controls-bar {
-  display: flex; justify-content: center; gap: 16px;
-  padding: 16px; border-top: 1px solid var(--border-color);
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 14px 16px; border-top: 1px solid var(--border-color);
+}
+.voice-controls-capsule {
+  display: flex; align-items: center; gap: 2px;
+  padding: 6px; border-radius: 999px;
+  background: var(--bg-tertiary); border: 1px solid var(--border-color);
+}
+.voice-controls-divider {
+  width: 1px; height: 22px; background: var(--border-color); margin: 0 4px; flex-shrink: 0;
+}
+.voice-controls-leave-group {
+  display: flex; align-items: center; gap: 8px;
 }
 .control-btn {
-  display: grid; place-items: center; width: 50px; height: 50px;
-  border-radius: 50%; font-size: 20px; background: var(--bg-tertiary);
-  color: var(--text-primary); border: 1.5px solid var(--border-color); 
-  transition: transform 0.22s var(--ease-spring), box-shadow 0.2s ease, background 0.16s ease, border-color 0.16s ease;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  display: grid; place-items: center; width: 42px; height: 42px;
+  border-radius: 50%; font-size: 18px; background: transparent;
+  color: var(--text-secondary); border: none;
+  transition: transform 0.18s var(--ease-spring), background 0.16s ease, color 0.16s ease;
   cursor: pointer;
+  position: relative;
 }
-.control-btn:hover { 
-  background: var(--bg-primary); 
-  transform: translateY(-3px) scale(1.06);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-  border-color: var(--text-muted);
+.control-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 .control-btn:active {
-  transform: scale(0.92) translateY(0);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  transform: scale(0.92);
 }
-.control-btn.muted { 
-  background: #fdf2f0; 
-  color: #d94f4f; 
-  border-color: #f7d2cb; 
+.control-btn.muted {
+  background: color-mix(in srgb, #ef4444 14%, transparent);
+  color: #ef4444;
 }
 .control-btn.muted:hover {
-  background: #fbe6e2;
-  border-color: #eeaf9f;
+  background: color-mix(in srgb, #ef4444 22%, transparent);
 }
-.control-btn.leave-btn { 
-  background: #fdf2f0; 
-  color: #d94f4f; 
-  border-color: #f7d2cb; 
+.control-btn.ai-btn.active {
+  background: color-mix(in srgb, #a855f7 18%, transparent);
+  color: #c084fc;
 }
-.control-btn.leave-btn:hover { 
-  background: #d94f4f; 
+.control-btn-active-dot {
+  position: absolute;
+  bottom: 6px;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #10b981;
+  box-shadow: 0 0 4px #10b981;
+}
+.control-btn.camera-btn.sharing,
+.control-btn.screen-btn.sharing {
+  background: color-mix(in srgb, var(--accent-color) 18%, transparent);
+  color: var(--accent-color);
+}
+/* Sai da cápsula: fica sozinho, vermelho sólido, sempre visível como a ação diferente que é */
+.voice-controls-leave-group .control-btn.leave-btn {
+  width: 44px; height: 44px;
+  background: #ef4444;
   color: #fff;
-  border-color: #d94f4f;
-  box-shadow: 0 6px 16px rgba(217, 79, 79, 0.3);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+.control-btn.leave-btn:hover {
+  background: #dc2626;
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.45);
 }
 .control-btn.leave-btn:active {
-  transform: scale(0.92) translateY(0);
+  transform: scale(0.92);
 }
 
 .screen-share-dropdown {
@@ -733,20 +776,23 @@
 
 
 /* ── Additional Voice & Status Modules ── */
-/* ── Status Picker Popover ──────────────────────── */
+/* ── Status Picker Popover ──────────────────────────────────────────
+   Cada opção ganha uma barrinha colorida à esquerda (a cor do próprio status) em vez de só um pontinho
+   solto do lado do texto, e a opção marcada agora aparece destacada com um check — antes não havia
+   nenhuma pista de qual status estava ativo além de já estar selecionado silenciosamente no topo. */
 .status-picker-popover {
   position: absolute;
   bottom: 60px;
   left: 10px;
   background: var(--bg-tertiary);
   border: 1.5px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 8px;
   width: 230px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   z-index: 1000;
   animation: slideInUp 0.15s cubic-bezier(0.1, 0.9, 0.2, 1);
 }
@@ -762,89 +808,59 @@
   }
 }
 
+.status-picker-heading {
+  padding: 4px 8px 6px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 .status-picker-option {
+  position: relative;
   background: none;
   border: none;
+  border-left: 3px solid transparent;
   width: 100%;
-  padding: 6px 10px;
+  padding: 7px 10px 7px 9px;
   border-radius: 8px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   cursor: pointer;
   text-align: left;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
   color: var(--text-primary);
+  --status-color: var(--text-muted);
 }
+.status-picker-option.online { --status-color: #23a55a; }
+.status-picker-option.idle { --status-color: #f0b232; }
+.status-picker-option.dnd { --status-color: #f23f43; }
+.status-picker-option.invisible { --status-color: #80848e; }
 
 .status-picker-option:hover {
   background: var(--bg-secondary);
 }
+.status-picker-option.selected {
+  background: color-mix(in srgb, var(--status-color) 12%, transparent);
+  border-left-color: var(--status-color);
+}
 
 .status-dot-bullet {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   flex-shrink: 0;
-  position: relative;
+  background: var(--status-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-color) 18%, transparent);
 }
 
-.status-dot-bullet.online {
-  background-color: #23a55a;
-}
-.status-dot-bullet.idle {
-  background-color: #f0b232;
-}
-.status-dot-bullet.idle::after {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: var(--bg-tertiary);
-}
-.status-picker-option:hover .status-dot-bullet.idle::after {
-  background-color: var(--bg-secondary);
-}
-
-.status-dot-bullet.dnd {
-  background-color: #f23f43;
-}
-.status-dot-bullet.dnd::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 6px;
-  height: 2px;
-  background-color: var(--bg-tertiary);
-}
-.status-picker-option:hover .status-dot-bullet.dnd::after {
-  background-color: var(--bg-secondary);
-}
-
-.status-dot-bullet.offline,
-.status-dot-bullet.invisible {
-  background-color: #80848e;
-}
-.status-dot-bullet.offline::after,
-.status-dot-bullet.invisible::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background-color: var(--bg-tertiary);
-}
-.status-picker-option:hover .status-dot-bullet.offline::after,
-.status-picker-option:hover .status-dot-bullet.invisible::after {
-  background-color: var(--bg-secondary);
+.status-picker-check {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: var(--status-color);
 }
 
 .status-meta {

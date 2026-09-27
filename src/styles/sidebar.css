@@ -1874,50 +1874,58 @@
   white-space: nowrap;
   line-height: 1.2;
 }
-/* O nome do jogo tem prioridade: antes o tempo ("há 1h 8m") e o ícone de voz ficavam na mesma linha e o
-   nome virava "Jogando ...". Agora a pílula quebra e o tempo desce quando não cabe ao lado do nome inteiro. */
+/* Pílula "jogando": uma linha só (nunca empurra a linha seguinte), tingida na cor do próprio jogo. Nomes
+   grandes ("League of Legends") desaparecem num degradê suave em vez de cortar feio com "...". */
 .member-status-text.activity-game {
+  --game-color: #00f2fe;
   display: inline-flex;
-  flex-wrap: wrap;
-  white-space: normal;
   align-items: center;
-  gap: 1px 5px;
-  color: #cbd5e1;
+  gap: 5px;
+  color: var(--text-secondary);
   font-weight: 500;
   max-width: 100%;
-  padding: 1px 6px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  margin-top: 1px;
+  padding: 2px 8px 2px 2px;
+  background: color-mix(in srgb, var(--game-color) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--game-color) 30%, transparent);
+  border-radius: 999px;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
 }
 .member-mini-game-logo {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
   overflow: hidden;
+  background: color-mix(in srgb, var(--game-color) 22%, var(--bg-tertiary, #1a1d24));
 }
 .member-game-title {
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: calc(100% - 19px); /* sobra a logo ao lado; nomes enormes ainda cortam com reticências */
-  color: #f1f5f9;
+  flex: 1 1 auto;
+  min-width: 22px;
+  color: var(--text-primary);
   font-weight: 600;
   font-size: 11px;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  -webkit-mask-image: linear-gradient(to right, #000 75%, transparent 100%);
+  mask-image: linear-gradient(to right, #000 75%, transparent 100%);
 }
 .member-game-time {
-  color: #94a3b8;
+  color: var(--game-color);
   font-size: 9.5px;
-  font-weight: 400;
+  font-weight: 700;
   flex-shrink: 0;
   white-space: nowrap;
+}
+.member-status-voice-sub {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: #22c55e;
 }
 .member-status-text.activity-voice {
   color: #22c55e;

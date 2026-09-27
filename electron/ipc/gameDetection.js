@@ -34,34 +34,38 @@ export const POPULAR_GAMES = [
   { match: ['sea of thieves', 'sotgame'], name: 'Sea of Thieves', icon: '🏴‍☠️' }
 ]
 
-export function matchGameProcess(procName, windowTitle = '') {
-  if (!procName && !windowTitle) return null
-  const p = (procName || '').replace(/\.exe$/i, '').toLowerCase().trim()
-  const title = (windowTitle || '').toLowerCase().trim()
+// Detecta pelo NOME DO PROCESSO de verdade (o que está de fato rodando), nunca pelo título da janela.
+// Antes, "League of Legends" aparecia como atividade mesmo sem o jogo aberto: bastava QUALQUER janela do
+// sistema (uma aba do navegador, um vídeo, esta própria conversa) ter esse texto no título para contar como
+// "jogando". Título de janela é texto arbitrário que qualquer app pode exibir — não prova que o jogo está
+// rodando. `windowTitle` continua recebido só para não quebrar quem chama esta função, mas é ignorado.
+export function matchGameProcess(procName, _windowTitle = '') {
+  if (!procName) return null
+  const p = procName.replace(/\.exe$/i, '').toLowerCase().trim()
+  if (!p) return null
 
-  if (p.includes('valorant') || title.includes('valorant')) {
-    return { name: 'VALORANT', icon: '🎮', processName: procName || 'VALORANT' }
+  if (p.includes('valorant')) {
+    return { name: 'VALORANT', icon: '🎮', processName: procName }
   }
 
-  if (p === 'cs2' || p === 'csgo' || title.includes('counter-strike 2')) {
-    return { name: 'Counter-Strike 2', icon: '🔫', processName: procName || 'cs2' }
+  if (p === 'cs2' || p === 'csgo') {
+    return { name: 'Counter-Strike 2', icon: '🔫', processName: procName }
   }
 
-  if (p === 'leagueclientux' || p === 'leagueclient' || p === 'league of legends' || title.includes('league of legends')) {
-    return { name: 'League of Legends', icon: '⚔️', processName: procName || 'league of legends' }
+  if (p === 'leagueclientux' || p === 'leagueclient' || p === 'league of legends') {
+    return { name: 'League of Legends', icon: '⚔️', processName: procName }
   }
 
   for (const g of POPULAR_GAMES) {
     for (const m of g.match) {
       const target = m.toLowerCase()
       if (
-        p === target || 
-        p.startsWith(target + '-') || 
-        p.startsWith(target + '_') || 
-        (target.length >= 5 && p.includes(target)) || 
-        (target.length >= 5 && title.includes(target))
+        p === target ||
+        p.startsWith(target + '-') ||
+        p.startsWith(target + '_') ||
+        (target.length >= 5 && p.includes(target))
       ) {
-        return { name: g.name, icon: g.icon, processName: procName || g.name }
+        return { name: g.name, icon: g.icon, processName: procName }
       }
     }
   }
