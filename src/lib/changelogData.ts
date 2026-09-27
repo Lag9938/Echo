@@ -18,8 +18,8 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
-    version: '0.40.2',
-    title: 'Echo v0.40.2 - Chat Estável, Atalhos Livres e Menos Bugs',
+    version: '0.40.3',
+    title: 'Echo v0.40.3 - Chat Estável, Atalhos Livres e Menos Bugs',
     date: '27 de Setembro de 2026',
     tagline: 'O chat parava de tremer quando a barra superior flutuava por cima do conteúdo, os atalhos de teclado agora respeitam a tecla exata que você escolhe, e a detecção de jogo parou de se enganar com o título de outras janelas.',
     isLatest: true,
@@ -53,6 +53,32 @@ export const CHANGELOG_DATA: ReleaseNote[] = [
         badge: 'MELHORIA',
         title: 'Configurações Mais Limpas',
         description: 'Removida a função "Mini Overlay de Voz Gamer", que estava duplicada em três abas diferentes das configurações.'
+      }
+    ]
+  },
+  {
+    version: '0.40.2',
+    title: 'Echo v0.40.2 - Segurança dos Cargos e Atualização Mais Confiável',
+    date: '27 de Setembro de 2026',
+    tagline: 'Uma falha de segurança nos cargos foi corrigida, o portão de ruído ficou mais estável, e a atualização volta a abrir o Echo mesmo quando o instalador demora.',
+    highlights: [
+      {
+        icon: '🛡️',
+        badge: 'SEGURANÇA',
+        title: 'Cargos Só Concedem o que Quem Concede Já Tem',
+        description: 'Corrigidas falhas que deixavam reordenar cargos pular a hierarquia, o dono e membros de espaços privados vazarem, e a posse do espaço mudar por outro caminho além da transferência oficial.'
+      },
+      {
+        icon: '🎙️',
+        badge: 'CORREÇÃO',
+        title: 'Portão de Ruído Mais Estável',
+        description: 'Parou de fechar no meio da frase; o microfone estéreo não perde mais o canal direito, e a configuração muda de novo o microfone é reaplicada.'
+      },
+      {
+        icon: '🔄',
+        badge: 'CORREÇÃO',
+        title: 'Atualização Sempre Reabre o Echo',
+        description: 'O vigia que reabre o app após instalar agora abre mesmo se o instalador demorar além do prazo, e passou a rodar de um jeito que o antivírus não bloqueia.'
       }
     ]
   },
