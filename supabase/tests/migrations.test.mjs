@@ -647,6 +647,69 @@ console.log('\n[Transferência de posse continua funcionando]')
   check('A virou membro comum sem Gerenciar Cargos', (await rpc('A', 'has_space_permission', S4, 'manageRoles')).data === false)
 }
 
+console.log('\n[Brechas fechadas: hierarquia, concessão, edição de mensagens, posse e consultas de fora]')
+{
+  // Espaço novo: A dono; Topo (Administrador) no topo, Meio (Gerenciar Cargos) e Baixo embaixo
+  const S6 = (await asUser('A', "insert into public.spaces(name, creator_id) values ('Servidor 6', $1) returning id", [U.A])).rows[0].id
+  await asUser('A', "insert into public.space_members(space_id, user_id, role) values ($1, $2, 'owner')", [S6, U.A])
+  await admin("insert into public.space_members(space_id, user_id, role) values ($1, $2, 'member'), ($1, $3, 'member'), ($1, $4, 'member')", [S6, U.B, U.C, U.F])
+  const roles6 = async () => (await admin('select id, position, is_everyone, is_default from public.space_roles where space_id = $1 order by is_everyone, position', [S6])).rows
+  await roleRpc('A', 'delete_space_role', (await roles6()).find(x => !x.is_everyone).id) // Moderador semeado
+  const TOPO = (await roleRpc('A', 'create_space_role', S6, 'Topo', '#111111', JSON.stringify({ administrator: true }), true)).data.id
+  const MEIO = (await roleRpc('A', 'create_space_role', S6, 'Meio', '#222222', JSON.stringify({ manageRoles: true, kickMembers: true }), true)).data.id
+  const BAIXO6 = (await roleRpc('A', 'create_space_role', S6, 'Baixo', '#333333', '{}', true)).data.id
+  await roleRpc('A', 'set_space_member_role', S6, U.B, MEIO, true)
+  await roleRpc('A', 'set_space_member_role', S6, U.C, TOPO, true)
+
+  const bounds = await roleRpc('B', 'reorder_space_roles', S6, `[3:5]={${TOPO},${MEIO},${BAIXO6}}`)
+  const topoPos = (await roles6()).find(x => x.id === TOPO).position
+  check('array com outro índice inicial NÃO rebaixa cargo acima de quem reordena', topoPos === 0, `${bounds.error} pos=${topoPos}`)
+  check('…e B continua sem conseguir pegar o cargo Topo', (await roleRpc('B', 'set_space_member_role', S6, U.B, TOPO, true)).error?.includes('role_hierarchy'))
+  check('B continua NÃO expulsando C (Topo)', (await asUser('B', 'delete from public.space_members where space_id = $1 and user_id = $2 returning user_id', [S6, U.C])).rows.length === 0)
+
+  const admin2 = (await roleRpc('A', 'create_space_role', S6, 'Admin novo', '#444444', JSON.stringify({ administrator: true }), true)).data.id
+  const selfAdmin = await roleRpc('B', 'set_space_member_role', S6, U.B, admin2, true)
+  check('B NÃO se dá um cargo abaixo dele com Administrador (não tem a permissão)', selfAdmin.error?.includes('missing_permission'), selfAdmin.error)
+  check('B NÃO dá esse cargo a outro membro', (await roleRpc('B', 'set_space_member_role', S6, U.F, admin2, true)).error?.includes('missing_permission'))
+  check('B NÃO marca esse cargo como automático', (await roleRpc('B', 'update_space_role', admin2, JSON.stringify({ is_default: true }))).error?.includes('missing_permission'))
+  check('B ainda dá Baixo (sem permissões) para F', !(await roleRpc('B', 'set_space_member_role', S6, U.F, BAIXO6, true)).error)
+  await roleRpc('A', 'delete_space_role', admin2)
+
+  await roleRpc('A', 'update_space_role', TOPO, JSON.stringify({ is_default: true }))
+  const clearAbove = await roleRpc('B', 'update_space_role', BAIXO6, JSON.stringify({ is_default: true }))
+  check('B NÃO tira a marca de automático de um cargo acima dele', clearAbove.error?.includes('role_hierarchy') && (await roles6()).find(x => x.id === TOPO).is_default === true, clearAbove.error)
+  await roleRpc('A', 'update_space_role', TOPO, JSON.stringify({ is_default: false }))
+
+  const everyone6 = (await roles6()).find(x => x.is_everyone).id
+  await roleRpc('A', 'update_space_role', everyone6, JSON.stringify({ permissions: { viewChannels: true, sendMessages: true, manageRoles: true } }))
+  const order6 = (await roles6()).filter(x => !x.is_everyone).map(x => x.id)
+  const sameOrder = await roleRpc('G', 'reorder_space_roles', S6, `{${order6.join(',')}}`)
+  await admin("insert into public.space_members(space_id, user_id, role) values ($1, $2, 'member')", [S6, U.G])
+  const noRoles = await roleRpc('G', 'reorder_space_roles', S6, `{${order6.join(',')}}`)
+  check('reordenar sem cargos (Gerenciar Cargos só no @everyone) não estoura integer', sameOrder.error?.includes('forbidden') && !noRoles.error, `${sameOrder.error} / ${noRoles.error}`)
+  await roleRpc('A', 'update_space_role', everyone6, JSON.stringify({ permissions: { viewChannels: true, sendMessages: true, connect: true, speak: true } }))
+
+  const PUB6 = (await admin("insert into public.channels(space_id, name) values ($1, 'geral') returning id", [S6])).rows[0].id
+  const NEWS6 = (await admin("insert into public.channels(space_id, name, is_announcement) values ($1, 'avisos', true) returning id", [S6])).rows[0].id
+  const msg = (await asUser('F', 'insert into public.messages(channel_id, author_id, body) values ($1, $2, $3) returning id', [PUB6, U.F, 'oi'])).rows[0].id
+  const moved = await asUser('F', 'update public.messages set channel_id = $1 where id = $2 returning id', [NEWS6, msg])
+  check('autor NÃO move a própria mensagem para um canal de anúncios', !!moved.error || moved.rows.length === 0, moved.error)
+  const attach = await asUser('F', 'update public.messages set attachment_url = $1 where id = $2 returning id', ['https://x/y.exe', msg])
+  check('autor NÃO inclui anexo por edição sem Anexar Arquivos', !!attach.error || attach.rows.length === 0, attach.error)
+  const edit = await asUser('F', "update public.messages set body = 'editado' where id = $1 returning id", [msg])
+  check('autor ainda edita o texto da própria mensagem', !edit.error && edit.rows.length === 1, edit.error)
+
+  const outsiderPerms = await rpc('H', 'space_member_permissions', S6, U.B)
+  check('quem não é do espaço NÃO lê as permissões de um membro', JSON.stringify(outsiderPerms.data) === '{}', JSON.stringify(outsiderPerms))
+  check('quem não é do espaço NÃO descobre o dono pela posição', (await rpc('H', 'space_member_top_position', S6, U.A)).data === 2147483647)
+  check('membro ainda consulta a posição do dono', (await rpc('B', 'space_member_top_position', S6, U.A)).data === -1)
+
+  const direct = await asUser('A', 'update public.spaces set creator_id = $1 where id = $2 returning id', [U.H, S6])
+  check('dono NÃO troca creator_id direto (nem para quem não é membro)', !!direct.error, direct.error)
+  check('mensagem de erro da transferência sem caracteres quebrados', (await rpc('B', 'transfer_space_ownership', S6, U.B)).error?.includes('Só o dono do espaço'))
+  check('transferência pela função continua funcionando', !(await rpc('A', 'transfer_space_ownership', S6, U.F)).error)
+}
+
 console.log('\n[Reversão 11]')
 {
   const rb = await applyScript(fs.readFileSync(`${REPO}/rollback_11_discord_roles.sql`, 'utf8'))

@@ -159,6 +159,14 @@ begin
     return '{}'::jsonb;
   end if;
 
+  -- Quem não é do espaço só consulta a si mesmo: senão qualquer conta descobriria dono, membros e cargos
+  -- de um espaço alheio só com os UUIDs
+  if auth.uid() is not null and p_user_id <> auth.uid()
+     and not exists (select 1 from public.space_members where space_id = p_space_id and user_id = auth.uid())
+     and not exists (select 1 from public.spaces where id = p_space_id and creator_id = auth.uid()) then
+    return '{}'::jsonb;
+  end if;
+
   if exists (select 1 from public.spaces where id = p_space_id and creator_id = p_user_id) then
     select jsonb_object_agg(k, true) into v_perms from unnest(public.space_permission_keys()) k;
     return v_perms;
@@ -201,6 +209,7 @@ as $$
 $$;
 
 -- Posição do cargo mais alto (0 = topo). Dono: -1. Sem cargos: 2147483647 (abaixo de tudo).
+-- Quem não é do espaço só consulta a si mesmo (os demais aparecem sem cargos, sem revelar o dono).
 create or replace function public.space_member_top_position(p_space_id uuid, p_user_id uuid)
 returns integer
 language sql
@@ -209,6 +218,9 @@ security definer
 set search_path = ''
 as $$
   select case
+    when auth.uid() is not null and p_user_id is distinct from auth.uid()
+         and not exists (select 1 from public.space_members where space_id = p_space_id and user_id = auth.uid())
+         and not exists (select 1 from public.spaces where id = p_space_id and creator_id = auth.uid()) then 2147483647
     when exists (select 1 from public.spaces where id = p_space_id and creator_id = p_user_id) then -1
     else coalesce((
       select min(r.position)
@@ -523,6 +535,17 @@ begin
   if p_changes ? 'is_default' then
     v_role.is_default := coalesce((p_changes ->> 'is_default')::boolean, false);
     if v_role.is_default then
+      -- Quem entra ganha o cargo automático: vale a mesma regra de só conceder o que se tem
+      perform public.assert_can_grant_permissions(v_role.space_id, '{}'::jsonb,
+                                                  public.sanitize_space_permissions(v_role.permissions));
+      -- Tirar a marca de outro cargo também é mexer nele: só se ele estiver abaixo de quem chama
+      if exists (
+        select 1 from public.space_roles
+        where space_id = v_role.space_id and id <> v_role.id and is_default
+          and position <= public.space_member_top_position(v_role.space_id, auth.uid())
+      ) then
+        raise exception 'role_hierarchy' using errcode = '42501';
+      end if;
       update public.space_roles set is_default = false
       where space_id = v_role.space_id and id <> v_role.id and is_default;
     end if;
@@ -591,6 +614,11 @@ begin
     raise exception 'forbidden' using errcode = '42501';
   end if;
 
+  -- Normaliza para uma lista simples começando no índice 1. Um array com outro índice inicial
+  -- (ex.: '[3:5]={...}', aceito pelo PostgREST como texto) deixava p_role_ids[i] nulo na checagem de
+  -- hierarquia abaixo, e quem chamava conseguia rebaixar cargos acima do seu.
+  p_role_ids := array(select x from unnest(p_role_ids) with ordinality as t(x, n) order by n);
+
   perform 1 from public.space_roles where space_id = p_space_id for update;
   select coalesce(array_agg(id order by position, created_at, id), '{}') into v_current
   from public.space_roles where space_id = p_space_id and not is_everyone;
@@ -604,8 +632,9 @@ begin
   -- Cargos no seu nível ou acima ficam onde estão (posições 0..top); só os de baixo se movem
   v_top := public.space_member_top_position(p_space_id, auth.uid());
   if v_top >= 0 then
-    for i in 1 .. least(v_top + 1, cardinality(v_current)) loop
-      if p_role_ids[i] <> v_current[i] then
+    -- least antes do +1: sem cargos, v_top = 2147483647 e v_top + 1 estouraria o integer
+    for i in 1 .. least(v_top, cardinality(v_current) - 1) + 1 loop
+      if p_role_ids[i] is distinct from v_current[i] then
         raise exception 'role_hierarchy' using errcode = '42501';
       end if;
     end loop;
@@ -657,6 +686,10 @@ begin
   end if;
 
   if coalesce(p_assign, false) then
+    -- Ninguém concede uma permissão que não tem, nem por meio de um cargo: cargos novos nascem logo acima do
+    -- @everyone, então um "Admin" recém-criado ficaria ao alcance de qualquer um com Gerenciar Cargos
+    perform public.assert_can_grant_permissions(p_space_id, '{}'::jsonb,
+                                                public.sanitize_space_permissions(v_role.permissions));
     insert into public.space_member_roles (space_id, user_id, role_id)
     values (p_space_id, p_user_id, p_role_id)
     on conflict do nothing;
@@ -690,17 +723,21 @@ create trigger clear_member_roles_on_leave_trigger
   after delete on public.space_members
   for each row execute function public.clear_member_roles_on_leave();
 
--- Quem gerencia o espaço edita os dados dele, mas a posse só muda pela função de transferência (chamada pelo dono)
+-- Quem gerencia o espaço edita os dados dele, mas a posse só muda pela função de transferência (chamada pelo dono).
+-- SECURITY INVOKER de propósito: num UPDATE direto do app current_user é anon/authenticated (barrado, até para o
+-- dono, que senão passaria a posse para quem nem é membro sem acertar space_members); dentro de
+-- transfer_space_ownership (SECURITY DEFINER) é o dono da função. A checagem de auth.uid() barra transferências
+-- concorrentes feitas pelo antigo dono.
 create or replace function public.protect_space_owner()
 returns trigger
 language plpgsql
-security definer
+security invoker
 set search_path = ''
 as $$
 begin
   if NEW.creator_id is distinct from OLD.creator_id
-     and auth.uid() is not null
-     and auth.uid() is distinct from OLD.creator_id then
+     and (current_user in ('anon', 'authenticated')
+          or (auth.uid() is not null and auth.uid() is distinct from OLD.creator_id)) then
     raise exception 'forbidden_owner_change' using errcode = '42501';
   end if;
   return NEW;
@@ -776,7 +813,17 @@ create policy "members send allowed messages"
     author_id = (select auth.uid())
     and public.can_send_message(channel_id, attachment_url is not null)
   );
--- "authorized delete messages" (can_delete_message) e "authors edit messages" continuam como estão
+-- Edição pelo autor: a linha editada precisa continuar valendo como envio. Antes bastava mandar num canal comum
+-- e depois trocar channel_id para um canal de anúncios, ou incluir um anexo sem "Anexar arquivos".
+drop policy if exists "authors edit messages" on public.messages;
+create policy "authors edit messages"
+  on public.messages for update to authenticated
+  using (author_id = (select auth.uid()))
+  with check (
+    author_id = (select auth.uid())
+    and public.can_send_message(channel_id, attachment_url is not null)
+  );
+-- "authorized delete messages" (can_delete_message) continua como está
 
 -- pinned_messages: todos que veem o canal leem; fixar/desafixar exige Gerenciar Mensagens
 drop policy if exists "members manage pinned" on public.pinned_messages;

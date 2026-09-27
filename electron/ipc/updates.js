@@ -15,11 +15,14 @@ export function setupUpdatesIpc(safeHandle, isDevelopment, onInstallUpdate, getM
       startRelaunchWatchdog({
         execPath: process.execPath,
         updaterDirName: `${app.getName().toLowerCase()}-updater`,
-        logFile: logFile()
+        logFile: logFile(),
+        scriptFile: path.join(app.getPath('userData'), 'update-relaunch.ps1')
       })
     }
     onInstallUpdate()
-    autoUpdater.quitAndInstall(false, true)
+    // Instalação silenciosa (/S) com --force-run: sem janela do instalador, nenhum aviso pode ficar esperando
+    // um clique escondido atrás de outras janelas, e o instalador reabre o Echo ao terminar
+    autoUpdater.quitAndInstall(true, true)
   })
 
   safeHandle('check-for-updates', async () => {

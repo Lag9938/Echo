@@ -31,6 +31,14 @@ describe('buildRelaunchScript', () => {
     expect(waitOldApp).toBeGreaterThan(-1)
     expect(waitOldApp).toBeLessThan(relaunch)
   })
+
+  it('se o prazo acabar sem o Echo aberto, abre mesmo assim em vez de desistir', () => {
+    const script = buildRelaunchScript('C:\\Echo\\Echo.exe', 'echo-updater')
+    const lastLine = script.trim().split('\n').at(-1)
+    expect(lastLine).toContain('if (-not (Get-Process -Name $name))')
+    expect(lastLine).toContain('Start-Process -FilePath $exe')
+  })
+
 })
 
 describe('appendUpdateLog', () => {

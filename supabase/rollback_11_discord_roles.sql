@@ -37,6 +37,9 @@ create policy "space members read messages" on public.messages for select to aut
   using (public.is_space_member((select channels.space_id from public.channels where channels.id = messages.channel_id)));
 create policy "space members send messages" on public.messages for insert to authenticated
   with check (author_id = (select auth.uid()) and public.is_space_member((select channels.space_id from public.channels where channels.id = messages.channel_id)));
+drop policy if exists "authors edit messages" on public.messages;
+create policy "authors edit messages" on public.messages for update to authenticated
+  using (author_id = (select auth.uid())) with check (author_id = (select auth.uid()));
 
 create or replace function public.can_delete_message(p_channel_id uuid, p_author_id uuid)
 returns boolean
