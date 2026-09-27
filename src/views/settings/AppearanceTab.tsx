@@ -11,6 +11,8 @@ export interface AppearanceTabProps {
   onChatDensityChange?: (density: 'cozy' | 'compact') => void
   performanceMode?: boolean
   onPerformanceModeChange?: (val: boolean) => void
+  sidebarLayout?: 'glass' | 'classic'
+  onSidebarLayoutChange?: (layout: 'glass' | 'classic') => void
 }
 
 export function AppearanceTab({
@@ -23,6 +25,8 @@ export function AppearanceTab({
   onChatDensityChange,
   performanceMode = false,
   onPerformanceModeChange,
+  sidebarLayout = 'glass',
+  onSidebarLayoutChange,
 }: AppearanceTabProps) {
   return (
     <div className="settings-container">
@@ -224,8 +228,9 @@ export function AppearanceTab({
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+        <div className="chat-density-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
           <div
+            className={`density-card ${chatDensity === 'cozy' ? 'selected' : ''}`}
             onClick={() => onChatDensityChange?.('cozy')}
             style={{
               padding: '16px',
@@ -260,6 +265,7 @@ export function AppearanceTab({
           </div>
 
           <div
+            className={`density-card ${chatDensity === 'compact' ? 'selected' : ''}`}
             onClick={() => onChatDensityChange?.('compact')}
             style={{
               padding: '16px',
@@ -295,7 +301,7 @@ export function AppearanceTab({
         </div>
 
         {/* ── Pré-visualização em Tempo Real do Chat ── */}
-        <div style={{ marginTop: '16px', background: 'var(--bg-primary)', borderRadius: '14px', padding: '16px', border: '1px solid var(--border-color)', transition: 'all 0.2s ease' }}>
+        <div className="preview-chat-container" style={{ marginTop: '16px', background: 'var(--bg-primary)', borderRadius: '14px', padding: '16px', border: '1px solid var(--border-color)', transition: 'all 0.2s ease' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
             <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)' }}>
               👁️ Pré-visualização no Chat (Modo {chatDensity === 'cozy' ? 'Confortável' : 'Compacto'})
@@ -381,9 +387,80 @@ export function AppearanceTab({
         </div>
       </div>
 
-      {/* ── 3. Modo de Desempenho Visual (FPS Booster) ── */}
+      {/* ── 3. Estilo da Barra Lateral & Layout ── */}
       <div style={{ marginTop: '36px', paddingTop: '28px', borderTop: '1px solid var(--border-color)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap', background: 'var(--bg-secondary)', padding: '18px 20px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
+        <div style={{ marginBottom: '16px' }}>
+          <h3 style={{ margin: 0, fontSize: '17px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            🧭 Estilo da Barra Lateral & Navegação
+          </h3>
+          <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+            Escolha entre o novo visual inovador em vidro fosco com pods flutuantes ou retorne ao tema clássico tradicional.
+          </p>
+        </div>
+
+        <div className="layout-switcher-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+          <div
+            className={`layout-switcher-card ${sidebarLayout === 'glass' ? 'selected' : ''}`}
+            onClick={() => onSidebarLayoutChange?.('glass')}
+            style={{
+              padding: '18px',
+              borderRadius: '14px',
+              background: 'var(--bg-secondary)',
+              border: sidebarLayout === 'glass' ? '2px solid var(--accent-color)' : '2px solid var(--border-color)',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              boxShadow: sidebarLayout === 'glass' ? '0 4px 20px rgba(0, 242, 254, 0.18)' : 'none',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>💎 Visual Glass (Inovador)</span>
+                <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 7px', borderRadius: '6px', background: 'rgba(56, 189, 248, 0.15)', color: 'var(--accent-color)', textTransform: 'uppercase' }}>Novo</span>
+              </div>
+              {sidebarLayout === 'glass' && (
+                <span style={{ background: 'var(--accent-color)', color: '#000', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>✓</span>
+              )}
+            </div>
+            <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.45' }}>
+              Pods em vidro fosco acetinado lapidado, avatares 100% circulares, canal de voz ativo com botão Assistir interativo, equalizador de áudio e visual despoluído.
+            </span>
+          </div>
+
+          <div
+            className={`layout-switcher-card ${sidebarLayout === 'classic' ? 'selected' : ''}`}
+            onClick={() => onSidebarLayoutChange?.('classic')}
+            style={{
+              padding: '18px',
+              borderRadius: '14px',
+              background: 'var(--bg-secondary)',
+              border: sidebarLayout === 'classic' ? '2px solid var(--accent-color)' : '2px solid var(--border-color)',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              boxShadow: sidebarLayout === 'classic' ? '0 4px 20px rgba(0, 242, 254, 0.18)' : 'none',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>🏛️ Tema Clássico (Discord Style)</span>
+              {sidebarLayout === 'classic' && (
+                <span style={{ background: 'var(--accent-color)', color: '#000', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>✓</span>
+              )}
+            </div>
+            <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.45' }}>
+              Layout tradicional com lista contínua em árvore, categorias verticais colapsáveis e barra de status clássica.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 4. Modo de Desempenho Visual (FPS Booster) ── */}
+      <div style={{ marginTop: '36px', paddingTop: '28px', borderTop: '1px solid var(--border-color)' }}>
+        <div className="performance-mode-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap', background: 'var(--bg-secondary)', padding: '18px 20px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
           <div style={{ maxWidth: '520px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center' }}>

@@ -522,6 +522,8 @@ function Echo({ user }: { user: User }) {
     setChatDensity,
     performanceMode,
     setPerformanceMode,
+    sidebarLayout,
+    setSidebarLayout,
     handleEquipDecoration,
     handleEquipProfileEffect,
     handleEquipAvatarFrame,
@@ -1987,6 +1989,7 @@ function Echo({ user }: { user: User }) {
           <ChannelsSidebar
             spaces={spaces}
             expandedSpace={expandedSpace}
+            sidebarLayout={sidebarLayout}
             spaceChannels={spaceChannels}
             selectedChannel={selectedChannel}
             setSelectedChannel={setSelectedChannel}
@@ -2166,6 +2169,7 @@ function Echo({ user }: { user: User }) {
                 <ErrorBoundary name="Canal de Voz">
                   <Suspense fallback={<div className="loading-screen"><div className="loader" /><span>Carregando canal de voz…</span></div>}>
                     <VoiceChannelView
+                    sidebarLayout={sidebarLayout}
                     currentSpace={currentSpace}
                     selectedChannel={selectedChannel}
                     user={user}
@@ -2432,6 +2436,8 @@ function Echo({ user }: { user: User }) {
             onChatDensityChange={setChatDensity}
             performanceMode={performanceMode}
             onPerformanceModeChange={setPerformanceMode}
+            sidebarLayout={sidebarLayout}
+            onSidebarLayoutChange={setSidebarLayout}
             pttModeSetting={pttModeSetting}
             onPttModeChange={setPttModeSetting}
             pttKey={pttKey}

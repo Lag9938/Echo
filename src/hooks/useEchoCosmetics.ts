@@ -49,6 +49,7 @@ export function useEchoCosmetics({
   const [customAccentColor, setCustomAccentColor] = useState<string>(() => localStorage.getItem('echo-custom-accent') || '')
   const [chatDensity, setChatDensity] = useState<'cozy' | 'compact'>(() => (localStorage.getItem('echo-chat-density') as any) || 'cozy')
   const [performanceMode, setPerformanceMode] = useState<boolean>(() => localStorage.getItem('echo-performance-mode') === 'true')
+  const [sidebarLayout, setSidebarLayout] = useState<'glass' | 'classic'>(() => (localStorage.getItem('echo-sidebar-layout') as 'glass' | 'classic') || 'glass')
 
   // Apply Theme class
   useEffect(() => {
@@ -124,6 +125,18 @@ export function useEchoCosmetics({
     }
     localStorage.setItem('echo-performance-mode', performanceMode ? 'true' : 'false')
   }, [performanceMode])
+
+  // Sidebar Layout (Glass vs Classic)
+  useEffect(() => {
+    if (sidebarLayout === 'classic') {
+      document.body.classList.add('echo-layout-classic')
+      document.body.classList.remove('echo-layout-glass')
+    } else {
+      document.body.classList.add('echo-layout-glass')
+      document.body.classList.remove('echo-layout-classic')
+    }
+    localStorage.setItem('echo-sidebar-layout', sidebarLayout)
+  }, [sidebarLayout])
 
   // IMPORTANT: Supabase Realtime Presence's track() REPLACES the entire
   // per-connection payload — it does not merge with the previous one.
@@ -336,6 +349,8 @@ export function useEchoCosmetics({
     setChatDensity,
     performanceMode,
     setPerformanceMode,
+    sidebarLayout,
+    setSidebarLayout,
     handleEquipDecoration,
     handleEquipProfileEffect,
     handleEquipAvatarFrame,

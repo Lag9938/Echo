@@ -74,6 +74,8 @@ export interface SettingsViewProps {
   onChatDensityChange?: (density: 'cozy' | 'compact') => void
   performanceMode?: boolean
   onPerformanceModeChange?: (val: boolean) => void
+  sidebarLayout?: 'glass' | 'classic'
+  onSidebarLayoutChange?: (layout: 'glass' | 'classic') => void
   pttModeSetting?: boolean
   onPttModeChange?: (val: boolean) => void
   pttKey?: string
@@ -156,6 +158,8 @@ export function SettingsView({
   onChatDensityChange,
   performanceMode = false,
   onPerformanceModeChange,
+  sidebarLayout = 'glass',
+  onSidebarLayoutChange,
   pttModeSetting,
   onPttModeChange,
   pttKey,
@@ -344,6 +348,8 @@ export function SettingsView({
             onChatDensityChange={onChatDensityChange}
             performanceMode={performanceMode}
             onPerformanceModeChange={onPerformanceModeChange}
+            sidebarLayout={sidebarLayout}
+            onSidebarLayoutChange={onSidebarLayoutChange}
           />
         )}
 

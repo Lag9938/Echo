@@ -78,13 +78,17 @@ export function HoveredMemberPopover({
     ? currentUserAvatarDecoration
     : (presenceData[targetUserId]?.avatar_decoration || (hoveredMemberPopover.user as any).avatar_decoration || null)
 
-  const bannerCustom = isCurrentUser
+  const rawBannerCustom = isCurrentUser
     ? ((hoveredMemberPopover.user as any)?.banner_url || hoveredMemberPopover.bannerCustom || localStorage.getItem(`echo-banner-custom-${currentUserId}`) || localStorage.getItem('echo-banner-custom') || null)
     : (hoveredMemberPopover.bannerCustom || (hoveredMemberPopover.user as any)?.banner_url || (presenceData[targetUserId] as any)?.banner_url || presenceData[targetUserId]?.banner_custom || localStorage.getItem(`echo-banner-custom-${targetUserId}`) || null)
 
-  const bannerPreset = isCurrentUser
+  const bannerCustom = typeof rawBannerCustom === 'string' && rawBannerCustom.trim().length > 0 ? rawBannerCustom.trim() : null
+
+  const rawBannerPreset = isCurrentUser
     ? ((hoveredMemberPopover.user as any)?.banner_preset || hoveredMemberPopover.bannerPreset || localStorage.getItem(`echo-banner-preset-${currentUserId}`) || localStorage.getItem('echo-banner-preset') || 'synthwave')
     : (hoveredMemberPopover.bannerPreset || (hoveredMemberPopover.user as any)?.banner_preset || (presenceData[targetUserId] as any)?.banner_preset || presenceData[targetUserId]?.banner_preset || localStorage.getItem(`echo-banner-preset-${targetUserId}`) || 'synthwave')
+
+  const bannerPreset = typeof rawBannerPreset === 'string' && rawBannerPreset.trim().length > 0 ? rawBannerPreset.trim() : 'synthwave'
 
   const isCreator = Boolean(hoveredMemberPopover.isCreator)
   const bio = hoveredMemberPopover.bio || (hoveredMemberPopover.user as any)?.bio || null
@@ -120,7 +124,7 @@ export function HoveredMemberPopover({
       className="member-hover-popover"
       style={{
         position: 'fixed',
-        top: `${Math.min(Math.max(12, hoveredMemberPopover.rect.top - 20), window.innerHeight - 360)}px`,
+        top: `${Math.min(Math.max(12, hoveredMemberPopover.rect.top - 20), window.innerHeight - 400)}px`,
         left: `${Math.max(10, hoveredMemberPopover.rect.left - 330)}px`,
         zIndex: 1100
       }}

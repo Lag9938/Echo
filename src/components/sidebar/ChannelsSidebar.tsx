@@ -7,6 +7,7 @@ import { UnifiedUserProfileFooter } from './UnifiedUserProfileFooter'
 import { useSpacesStore } from '../../stores/useSpacesStore'
 import { SPACE_SETTINGS_PERMISSIONS } from '../../lib/permissions'
 import { isMusicBotIdentity } from '../../lib/musicBotState'
+import { SERVER_BANNER_PRESETS } from '../../lib/formatters'
 import { MusicBotMiniPlayer } from './MusicBotMiniPlayer'
 import {
   BellIcon,
@@ -24,7 +25,6 @@ import {
   MicOffIcon,
   PhoneOffIcon,
   PlusIcon,
-  RecordCallIcon,
   ScreenIcon,
   SearchIcon,
   SettingsIcon,
@@ -125,6 +125,7 @@ export interface ChannelsSidebarProps {
   isPiPActive?: boolean
   setIsPiPActive?: (val: boolean) => void
   activeScreenSharers?: VoiceParticipant[]
+  sidebarLayout?: 'glass' | 'classic'
 }
 
 export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSidebarProps) {
@@ -145,6 +146,7 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
   const unreadChannels = props.unreadChannels ?? storeUnreadChannels
   const spaceVoiceUsers = props.spaceVoiceUsers ?? storeSpaceVoiceUsers
   const spaceMembers = props.spaceMembers ?? storeSpaceMembers
+  const sidebarLayout = props.sidebarLayout || 'glass'
 
   const {
     user,
@@ -201,10 +203,10 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
     isDeafened,
     handleToggleDeafen,
     setShowSoundboardModal,
-    isRecordingCall,
-    startCallRecording,
-    stopCallRecording,
-    recordingDuration,
+    isRecordingCall: _isRecordingCall,
+    startCallRecording: _startCallRecording,
+    stopCallRecording: _stopCallRecording,
+    recordingDuration: _recordingDuration,
     canUserDo,
     setVolumeControlUser,
     isConnected,
@@ -248,6 +250,26 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [voiceUserMenu])
+
+  const serverHeaderRef = React.useRef<HTMLDivElement | null>(null)
+
+  React.useEffect(() => {
+    if (!showServerDropdown) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (serverHeaderRef.current && !serverHeaderRef.current.contains(e.target as Node)) {
+        setShowServerDropdown(false)
+      }
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowServerDropdown(false)
+    }
+    window.addEventListener('mousedown', handleClickOutside)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('mousedown', handleClickOutside)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showServerDropdown, setShowServerDropdown])
   const [sidebarWidth, setSidebarWidth] = React.useState<number>(() => {
     const saved = localStorage.getItem('echo-channels-sidebar-width')
     if (saved) {
@@ -301,7 +323,7 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
   if (!activeSpace) {
     return (
       <aside 
-        className={`sidebar channels-sidebar channels-sidebar-empty ${isResizing ? 'is-resizing' : ''}`}
+        className={`sidebar channels-sidebar ${sidebarLayout === 'classic' ? 'echo-layout-classic' : 'echo-layout-glass'} channels-sidebar-empty ${isResizing ? 'is-resizing' : ''}`}
         style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, maxWidth: `${sidebarWidth}px` }}
       >
                 <div className="empty-servers-prompt">
@@ -464,7 +486,7 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
             return (
               <div 
                 key={ch.id} 
-                className={`voice-channel-node ${dragOverVoiceChannelId === ch.id ? 'drag-over-target' : ''}`}
+                className={`voice-channel-node ${channelVoiceUsers.length > 0 ? 'has-users' : ''} ${isActive ? 'is-active-call' : ''} ${dragOverVoiceChannelId === ch.id ? 'drag-over-target' : ''}`}
                 onDragOver={(e) => {
                   if (canMove) {
                     e.preventDefault()
@@ -596,6 +618,11 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                             )}
                           </div>
                           <span className="sidebar-voice-name">{p.displayName}</span>
+                          {p.isSpeaking && (
+                            <span className="voice-speaking-bars" title="Falando...">
+                              <span /><span /><span /><span /><span />
+                            </span>
+                          )}
                           <div className="sidebar-voice-user-icons">
                             {isSharer && (
                               <button
@@ -631,17 +658,60 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
             )
           }
 
+          const spaceBannerUrl = activeSpace.banner_url || (() => {
+            try {
+              const meta = JSON.parse(localStorage.getItem('echo-spaces-metadata') || '{}')
+              return meta[activeSpace.id]?.banner_url || ''
+            } catch {
+              return ''
+            }
+          })()
+
+          const spaceBannerTheme = activeSpace.banner_theme || (() => {
+            try {
+              const meta = JSON.parse(localStorage.getItem('echo-spaces-metadata') || '{}')
+              return meta[activeSpace.id]?.banner_theme || (meta[activeSpace.id] as any)?.banner_preset || ''
+            } catch {
+              return ''
+            }
+          })() || (activeSpace as any).banner_preset || ''
+
+          const bannerPreset = SERVER_BANNER_PRESETS.find(p => p.id === spaceBannerTheme)
+
+          let spaceBannerBg: string | undefined = undefined
+          let hasBanner = false
+
+          if (spaceBannerUrl) {
+            hasBanner = true
+            spaceBannerBg = `url(${spaceBannerUrl})`
+          } else if (bannerPreset) {
+            hasBanner = true
+            spaceBannerBg = bannerPreset.style
+          } else if (spaceBannerTheme && spaceBannerTheme !== 'none') {
+            if (spaceBannerTheme.startsWith('linear-gradient') || spaceBannerTheme.startsWith('radial-gradient')) {
+              hasBanner = true
+              spaceBannerBg = spaceBannerTheme
+            } else if (spaceBannerTheme.startsWith('http') || spaceBannerTheme.startsWith('data:')) {
+              hasBanner = true
+              spaceBannerBg = `url(${spaceBannerTheme})`
+            }
+          }
+
           return (
             <aside 
-              className={`sidebar channels-sidebar ${isResizing ? 'is-resizing' : ''}`}
+              className={`sidebar channels-sidebar ${sidebarLayout === 'classic' ? 'echo-layout-classic' : 'echo-layout-glass'} ${isResizing ? 'is-resizing' : ''}`}
               style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, maxWidth: `${sidebarWidth}px` }}
             >
               {/* Server Header Card with Dropdown Menu */}
               <div 
-                className={`server-header-card ${activeSpace.banner_url ? 'has-banner' : ''}`} 
+                ref={serverHeaderRef}
+                className={`server-header-card ${hasBanner ? 'has-banner' : ''} ${bannerPreset ? `banner-preset-${bannerPreset.id}` : ''}`} 
                 onClick={() => setShowServerDropdown(prev => !prev)}
                 style={{
-                  backgroundImage: activeSpace.banner_url ? `url(${activeSpace.banner_url})` : undefined
+                  backgroundImage: spaceBannerBg,
+                  backgroundPosition: spaceBannerUrl ? 'center' : undefined,
+                  backgroundSize: spaceBannerUrl ? 'cover' : undefined,
+                  backgroundRepeat: spaceBannerUrl ? 'no-repeat' : undefined
                 }}
               >
                 <div className="server-header-card-content" style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
@@ -1106,6 +1176,9 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                             {isVoiceReconnecting ? 'Reconectando…' : <CallElapsed />}
                           </span>
                         </div>
+                      </div>
+
+                      <div className="voice-status-header-right" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                         <div className="connection-quality-indicator" style={{ position: 'relative', cursor: 'pointer' }} onClick={(e) => e.stopPropagation()}>
                           <div className={`connection-bars ${isVoiceReconnecting ? 'reconnecting' : (rtcStats && rtcStats.ping < 100 ? 'good' : rtcStats && rtcStats.ping < 200 ? 'medium' : 'bad')}`}>
                             <i /><i /><i />
@@ -1119,16 +1192,16 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                             <div className="stat-row"><span>Perda de Pacotes:</span> <strong>{rtcStats ? `${rtcStats.packetLoss} %` : '0 %'}</strong></div>
                           </div>
                         </div>
-                      </div>
 
-                      <button
-                        type="button"
-                        className="voice-disconnect-btn"
-                        onClick={handleLeaveVoice}
-                        title="Desconectar da chamada de voz"
-                      >
-                        <PhoneOffIcon style={{ width: '13px', height: '13px' }} />
-                      </button>
+                        <button
+                          type="button"
+                          className="voice-disconnect-btn"
+                          onClick={handleLeaveVoice}
+                          title="Desconectar da chamada de voz"
+                        >
+                          <PhoneOffIcon style={{ width: '13px', height: '13px' }} />
+                        </button>
+                      </div>
                     </div>
 
                     {isPttMode && (
@@ -1152,9 +1225,6 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                         </button>
                         <button className="voice-action-btn" onClick={() => setShowSoundboardModal(true)} title="Soundboard Gamer">
                           <SoundboardIcon />
-                        </button>
-                        <button className={`voice-action-btn ${isRecordingCall ? 'recording' : ''}`} onClick={isRecordingCall ? stopCallRecording : startCallRecording} title={isRecordingCall ? `Gravando chamada (${recordingDuration}s)` : "Gravar chamada"}>
-                          <RecordCallIcon isRecording={isRecordingCall} />
                         </button>
                         {activeScreenSharers && activeScreenSharers.length > 0 && (
                           <button

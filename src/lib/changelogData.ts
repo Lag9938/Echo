@@ -18,11 +18,49 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.50.0',
+    title: 'Echo v0.50.0 - O Grande Redesign Cyber Frosted Glass',
+    date: '27 de Setembro de 2026',
+    tagline: 'Uma nova era visual para o Echo: acabamento translúcido Cyber Frosted Glass em todo o ecossistema, novo dock de voz com ping destacado ao lado de sair, e a liberdade de escolher entre o novo layout e o clássico.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '✨',
+        badge: 'DESIGN SYSTEM',
+        title: 'Cyber Frosted Glass em Todo o App',
+        description: 'Visual moderno com efeito de vidro jateado translúcido, desfoque dinâmico e reflexos sutis em todas as áreas principais: canais, cabeçalhos, chat flutuante, lista de membros, loja, amigos, configurações, favoritos e popovers.'
+      },
+      {
+        icon: '🎙️',
+        badge: 'CHAMADA & VOZ',
+        title: 'Dock de Voz Renovado com Latência em Destaque',
+        description: 'O gráfico e indicador de ping/latência em tempo real agora ficam posicionados diretamente ao lado do botão de sair da chamada, proporcionando leitura rápida da conexão. O botão de gravar chamada foi removido do painel principal para um design mais limpo.'
+      },
+      {
+        icon: '🎛️',
+        badge: 'PREFERÊNCIAS',
+        title: 'Seletor de Layout: Glass ou Clássico',
+        description: 'Você decide como prefere o Echo! Em Configurações > Aparência, você pode alternar livremente entre o novo visual Cyber Frosted Glass e o layout Clássico tradicional com apenas um clique.'
+      },
+      {
+        icon: '👤',
+        badge: 'PERFIL & MEMBROS',
+        title: 'Banners Corrigidos & Novo Popover de Membro',
+        description: 'Correção na exibição de banners personalizados e presets nos perfis. O card flutuante de membros ganhou design glass com visualização enriquecida de tags de clã, insígnias, efeitos e status de jogo.'
+      },
+      {
+        icon: '⚡',
+        badge: 'DESEMPENHO',
+        title: 'Modo Desempenho e Tema Claro Aperfeiçoados',
+        description: 'Total compatibilidade com o Modo Desempenho (Opaco), garantindo máxima taxa de quadros e fluidez em qualquer computador ao desativar efeitos pesados de desfoque sem perder a usabilidade.'
+      }
+    ]
+  },
+  {
     version: '0.40.3',
     title: 'Echo v0.40.3 - Chat Estável, Atalhos Livres e Menos Bugs',
     date: '27 de Setembro de 2026',
     tagline: 'O chat parava de tremer quando a barra superior flutuava por cima do conteúdo, os atalhos de teclado agora respeitam a tecla exata que você escolhe, e a detecção de jogo parou de se enganar com o título de outras janelas.',
-    isLatest: true,
     highlights: [
       {
         icon: '🩹',

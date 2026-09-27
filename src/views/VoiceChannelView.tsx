@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo, memo } from 'react'
+import React, { useState, useCallback, useEffect, memo } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { VoiceParticipant } from '../lib/useVoiceChannel'
 import type { Space, Channel, Message, PinnedMessage, ServerEmoji, RolePermissions, ServerRole } from '../types'
@@ -10,7 +10,6 @@ import { ModernVoiceNotePlayer } from '../components/chat/ModernVoiceNotePlayer'
 import { ChatLinkEmbed } from '../components/chat/ChatLinkEmbed'
 import { formatMessageText } from '../lib/messageFormatter'
 import { CommunityBadge } from '../components/CommunityBadge'
-import { CallElapsed, ConnectionPill, peopleLabel } from '../components/voice/CallHeaderMeta'
 import {
   BrainIcon,
   GridIcon,
@@ -21,7 +20,6 @@ import {
   MicOffIcon,
   MusicIcon,
   PaperclipIcon,
-  PhoneOffIcon,
   PinIcon,
   PipIcon,
   PlayIcon,
@@ -177,6 +175,7 @@ export interface VoiceChannelViewProps {
   setSearchQuery: (val: string) => void
   showScreenMenu: boolean
   setShowScreenMenu: React.Dispatch<React.SetStateAction<boolean>>
+  sidebarLayout?: 'glass' | 'classic'
 }
 
 export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChannelViewProps) {
@@ -191,6 +190,7 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
   const presenceStatus = props.presenceStatus ?? storePresenceStatus
 
   const {
+    sidebarLayout = 'glass',
     currentSpace,
     selectedChannel,
     user,
@@ -285,14 +285,6 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
     showScreenMenu,
     setShowScreenMenu
   } = props
-  const inThisCall = activeVoiceChannelId === selectedChannel.id && isConnected
-  const callPeopleCount = useMemo(() => {
-    const ids = new Set<string>()
-    if (inThisCall) participants.forEach((p) => { if (p?.userId) ids.add(p.userId) })
-    ;(spaceVoiceUsers[selectedChannel.id] || []).forEach((p) => { if (p?.userId) ids.add(p.userId) })
-    if (inThisCall && user?.id) ids.add(user.id)
-    return ids.size
-  }, [inThisCall, participants, spaceVoiceUsers, selectedChannel.id, user?.id])
   const openLightbox = useUIStore((s) => s.openLightbox)
   const setShowMusicBotModal = useUIStore((s) => s.setShowMusicBotModal)
   const [pendingVoicePastedFile, setPendingVoicePastedFile] = useState<File | null>(null)
@@ -382,18 +374,9 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                       <h1><span className="header-icon"><VolumeIcon /></span> {selectedChannel.name}</h1>
                       <span className="header-sub">
                         {currentSpace?.name}
-                        {inThisCall && (
-                          <>
-                            {currentSpace && <span className="header-sub-sep">·</span>}
-                            <CallElapsed />
-                            <span className="header-sub-sep">·</span>
-                            <span className="call-meta-value">{peopleLabel(callPeopleCount)}</span>
-                          </>
-                        )}
                       </span>
                     </div>
                     <div className="channel-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {inThisCall && <ConnectionPill />}
 
                       {/* Search messages in channel */}
                       <div className="channel-search-box-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -551,7 +534,7 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
 
                                 {/* Dock flutuante centralizado de participantes & controles na transmissão */}
                                 <div className="stream-participants-strip-wrap">
-                                  <div className="stream-participants-strip">
+                                  <div className={`stream-participants-strip ${sidebarLayout === 'classic' ? 'classic-strip' : 'glass-dock'}`}>
                                     {/* Membros na chamada */}
                                     {callMembersList.map(p => {
                                       const isSharer = Boolean(p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0))
@@ -806,139 +789,142 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                             {/* Controls bottom bar */}
                             {activeVoiceChannelId === selectedChannel.id && isConnected ? (
                               <div className="voice-controls-bar">
-                              <div className="voice-controls-capsule">
-                              <button
-                                className={`control-btn mic-btn ${isMuted ? 'muted' : ''}`}
-                                onClick={handleToggleMute}
-                                title={isMuted ? "Desmutar microfone" : "Mutar microfone"}
-                              >
-                                {isMuted ? <MicOffIcon /> : <MicIcon />}
-                              </button>
+                                <div className="voice-controls-capsule">
+                                  {/* Cluster 1: Áudio Principal (Mic + Fone) */}
+                                  <div className="voice-dock-cluster">
+                                    <button
+                                      className={`control-btn mic-btn ${isMuted ? 'muted' : ''}`}
+                                      onClick={handleToggleMute}
+                                      title={isMuted ? "Desmutar microfone" : "Mutar microfone"}
+                                    >
+                                      {isMuted ? <MicOffIcon style={{ width: 20, height: 20 }} /> : <MicIcon style={{ width: 20, height: 20 }} />}
+                                    </button>
 
-                              <button
-                                className={`control-btn deafen-btn ${isDeafened ? 'muted' : ''}`}
-                                onClick={handleToggleDeafen}
-                                title={isDeafened ? "Desensurdecer" : "Ensurdecer (Silenciar chamada)"}
-                              >
-                                {isDeafened ? <HeadphonesOffIcon /> : <HeadphonesIcon />}
-                              </button>
+                                    <button
+                                      className={`control-btn deafen-btn ${isDeafened ? 'muted' : ''}`}
+                                      onClick={handleToggleDeafen}
+                                      title={isDeafened ? "Desensurdecer" : "Ensurdecer (Silenciar chamada)"}
+                                    >
+                                      {isDeafened ? <HeadphonesOffIcon style={{ width: 20, height: 20 }} /> : <HeadphonesIcon style={{ width: 20, height: 20 }} />}
+                                    </button>
+                                  </div>
 
-                              <span className="voice-controls-divider" />
+                                  {/* Cluster 2: Echo Studio AI (Destaque Central Squircle) */}
+                                  <button
+                                    type="button"
+                                    className={`control-btn ai-btn ${isAiDenoiseEnabled ? 'active' : ''}`}
+                                    onClick={() => toggleAiDenoise()}
+                                    title={isAiDenoiseEnabled ? "Supressão de Ruído Echo AI: ATIVADA (Clique para desligar)" : "Supressão de Ruído Echo AI: DESATIVADA (Clique para ligar)"}
+                                  >
+                                    <BrainIcon style={{ width: 20, height: 20 }} />
+                                    {isAiDenoiseEnabled && <span className="control-btn-active-dot" />}
+                                  </button>
 
-                              {/* Quick AI Noise Suppression Toggle */}
-                              <button
-                                type="button"
-                                className={`control-btn ai-btn ${isAiDenoiseEnabled ? 'active' : ''}`}
-                                onClick={() => toggleAiDenoise()}
-                                title={isAiDenoiseEnabled ? "Supressão de Ruído por IA: ATIVADA (Clique para desligar)" : "Supressão de Ruído por IA: DESATIVADA (Clique para ligar)"}
-                              >
-                                <BrainIcon style={{ width: "16px", height: "16px" }} />
-                                {isAiDenoiseEnabled && <span className="control-btn-active-dot" />}
-                              </button>
+                                  {/* Cluster 3: Transmissão & Vídeo (Câmera + Tela) */}
+                                  <div className="voice-dock-cluster">
+                                    <button
+                                      type="button"
+                                      className={`control-btn camera-btn ${localCameraStream ? 'sharing' : ''}`}
+                                      onClick={handleToggleCamera}
+                                      title={localCameraStream ? "Desligar Câmera" : "Ligar Câmera"}
+                                    >
+                                      {localCameraStream ? (
+                                        <VideoOffIcon style={{ width: 20, height: 20 }} />
+                                      ) : (
+                                        <VideoCallIcon style={{ width: 20, height: 20 }} />
+                                      )}
+                                    </button>
 
-                              <button
-                                type="button"
-                                className={`control-btn camera-btn ${localCameraStream ? 'sharing' : ''}`}
-                                onClick={handleToggleCamera}
-                                title={localCameraStream ? "Desligar Câmera" : "Ligar Câmera"}
-                              >
-                                {localCameraStream ? (
-                                  <VideoOffIcon />
-                                ) : (
-                                  <VideoCallIcon />
-                                )}
-                              </button>
-
-                              <div className="screen-control-wrapper" style={{ position: 'relative' }}>
-                                <button 
-                                  className={`control-btn screen-btn ${localScreenStream ? 'sharing' : ''}`} 
-                                  onClick={() => {
-                                    if (localScreenStream) {
-                                      setShowScreenMenu(!showScreenMenu)
-                                    } else {
-                                      openScreenPicker()
-                                    }
-                                  }}
-                                  title={localScreenStream ? "Opções de Transmissão" : "Transmitir Tela"}
-                                >
-                                  <ScreenIcon />
-                                </button>
-                                {showScreenMenu && localScreenStream && (
-                                  <div className="screen-share-dropdown">
-                                    <div className="dropdown-section">
-                                      <button className="dropdown-action-btn danger" onClick={async () => { setShowScreenMenu(false); await handleStopScreenShare() }}>
-                                        Parar Transmissão
+                                    <div className="screen-control-wrapper" style={{ position: 'relative' }}>
+                                      <button 
+                                        className={`control-btn screen-btn ${localScreenStream ? 'sharing' : ''}`} 
+                                        onClick={() => {
+                                          if (localScreenStream) {
+                                            setShowScreenMenu(!showScreenMenu)
+                                          } else {
+                                            openScreenPicker()
+                                          }
+                                        }}
+                                        title={localScreenStream ? "Opções de Transmissão" : "Transmitir Tela"}
+                                      >
+                                        <ScreenIcon style={{ width: 20, height: 20 }} />
                                       </button>
-                                      <button className="dropdown-action-btn" onClick={forceOpenScreenPicker}>
-                                        Mudar de Janela
-                                      </button>
-                                    </div>
-                                    <div className="dropdown-divider" />
-                                    <div className="dropdown-section">
-                                      <span className="section-title">Resolução</span>
-                                      {([720, 1080, 'native'] as const).map(q => {
-                                        const label = q === 720 ? '720p' : q === 1080 ? '1080p' : 'native'
-                                        const keyVal = q === 720 ? '720p' : q === 1080 ? '1080p' : 'native'
-                                        return (
-                                          <button 
-                                            key={keyVal} 
-                                            className={`dropdown-option ${screenQuality === keyVal ? 'selected' : ''}`}
-                                            onClick={() => handleQualityChange(keyVal)}
-                                          >
-                                            {q === 'native' ? 'Nativa / Fonte' : label}
-                                          </button>
-                                        )
-                                      })}
-                                    </div>
-                                    <div className="dropdown-divider" />
-                                    <div className="dropdown-section">
-                                      <span className="section-title">FPS</span>
-                                      {([15, 30, 60] as const).map(fps => (
-                                        <button 
-                                          key={fps} 
-                                          className={`dropdown-option ${screenFps === fps ? 'selected' : ''}`}
-                                          onClick={() => handleFpsChange(fps)}
-                                        >
-                                          <span>{fps} FPS</span>
-                                        </button>
-                                      ))}
+                                      {showScreenMenu && localScreenStream && (
+                                        <div className="screen-share-dropdown">
+                                          <div className="dropdown-section">
+                                            <button className="dropdown-action-btn danger" onClick={async () => { setShowScreenMenu(false); await handleStopScreenShare() }}>
+                                              Parar Transmissão
+                                            </button>
+                                            <button className="dropdown-action-btn" onClick={forceOpenScreenPicker}>
+                                              Mudar de Janela
+                                            </button>
+                                          </div>
+                                          <div className="dropdown-divider" />
+                                          <div className="dropdown-section">
+                                            <span className="section-title">Resolução</span>
+                                            {([720, 1080, 'native'] as const).map(q => {
+                                              const label = q === 720 ? '720p' : q === 1080 ? '1080p' : 'native'
+                                              const keyVal = q === 720 ? '720p' : q === 1080 ? '1080p' : 'native'
+                                              return (
+                                                <button 
+                                                  key={keyVal} 
+                                                  className={`dropdown-option ${screenQuality === keyVal ? 'selected' : ''}`}
+                                                  onClick={() => handleQualityChange(keyVal)}
+                                                >
+                                                  {q === 'native' ? 'Nativa / Fonte' : label}
+                                                </button>
+                                              )
+                                            })}
+                                          </div>
+                                          <div className="dropdown-divider" />
+                                          <div className="dropdown-section">
+                                            <span className="section-title">FPS</span>
+                                            {([15, 30, 60] as const).map(fps => (
+                                              <button 
+                                                key={fps} 
+                                                className={`dropdown-option ${screenFps === fps ? 'selected' : ''}`}
+                                                onClick={() => handleFpsChange(fps)}
+                                              >
+                                                <span>{fps} FPS</span>
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
-                                )}
-                              </div>
 
-                                <span className="voice-controls-divider" />
+                                  {/* Cluster 4: Entretenimento (Soundboard + Música) */}
+                                  <div className="voice-dock-cluster">
+                                    <button
+                                      className="control-btn soundboard-btn"
+                                      onClick={() => setShowSoundboardModal(true)}
+                                      title="Mesa de Efeitos Sonoros (Soundboard)"
+                                    >
+                                      <SoundboardIcon style={{ width: 20, height: 20 }} />
+                                    </button>
 
-                                {/* Soundboard Button */}
-                                <button
-                                  className="control-btn"
-                                  onClick={() => setShowSoundboardModal(true)}
-                                  title="Mesa de Efeitos Sonoros (Soundboard)"
-                                >
-                                  <SoundboardIcon />
-                                </button>
+                                    <button
+                                      className="control-btn music-btn"
+                                      onClick={() => setShowMusicBotModal(true)}
+                                      title="Bot de Música"
+                                    >
+                                      <MusicIcon style={{ width: 20, height: 20 }} />
+                                    </button>
+                                  </div>
 
-                                {/* Music Bot Button */}
-                                <button
-                                  className="control-btn"
-                                  onClick={() => setShowMusicBotModal(true)}
-                                  title="Bot de Música"
-                                >
-                                  <MusicIcon style={{ width: 18, height: 18 }} />
-                                </button>
-                              </div>
-
-                              {/* Qualidade da conexão ao lado de sair, igual ao painel da barra lateral */}
-                              <div className="voice-controls-leave-group">
-                                <ConnectionPill />
-                                <button
-                                  className="control-btn leave-btn"
-                                  onClick={handleLeaveVoice}
-                                  title="Sair da chamada"
-                                >
-                                  <PhoneOffIcon />
-                                </button>
-                              </div>
+                                  {/* Cluster 5: Desconectar (Squircle Red) */}
+                                  <button
+                                    className="control-btn leave-btn"
+                                    onClick={handleLeaveVoice}
+                                    title="Sair da chamada"
+                                  >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-6-6 19.8 19.8 0 0 1-3.12-8.69A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/>
+                                      <line x1="22" y1="2" x2="2" y2="22"/>
+                                    </svg>
+                                  </button>
+                                </div>
                               </div>
                             ) : null}
                           </div>

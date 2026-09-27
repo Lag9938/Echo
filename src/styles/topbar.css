@@ -1069,3 +1069,149 @@
 .topbar-call-name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
 @media (prefers-reduced-motion: reduce) { .topbar-call-live { animation: none; } }
 @media (max-width: 1100px) { .topbar-call-name { display: none; } }
+
+/* ========================================================
+   ECHO INNOVATIVE FROSTED GLASS TOPBAR
+   ======================================================== */
+
+body.echo-layout-glass .topbar {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%),
+              color-mix(in srgb, var(--bg-secondary, #12141a) 75%, transparent) !important;
+  backdrop-filter: blur(28px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(200%) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color, rgba(255, 255, 255, 0.14)) 45%, rgba(255, 255, 255, 0.12)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18),
+              0 8px 32px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Atmospheric subtle glow mesh behind topbar */
+body.echo-layout-glass .topbar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--accent-color, #38bdf8) 15%, transparent) 0%, transparent 65%);
+  z-index: 0;
+}
+
+/* Floating Center Capsule Server Dock */
+body.echo-layout-glass .topbar-center-dock {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.03) 100%),
+              color-mix(in srgb, var(--bg-tertiary, #1a1d24) 65%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--border-color, rgba(255, 255, 255, 0.18)) 50%, rgba(255, 255, 255, 0.16)) !important;
+  border-radius: 9999px !important;
+  padding: 4px 8px !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  box-shadow: inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.22),
+              0 8px 24px rgba(0, 0, 0, 0.3) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+body.echo-layout-glass .topbar-center-dock:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0.05) 100%),
+              color-mix(in srgb, var(--bg-tertiary, #1a1d24) 75%, transparent) !important;
+  border-color: color-mix(in srgb, var(--accent-color, #38bdf8) 45%, rgba(255, 255, 255, 0.25)) !important;
+  box-shadow: inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.3),
+              0 10px 28px rgba(0, 0, 0, 0.38) !important;
+}
+
+/* Glass Server Buttons */
+body.echo-layout-glass .topbar-server-btn {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 3px 10px rgba(0, 0, 0, 0.25) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+body.echo-layout-glass .topbar-server-btn:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border-color: color-mix(in srgb, var(--accent-color, #38bdf8) 60%, rgba(255, 255, 255, 0.4)) !important;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent-color, #38bdf8) 45%, transparent),
+              0 4px 14px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.echo-layout-glass .topbar-server-btn.selected {
+  background: color-mix(in srgb, var(--accent-color, #38bdf8) 22%, rgba(255, 255, 255, 0.08)) !important;
+  border-color: var(--accent-color, #38bdf8) !important;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent-color, #38bdf8) 55%, transparent),
+              0 4px 14px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Active Server Item Wrap (Expanded Pill) */
+body.echo-layout-glass .topbar-server-item-wrap.has-name {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-color, #38bdf8) 22%, transparent) 0%, rgba(255, 255, 255, 0.05) 100%) !important;
+  border: 1px solid color-mix(in srgb, var(--accent-color, #38bdf8) 50%, rgba(255, 255, 255, 0.2)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25),
+              0 4px 14px color-mix(in srgb, var(--accent-color, #38bdf8) 25%, transparent) !important;
+  border-radius: 9999px !important;
+}
+
+/* Glass Add Server Button */
+body.echo-layout-glass .topbar-server-add-btn {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px dashed rgba(255, 255, 255, 0.2) !important;
+}
+body.echo-layout-glass .topbar-server-add-btn:hover {
+  background: color-mix(in srgb, var(--accent-color, #38bdf8) 20%, rgba(255, 255, 255, 0.1)) !important;
+  border-color: var(--accent-color, #38bdf8) !important;
+  border-style: solid !important;
+  transform: rotate(90deg) scale(1.08) !important;
+}
+
+/* Active Call Pill */
+body.echo-layout-glass .topbar-call-pill {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.18) 0%, rgba(34, 197, 94, 0.06) 100%) !important;
+  border: 1px solid rgba(34, 197, 94, 0.4) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 14px rgba(34, 197, 94, 0.25) !important;
+}
+body.echo-layout-glass .topbar-call-pill:hover {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.28) 0%, rgba(34, 197, 94, 0.12) 100%) !important;
+  border-color: rgba(34, 197, 94, 0.6) !important;
+}
+
+/* Micro Action Buttons in Topbar (Mute, Deafen, Settings, etc.) */
+body.echo-layout-glass .topbar-icon-btn {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+body.echo-layout-glass .topbar-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  transform: translateY(-1px) scale(1.04) !important;
+}
+
+/* Light Theme Overrides for Glass TopBar */
+body.echo-layout-glass.light-theme .topbar,
+body.light-theme.echo-layout-glass .topbar {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.55) 100%),
+              color-mix(in srgb, var(--bg-secondary, #f1f3f8) 80%, transparent) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 24px rgba(0, 0, 0, 0.06) !important;
+}
+body.echo-layout-glass.light-theme .topbar-center-dock,
+body.light-theme.echo-layout-glass .topbar-center-dock {
+  background: rgba(255, 255, 255, 0.65) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 4px 16px rgba(0, 0, 0, 0.05) !important;
+}
+body.echo-layout-glass.light-theme .topbar-server-btn,
+body.light-theme.echo-layout-glass .topbar-server-btn {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  color: var(--text-primary, #0f172a) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06) !important;
+}
+body.echo-layout-glass.light-theme .topbar-icon-btn,
+body.light-theme.echo-layout-glass .topbar-icon-btn {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  color: var(--text-primary, #0f172a) !important;
+}

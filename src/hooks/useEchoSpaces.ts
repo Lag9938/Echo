@@ -177,7 +177,7 @@ export function useEchoSpaces({
         ...sp,
         icon_url: sp.icon_url || localMeta[sp.id]?.icon_url || '',
         banner_url: sp.banner_url || localMeta[sp.id]?.banner_url || '',
-        banner_theme: sp.banner_theme || localMeta[sp.id]?.banner_theme || 'dark',
+        banner_theme: sp.banner_theme || localMeta[sp.id]?.banner_theme || null,
         welcome_channel_id: sp.welcome_channel_id || localMeta[sp.id]?.welcome_channel_id || ''
       }
     }).filter((space: any): space is Space => Boolean(space))

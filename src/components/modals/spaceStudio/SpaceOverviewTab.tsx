@@ -3,7 +3,8 @@ import type { FormEvent } from 'react'
 import type { Space, Channel } from '../../../types'
 import {
   getServerGradient,
-  getServerInitials
+  getServerInitials,
+  SERVER_BANNER_PRESETS
 } from '../../../lib/formatters'
 import {
   BellIcon,
@@ -13,16 +14,7 @@ import {
   SettingsIcon
 } from '../../icons'
 
-export const SERVER_BANNER_PRESETS = [
-  { id: 'dark', name: 'Dark Void', style: 'linear-gradient(135deg, #2b3240, #181b22)' },
-  { id: 'magenta', name: 'Neon Pink', style: 'linear-gradient(135deg, #ff007f, #aa0055)' },
-  { id: 'red', name: 'Ruby Crimson', style: 'linear-gradient(135deg, #e0554c, #8b1d16)' },
-  { id: 'orange', name: 'Sunset Orange', style: 'linear-gradient(135deg, #f97316, #c2410c)' },
-  { id: 'gold', name: 'Golden Glow', style: 'linear-gradient(135deg, #eab308, #a16207)' },
-  { id: 'purple', name: 'Cyber Violet', style: 'linear-gradient(135deg, #8b5cf6, #5b21b6)' },
-  { id: 'cyan', name: 'Arctic Cyan', style: 'linear-gradient(135deg, #06b6d4, #0e7490)' },
-  { id: 'emerald', name: 'Emerald Forest', style: 'linear-gradient(135deg, #10b981, #047857)' }
-]
+export { SERVER_BANNER_PRESETS }
 
 export interface SpaceOverviewTabProps {
   editingSpace: Space

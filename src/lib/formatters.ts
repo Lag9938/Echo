@@ -22,6 +22,17 @@ export const ROLE_COLOR_PRESETS = [
   '#14b8a6'
 ]
 
+export const SERVER_BANNER_PRESETS = [
+  { id: 'dark', name: 'Dark Void', style: 'linear-gradient(135deg, #2b3240, #181b22)' },
+  { id: 'magenta', name: 'Neon Pink', style: 'linear-gradient(135deg, #ff007f, #aa0055)' },
+  { id: 'red', name: 'Ruby Crimson', style: 'linear-gradient(135deg, #e0554c, #8b1d16)' },
+  { id: 'orange', name: 'Sunset Orange', style: 'linear-gradient(135deg, #f97316, #c2410c)' },
+  { id: 'gold', name: 'Golden Glow', style: 'linear-gradient(135deg, #eab308, #a16207)' },
+  { id: 'purple', name: 'Cyber Violet', style: 'linear-gradient(135deg, #8b5cf6, #5b21b6)' },
+  { id: 'cyan', name: 'Arctic Cyan', style: 'linear-gradient(135deg, #06b6d4, #0e7490)' },
+  { id: 'emerald', name: 'Emerald Forest', style: 'linear-gradient(135deg, #10b981, #047857)' }
+]
+
 export function getServerGradient(name: string): string {
   const gradients = [
     'linear-gradient(135deg, #5865F2, #7289DA)',

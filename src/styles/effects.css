@@ -1291,3 +1291,185 @@ body[data-performance-mode="true"] * {
   .messages-skeleton-line { animation: none; }
 }
 
+/* ==========================================================================
+   ECHO SHOP - CYBER FROSTED GLASS SYSTEM
+   Scoped to body.echo-layout-glass
+   ========================================================================== */
+
+body.echo-layout-glass .echo-shop-container {
+  background: transparent;
+}
+
+body.echo-layout-glass .echo-shop-badge-icon {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.25) 0%, rgba(99, 102, 241, 0.3) 100%);
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  box-shadow: 0 4px 24px rgba(0, 242, 254, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 18px;
+}
+
+body.echo-layout-glass .echo-shop-header-btn {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+body.echo-layout-glass .echo-shop-header-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(0, 242, 254, 0.4);
+  box-shadow: 0 6px 20px rgba(0, 242, 254, 0.2);
+  color: #fff;
+}
+
+body.echo-layout-glass .echo-shop-close-btn {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+}
+
+body.echo-layout-glass .echo-shop-close-btn:hover {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
+}
+
+body.echo-layout-glass .echo-shop-main-tabs {
+  background: rgba(12, 16, 26, 0.65);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  padding: 6px;
+}
+
+body.echo-layout-glass .echo-shop-main-tab {
+  border-radius: 12px;
+  font-weight: 700;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.echo-layout-glass .echo-shop-main-tab:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+body.echo-layout-glass .echo-shop-main-tab.active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.22) 0%, rgba(99, 102, 241, 0.28) 100%);
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  box-shadow: 0 4px 18px rgba(0, 242, 254, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  text-shadow: 0 0 12px rgba(0, 242, 254, 0.4);
+}
+
+body.echo-layout-glass .echo-shop-showcase-card {
+  background: linear-gradient(135deg, rgba(14, 18, 30, 0.72) 0%, rgba(20, 26, 42, 0.65) 100%) !important;
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 24px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+body.echo-layout-glass .echo-shop-showcase-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 242, 254, 0.4), transparent);
+  pointer-events: none;
+}
+
+body.echo-layout-glass .echo-shop-mock-profile-card {
+  background: rgba(12, 15, 24, 0.8) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 18px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 242, 254, 0.15);
+}
+
+body.echo-layout-glass .echo-shop-cat-btn {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+body.echo-layout-glass .echo-shop-cat-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+body.echo-layout-glass .echo-shop-cat-btn.active {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.18) 0%, rgba(99, 102, 241, 0.22) 100%);
+  border-color: rgba(0, 242, 254, 0.4);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(0, 242, 254, 0.18);
+}
+
+body.echo-layout-glass .echo-shop-card {
+  background: rgba(16, 21, 34, 0.58) !important;
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.echo-layout-glass .echo-shop-card:hover {
+  transform: translateY(-5px);
+  background: rgba(20, 27, 44, 0.72) !important;
+  border-color: var(--item-theme, rgba(0, 242, 254, 0.4)) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 24px var(--item-theme, rgba(0, 242, 254, 0.25));
+}
+
+body.echo-layout-glass .echo-shop-card.selected {
+  border-color: var(--item-theme, #00f2fe) !important;
+  box-shadow: 0 0 0 2px var(--item-theme, #00f2fe), 0 12px 32px rgba(0, 0, 0, 0.55), 0 0 24px var(--item-theme, rgba(0, 242, 254, 0.25));
+}
+
+body.echo-layout-glass .echo-shop-card-visualizer {
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.06) 0%, rgba(0, 0, 0, 0.35) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Light Theme in Glass Layout */
+body.light-theme.echo-layout-glass .echo-shop-main-tabs,
+body.light-theme.echo-layout-glass .echo-shop-showcase-card,
+body.light-theme.echo-layout-glass .echo-shop-card {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+  color: #0f172a !important;
+}
+
+body.light-theme.echo-layout-glass .echo-shop-card-visualizer {
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.03) 0%, rgba(0, 0, 0, 0.08) 100%);
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+/* Performance Mode (Opaque) */
+body.theme-performance-opaque.echo-layout-glass .echo-shop-main-tabs,
+body.theme-performance-opaque.echo-layout-glass .echo-shop-showcase-card,
+body.theme-performance-opaque.echo-layout-glass .echo-shop-card,
+body.theme-performance-opaque.echo-layout-glass .echo-shop-cat-btn,
+body.theme-performance-opaque.echo-layout-glass .echo-shop-badge-icon {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: var(--bg-secondary) !important;
+}
+

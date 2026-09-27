@@ -43,3 +43,7 @@ supabase/.temp/
 *.key
 *.pem
 cookies.txt
+
+# Scratch and audit outputs
+Claude outputs/
+scripts/css-audit-results.json

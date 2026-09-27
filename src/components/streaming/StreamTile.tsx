@@ -277,20 +277,6 @@ export function StreamTile({
         />
       )}
 
-      {/* Stream Info Tag Header */}
-      <div className="screen-share-tag" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span className="stream-live-tag">AO VIVO</span>
-        <span style={{ fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-          <FocusIcon style={{ width: '13px', height: '13px' }} />
-          <span>{participant.displayName}</span>
-        </span>
-        {streamResolution && (
-          <span className="stream-res-badge">
-            {streamFps} FPS • {streamResolution}
-          </span>
-        )}
-        <AudioLevelMeter stream={participant.screenStream || null} />
-      </div>
 
       {/* Diagnostic Stream HUD (Like Discord Stream Stats) */}
       {showStatsHud && (
@@ -314,115 +300,141 @@ export function StreamTile({
         </div>
       )}
       
-      {/* Stream Overlay Controls */}
-      <div className="screen-share-overlay-controls">
-        {onSelectFocus && (
-          <button 
-            type="button"
-            className="stream-action-btn"
-            onClick={onSelectFocus}
-            title="Expandir e focar nesta transmissão"
-          >
-            <FocusIcon />
-            <span>Focar</span>
-          </button>
-        )}
+      {/* Unified Floating Glass Cinema Bar (Echo Style) */}
+      <div className={`stream-unified-glass-bar ${showStatsHud ? 'always-visible' : ''}`}>
+        {/* Telemetria e Info da Transmissão */}
+        <div className="stream-glass-telemetry">
+          <div className="stream-live-pill">
+            <span className="stream-live-pulse-dot" />
+            <span>AO VIVO</span>
+          </div>
 
-        {/* HUD de Estatísticas (Bitrate, FPS, Resolução e Codecs) */}
-        <button
-          type="button"
-          className={`stream-action-btn stats-hud-btn ${showStatsHud ? 'active' : ''}`}
-          onClick={() => setShowStatsHud(!showStatsHud)}
-          title="Ver Estatísticas da Transmissão (FPS, Resolução, Codec e Sincronia)"
-          style={{
-            background: showStatsHud ? 'rgba(56, 189, 248, 0.25)' : 'rgba(0, 0, 0, 0.45)',
-            borderColor: showStatsHud ? 'var(--accent-color)' : 'rgba(255, 255, 255, 0.1)',
-            color: showStatsHud ? 'var(--accent-color)' : '#fff'
-          }}
-        >
-          <BarChartIcon style={{ width: '14px', height: '14px' }} />
-          <span>Stats</span>
-        </button>
+          <div className="stream-streamer-unit">
+            {participant.avatarUrl ? (
+              <img
+                src={participant.avatarUrl}
+                alt={participant.displayName}
+                className="stream-avatar-circle"
+              />
+            ) : (
+              <div className="stream-avatar-circle">
+                {(participant.displayName || '?').charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span className="stream-author-name">{participant.displayName}</span>
+          </div>
 
-        {/* Botão de Pausar Prévia Local para liberar GPU/FPS em jogos */}
-        {isLocalSharer && showLocalPreview && (
+          <span className="stream-quality-pill">
+            {streamResolution ? `${streamFps} FPS • ${streamResolution}` : `${streamFps} FPS`}
+          </span>
+
+          <AudioLevelMeter stream={participant.screenStream || null} />
+        </div>
+
+        {/* Ações e Controles da Transmissão (Squircles Uniformes) */}
+        <div className="stream-glass-actions">
+          {onSelectFocus && (
+            <button 
+              type="button"
+              className="stream-squircle-btn"
+              onClick={onSelectFocus}
+              title="Focar nesta transmissão"
+            >
+              <FocusIcon style={{ width: '16px', height: '16px' }} />
+              <span className="stream-tooltip">Focar</span>
+            </button>
+          )}
+
+          {/* HUD de Estatísticas */}
           <button
             type="button"
-            className="stream-action-btn local-preview-pause-btn"
-            onClick={() => setShowLocalPreview(false)}
-            title="Pausar prévia local para economizar FPS do jogo"
-            style={{ color: '#22c55e', borderColor: 'rgba(34, 197, 94, 0.4)' }}
+            className={`stream-squircle-btn ${showStatsHud ? 'active' : ''}`}
+            onClick={() => setShowStatsHud(!showStatsHud)}
+            title="Estatísticas da Transmissão"
           >
-            <EyeOffIcon style={{ width: '14px', height: '14px' }} />
-            <span>Pausar Prévia (FPS+)</span>
+            <BarChartIcon style={{ width: '16px', height: '16px' }} />
+            <span className="stream-tooltip">Estatísticas</span>
           </button>
-        )}
 
-        {/* Picture-in-Picture Button */}
-        <button
-          className={`stream-action-btn ${isPiPActive ? 'active' : ''}`}
-          onClick={onToggleFloatingPiP}
-          title={isPiPActive ? "Fechar Mini Player Flutuante" : "Ativar Mini Player Flutuante (Always-on-Top)"}
-        >
-          <PipIcon />
-          <span>{isPiPActive ? 'Mini Player ON' : 'Mini Player'}</span>
-        </button>
+          {/* Botão de Pausar Prévia Local para liberar GPU/FPS em jogos */}
+          {isLocalSharer && showLocalPreview && (
+            <button
+              type="button"
+              className="stream-squircle-btn fps-boost-btn"
+              onClick={() => setShowLocalPreview(false)}
+              title="Pausar prévia local (liberar GPU)"
+            >
+              <EyeOffIcon style={{ width: '16px', height: '16px' }} />
+              <span className="stream-tooltip">Pausar Prévia (FPS+)</span>
+            </button>
+          )}
 
-        {/* Volume Booster Slider (0% - 200%) */}
-        {participant.userId !== user.id && (
-          <div className="screen-volume-control" title="Volume da Transmissão (Até 200%)">
-            <VolumeIcon className="screen-volume-icon" />
-            <input 
-              type="range" 
-              min="0" 
-              max="200" 
-              value={volumeVal}
-              onChange={(e) => {
-                const val = parseInt(e.target.value)
-                const newVols = { ...peerScreenVolumes, [participant.userId]: val }
-                setPeerScreenVolumes(newVols)
-                localStorage.setItem('echo-peer-screen-volumes', JSON.stringify(newVols))
-              }}
-              style={{ width: '80px', accentColor: 'var(--accent-color)', cursor: 'pointer' }}
-            />
-            <span style={{ fontSize: '11px', minWidth: '34px', fontWeight: 'bold', color: volumeVal > 100 ? '#ff9f43' : 'inherit' }}>
-              {volumeVal}%
-            </span>
-          </div>
-        )}
-
-        {onToggleFullScreen && (
-          <button 
-            className={`fullscreen-toggle-btn ${isFullScreen ? 'active' : ''}`}
-            onClick={onToggleFullScreen}
-            title={isFullScreen ? "Sair da Tela Cheia (Esc)" : "Tela Cheia"}
-          >
-            <FullscreenIcon />
-          </button>
-        )}
-
-        {onCloseStream && (
-          <button 
+          {/* Picture-in-Picture Button */}
+          <button
             type="button"
-            className="stream-action-btn danger"
-            onClick={onCloseStream}
-            title="Fechar vídeo e voltar aos avatares de voz"
-            style={{
-              background: 'rgba(235, 59, 90, 0.18)',
-              border: '1px solid rgba(235, 59, 90, 0.35)',
-              color: '#eb3b5a',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '4px 8px',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
+            className={`stream-squircle-btn ${isPiPActive ? 'active' : ''}`}
+            onClick={onToggleFloatingPiP}
+            title={isPiPActive ? "Fechar Mini Player Flutuante" : "Mini Player Flutuante (PiP)"}
           >
-            ✕ Fechar Vídeo
+            <PipIcon style={{ width: '16px', height: '16px' }} />
+            <span className="stream-tooltip">{isPiPActive ? 'Fechar Mini Player' : 'Mini Player (PiP)'}</span>
           </button>
-        )}
+
+          {/* Volume Booster Slider (0% - 200%) */}
+          {participant.userId !== user.id && (
+            <div className="stream-glass-volume-capsule" title="Volume da Transmissão (0% - 200%)">
+              <VolumeIcon className="stream-volume-icon" style={{ width: '15px', height: '15px' }} />
+              <input 
+                type="range" 
+                min="0" 
+                max="200" 
+                value={volumeVal}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value)
+                  const newVols = { ...peerScreenVolumes, [participant.userId]: val }
+                  setPeerScreenVolumes(newVols)
+                  localStorage.setItem('echo-peer-screen-volumes', JSON.stringify(newVols))
+                }}
+                className="stream-volume-slider"
+              />
+              <span className="stream-volume-pct" style={{ color: volumeVal > 100 ? '#f59e0b' : undefined }}>
+                {volumeVal}%
+              </span>
+            </div>
+          )}
+
+          {/* Tela Cheia */}
+          {onToggleFullScreen && (
+            <button 
+              type="button"
+              className={`stream-squircle-btn ${isFullScreen ? 'active' : ''}`}
+              onClick={onToggleFullScreen}
+              title={isFullScreen ? "Sair da Tela Cheia (Esc)" : "Tela Cheia"}
+            >
+              <FullscreenIcon style={{ width: '16px', height: '16px' }} />
+              <span className="stream-tooltip">{isFullScreen ? 'Sair da Tela Cheia' : 'Tela Cheia'}</span>
+            </button>
+          )}
+
+          {/* Divisor vertical */}
+          {onCloseStream && <span className="stream-glass-sep" />}
+
+          {/* Fechar Vídeo */}
+          {onCloseStream && (
+            <button 
+              type="button"
+              className="stream-squircle-btn exit-btn"
+              onClick={onCloseStream}
+              title="Fechar Vídeo e Voltar à Voz"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+              <span className="stream-tooltip">Fechar Vídeo</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

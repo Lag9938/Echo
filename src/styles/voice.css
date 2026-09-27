@@ -229,10 +229,10 @@
   align-items: center;
   gap: 4px;
   padding: 8px 10px;
-  background: color-mix(in srgb, var(--bg-secondary) 85%, #000);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 18px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
   overflow-x: auto;
   overflow-y: hidden;
   max-width: 100%;
@@ -248,6 +248,55 @@
 .stream-participants-strip::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--text-primary) 20%, transparent);
   border-radius: 3px;
+}
+
+/* Glass Dock Variant (Parte de baixo inovadora em vidro) */
+.stream-participants-strip.glass-dock,
+body.echo-layout-glass .stream-participants-strip:not(.classic-strip) {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.03) 100%), color-mix(in srgb, var(--bg-secondary) 82%, transparent);
+  backdrop-filter: blur(28px) saturate(210%);
+  -webkit-backdrop-filter: blur(28px) saturate(210%);
+  border: 1px solid color-mix(in srgb, var(--border-color) 60%, rgba(255, 255, 255, 0.14));
+  border-radius: 16px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55), inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+body.light-theme .stream-participants-strip.glass-dock,
+body.light-theme.echo-layout-glass .stream-participants-strip:not(.classic-strip) {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.85) 100%);
+  border-color: rgba(226, 232, 240, 0.95);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), inset 0 1.5px 1px 0 rgba(255, 255, 255, 1);
+}
+
+body.theme-performance-opaque .stream-participants-strip.glass-dock,
+body.theme-performance-opaque.echo-layout-glass .stream-participants-strip {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: var(--bg-secondary) !important;
+}
+
+.stream-participants-strip.glass-dock .stream-dock-seg,
+body.echo-layout-glass .stream-participants-strip:not(.classic-strip) .stream-dock-seg {
+  background: color-mix(in srgb, var(--bg-tertiary) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-color) 50%, rgba(255, 255, 255, 0.1));
+  border-radius: 10px;
+}
+
+.stream-participants-strip.glass-dock .stream-dock-btn.stop-btn,
+body.echo-layout-glass .stream-participants-strip:not(.classic-strip) .stream-dock-btn.stop-btn {
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  border-radius: 9px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.stream-participants-strip.glass-dock .stream-dock-btn.stop-btn:hover,
+body.echo-layout-glass .stream-participants-strip:not(.classic-strip) .stream-dock-btn.stop-btn:hover {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.5);
 }
 
 .stream-strip-card {
@@ -618,75 +667,228 @@
    grupos), em vez de círculos soltos espalhados com espaço igual entre todos (o jeito Discord). A conexão
    e o botão de sair ficam à parte, à direita, como no painel compacto da barra lateral. */
 .voice-controls-bar {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  padding: 14px 16px; border-top: 1px solid var(--border-color);
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  padding: 14px 20px; border-top: 1px solid var(--border-color);
+  position: relative;
 }
 .voice-controls-capsule {
-  display: flex; align-items: center; gap: 2px;
-  padding: 6px; border-radius: 999px;
-  background: var(--bg-tertiary); border: 1px solid var(--border-color);
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 18px;
+  background: color-mix(in srgb, var(--bg-secondary) 85%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid color-mix(in srgb, var(--border-color) 70%, rgba(255, 255, 255, 0.12));
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.voice-dock-cluster {
+  display: flex; align-items: center; gap: 3px;
+  padding: 3px; border-radius: 13px;
+  background: color-mix(in srgb, var(--bg-tertiary) 75%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-color) 60%, rgba(255, 255, 255, 0.08));
 }
 .voice-controls-divider {
-  width: 1px; height: 22px; background: var(--border-color); margin: 0 4px; flex-shrink: 0;
+  width: 1px; height: 22px; background: color-mix(in srgb, var(--border-color) 80%, rgba(255, 255, 255, 0.12)); margin: 0 2px; flex-shrink: 0;
 }
 .voice-controls-leave-group {
   display: flex; align-items: center; gap: 8px;
 }
-.control-btn {
+@media (min-width: 960px) {
+  .voice-controls-leave-group {
+    position: absolute;
+    right: 20px;
+  }
+}
+@media (max-width: 959px) {
+  .voice-controls-bar .voice-controls-leave-group {
+    display: none;
+  }
+}
+.voice-controls-bar .control-btn {
   display: grid; place-items: center; width: 42px; height: 42px;
-  border-radius: 50%; font-size: 18px; background: transparent;
-  color: var(--text-secondary); border: none;
-  transition: transform 0.18s var(--ease-spring), background 0.16s ease, color 0.16s ease;
+  border-radius: 10px; font-size: 18px; background: transparent;
+  color: var(--text-secondary); border: 1px solid transparent;
+  transition: transform 0.16s var(--ease-spring), background 0.16s ease, color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
   cursor: pointer;
   position: relative;
+  flex-shrink: 0;
 }
-.control-btn:hover {
-  background: var(--bg-secondary);
+.voice-controls-bar .control-btn:hover {
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
   color: var(--text-primary);
+  transform: translateY(-1.5px);
 }
-.control-btn:active {
-  transform: scale(0.92);
+.voice-controls-bar .control-btn:active {
+  transform: translateY(1px) scale(0.94);
 }
-.control-btn.muted {
-  background: color-mix(in srgb, #ef4444 14%, transparent);
+.voice-controls-bar .control-btn.muted {
+  background: rgba(239, 68, 68, 0.16);
   color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.35);
 }
-.control-btn.muted:hover {
-  background: color-mix(in srgb, #ef4444 22%, transparent);
+.voice-controls-bar .control-btn.muted:hover {
+  background: rgba(239, 68, 68, 0.28);
+  color: #f87171;
 }
-.control-btn.ai-btn.active {
-  background: color-mix(in srgb, #a855f7 18%, transparent);
-  color: #c084fc;
+.voice-controls-bar .control-btn.ai-btn {
+  width: 44px; height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-color) 45%, #7e22ce) 0%, color-mix(in srgb, var(--accent-color) 55%, #4f46e5) 100%);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 70%, rgba(255, 255, 255, 0.25));
+  color: #ffffff;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent-color) 40%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
-.control-btn-active-dot {
+.voice-controls-bar .control-btn.ai-btn:hover {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-color) 60%, #9333ea) 0%, color-mix(in srgb, var(--accent-color) 70%, #6366f1) 100%);
+  border-color: color-mix(in srgb, var(--accent-color) 85%, #fff);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--accent-color) 60%, transparent);
+  transform: translateY(-2px);
+  color: #fff;
+}
+.voice-controls-bar .control-btn.ai-btn:not(.active) {
+  opacity: 0.6;
+  background: color-mix(in srgb, var(--bg-tertiary) 60%, transparent);
+  border-color: color-mix(in srgb, var(--border-color) 60%, transparent);
+  box-shadow: none;
+  color: var(--text-muted);
+}
+.voice-controls-bar .control-btn-active-dot {
   position: absolute;
-  bottom: 6px;
-  right: 7px;
-  width: 6px;
-  height: 6px;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background-color: #10b981;
-  box-shadow: 0 0 4px #10b981;
+  box-shadow: 0 0 6px #10b981;
+  border: 2px solid var(--bg-primary, #090d16);
 }
-.control-btn.camera-btn.sharing,
-.control-btn.screen-btn.sharing {
-  background: color-mix(in srgb, var(--accent-color) 18%, transparent);
+.voice-controls-bar .control-btn.camera-btn.sharing,
+.voice-controls-bar .control-btn.screen-btn.sharing {
+  background: color-mix(in srgb, var(--accent-color) 25%, transparent);
+  color: var(--accent-color);
+  border-color: color-mix(in srgb, var(--accent-color) 60%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent-color) 30%, transparent);
+}
+.voice-controls-bar .control-btn.camera-btn.sharing:hover,
+.voice-controls-bar .control-btn.screen-btn.sharing:hover {
+  background: color-mix(in srgb, var(--accent-color) 40%, transparent);
+  color: #ffffff;
+}
+.voice-controls-bar .control-btn.music-btn {
+  color: var(--accent-color, #c084fc);
+}
+.voice-controls-bar .control-btn.music-btn:hover {
+  background: color-mix(in srgb, var(--accent-color, #a855f7) 18%, transparent);
+  color: var(--text-primary);
+}
+.voice-controls-bar .control-btn.leave-btn {
+  width: 44px; height: 44px;
+  border-radius: 14px;
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.15);
+}
+.voice-controls-bar .control-btn.leave-btn:hover {
+  background: rgba(239, 68, 68, 0.32);
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #fca5a5;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
+}
+.voice-controls-bar .control-btn.leave-btn:active {
+  transform: translateY(1px) scale(0.94);
+}
+
+/* ── Tema Claro para o Voice Controls Dock ── */
+body.light-theme .voice-controls-capsule {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+body.light-theme .voice-dock-cluster {
+  background: rgba(241, 245, 249, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+body.light-theme .voice-controls-bar .control-btn {
+  color: var(--text-secondary);
+}
+body.light-theme .voice-controls-bar .control-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary);
+}
+body.light-theme .voice-controls-bar .control-btn.ai-btn {
+  background: color-mix(in srgb, var(--accent-color) 16%, rgba(147, 51, 234, 0.12));
+  border: 1px solid color-mix(in srgb, var(--accent-color) 45%, transparent);
+  color: var(--accent-color);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent-color) 20%, transparent);
+}
+body.light-theme .voice-controls-bar .control-btn.ai-btn:hover {
+  background: color-mix(in srgb, var(--accent-color) 26%, rgba(147, 51, 234, 0.2));
+  color: var(--accent-color);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent-color) 30%, transparent);
+}
+body.light-theme .voice-controls-bar .control-btn.ai-btn .control-btn-active-dot {
+  border-color: #ffffff;
+}
+body.light-theme .voice-controls-bar .control-btn.camera-btn.sharing,
+body.light-theme .voice-controls-bar .control-btn.screen-btn.sharing {
+  background: color-mix(in srgb, var(--accent-color) 16%, transparent);
+  color: var(--accent-color);
+  border-color: color-mix(in srgb, var(--accent-color) 45%, transparent);
+}
+body.light-theme .voice-controls-bar .control-btn.music-btn {
   color: var(--accent-color);
 }
-/* Sai da cápsula: fica sozinho, vermelho sólido, sempre visível como a ação diferente que é */
-.voice-controls-leave-group .control-btn.leave-btn {
-  width: 44px; height: 44px;
-  background: #ef4444;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+body.light-theme .voice-controls-bar .control-btn.music-btn:hover {
+  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
 }
-.control-btn.leave-btn:hover {
-  background: #dc2626;
-  transform: translateY(-2px) scale(1.04);
-  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.45);
+body.light-theme .voice-controls-bar .control-btn.leave-btn {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #dc2626;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.08);
 }
-.control-btn.leave-btn:active {
-  transform: scale(0.92);
+body.light-theme .voice-controls-bar .control-btn.leave-btn:hover {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #b91c1c;
+}
+body.light-theme .voice-controls-bar .control-btn.muted {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* ── Temas Aprimorados para o Voice Controls Dock ── */
+body.theme-amoled .voice-controls-capsule {
+  background: rgba(10, 10, 10, 0.95);
+  border-color: #1e1e1e;
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+body.theme-amoled .voice-dock-cluster {
+  background: #141414;
+  border-color: #242424;
+}
+
+body.theme-cyberpunk .voice-controls-capsule {
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 0, 127, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+body.theme-forest .voice-controls-capsule {
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.7), 0 0 16px rgba(16, 185, 129, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+body.theme-sunset .voice-controls-capsule {
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.7), 0 0 16px rgba(244, 63, 94, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+body.theme-valorant .voice-controls-capsule {
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.7), 0 0 16px rgba(255, 70, 85, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+body.theme-midnight .voice-controls-capsule {
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.7), 0 0 16px rgba(2, 132, 199, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .screen-share-dropdown {
@@ -1138,4 +1340,88 @@
   background: var(--accent-color);
   box-shadow: none;
   transform: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+ * Status Picker Popover - Cyber Frosted Glass (body.echo-layout-glass)
+ * O layout clássico permanece 100% intocado quando echo-layout-glass não estiver ativo.
+ * ══════════════════════════════════════════════════════════════════════════════ */
+
+body.echo-layout-glass .status-picker-popover {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 40%, color-mix(in srgb, var(--bg-secondary, #121620) 85%, transparent) 100%),
+              color-mix(in srgb, var(--bg-primary, #0a0d14) 75%, transparent);
+  backdrop-filter: blur(36px) saturate(210%);
+  -webkit-backdrop-filter: blur(36px) saturate(210%);
+  border: 1px solid color-mix(in srgb, var(--border-color, rgba(255, 255, 255, 0.12)) 45%, rgba(255, 255, 255, 0.2));
+  border-radius: 20px;
+  padding: 10px;
+  width: 240px;
+  box-shadow: inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.28),
+              inset 0 -1px 1px 0 rgba(0, 0, 0, 0.4),
+              0 24px 60px -8px rgba(0, 0, 0, 0.8),
+              0 0 35px -8px color-mix(in srgb, var(--accent-color, #00f2fe) 20%, transparent);
+  gap: 4px;
+}
+
+body.echo-layout-glass.light-theme .status-picker-popover,
+body.light-theme.echo-layout-glass .status-picker-popover {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.82) 100%),
+              color-mix(in srgb, var(--bg-secondary, #ffffff) 88%, transparent);
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.95), 0 20px 50px rgba(0, 0, 0, 0.14);
+}
+
+body.theme-performance-opaque.echo-layout-glass .status-picker-popover {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: var(--bg-secondary, #12141e) !important;
+}
+
+body.echo-layout-glass .status-picker-heading {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  padding: 4px 10px 6px;
+  color: var(--text-muted);
+}
+
+body.echo-layout-glass .status-picker-option {
+  padding: 8px 12px;
+  border-radius: 12px;
+  border-left: none;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid transparent;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+body.echo-layout-glass .status-picker-option:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateX(2px);
+}
+
+body.echo-layout-glass .status-picker-option.selected {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--status-color) 18%, transparent) 0%, rgba(255, 255, 255, 0.03) 100%);
+  border: 1px solid color-mix(in srgb, var(--status-color) 45%, rgba(255, 255, 255, 0.15));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0 14px color-mix(in srgb, var(--status-color) 25%, transparent);
+}
+
+body.echo-layout-glass .status-picker-option .status-dot-bullet {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--status-color);
+  box-shadow: 0 0 8px var(--status-color);
+  flex-shrink: 0;
+}
+
+body.echo-layout-glass .status-picker-option.selected .status-dot-bullet {
+  box-shadow: 0 0 12px var(--status-color);
+}
+
+body.echo-layout-glass .status-picker-check {
+  color: var(--status-color);
+  filter: drop-shadow(0 0 6px var(--status-color));
 }
