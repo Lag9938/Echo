@@ -25,6 +25,11 @@ jobs:
     runs-on: windows-latest
     env:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    # O disparo manual cria a tag, e isso dispara este workflow de novo (evento de tag).
+    # As execuções da mesma tag rodam uma de cada vez, e a segunda não reconstrói o que já foi publicado.
+    concurrency:
+      group: release-${{ inputs.tag || github.ref_name }}
+      cancel-in-progress: false
 
     steps:
       - name: Checkout code
@@ -55,7 +60,19 @@ jobs:
         run: |
           gh release view "$RELEASE_TAG" || gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "$RELEASE_TAG" --notes "Release $RELEASE_TAG"
 
+      - name: Check if release is already published
+        id: published
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | grep -qx 'latest.yml'; then
+            echo "Release $RELEASE_TAG já publicado; nada a fazer."
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build and publish
+        if: steps.published.outputs.done != 'true'
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
