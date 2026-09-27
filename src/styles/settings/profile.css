@@ -90,7 +90,7 @@
 .sidebar-voice-avatar {
   display: grid;
   place-items: center;
-  overflow: hidden;
+  /* Sem overflow:hidden: os anéis da onda de "falando" precisam sair do círculo. A foto já é redonda (img). */
   border-radius: 50% !important; /* Forces avatar circles in sidebar list */
 }
 

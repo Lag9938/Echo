@@ -634,7 +634,7 @@
 .stream-tab-avatar {
   width: 22px;
   height: 22px;
-  border-radius: 7px;
+  border-radius: 50%;
   overflow: hidden;
   display: flex;
   align-items: center;

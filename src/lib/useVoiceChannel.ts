@@ -23,11 +23,14 @@ import rnnoiseSimdWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise_simd.w
 import noiseGateWorkletPath from './audio/noiseGateWorklet.ts?worker&url'
 import { NOISE_GATE_PROCESSOR, type NoiseGateParams } from './audio/noiseGate'
 import { browserNoiseSuppression } from './audio/noiseSuppression'
+import { PeerBoost } from './audio/peerBoost'
 import { playJoinSound, playLeaveSound, playSoundboardEffect } from './soundEffects'
 import { trackVoiceJoined, trackVoiceLeft, trackScreenShareStarted, trackScreenShareStopped } from './analytics'
 import { installPresenceTrackThrottle } from './presenceThrottle'
 import { isMusicBotIdentity, parseMusicBotState, encodeMusicBotVolume, MUSIC_BOT_CONTROL_TOPIC } from './musicBotState'
 import { useMusicBotStore } from '../stores/useMusicBotStore'
+import { useCallStatsStore } from '../stores/useCallStatsStore'
+import { summarizeRtcStats, type InboundCounters } from './rtcStats'
 import { parseModerationNotice } from './voiceModeration'
 
 export type VoiceParticipant = {
@@ -344,6 +347,8 @@ export function useVoiceChannel(options?: {
   
   // Audio playback elements & volume/pan
   const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map())
+  const peerBoostRef = useRef<PeerBoost>(null as unknown as PeerBoost)
+  if (!peerBoostRef.current) peerBoostRef.current = new PeerBoost()
   const peerVolumesRef = useRef<Map<string, number>>(new Map())
   const peerScreenVolumesRef = useRef<Map<string, number>>(new Map())
   const peerPansRef = useRef<Map<string, number>>(new Map())
@@ -436,6 +441,47 @@ export function useVoiceChannel(options?: {
   const [isReconnecting, setIsReconnecting] = useState(false)
   // Oscilação de rede enquanto o próprio LiveKit tenta se recuperar (antes do loop de reconexão do app assumir)
   const [isNetworkUnstable, setIsNetworkUnstable] = useState(false)
+
+  // Medição REAL da conexão (latência, jitter e perda) lida do WebRTC a cada 2s enquanto conectado
+  const hasRealStatsRef = useRef(false)
+  useEffect(() => {
+    if (!isConnected) return
+    let cancelled = false
+    let previous: InboundCounters | null = null
+
+    const measure = async () => {
+      const manager = (roomRef.current as any)?.engine?.pcManager
+      if (!manager) return
+      try {
+        const [publisherStats, subscriberStats] = await Promise.all([
+          manager.publisher?.getStats?.(),
+          manager.subscriber?.getStats?.()
+        ])
+        if (cancelled) return
+        const { stats, counters } = summarizeRtcStats([publisherStats, subscriberStats], previous)
+        previous = counters
+        if (stats) {
+          hasRealStatsRef.current = true
+          setRtcStats(stats)
+          useCallStatsStore.getState().setStats(stats)
+        }
+      } catch {
+        // Sem medição por enquanto: a estimativa pela nota de qualidade continua valendo
+      }
+    }
+
+    void measure()
+    const timer = setInterval(() => void measure(), 2000)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [isConnected])
+
+  useEffect(() => {
+    useCallStatsStore.getState().setUnstable(isNetworkUnstable || isReconnecting)
+  }, [isNetworkUnstable, isReconnecting])
+
   // Câmera/tela ativas quando a conexão caiu, para religar a câmera depois de uma reconexão total
   const pendingMediaRestoreRef = useRef<{ camera: boolean; cameraDeviceId?: string; screen: boolean } | null>(null)
   const [reconnectCountdown, setReconnectCountdown] = useState(5)
@@ -994,6 +1040,7 @@ export function useVoiceChannel(options?: {
 
     activeStreamTilesRef.current.clear()
 
+    peerBoostRef.current.releaseAll()
     audioElementsRef.current.forEach(audio => {
       audio.srcObject = null
       audio.remove()
@@ -1031,6 +1078,8 @@ export function useVoiceChannel(options?: {
     musicBotRawRef.current = undefined
     musicBotPresentRef.current = undefined
     useMusicBotStore.getState().reset()
+    useCallStatsStore.getState().reset()
+    hasRealStatsRef.current = false
   }, [stopLocalVad, stopScreenShare, stopCamera])
 
   // Join a voice channel via LiveKit SFU
@@ -1316,6 +1365,7 @@ export function useVoiceChannel(options?: {
         const screenKey = `${participant.identity}-screen`
 
         const vAudio = audioElementsRef.current.get(voiceKey)
+        peerBoostRef.current.release(voiceKey)
         if (vAudio) { vAudio.srcObject = null; vAudio.remove(); audioElementsRef.current.delete(voiceKey) }
         const sAudio = audioElementsRef.current.get(screenKey)
         if (sAudio) { sAudio.srcObject = null; sAudio.remove(); audioElementsRef.current.delete(screenKey) }
@@ -1352,6 +1402,8 @@ export function useVoiceChannel(options?: {
           }
 
           track.attach(audio)
+          // Depois do attach (que liga a MediaStream ao elemento): volume salvo acima de 100% entra no ganho
+          if (!isScreen) peerBoostRef.current.apply(key, audio, savedVol, isDeafenedRef.current)
 
           if (typeof (audio as any).setSinkId === 'function' && selectedOutputIdRef.current !== 'default') {
             ;(audio as any).setSinkId(selectedOutputIdRef.current).catch(() => {})
@@ -1369,6 +1421,7 @@ export function useVoiceChannel(options?: {
           const isScreen = track.source === Track.Source.ScreenShareAudio
           const key = isScreen ? `${participant.identity}-screen` : `${participant.identity}-voice`
           const audio = audioElementsRef.current.get(key)
+          if (!isScreen) peerBoostRef.current.release(key)
           if (audio) {
             track.detach(audio)
             audioElementsRef.current.delete(key)
@@ -1455,7 +1508,8 @@ export function useVoiceChannel(options?: {
       })
 
       room.on(RoomEvent.ConnectionQualityChanged, (quality: ConnectionQuality, participant: Participant) => {
-        if (participant === room.localParticipant) {
+        // Só é uma estimativa aproximada: quando já há medição real do WebRTC (efeito abaixo), ela manda
+        if (participant === room.localParticipant && !hasRealStatsRef.current) {
           const ping = quality === ConnectionQuality.Excellent ? 18 : quality === ConnectionQuality.Good ? 35 : 85
           const packetLoss = quality === ConnectionQuality.Poor ? 4.5 : 0.0
           setRtcStats({ ping, jitter: 2, packetLoss })
@@ -1468,6 +1522,7 @@ export function useVoiceChannel(options?: {
           await room.connect(connectionUrl, token)
           console.log('[LiveKit] Conectado com sucesso ao SFU!')
           voiceJoinTimeRef.current = Date.now()
+          useCallStatsStore.getState().setJoinedAt(voiceJoinTimeRef.current)
           trackVoiceJoined(channelId)
           setIsConnected(true)
           syncParticipants()
@@ -1672,6 +1727,7 @@ export function useVoiceChannel(options?: {
     setReconnectAttempt(prev => prev + 1)
 
     // Limpa instâncias antigas de áudio para evitar ruído órfão
+    peerBoostRef.current.releaseAll()
     audioElementsRef.current.forEach(audio => {
       audio.srcObject = null
       audio.remove()
@@ -1775,7 +1831,7 @@ export function useVoiceChannel(options?: {
       } else {
         const participantId = key.replace(/-voice$/, '')
         const vVol = peerVolumesRef.current.get(participantId) ?? 1.0
-        audio.muted = next || vVol === 0
+        peerBoostRef.current.apply(key, audio, vVol, next)
       }
     })
 
@@ -2218,6 +2274,7 @@ export function useVoiceChannel(options?: {
   // Change speaker output device
   const changeOutputDevice = useCallback(async (deviceId: string) => {
     selectedOutputIdRef.current = deviceId
+    peerBoostRef.current.setSinkId(deviceId)
     for (const audio of audioElementsRef.current.values()) {
       if (typeof (audio as any).setSinkId === 'function') {
         try {
@@ -2233,11 +2290,10 @@ export function useVoiceChannel(options?: {
   const changePeerVolume = useCallback((peerId: string, volume: number) => {
     const clamped = Math.max(0, Math.min(2, volume))
     peerVolumesRef.current.set(peerId, clamped)
-    const audio = audioElementsRef.current.get(`${peerId}-voice`)
-    if (audio) {
-      audio.volume = Math.max(0, Math.min(1, clamped))
-      audio.muted = isDeafenedRef.current || clamped === 0
-    }
+    const key = `${peerId}-voice`
+    const audio = audioElementsRef.current.get(key)
+    // Acima de 100% o <audio> não passa de 1: o reforço vem do ganho do Web Audio (veja peerBoost.ts)
+    if (audio) peerBoostRef.current.apply(key, audio, clamped, isDeafenedRef.current)
   }, [])
 
   const changePeerScreenVolume = useCallback((peerId: string, volume: number) => {

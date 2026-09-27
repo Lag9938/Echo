@@ -15,27 +15,30 @@ const escapeSingleQuoted = (text) => String(text).replace(/'/g, "''")
  *
  * Cada decisão vai para o update.log. Se a instalação falhar, quem volta é a versão antiga, que ainda está instalada.
  */
-export function buildRelaunchScript(execPath, updaterDirName, logFile = '') {
+export function buildRelaunchScript(execPath, updaterDirName, logFile) {
   const exe = escapeSingleQuoted(execPath)
   const updaterPattern = escapeSingleQuoted(`*\\${updaterDirName}\\*`)
+  const log = escapeSingleQuoted(logFile || '')
   return [
     "$ErrorActionPreference = 'SilentlyContinue'",
     `$exe = '${exe}'`,
-    `$log = '${escapeSingleQuoted(logFile)}'`,
-    'function Log($msg) { if ($log) { Add-Content -LiteralPath $log -Value ("{0} vigia: {1}" -f (Get-Date).ToUniversalTime().ToString("o"), $msg) } }',
+    `$logFile = '${log}'`,
+    // O vigia também anota o que decidiu no update.log: se a reabertura falhar, o log mostra em que etapa
+    'function Log($m) { if ($logFile) { try { [IO.File]::AppendAllText($logFile, (Get-Date).ToUniversalTime().ToString("o") + " vigia: " + $m + "`n", (New-Object Text.UTF8Encoding($false))) } catch {} } }',
     '$name = [IO.Path]::GetFileNameWithoutExtension($exe)',
     '$deadline = (Get-Date).AddSeconds(300)',
     'Log "iniciado"',
     'while ((Get-Date) -lt $deadline -and (Get-Process -Name $name)) { Start-Sleep -Seconds 1 }',
-    'Log "Echo antigo fechou"',
-    '$idle = 0',
+    'Log "o app antigo fechou"',
+    '$idle = 0; $sawInstaller = $false',
     'while ((Get-Date) -lt $deadline) {',
-    '  if (Get-Process -Name $name) { Log "Echo reaberto pelo instalador"; exit }',
-    `  if (Get-Process | Where-Object { $_.Path -and $_.Path -like '${updaterPattern}' }) { $idle = 0 } else { $idle++ }`,
-    '  if ($idle -ge 5) { Start-Process -FilePath $exe; Log "instalador terminou sem reabrir: Echo iniciado pelo vigia"; exit }',
+    '  if (Get-Process -Name $name) { Log "o app abriu sozinho (o instalador reabriu); nada a fazer"; exit }',
+    `  if (Get-Process | Where-Object { $_.Path -and $_.Path -like '${updaterPattern}' }) { $idle = 0; $sawInstaller = $true } else { $idle++ }`,
+    '  if ($idle -ge 5) { Log ("instalador terminou (visto: " + $sawInstaller + ") e o app não abriu; abrindo agora"); Start-Process -FilePath $exe; Log "app iniciado pelo vigia"; exit }',
     '  Start-Sleep -Seconds 1',
     '}',
-    'if (-not (Get-Process -Name $name)) { Start-Process -FilePath $exe; Log "prazo esgotado: Echo iniciado pelo vigia" }'
+    // Prazo esgotado (instalador travado num aviso, por exemplo): abre mesmo assim em vez de deixar o usuário sem o app
+    'if (-not (Get-Process -Name $name)) { Log "tempo esgotado sem o app abrir; abrindo agora"; Start-Process -FilePath $exe; Log "app iniciado pelo vigia" }'
   ].join('\n')
 }
 

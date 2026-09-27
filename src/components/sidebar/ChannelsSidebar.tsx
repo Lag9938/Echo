@@ -6,6 +6,8 @@ import type { Space, Channel, Page, RolePermissions, ServerRole } from '../../ty
 import { UnifiedUserProfileFooter } from './UnifiedUserProfileFooter'
 import { useSpacesStore } from '../../stores/useSpacesStore'
 import { SPACE_SETTINGS_PERMISSIONS } from '../../lib/permissions'
+import { isMusicBotIdentity } from '../../lib/musicBotState'
+import { MusicBotMiniPlayer } from './MusicBotMiniPlayer'
 import {
   BellIcon,
   BellOffIcon,
@@ -512,20 +514,22 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                     )}
                   </span>
                   <span className="channel-item-name">{ch.name}</span>
-                  {channelVoiceUsers.some(p => p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0)) && (
-                    <span className="channel-live-badge" title="Transmissão ao vivo em andamento">
-                      ● AO VIVO
-                    </span>
-                  )}
-                  {ch.user_limit && ch.user_limit > 0 ? (
-                    <span className="voice-channel-limit-badge">
-                      {channelVoiceUsers.length}/{ch.user_limit}
-                    </span>
-                  ) : channelVoiceUsers.length > 0 ? (
-                    <span className="voice-channel-limit-badge">
-                      {channelVoiceUsers.length}
-                    </span>
-                  ) : null}
+                  {(() => {
+                    // Contagem na cor do espaço; com transmissão em andamento, um ponto que pulsa (sem o bloco vermelho)
+                    const streaming = channelVoiceUsers.some(p => p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0))
+                    const count = channelVoiceUsers.length
+                    const limit = ch.user_limit && ch.user_limit > 0 ? ch.user_limit : 0
+                    if (!limit && count === 0) return null
+                    return (
+                      <span
+                        className={`voice-channel-limit-badge${count > 0 ? ' occupied' : ''}`}
+                        title={streaming ? 'Transmissão ao vivo em andamento' : undefined}
+                      >
+                        {streaming && <i className="live-dot" />}
+                        {limit ? `${count}/${limit}` : count}
+                      </span>
+                    )
+                  })()}
                   <span
                     className="channel-action-btn invite-btn"
                     title={`Convidar amigos para a chamada ${ch.name}`}
@@ -540,6 +544,10 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                 {channelVoiceUsers.length > 0 && (
                   <div className="sidebar-voice-users">
                     {channelVoiceUsers.map(p => {
+                      // O bot de música aparece como mini player (o que toca, progresso, tocar/pausar e pular)
+                      if (isMusicBotIdentity(p.userId) && user?.id) {
+                        return <MusicBotMiniPlayer key={p.userId} channelId={ch.id} userId={user.id} />
+                      }
                       const isSharer = Boolean(p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0))
 
                       const handleUserClick = (e: React.MouseEvent) => {
@@ -603,12 +611,12 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                               </button>
                             )}
                             {p.isMuted && (
-                              <span title="Microfone Silenciado" style={{ color: '#e0554c', display: 'inline-flex', alignItems: 'center' }}>
+                              <span title="Microfone Silenciado" style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center' }}>
                                 <MicOffIcon style={{ width: '13px', height: '13px' }} />
                               </span>
                             )}
                             {p.isDeafened && (
-                              <span title="Áudio Silenciado (Ensurdecido)" style={{ color: '#e0554c', display: 'inline-flex', alignItems: 'center' }}>
+                              <span title="Áudio Silenciado (Ensurdecido)" style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center' }}>
                                 <HeadphonesOffIcon style={{ width: '13px', height: '13px' }} />
                               </span>
                             )}

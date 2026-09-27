@@ -6,6 +6,7 @@ import { playJoinSound } from '../lib/soundEffects'
 import { parseInvite } from '../lib/invite'
 import { joinSpaceWithInvite } from '../lib/spaceInvites'
 import { installPresenceTrackThrottle } from '../lib/presenceThrottle'
+import { startBackgroundSync } from '../lib/backgroundSync'
 
 export interface UseEchoSpacesOptions {
   user: User
@@ -557,17 +558,18 @@ export function useEchoSpaces({
     window.addEventListener('echo-presence-refresh', handlePresenceRefresh)
     window.addEventListener('storage', handlePresenceRefresh)
 
-    // Sincronização periódica de redundância (a cada 60s)
+    // A presença é só WebSocket e continua a cada 60s; a releitura dos membros (consulta ao banco) é a rara
     const syncInterval = setInterval(() => {
-      loadSpaceMembers(currentSpaceId)
       trackSpacePresence()
     }, 60000)
+    const stopMembersSync = startBackgroundSync(() => loadSpaceMembers(currentSpaceId))
 
     return () => {
       if (loadSpaceMembersTimeoutRef.current) {
         clearTimeout(loadSpaceMembersTimeoutRef.current)
       }
       clearInterval(syncInterval)
+      stopMembersSync()
       window.removeEventListener('echo-profile-updated', handlePresenceRefresh)
       window.removeEventListener('echo-presence-refresh', handlePresenceRefresh)
       window.removeEventListener('storage', handlePresenceRefresh)

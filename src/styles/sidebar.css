@@ -785,7 +785,7 @@
   color: var(--text-primary);
 }
 .channel-item.voice-item.in-voice {
-  color: #22c55e !important;
+  color: var(--accent-color) !important;
   font-weight: 700;
 }
 .ch-icon {
@@ -826,12 +826,31 @@
   flex-shrink: 0;
 }
 .voice-channel-limit-badge {
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   padding: 2px 6px;
   border-radius: 10px;
-  background: var(--bg-primary);
+}
+/* Tem gente na chamada: contagem na cor do espaço; com transmissão, um ponto que pulsa (no lugar do bloco vermelho "AO VIVO") */
+.voice-channel-limit-badge.occupied { color: var(--accent-color); }
+.voice-channel-limit-badge .live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  animation: liveDotBeat 1.8s ease-in-out infinite;
+}
+@keyframes liveDotBeat {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-color) 55%, transparent); }
+  50% { box-shadow: 0 0 0 5px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .voice-channel-limit-badge .live-dot { animation: none; }
 }
 .channel-live-badge {
   background: #ef4444;
@@ -914,12 +933,20 @@
   background: linear-gradient(135deg, var(--accent-color), #c75a4a);
   border: 1.5px solid transparent;
   transition: all .15s ease;
-  overflow: hidden;
+  /* Sempre um círculo perfeito: não deixa a linha (flex) espremer o avatar quando o nome ou os botões crescem,
+     e o fundo em degradê não aparece como um contorno atrás das bordas da foto */
+  flex-shrink: 0;
+  min-width: 22px;
+  box-sizing: border-box;
+  aspect-ratio: 1 / 1;
+  background-clip: padding-box;
 }
 .sidebar-voice-avatar img.sidebar-avatar-img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 50%;
 }
 .sidebar-voice-name {
   font-size: 13px;
@@ -928,13 +955,36 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.sidebar-voice-user.speaking .sidebar-voice-avatar {
-  border-color: #23a55a;
-  box-shadow: 0 0 0 2px rgba(35, 165, 90, 0.4), 0 0 8px rgba(35, 165, 90, 0.6);
+/* Quem está falando: onda suave na cor do espaço (dois anéis que se expandem) e nome em destaque */
+.sidebar-voice-avatar { position: relative; }
+.sidebar-voice-avatar::before,
+.sidebar-voice-avatar::after {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-color);
+  opacity: 0;
+  pointer-events: none;
 }
+.sidebar-voice-user.speaking .sidebar-voice-avatar {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 55%, transparent);
+}
+.sidebar-voice-user.speaking .sidebar-voice-avatar::before { animation: voiceWave 1.7s ease-out infinite; }
+.sidebar-voice-user.speaking .sidebar-voice-avatar::after { animation: voiceWave 1.7s ease-out 0.55s infinite; }
+.sidebar-voice-user.speaking { color: var(--text-primary); }
 .sidebar-voice-user.speaking .sidebar-voice-name {
-  color: #23a55a;
+  color: var(--text-primary);
   font-weight: 700;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--accent-color) 70%, transparent);
+}
+@keyframes voiceWave {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-voice-user.speaking .sidebar-voice-avatar::before,
+  .sidebar-voice-user.speaking .sidebar-voice-avatar::after { animation: none; }
 }
 .sidebar-voice-user-icons {
   margin-left: auto;
@@ -943,38 +993,52 @@
   align-items: center;
 }
 
+/* "Assistir": em repouso é só o ícone (quadradinho na cor do espaço); ao passar o mouse na linha o texto aparece */
 .sidebar-voice-stream-action-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  background: rgba(239, 68, 68, 0.16);
-  border: 1px solid rgba(239, 68, 68, 0.45);
-  color: #ff5252;
-  font-size: 10px;
+  justify-content: center;
+  gap: 0;
+  height: 26px;
+  min-width: 26px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  font-size: 11px;
   font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
+  color: var(--accent-color);
+  background: var(--accent-light, color-mix(in srgb, var(--accent-color) 16%, transparent));
+  border: 1px solid color-mix(in srgb, var(--accent-color) 40%, transparent);
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: liveBadgePulse 2.2s infinite ease-in-out;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
   outline: none;
 }
 
-.sidebar-voice-stream-action-badge:hover {
-  background: #ef4444;
-  color: #ffffff;
-  border-color: #ef4444;
-  transform: scale(1.05);
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.65);
+.sidebar-voice-stream-action-badge .live-stream-label {
+  max-width: 0;
+  margin-left: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 0;
+  transition: max-width 0.2s ease, margin-left 0.2s ease, opacity 0.15s ease;
 }
 
-@keyframes liveBadgePulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 8px 1px rgba(239, 68, 68, 0.6);
-  }
+.sidebar-voice-user:hover .sidebar-voice-stream-action-badge .live-stream-label,
+.sidebar-voice-stream-action-badge:focus-visible .live-stream-label {
+  max-width: 64px;
+  margin-left: 6px;
+  opacity: 1;
+}
+
+.sidebar-voice-stream-action-badge:hover {
+  color: #fff;
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.sidebar-voice-stream-action-badge:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
 }
 
 /* Voice User Action Context Menu */
@@ -2000,7 +2064,7 @@
   position: relative;
   width: 52px;
   height: 52px;
-  border-radius: 14px;
+  border-radius: 50%;
   background: linear-gradient(135deg, var(--accent-color, #00f2fe), #6366f1);
   border: 3px solid rgba(18, 20, 30, 0.98);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), 0 0 12px rgba(0, 242, 254, 0.2);
@@ -2016,7 +2080,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 11px;
+  border-radius: 50%;
 }
 
 .hover-popover-avatar-wrap .member-status-dot {

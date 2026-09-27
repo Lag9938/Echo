@@ -1,10 +1,4 @@
-/* ── Speaking Glow Effect (Discord-Style Neon Ring) ── */
-.sidebar-voice-user.speaking .sidebar-voice-avatar {
-  box-shadow: 0 0 0 2px #23a55a, 0 0 8px rgba(35, 165, 90, 0.6);
-  animation: speakingGlowPulse 1.2s infinite ease-in-out;
-  border-radius: 50% !important;
-}
-
+/* ── Speaking Glow Effect (cartões da chamada; a lista lateral usa a onda em sidebar.css) ── */
 .participant-card.speaking .participant-avatar-large {
   box-shadow: 0 0 0 3px #23a55a, 0 0 12px rgba(35, 165, 90, 0.7);
   animation: speakingGlowPulse 1.2s infinite ease-in-out;

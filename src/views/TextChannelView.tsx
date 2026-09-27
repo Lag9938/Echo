@@ -6,6 +6,8 @@ import { PinnedMessagesDrawer } from '../components/chat/PinnedMessagesDrawer'
 import { ChannelHeader } from '../components/chat/ChannelHeader'
 import { MessageList } from '../components/chat/MessageList'
 import { MessageComposer } from '../components/chat/MessageComposer'
+import { CallStrip } from '../components/chat/CallStrip'
+import { useVoiceActivity } from '../hooks/useVoiceActivity'
 import { PaperclipIcon } from '../components/icons'
 import { useUIStore } from '../stores/useUIStore'
 import { useSpacesStore } from '../stores/useSpacesStore'
@@ -85,7 +87,11 @@ export interface TextChannelViewProps {
   supabase: any
   typingUsers?: string[]
   notifyTyping?: () => void
+  /** Entra na chamada (e abre o canal de voz) a partir da faixa no topo do chat */
+  onJoinVoice?: (channel: Channel) => void
 }
+
+const EMPTY_CHANNELS: Channel[] = []
 
 export const TextChannelView = memo(function TextChannelView(props: TextChannelViewProps) {
   const storeSpaceMembers = useSpacesStore((s) => s.spaceMembers)
@@ -168,8 +174,25 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
     postChannelMessage,
     supabase,
     typingUsers = [],
-    notifyTyping
+    notifyTyping,
+    onJoinVoice
   } = props
+
+  // Chamada em andamento no espaço (faixa no topo) e eventos de voz para o meio da conversa
+  const currentSpaceChannels = currentSpace ? spaceChannels[currentSpace.id] : undefined
+  const { summary: callSummary, events: voiceEvents } = useVoiceActivity({
+    spaceId: currentSpace?.id,
+    channels: currentSpaceChannels ?? EMPTY_CHANNELS,
+    spaceVoiceUsers,
+    activeVoiceChannelId,
+    participants,
+    selfId: user?.id,
+    presenceData
+  })
+  const handleJoinFromStrip = useCallback((channelId: string) => {
+    const channel = currentSpaceChannels?.find(c => c.id === channelId)
+    if (channel) onJoinVoice?.(channel)
+  }, [currentSpaceChannels, onJoinVoice])
 
   const openLightbox = useUIStore((s) => s.openLightbox)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -532,7 +555,15 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
           </div>
         )}
         <div className="chat-area-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, height: '100%', overflow: 'hidden' }}>
+          {callSummary && (
+            <CallStrip
+              summary={callSummary}
+              isInCall={activeVoiceChannelId === callSummary.channelId}
+              onJoin={handleJoinFromStrip}
+            />
+          )}
           <MessageList
+            voiceEvents={voiceEvents}
             messagesContainerRef={messagesContainerRef}
             messagesEndRef={messagesEndRef}
             selectedChannel={selectedChannel}

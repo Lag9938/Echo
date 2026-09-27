@@ -17,6 +17,13 @@ describe('buildRelaunchScript', () => {
     expect(script).toContain("$exe = 'C:\\Users\\O''Neil\\Echo.exe'")
   })
 
+  it('anota no update.log o que decidiu (e escapa o caminho do log)', () => {
+    const script = buildRelaunchScript('C:\\Echo\\Echo.exe', 'echo-updater', "C:\\Users\\O'Neil\\update.log")
+    expect(script).toContain("$logFile = 'C:\\Users\\O''Neil\\update.log'")
+    expect(script).toContain('app iniciado pelo vigia')
+    expect(script).toContain('tempo esgotado')
+  })
+
   it('espera o app antigo fechar antes de decidir se precisa reabrir', () => {
     const script = buildRelaunchScript('C:\\Echo\\Echo.exe', 'echo-updater')
     const waitOldApp = script.indexOf('while ((Get-Date) -lt $deadline -and (Get-Process -Name $name))')
@@ -32,12 +39,6 @@ describe('buildRelaunchScript', () => {
     expect(lastLine).toContain('Start-Process -FilePath $exe')
   })
 
-  it('registra as decisões no update.log', () => {
-    const script = buildRelaunchScript('C:\\Echo\\Echo.exe', 'echo-updater', "C:\\Users\\O'Neil\\update.log")
-    expect(script).toContain("$log = 'C:\\Users\\O''Neil\\update.log'")
-    expect(script).toContain('Log "Echo reaberto pelo instalador"')
-    expect(script).toContain('Log "instalador terminou sem reabrir')
-  })
 })
 
 describe('appendUpdateLog', () => {

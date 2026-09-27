@@ -259,30 +259,41 @@ export const ProfileTab = memo(function ProfileTab({
     setLocalSocialKick(savedValues.socialKick)
   }
 
+  // A foto é salva NA HORA (não espera o botão "Salvar"): antes ela só mudava na sua tela e, se você fechasse
+  // sem salvar, ninguém via a troca. O resto do perfil continua como rascunho até você salvar.
   async function handleAvatarUpload(file: File) {
+    if (!supabase) return
     setUploadingAvatar(true)
-    try {
-      const reader = new FileReader()
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          setLocalAvatarUrl(reader.result)
-        }
-      }
-      reader.readAsDataURL(file)
 
-      if (supabase) {
-        const ext = file.name.split('.').pop()
-        const path = `avatars/${userId}/${Date.now()}.${ext}`
-        const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file)
-        if (!uploadError) {
-          const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
-          if (urlData?.publicUrl) {
-            setLocalAvatarUrl(urlData.publicUrl)
-          }
-        }
-      }
+    // Prévia imediata enquanto envia
+    const previousAvatar = savedValues.avatarUrl
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') setLocalAvatarUrl(reader.result)
+    }
+    reader.readAsDataURL(file)
+
+    try {
+      const ext = (file.name.split('.').pop() || 'png').replace(/[^a-zA-Z0-9]/g, '')
+      const path = `avatars/${userId}/${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file)
+      if (uploadError) throw uploadError
+
+      const publicUrl = supabase.storage.from('attachments').getPublicUrl(path).data?.publicUrl
+      if (!publicUrl) throw new Error('Não foi possível obter o endereço da foto.')
+
+      const { error: saveError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', userId)
+      if (saveError) throw saveError
+
+      setLocalAvatarUrl(publicUrl)
+      setSavedValues(prev => ({ ...prev, avatarUrl: publicUrl }))
+      // Avisa o app (e, por ele, os outros pela presença): usa o nome já salvo, não o rascunho
+      onProfileUpdate(savedValues.displayName, publicUrl)
+      window.dispatchEvent(new Event('echo-profile-updated'))
     } catch (err: any) {
-      console.warn('Avatar upload fallback to local data URL:', err)
+      // Não deixa a prévia (dados da imagem) no lugar da foto: voltaria a ser gravada como foto do perfil ao salvar
+      setLocalAvatarUrl(previousAvatar)
+      alert('Não foi possível trocar a foto: ' + (err?.message || 'erro desconhecido'))
     } finally {
       setUploadingAvatar(false)
     }

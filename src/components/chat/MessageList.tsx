@@ -1,4 +1,4 @@
-import React, { memo } from 'react'
+import React, { memo, useMemo } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { Space, Channel, Message, PinnedMessage, ServerEmoji, RolePermissions, ServerRole } from '../../types'
 import { AvatarDecoration } from '../AvatarDecoration'
@@ -10,12 +10,32 @@ import { CommunityBadge } from '../CommunityBadge'
 import {
   HashtagIcon,
   MegaphoneIcon,
+  MusicIcon,
   PaperclipIcon,
   PinIcon,
   StarIcon,
-  TrashIcon
+  TrashIcon,
+  VolumeIcon
 } from '../icons'
 import { openExternalUrl } from '../../lib/openExternal'
+import { isAutoImageCaption } from '../../lib/attachmentCaption'
+import type { VoiceFeedEvent } from '../../lib/voiceActivity'
+
+const EMPTY_EVENTS: VoiceFeedEvent[] = []
+
+/** Evento de voz no meio da conversa ("elden entrou na call", "O bot tocou …"): uma pílula discreta */
+function renderVoiceEvent(event: VoiceFeedEvent) {
+  const time = new Date(event.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  return (
+    <div className="voice-event" key={event.id}>
+      <span>
+        {event.kind === 'music' ? <MusicIcon style={{ width: 13, height: 13 }} /> : <VolumeIcon style={{ width: 13, height: 13 }} />}
+        {event.text}
+        <time>{time}</time>
+      </span>
+    </div>
+  )
+}
 
 /** A partir daqui a lista pula a renderização das mensagens fora da tela (content-visibility) para ficar leve. */
 const LONG_LIST_THRESHOLD = 150
@@ -63,6 +83,8 @@ export interface MessageListProps {
   voiceNoteAudioRef: React.RefObject<HTMLAudioElement | null>
   retrySendMessage: (msg: any) => void
   messageReactions: Record<string, Record<string, string[]>>
+  /** Eventos da chamada (entrou, saiu, o bot tocou) para intercalar com as mensagens pelo horário */
+  voiceEvents?: VoiceFeedEvent[]
 }
 
 export const MessageList = memo(function MessageList({
@@ -103,8 +125,24 @@ export const MessageList = memo(function MessageList({
   handleChangeVoiceSpeed,
   voiceNoteAudioRef,
   retrySendMessage,
-  messageReactions
+  messageReactions,
+  voiceEvents = EMPTY_EVENTS
 }: MessageListProps) {
+  // Cada evento entra antes da primeira mensagem mais nova que ele; os mais recentes que tudo vão no fim.
+  // Durante uma busca, ficam de fora (só resultados).
+  const { eventsBefore, trailingEvents } = useMemo(() => {
+    const before = new Map<number, VoiceFeedEvent[]>()
+    const trailing: VoiceFeedEvent[] = []
+    if (voiceEvents.length === 0 || searchQuery.trim()) return { eventsBefore: before, trailingEvents: trailing }
+    const times = filteredMessages.map((m) => new Date(m.created_at).getTime())
+    voiceEvents.forEach((event) => {
+      const index = times.findIndex((t) => t > event.at)
+      if (index === -1) trailing.push(event)
+      else before.set(index, [...(before.get(index) || []), event])
+    })
+    return { eventsBefore: before, trailingEvents: trailing }
+  }, [voiceEvents, filteredMessages, searchQuery])
+
   return (
     <div
       className="messages-area"
@@ -215,8 +253,9 @@ export const MessageList = memo(function MessageList({
             : (presenceData[message.author_id]?.avatar_url || spaceMembers.find(m => (m?.user?.id === message.author_id || m?.id === message.author_id))?.user?.avatar_url || message.profile?.avatar_url)
 
           return (
+            <React.Fragment key={message.id || `${message.created_at}-${index}`}>
+            {eventsBefore.get(index)?.map(renderVoiceEvent)}
             <div
-              key={message.id || `${message.created_at}-${index}`}
               data-index={index}
               className="msg-row"
             >
@@ -454,7 +493,7 @@ export const MessageList = memo(function MessageList({
                             }}
                             onClick={() => openLightbox(message.attachment_url!)}
                           />
-                          {displayedBody && displayedBody !== 'Imagem' && !displayedBody.startsWith('http') && (
+                          {!isAutoImageCaption(displayedBody) && (
                             <p>{formatMessageText(displayedBody, profileDisplayName, serverEmojis)}</p>
                           )}
                         </div>
@@ -551,8 +590,10 @@ export const MessageList = memo(function MessageList({
                     </div>
                   </article>
                 </div>
+            </React.Fragment>
               )
             })}
+            {trailingEvents.map(renderVoiceEvent)}
           </div>
           <div style={{ height: '24px', flexShrink: 0 }} />
           <div ref={messagesEndRef} />
