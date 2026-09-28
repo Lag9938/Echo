@@ -18,11 +18,31 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.50.1',
+    title: 'Echo v0.50.1 - Atualizar com um Clique e Bot de Música Sempre de Pé',
+    date: '28 de Setembro de 2026',
+    tagline: 'O botão "Reiniciar para atualizar" voltou a funcionar em qualquer tela, e o bot de música não fica mais "surdo" quando a conexão com o servidor cai.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🔄',
+        badge: 'CORREÇÃO',
+        title: '"Reiniciar para atualizar" Voltou a Funcionar',
+        description: 'O aviso de nova versão ficava por baixo da barra superior, que é a área de arrastar a janela, e o clique no botão movia a janela em vez de atualizar. Agora o aviso flutua logo abaixo da barra, com o botão sempre clicável e sem cobrir os botões de minimizar e fechar.'
+      },
+      {
+        icon: '🎵',
+        badge: 'BOT DE MÚSICA',
+        title: 'Bot de Música Não Fica Mais Mudo',
+        description: 'Quando a conexão do bot com o servidor caía, ele continuava ligado mas parava de ouvir os pedidos de música, sem avisar ninguém. Agora ele se reconecta sozinho e, se não conseguir em alguns minutos, reinicia automaticamente.'
+      }
+    ]
+  },
+  {
     version: '0.50.0',
     title: 'Echo v0.50.0 - O Grande Redesign Cyber Frosted Glass',
     date: '27 de Setembro de 2026',
     tagline: 'Uma nova era visual para o Echo: acabamento translúcido Cyber Frosted Glass em todo o ecossistema, novo dock de voz com ping destacado ao lado de sair, e a liberdade de escolher entre o novo layout e o clássico.',
-    isLatest: true,
     highlights: [
       {
         icon: '✨',
