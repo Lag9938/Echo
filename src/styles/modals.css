@@ -60,17 +60,33 @@
 
 
 /* ── Auto-Update Banner ────────────────────────────── */
+/* Aviso flutuante logo abaixo da barra superior. Antes ele ficava no fluxo da página, embaixo da .topbar —
+   que é fixa no topo e marcada como área de arrastar a janela (-webkit-app-region: drag). No Electron, um
+   clique sobre uma área de arrastar move a janela em vez de chegar no botão, então "Reiniciar para
+   atualizar" não respondia. Fixo, acima de tudo e com no-drag, o clique chega no botão; e fica abaixo da
+   barra para não cobrir os botões de minimizar/fechar. */
 .update-banner {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 16px;
+  padding: 8px 10px 8px 16px;
+  border-radius: 12px;
   background: var(--accent-color);
   color: #fff;
   font-size: 13px;
   font-weight: 500;
-  z-index: 9999;
-  flex-shrink: 0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  z-index: 99998;
+  -webkit-app-region: no-drag;
+}
+
+.update-banner * {
+  -webkit-app-region: no-drag;
 }
 
 .update-banner span {
@@ -122,6 +138,7 @@
   align-items: center;
   justify-content: center;
   animation: fadeIn 0.25s ease-out;
+  -webkit-app-region: no-drag;
 }
 
 .update-applying-modal {
