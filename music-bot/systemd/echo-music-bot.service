@@ -9,7 +9,9 @@ User=echobot
 WorkingDirectory=/opt/echo/music-bot
 ExecStart=/usr/bin/node src/index.js
 EnvironmentFile=/opt/echo/music-bot/.env
-Restart=on-failure
+# always: volta mesmo se o processo sair "limpo" (o bot sai sozinho quando perde o Realtime por minutos).
+# Um `systemctl stop` continua parando de verdade.
+Restart=always
 RestartSec=5
 
 # --- Isolamento de recursos -------------------------------------------

@@ -16,6 +16,7 @@ import {
   endAllSessions,
   getActiveSessionCount
 } from './sessionManager.js'
+import { keepSubscribed } from './realtimeWatchdog.js'
 
 console.log('[Echo Music Bot] Iniciando...')
 console.log(`[Echo Music Bot] LiveKit: ${config.livekitUrl}`)
@@ -26,9 +27,7 @@ console.log(`[Echo Music Bot] Limite de sessões simultâneas: ${config.maxConcu
 // comandos aqui na aplicação. Pra uma comunidade de porte pequeno/médio
 // isso é totalmente tranquilo — o volume de mensagens é baixo perto do
 // que o Realtime aguenta.
-const realtimeChannel = supabase
-  .channel('music-bot-commands')
-  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload) => {
+async function handleMessageInsert(payload) {
     const msg = payload.new
     if (!msg || msg.author_id === config.botAuthorId) return // ignora as próprias mensagens do bot
 
@@ -59,23 +58,37 @@ const realtimeChannel = supabase
     } catch (err) {
       console.error(`[Command] Erro ao processar "!${command.name}":`, err)
     }
-  })
-  .subscribe((status) => {
-    console.log(`[Realtime] Status da inscrição: ${status}`)
-  })
+}
 
-async function shutdown(signal) {
-  console.log(`[Echo Music Bot] Recebido ${signal}, encerrando ${getActiveSessionCount()} sessão(ões) ativa(s)...`)
+// A inscrição é refeita sozinha se cair; se ficar minutos sem voltar, o processo sai com erro e o
+// systemd (Restart=always) sobe um bot novo em vez de ele ficar rodando sem ouvir os comandos.
+const commandsSubscription = keepSubscribed({
+  subscribe: (onStatus) => supabase
+    .channel('music-bot-commands')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, handleMessageInsert)
+    .subscribe(onStatus),
+  unsubscribe: (channel) => supabase.removeChannel(channel),
+  isHealthy: (channel) => channel.state === 'joined' && supabase.realtime.isConnected(),
+  onGiveUp: () => shutdown('Realtime sem inscrição', 1)
+})
+
+let shuttingDown = false
+async function shutdown(reason, exitCode = 0) {
+  if (shuttingDown) return
+  shuttingDown = true
+  console.log(`[Echo Music Bot] ${reason}: encerrando ${getActiveSessionCount()} sessão(ões) ativa(s)...`)
   try {
     await endAllSessions()
-    await supabase.removeChannel(realtimeChannel)
+    await commandsSubscription.stop()
+  } catch (err) {
+    console.error('[Echo Music Bot] Erro ao encerrar:', err)
   } finally {
-    process.exit(0)
+    process.exit(exitCode)
   }
 }
 
 // O systemd manda SIGTERM num restart/stop normal — capturamos pra sair
 // das salas do LiveKit de forma limpa em vez de deixar bots fantasmas
 // conectados até o timeout do servidor.
-process.on('SIGTERM', () => shutdown('SIGTERM'))
-process.on('SIGINT', () => shutdown('SIGINT'))
+process.on('SIGTERM', () => shutdown('Recebido SIGTERM'))
+process.on('SIGINT', () => shutdown('Recebido SIGINT'))
