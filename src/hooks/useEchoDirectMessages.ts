@@ -190,17 +190,7 @@ export function useEchoDirectMessages({
     } else {
       setDmDraft('')
       trackMessageSent(attachmentType ? 'attachment' : 'text')
-
-      socialChannelRef.current?.send({
-        type: 'broadcast',
-        event: 'dm-event',
-        payload: {
-          receiverId: targetFriendId,
-          senderId: user.id,
-          senderName: profileDisplayName || displayName || 'Amigo',
-          body: attachmentUrl ? `📎 [Anexo] ${body}` : body
-        }
-      })
+      // O aviso para o destinatário é publicado pelo banco ao gravar a DM (migração 13), só na caixa dele
 
       await loadDirectMessages(targetFriendId)
     }
@@ -224,12 +214,6 @@ export function useEchoDirectMessages({
       }
 
       setDirectMessages(prev => prev.filter(m => m.id !== messageId))
-
-      socialChannelRef.current?.send({
-        type: 'broadcast',
-        event: 'dm-delete',
-        payload: { id: messageId, receiverId: selectedDMUserId, senderId: user.id }
-      })
 
       showToast('Mensagem Excluída', 'Mensagem privada removida.', 'info')
     } catch (err: any) {
@@ -344,18 +328,11 @@ export function useEchoDirectMessages({
   }, [user.id])
 
   const notifyDMTyping = useCallback((targetFriendId: string) => {
-    if (!socialChannelRef.current || !user || !targetFriendId) return
+    if (!supabase || !user || !targetFriendId) return
     if (!shouldSendTypingNotification(lastDMTypingSentRef, 2000)) return
-
-    socialChannelRef.current.send({
-      type: 'broadcast',
-      event: 'dm-typing',
-      payload: {
-        senderId: user.id,
-        receiverId: targetFriendId
-      }
-    })
-  }, [socialChannelRef, user])
+    // Pelo servidor: ele confere se vocês conversam e avisa só a caixa do destinatário
+    supabase.rpc('send_typing', { p_kind: 'dm', p_target: targetFriendId }).then(() => {}, () => {})
+  }, [supabase, user])
 
   const handleDMTypingBroadcast = useCallback((data: any) => {
     if (!data) return

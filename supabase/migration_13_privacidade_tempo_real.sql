@@ -21,10 +21,12 @@
 --       space-voice-<id> / space-presence-<id>   só membros do espaço
 --       room-messages-<canal>       só quem vê o canal; "digitando" só de quem pode escrever nele
 --       voice-dm-call-<a>-<b>       só os dois participantes da chamada direta
+--       voice-<canal>               só quem vê o canal de voz
 --     Os avisos de DM, grupo e amizade passam a ser publicados pelo PRÓPRIO banco (gatilhos que chamam
 --     realtime.send) quando a linha é gravada — não dá mais para falsificar remetente nem conteúdo.
 --     Chamadas e "digitando" (que não têm tabela) passam por funções que conferem a amizade/participação.
---  2. O app deixa de mandar a mensagem por broadcast; quem está no canal recebe pelos eventos do banco.
+--  2. O app deixa de mandar a mensagem por broadcast: o banco publica "new-message"/"delete-message" no canal privado.
+--     Também passa a existir a regra de DELETE das DMs (o remetente apaga as próprias; antes nada era apagado).
 --  3. Os IDs do Asaas vão para billing_accounts (só o dono lê; só o servidor escreve).
 --  4. Bucket com limite de 25 MB e tipos permitidos; cada um só envia para a própria pasta / para canais
 --     onde pode anexar / para espaços que gerencia; ninguém lista o bucket (só os próprios arquivos).
@@ -76,6 +78,12 @@ begin
   m := regexp_match(v_topic, '^voice-dm-call-(' || v_uuid || ')-(' || v_uuid || ')$');
   if m is not null then
     return v_uid::text in (m[1], m[2]);
+  end if;
+
+  -- Presença de voz quando o app não sabe o espaço (useVoiceChannel: voice-<canal>)
+  m := regexp_match(v_topic, '^voice-(' || v_uuid || ')$');
+  if m is not null then
+    return public.can_view_channel(m[1]::uuid);
   end if;
 
   return false;
@@ -236,6 +244,46 @@ drop trigger if exists notify_friendship_trigger on public.friendships;
 create trigger notify_friendship_trigger
   after insert or update or delete on public.friendships
   for each row execute function public.notify_friendship();
+
+-- Mensagens dos canais de texto: publicadas no canal privado room-messages-<canal>, só para quem vê o canal.
+-- Mesmo formato que o app já usa (linha da mensagem + profile). Antes, o próprio app mandava a mensagem por
+-- broadcast público (dava para ler canais privados e forjar mensagens de outra pessoa).
+create or replace function public.notify_channel_message()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_profile jsonb;
+begin
+  if tg_op = 'INSERT' then
+    select jsonb_build_object('display_name', p.display_name, 'avatar_url', p.avatar_url,
+                              'avatar_decoration', p.avatar_decoration, 'profile_effect', p.profile_effect)
+      into v_profile from public.profiles p where p.id = new.author_id;
+    perform realtime.send(
+      to_jsonb(new) || jsonb_build_object('profile', coalesce(v_profile, '{}'::jsonb)),
+      'new-message', 'room-messages-' || new.channel_id::text, true);
+    return new;
+  end if;
+  perform realtime.send(jsonb_build_object('id', old.id, 'channel_id', old.channel_id),
+    'delete-message', 'room-messages-' || old.channel_id::text, true);
+  return old;
+exception when others then
+  raise warning 'notify_channel_message falhou: %', sqlerrm;
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists notify_channel_message_trigger on public.messages;
+create trigger notify_channel_message_trigger
+  after insert or delete on public.messages
+  for each row execute function public.notify_channel_message();
+
+-- Remetente apaga a própria DM (não existia regra de DELETE: o app tirava da tela, mas nada era apagado)
+drop policy if exists "Users delete their sent direct messages" on public.direct_messages;
+create policy "Users delete their sent direct messages" on public.direct_messages
+  for delete to authenticated using (sender_id = (select auth.uid()));
 
 -- Amizade aceita nos dois sentidos e sem bloqueio de nenhum dos lados
 create or replace function public.are_friends(p_a uuid, p_b uuid)
@@ -470,6 +518,7 @@ revoke all on function public.profile_display_name(uuid) from public, anon, auth
 revoke all on function public.notify_direct_message() from public, anon, authenticated;
 revoke all on function public.notify_group_message() from public, anon, authenticated;
 revoke all on function public.notify_friendship() from public, anon, authenticated;
+revoke all on function public.notify_channel_message() from public, anon, authenticated;
 revoke all on function public.are_friends(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.send_call_event(text, uuid) from public, anon;
 revoke all on function public.send_typing(text, uuid) from public, anon;

@@ -436,7 +436,8 @@ export function useEchoSpaces({
 
     // Canal Realtime de Presença do Servidor (WebSockets direto, imune a RLS)
     const spacePresenceChannel = supabase.channel(`space-presence-${currentSpaceId}`, {
-      config: { presence: { key: user.id } }
+      // Privado: só membros do espaço (regra em realtime.messages, migração 13)
+      config: { private: true, presence: { key: user.id } }
     })
     // Limite do Realtime: 5 atualizações de presença / 30s por cliente (senão o canal é fechado)
     installPresenceTrackThrottle(spacePresenceChannel)

@@ -8,6 +8,9 @@ drop policy if exists "echo: publicar em canais permitidos" on realtime.messages
 drop trigger if exists notify_direct_message_trigger on public.direct_messages;
 drop trigger if exists notify_group_message_trigger on public.group_messages;
 drop trigger if exists notify_friendship_trigger on public.friendships;
+drop trigger if exists notify_channel_message_trigger on public.messages;
+drop function if exists public.notify_channel_message();
+drop policy if exists "Users delete their sent direct messages" on public.direct_messages;
 
 drop function if exists public.send_call_event(text, uuid);
 drop function if exists public.send_typing(text, uuid);

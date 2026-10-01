@@ -1564,7 +1564,8 @@ export function useVoiceChannel(options?: {
       if (supabase) {
         const presenceChanName = spaceId ? `space-voice-${spaceId}` : `voice-${channelId}`
         const sbChannel = supabase.channel(presenceChanName, {
-          config: { presence: { key: userId } }
+          // Privado e com a MESMA configuração de useEchoVoiceSession (o supabase-js reaproveita o canal pelo nome)
+          config: { private: true, presence: { key: userId } }
         })
         // Normalmente é o mesmo canal já criado por useEchoVoiceSession (a instalação é idempotente)
         installPresenceTrackThrottle(sbChannel, { keepAliveMs: 15000 })

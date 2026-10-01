@@ -633,18 +633,6 @@ export function useEchoSpaceSettings({
         throw dmError
       }
 
-      // Notifica em tempo real via broadcast do canal social
-      const effectiveProfileName = getProfileDisplayName ? getProfileDisplayName() : profileDisplayName
-      socialChannelRef.current?.send({
-        type: 'broadcast',
-        event: 'dm-event',
-        payload: {
-          receiverId: friend.user.id,
-          senderId: user.id,
-          senderName: effectiveProfileName || displayName || 'Amigo',
-          body: msg
-        }
-      })
 
       showToast('Convite Enviado!', `Convite para ${spaceName} enviado para @${friend.user.display_name}.`, 'friend')
       return true

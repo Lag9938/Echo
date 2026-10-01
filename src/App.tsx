@@ -1626,7 +1626,11 @@ function Echo({ user }: { user: User }) {
       .subscribe()
 
     // Dedicated Realtime WebSockets Broadcast Channel
-    const socialChannel = supabase.channel('echo-social-events')
+    // Caixa de entrada pessoal e privada: só este usuário ouve (regra em realtime.messages, migração 13).
+    // Os avisos de DM, grupo e amizade são publicados pelo próprio banco quando a linha é gravada, e os de
+    // chamada e "digitando" por funções que conferem amizade/participação. O app não publica aqui: antes,
+    // um canal global e público levava o texto das DMs e as mensagens de grupo para qualquer um.
+    const socialChannel = supabase.channel(`user:${user.id}`, { config: { private: true } })
     socialChannelRef.current = socialChannel
 
     socialChannel
@@ -1724,7 +1728,7 @@ function Echo({ user }: { user: User }) {
     setIsUploading(true)
     const rawExt = file.name && file.name.includes('.') ? file.name.split('.').pop() : (file.type.split('/')[1] || 'png')
     const ext = (rawExt || 'png').replace(/[^a-zA-Z0-9]/g, '')
-    const path = `dm/${user.id}/${Date.now()}.${ext}`
+    const path = `dm/${user.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`
     const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file)
     if (uploadError) { setError(uploadError.message); setIsUploading(false); return }
     const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)

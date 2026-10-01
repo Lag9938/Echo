@@ -74,7 +74,7 @@ export function useEchoVoiceNotes({
           const blob = new Blob(voiceNoteChunksRef.current, { type: 'audio/webm' })
           if (target === 'channel') {
             if (!selectedChannel) return
-            const audioPath = `voice-notes/${selectedChannel.id}/${Date.now()}-${user.id}.webm`
+            const audioPath = `voice-notes/${selectedChannel.id}/${Date.now()}-${crypto.randomUUID()}.webm`
             try {
               const { error: uploadErr } = await supabase.storage.from('attachments').upload(audioPath, blob, {
                 contentType: 'audio/webm'
@@ -92,7 +92,7 @@ export function useEchoVoiceNotes({
             }
           } else if (target === 'dm') {
             if (!selectedDMUserId) return
-            const audioPath = `dm/${user.id}/${Date.now()}.webm`
+            const audioPath = `dm/${user.id}/${Date.now()}-${crypto.randomUUID()}.webm`
             try {
               const { error: uploadErr } = await supabase.storage.from('attachments').upload(audioPath, blob, {
                 contentType: 'audio/webm'

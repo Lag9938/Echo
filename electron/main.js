@@ -263,14 +263,11 @@ export function createWindow() {
 
 if (setupDeeplink(getMainWindow, createWindow)) {
   app.whenReady().then(() => {
-    // Servidor LiveKit self-hosted usa um domínio sslip.io com certificado que
-    // o Chromium não valida por padrão, então aceitamos o erro de certificado
-    // apenas para esse host exato. A versão anterior usava url.includes(...),
-    // que casava qualquer URL contendo a substring 'sslip.io' — como sslip.io
-    // é um serviço de DNS público (qualquer-ip.sslip.io resolve para esse IP),
-    // isso aceitava certificados inválidos de QUALQUER host malicioso que
-    // usasse um subdomínio sslip.io, não só o nosso servidor.
-    const TRUSTED_SELF_SIGNED_HOSTS = new Set(['137-131-144-255.sslip.io', 'localhost', '127.0.0.1'])
+    // Erro de certificado só é aceito para o servidor LiveKit LOCAL, e só em desenvolvimento. O servidor de
+    // voz de produção (137-131-144-255.sslip.io) tem certificado válido da Let's Encrypt; a exceção que existia
+    // para ele não servia para nada e deixava qualquer um que interceptasse a conexão (Wi-Fi público, por
+    // exemplo) se passar pelo servidor de voz com um certificado falso.
+    const TRUSTED_SELF_SIGNED_HOSTS = new Set(isDevelopment ? ['localhost', '127.0.0.1'] : [])
     app.on('certificate-error', (event, _webContents, url, _error, _certificate, callback) => {
       let hostname = ''
       try {
@@ -301,7 +298,9 @@ if (setupDeeplink(getMainWindow, createWindow)) {
         if (url.startsWith('http:') || url.startsWith('https:')) {
           try {
             const parsed = new URL(url)
-            if (!['localhost', '127.0.0.1'].includes(parsed.hostname)) {
+            // localhost só em desenvolvimento (servidor do Vite). Na versão instalada o app é um arquivo local:
+            // navegar para um servidor qualquer em localhost daria a essa página acesso às funções do app.
+            if (!isDevelopment || !['localhost', '127.0.0.1'].includes(parsed.hostname)) {
               event.preventDefault()
               shell.openExternal(url).catch((err) => console.warn('[Shell] Falha ao abrir URL externa:', err))
             }

@@ -232,7 +232,8 @@ export function useEchoGlobalPresence({
 
     // Setup global online presence (persistente e estável)
     const presenceChannel = client.channel('global-presence', {
-      config: { presence: { key: user.id } }
+      // Privado: só quem está logado entra (antes, qualquer um com a chave pública via quem está online e jogando)
+      config: { private: true, presence: { key: user.id } }
     })
     presenceChannelRef.current = presenceChannel
     // Limite do Realtime: 5 atualizações de presença / 30s por cliente (senão o canal é fechado)

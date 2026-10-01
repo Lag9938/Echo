@@ -6,7 +6,8 @@ export interface UseEchoGroupChatsOptions {
   user: User
   profileDisplayName: string
   supabase: any
-  socialChannelRef: React.MutableRefObject<any>
+  /** Não é mais usado: avisos de grupo vêm do banco (migração 13). Mantido para não mudar quem chama. */
+  socialChannelRef?: React.MutableRefObject<any>
   showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend', onClickOrData?: any) => void
   triggerDesktopNotification: (title: string, body: string, data?: any) => void
   setKnownProfiles: React.Dispatch<React.SetStateAction<Record<string, any>>>
@@ -18,7 +19,6 @@ export function useEchoGroupChats({
   user,
   profileDisplayName,
   supabase,
-  socialChannelRef,
   showToast,
   triggerDesktopNotification,
   setKnownProfiles,
@@ -187,24 +187,7 @@ export function useEchoGroupChats({
           m.id === tempId ? { ...data, profile: { display_name: profileDisplayName } } : m
         )
       }))
-
-      // Broadcast
-      if (socialChannelRef.current) {
-        socialChannelRef.current.send({
-          type: 'broadcast',
-          event: 'group-message',
-          payload: {
-            groupId,
-            messageId: data.id,
-            senderId: user.id,
-            senderName: profileDisplayName,
-            body,
-            attachmentUrl,
-            attachmentType,
-            created_at: data.created_at
-          }
-        })
-      }
+      // Os outros membros são avisados pelo banco ao gravar a mensagem (migração 13), cada um na sua caixa
     } catch (err) {
       console.error('[GroupChats] Failed to send message:', err)
       // Mark as failed
@@ -215,7 +198,7 @@ export function useEchoGroupChats({
         )
       }))
     }
-  }, [user.id, profileDisplayName, supabase, socialChannelRef])
+  }, [user.id, profileDisplayName, supabase])
 
   // ── CREATE GROUP ──
   const createGroupChat = useCallback(async (name: string, memberIds: string[]) => {
@@ -285,7 +268,10 @@ export function useEchoGroupChats({
 
   // ── HANDLE INCOMING BROADCAST ──
   const handleGroupMessageBroadcast = useCallback((data: any) => {
+    if (!data) return
     const { groupId, messageId, senderId, senderName, body, attachmentUrl, attachmentType, created_at } = data
+    // Só grupos dos quais a pessoa faz parte (antes, toda mensagem de todo grupo virava notificação para todos)
+    if (!groupId || senderId === user.id || !groupChats.some(g => g.id === groupId)) return
 
     const newMsg: GroupMessage = {
       id: messageId,
@@ -316,7 +302,7 @@ export function useEchoGroupChats({
       playDmNotificationSound(sfxVolume)
       triggerDesktopNotification(`${senderName} em ${groupName}`, notifBody, { type: 'group', groupId })
     }
-  }, [groupChats, showToast, playDmNotificationSound, sfxVolume, triggerDesktopNotification])
+  }, [user.id, groupChats, showToast, playDmNotificationSound, sfxVolume, triggerDesktopNotification])
 
   // ── HANDLE GROUP TYPING BROADCAST ──
   const handleGroupTypingBroadcast = useCallback((data: any) => {
@@ -342,13 +328,10 @@ export function useEchoGroupChats({
 
   // ── NOTIFY TYPING IN GROUP ──
   const notifyGroupTyping = useCallback((groupId: string) => {
-    if (!socialChannelRef.current) return
-    socialChannelRef.current.send({
-      type: 'broadcast',
-      event: 'group-typing',
-      payload: { groupId, senderId: user.id, senderName: profileDisplayName }
-    })
-  }, [user.id, profileDisplayName, socialChannelRef])
+    if (!supabase || !groupId) return
+    // Pelo servidor: ele confere se você é do grupo e avisa só os outros membros
+    supabase.rpc('send_typing', { p_kind: 'group', p_target: groupId }).then(() => {}, () => {})
+  }, [supabase])
 
   // ── OPEN GROUP ──
   const handleOpenGroup = useCallback(async (groupId: string) => {

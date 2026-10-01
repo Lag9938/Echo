@@ -726,6 +726,8 @@ console.log('\n[Migração 13: tempo real privado, avisos do banco, cobrança e 
   const setup13 = await applyScript(`
     alter table public.profiles add column if not exists display_name text;
     alter table public.profiles add column if not exists avatar_url text;
+    alter table public.profiles add column if not exists avatar_decoration text;
+    alter table public.profiles add column if not exists profile_effect text;
     alter table public.profiles add column if not exists asaas_customer_id text;
     alter table public.profiles add column if not exists asaas_subscription_id text;
 
@@ -826,6 +828,18 @@ console.log('\n[Migração 13: tempo real privado, avisos do banco, cobrança e 
   check('terceiro NÃO entra na chamada direta', !(await canRead('D', `voice-dm-call-${lo}-${hi}`)))
   check('canal antigo "echo-social-events" e nomes desconhecidos são negados', !(await canRead('A', 'echo-social-events')) && !(await canRead('A', 'room-messages-lixo')) && !(await canWrite('A', 'echo-social-events')))
   check('publicar com extensão desconhecida é negado', !(await canWrite('A', 'global-presence', 'postgres_changes')))
+  check('presença voice-<canal>: quem vê o canal entra, quem é de fora não', await canRead('B', `voice-${PUB7}`) && !(await canRead('D', `voice-${PUB7}`)))
+
+  // ---- Mensagens dos canais de texto publicadas pelo banco ----
+  await admin('delete from realtime.sent')
+  const msg7 = (await asUser('B', "insert into public.messages(channel_id, author_id, body) values ($1, $2, 'oi canal') returning id", [PUB7, U.B])).rows[0]?.id
+  let ms = (await admin('select topic, event, payload from realtime.sent')).rows
+  check('mensagem no canal é publicada pelo banco no canal privado, com o perfil do autor verdadeiro',
+    ms.length === 1 && ms[0].topic === `room-messages-${PUB7}` && ms[0].event === 'new-message' && ms[0].payload.author_id === U.B && ms[0].payload.profile?.display_name === 'nome B', JSON.stringify(ms))
+  await admin('delete from realtime.sent')
+  await asUser('B', 'delete from public.messages where id = $1', [msg7])
+  ms = (await admin('select topic, event, payload from realtime.sent')).rows
+  check('exclusão de mensagem é publicada pelo banco', ms.length === 1 && ms[0].event === 'delete-message' && ms[0].payload.id === msg7, JSON.stringify(ms))
 
   // ---- Avisos gerados pelo banco ----
   const sent = async () => (await admin('select topic, event, payload from realtime.sent')).rows
@@ -843,6 +857,9 @@ console.log('\n[Migração 13: tempo real privado, avisos do banco, cobrança e 
   await asUser('A', "insert into public.direct_messages(sender_id, receiver_id, body) values ($1, $2, 'oi')", [U.A, U.B])
   check('quem bloqueou não recebe aviso de DM', (await sent()).length === 0)
   await admin('delete from public.blocked_users')
+  const dm1 = (await admin("insert into public.direct_messages(sender_id, receiver_id, body) values ($1, $2, 'apagar') returning id", [U.A, U.B])).rows[0].id
+  check('destinatário NÃO apaga a DM que recebeu', (await asUser('B', 'delete from public.direct_messages where id = $1 returning id', [dm1])).rows.length === 0)
+  check('remetente apaga a própria DM (antes não apagava nada)', (await asUser('A', 'delete from public.direct_messages where id = $1 returning id', [dm1])).rows.length === 1)
 
   const GRP = (await admin("insert into public.group_chats(name, creator_id) values ('g', $1) returning id", [U.A])).rows[0].id
   await admin('insert into public.group_chat_members(group_chat_id, user_id) values ($1, $2), ($1, $3)', [GRP, U.A, U.B])

@@ -116,7 +116,7 @@ describe('useEchoFriendships', () => {
     expect(result.current.pendingFriendCount).toBe(1)
   })
 
-  it('aceita solicitação de amizade com sucesso e emite som e broadcast', async () => {
+  it('aceita solicitação de amizade com sucesso e emite som (o aviso a quem pediu é do banco, não do app)', async () => {
     const { result } = setupHook()
 
     await act(async () => {
@@ -129,16 +129,8 @@ describe('useEchoFriendships', () => {
 
     expect(playFriendAcceptSoundMock).toHaveBeenCalledWith(1)
     expect(showToastMock).toHaveBeenCalledWith('Amizade Aceita!', expect.any(String), 'friend')
-    expect(socialChannelRef.current.send).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'broadcast',
-        event: 'friend-event',
-        payload: expect.objectContaining({
-          type: 'friend-request-accepted',
-          targetUserId: 'stranger-3'
-        })
-      })
-    )
+    // Migração 13: o app não publica mais avisos (canal público forjável); o gatilho do banco avisa quem pediu
+    expect(socialChannelRef.current.send).not.toHaveBeenCalled()
   })
 
   it('detecta quando o usuário já é amigo ao tentar enviar pedido para mesmo ID', async () => {
@@ -155,7 +147,7 @@ describe('useEchoFriendships', () => {
     expect(showToastMock).toHaveBeenCalledWith('Já são amigos', expect.any(String), 'info')
   })
 
-  it('cancela ou desfaz amizade chamando delete no Supabase e disparando broadcast', async () => {
+  it('cancela ou desfaz amizade chamando delete no Supabase (o aviso ao outro lado é do banco)', async () => {
     const { result } = setupHook()
 
     await act(async () => {
@@ -167,15 +159,6 @@ describe('useEchoFriendships', () => {
     })
 
     expect(mockSupabase.from).toHaveBeenCalledWith('friendships')
-    expect(socialChannelRef.current.send).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'broadcast',
-        event: 'friend-event',
-        payload: expect.objectContaining({
-          type: 'friend-removed',
-          targetUserId: 'friend-2'
-        })
-      })
-    )
+    expect(socialChannelRef.current.send).not.toHaveBeenCalled()
   })
 })

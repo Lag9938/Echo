@@ -241,13 +241,17 @@ export const MessageList = memo(function MessageList({
           const authorBadge = isSelf
             ? (localStorage.getItem(`echo-show-badge-${user.id}`) !== 'false' ? (localStorage.getItem(`echo-badge-${user.id}`) || 'owner') : 'none')
             : (presenceData[message.author_id]?.badge || localStorage.getItem(`echo-badge-${message.author_id}`) || null)
+          // Identidade de quem escreveu vem do BANCO (membros do espaço, perfil gravado na mensagem). A presença é
+          // preenchida pelo app de cada um e não é verificada: antes ela vinha primeiro, e dava para aparecer no
+          // chat com o nome e a foto de outra pessoa. Agora ela só entra se o banco não tiver nada.
+          const authorMember = isSelf ? undefined : spaceMembers.find(m => (m?.user?.id === message.author_id || m?.id === message.author_id))
           const resolvedAuthorName = isSelf
             ? (profileDisplayName || (user.user_metadata as any)?.display_name || message.profile?.display_name || 'Você')
-            : (presenceData[message.author_id]?.display_name || spaceMembers.find(m => (m?.user?.id === message.author_id || m?.id === message.author_id))?.user?.display_name || message.profile?.display_name || 'Membro')
+            : (authorMember?.user?.display_name || message.profile?.display_name || presenceData[message.author_id]?.display_name || 'Membro')
 
           const resolvedAuthorAvatar = isSelf
             ? (profileAvatarUrl || message.profile?.avatar_url)
-            : (presenceData[message.author_id]?.avatar_url || spaceMembers.find(m => (m?.user?.id === message.author_id || m?.id === message.author_id))?.user?.avatar_url || message.profile?.avatar_url)
+            : (authorMember?.user?.avatar_url || message.profile?.avatar_url || presenceData[message.author_id]?.avatar_url)
 
           return (
             <React.Fragment key={message.id || `${message.created_at}-${index}`}>

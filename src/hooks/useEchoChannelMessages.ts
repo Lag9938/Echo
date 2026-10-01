@@ -391,7 +391,7 @@ export function useEchoChannelMessages({
     try {
       const rawExt = file.name && file.name.includes('.') ? file.name.split('.').pop() : (file.type.split('/')[1] || 'png')
       const ext = (rawExt || 'png').replace(/[^a-zA-Z0-9]/g, '')
-      const path = `channels/${selectedChannel.id}/${Date.now()}.${ext}`
+      const path = `channels/${selectedChannel.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`
       const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file)
       if (uploadError) {
         setError(uploadError.message)
@@ -452,12 +452,7 @@ export function useEchoChannelMessages({
       setMessages(prev => [...prev, optimisticMsg])
     }
 
-    // Broadcast instantâneo via WebSocket (0ms) para todos os conectados no canal
-    channelBroadcastRef.current?.send({
-      type: 'broadcast',
-      event: 'new-message',
-      payload: optimisticMsg
-    }).catch(e => console.warn('Broadcast error:', e))
+    // Quem está no canal recebe a mensagem pelo próprio banco ao gravar (gatilho da migração 13, canal privado)
 
     try {
       const timeoutPromise = new Promise<{ data: any; error: any }>((_, reject) =>
@@ -497,13 +492,6 @@ export function useEchoChannelMessages({
 
       // Atualiza a mensagem temporária com o ID oficial do banco
       setMessages(prev => prev.map(m => (m.id === tempId || m.tempId === tempId) ? confirmedMsg : m))
-
-      // Notifica os pares do canal com a mensagem confirmada
-      channelBroadcastRef.current?.send({
-        type: 'broadcast',
-        event: 'new-message',
-        payload: confirmedMsg
-      }).catch(() => {})
 
       trackMessageSent(attachmentType ? 'attachment' : 'text')
 
@@ -545,12 +533,6 @@ export function useEchoChannelMessages({
         messagesCacheRef.current[selectedChannel.id] = next
         return next
       })
-
-      channelBroadcastRef.current?.send({
-        type: 'broadcast',
-        event: 'delete-message',
-        payload: { id: messageId }
-      }).catch(() => {})
 
       showToast('Mensagem Excluída', 'A mensagem foi removida do canal.', 'info')
     } catch (err: any) {
@@ -619,8 +601,11 @@ export function useEchoChannelMessages({
     loadMessages(selectedChannel.id)
 
     const channelTopic = `room-messages-${selectedChannel.id}`
+    // Privado: só quem vê o canal ouve (antes, mensagens até de canais privados iam por broadcast público).
+    // "new-message" e "delete-message" são publicados pelo banco; o app só manda "digitando".
     const live = client.channel(channelTopic, {
       config: {
+        private: true,
         broadcast: { ack: false }
       }
     })
@@ -631,6 +616,10 @@ export function useEchoChannelMessages({
       if (payload.channel_id && payload.channel_id !== selectedChannel.id) return
 
       setMessages(prev => {
+        // Minha mensagem que chegou antes da resposta do insert: a resposta é que troca o temporário pelo oficial
+        if (payload.author_id === user?.id && !prev.some(m => m.id === payload.id) && prev.some(m => m.status === 'sending')) {
+          return prev
+        }
         const matchIdx = prev.findIndex(m => 
           m.id === payload.id || 
           (payload.tempId && (m.id === payload.tempId || m.tempId === payload.tempId))

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import type { User } from '@supabase/supabase-js'
+import { supabase } from '../lib/supabase'
 
 export interface ActiveDirectCall {
   targetUserId: string
@@ -19,10 +20,11 @@ export interface IncomingCall {
 
 export interface UseEchoDirectCallsOptions {
   user: User | null
-  profileDisplayName: string
-  displayName: string
-  profileAvatarUrl: string
-  socialChannelRef: React.MutableRefObject<any>
+  /** Os quatro campos abaixo não são mais usados: o servidor monta o aviso de chamada (migração 13) */
+  profileDisplayName?: string
+  displayName?: string
+  profileAvatarUrl?: string
+  socialChannelRef?: React.MutableRefObject<any>
   sfxVolume: number
   handleJoinVoice: (channelId: string, explicitSpaceId?: string) => Promise<void>
   leaveVoice: () => void
@@ -34,10 +36,6 @@ export interface UseEchoDirectCallsOptions {
 
 export function useEchoDirectCalls({
   user,
-  profileDisplayName,
-  displayName,
-  profileAvatarUrl,
-  socialChannelRef,
   sfxVolume,
   handleJoinVoice,
   leaveVoice,
@@ -96,6 +94,18 @@ export function useEchoDirectCalls({
     }
   }, [])
 
+  // Avisos de chamada pelo servidor: ele confere a amizade e monta o aviso com o remetente verdadeiro, só na
+  // caixa de entrada de quem deve receber (antes, iam por um canal público e qualquer um forjava "fulano te ligou")
+  const sendCallEvent = useCallback(async (type: 'call-invite' | 'call-accepted' | 'call-rejected' | 'call-ended', targetUserId: string) => {
+    if (!supabase) return false
+    const { error } = await supabase.rpc('send_call_event', { p_type: type, p_target: targetUserId })
+    if (error) {
+      console.warn(`[DirectCall] ${type} recusado pelo servidor:`, error.message)
+      return false
+    }
+    return true
+  }, [])
+
   const startDirectCall = useCallback(async (targetUserId: string, targetName: string, targetAvatar?: string) => {
     if (!user) return
     const roomId = `dm-call-${[user.id, targetUserId].sort().join('-')}`
@@ -109,20 +119,16 @@ export function useEchoDirectCalls({
     })
     startRingtone(false)
     await handleJoinVoice(roomId, 'direct-call')
-    socialChannelRef.current?.send({
-      type: 'broadcast',
-      event: 'call-event',
-      payload: {
-        type: 'call-invite',
-        callerId: user.id,
-        callerName: profileDisplayName || displayName || 'Amigo',
-        callerAvatar: profileAvatarUrl,
-        targetUserId,
-        roomId
-      }
-    })
+    if (!(await sendCallEvent('call-invite', targetUserId))) {
+      stopRingtone()
+      leaveVoice()
+      setActiveDirectCall(null)
+      setActiveVoiceChannelId(null)
+      showToast('Não foi possível ligar', 'Só dá para ligar para quem é seu amigo.', 'info')
+      return
+    }
     showToast('Chamando...', `Ligando para @${targetName}...`, 'friend')
-  }, [user, profileDisplayName, displayName, profileAvatarUrl, socialChannelRef, startRingtone, handleJoinVoice, showToast])
+  }, [user, startRingtone, stopRingtone, handleJoinVoice, sendCallEvent, leaveVoice, setActiveVoiceChannelId, showToast])
 
   const acceptIncomingCall = useCallback(async () => {
     if (!incomingCall || !user) return
@@ -138,53 +144,28 @@ export function useEchoDirectCalls({
       status: 'connected',
       startTime: Date.now()
     })
-    socialChannelRef.current?.send({
-      type: 'broadcast',
-      event: 'call-event',
-      payload: {
-        type: 'call-accepted',
-        callerId,
-        targetUserId: user.id
-      }
-    })
+    void sendCallEvent('call-accepted', callerId)
     showToast('Chamada conectada', `Em chamada com @${callerName}`, 'friend')
-  }, [incomingCall, user, stopRingtone, handleJoinVoice, socialChannelRef, showToast])
+  }, [incomingCall, user, stopRingtone, handleJoinVoice, sendCallEvent, showToast])
 
   const rejectIncomingCall = useCallback(() => {
     if (!incomingCall || !user) return
     stopRingtone()
     const { callerId } = incomingCall
     setIncomingCall(null)
-    socialChannelRef.current?.send({
-      type: 'broadcast',
-      event: 'call-event',
-      payload: {
-        type: 'call-rejected',
-        callerId,
-        targetUserId: user.id
-      }
-    })
-  }, [incomingCall, user, stopRingtone, socialChannelRef])
+    void sendCallEvent('call-rejected', callerId)
+  }, [incomingCall, user, stopRingtone, sendCallEvent])
 
   const endDirectCall = useCallback(() => {
     stopRingtone()
     if (activeDirectCall && user) {
-      socialChannelRef.current?.send({
-        type: 'broadcast',
-        event: 'call-event',
-        payload: {
-          type: 'call-ended',
-          targetUserId: activeDirectCall.targetUserId,
-          senderId: user.id
-        }
-      })
+      void sendCallEvent('call-ended', activeDirectCall.targetUserId)
     }
     playLeaveSound(sfxVolume)
     leaveVoice()
     setActiveDirectCall(null)
     setActiveVoiceChannelId(null)
-  }, [activeDirectCall, user, stopRingtone, socialChannelRef, playLeaveSound, sfxVolume, leaveVoice, setActiveVoiceChannelId])
-
+  }, [activeDirectCall, user, stopRingtone, sendCallEvent, playLeaveSound, sfxVolume, leaveVoice, setActiveVoiceChannelId])
   const handleCallEvent = useCallback((data: any) => {
     if (!data || !user) return
     if (data.type === 'call-invite' && data.targetUserId === user.id) {

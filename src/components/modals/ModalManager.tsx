@@ -202,7 +202,8 @@ export interface ModalManagerProps {
   // Channel Invite & Space Add Members
   channelForInvite: { channel: Channel; space: Space } | null
   setChannelForInvite: (c: { channel: Channel; space: Space } | null) => void
-  socialChannelRef: React.MutableRefObject<any>
+  /** Não é mais usado: o convite por DM é avisado pelo banco (migração 13) */
+  socialChannelRef?: React.MutableRefObject<any>
   spaceForAddMembers: Space | null
   setSpaceForAddMembers: (s: Space | null) => void
   handleAddMemberToSpace: (spaceId: string, friend: any) => Promise<any>
@@ -405,7 +406,6 @@ export function ModalManager(props: ModalManagerProps) {
     // Channel Invite & Space Add Members
     channelForInvite,
     setChannelForInvite,
-    socialChannelRef,
     spaceForAddMembers,
     setSpaceForAddMembers,
     handleAddMemberToSpace,
@@ -657,16 +657,6 @@ export function ModalManager(props: ModalManagerProps) {
               sender_id: user.id,
               receiver_id: friendUserId,
               body: inviteMessage
-            })
-            socialChannelRef.current?.send({
-              type: 'broadcast',
-              event: 'dm-event',
-              payload: {
-                receiverId: friendUserId,
-                senderId: user.id,
-                senderName: profileDisplayName || displayName || 'Amigo',
-                body: inviteMessage
-              }
             })
           }}
           showToast={showToast as any}

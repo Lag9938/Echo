@@ -8,7 +8,8 @@ export interface UseEchoFriendshipsOptions {
   user: User
   profileDisplayName: string
   displayName: string
-  socialChannelRef: React.MutableRefObject<any>
+  /** Não é mais usado: avisos de amizade vêm do banco (migração 13). Mantido para não mudar quem chama. */
+  socialChannelRef?: React.MutableRefObject<any>
   sfxVolume: number
   showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend', onClickOrData?: any) => void
   triggerDesktopNotification: (title: string, body: string, data?: any) => void
@@ -24,7 +25,6 @@ export function useEchoFriendships({
   user,
   profileDisplayName,
   displayName,
-  socialChannelRef,
   sfxVolume,
   showToast,
   triggerDesktopNotification,
@@ -116,7 +116,6 @@ export function useEchoFriendships({
   const acceptFriendRequest = useCallback(async (friendshipId: string) => {
     if (!supabase) return
     const req = friendships.find(f => f.id === friendshipId)
-    const targetUserId = req?.initiatorId
     const friendName = req?.user?.display_name || 'Amigo'
 
     const { error: fError } = await supabase
@@ -129,23 +128,10 @@ export function useEchoFriendships({
     } else {
       playFriendAcceptSound(sfxVolume)
       showToast('Amizade Aceita!', `Você agora é amigo de ${friendName}!`, 'friend')
-
-      if (targetUserId) {
-        socialChannelRef.current?.send({
-          type: 'broadcast',
-          event: 'friend-event',
-          payload: {
-            type: 'friend-request-accepted',
-            targetUserId,
-            senderId: user.id,
-            senderName: profileDisplayName || displayName || 'Seu amigo'
-          }
-        })
-      }
-
+      // Quem pediu é avisado pelo banco ao aceitar (migração 13)
       await loadFriendships()
     }
-  }, [supabase, friendships, setError, playFriendAcceptSound, sfxVolume, showToast, socialChannelRef, user.id, profileDisplayName, displayName, loadFriendships])
+  }, [supabase, friendships, setError, playFriendAcceptSound, sfxVolume, showToast, loadFriendships])
 
   const sendFriendRequest = useCallback(async (event: FormEvent) => {
     event.preventDefault()
@@ -213,16 +199,6 @@ export function useEchoFriendships({
         setFriendSearchNotice(`Solicitação de amizade enviada com sucesso para @${targetProfile.display_name}!`)
         setFriendSearchQuery('')
 
-        socialChannelRef.current?.send({
-          type: 'broadcast',
-          event: 'friend-event',
-          payload: {
-            type: 'friend-request-sent',
-            targetUserId,
-            senderId: user.id,
-            senderName: profileDisplayName || displayName || user.email || 'Alguém'
-          }
-        })
 
         await loadFriendships()
       }
@@ -230,7 +206,7 @@ export function useEchoFriendships({
       console.error('Error in sendFriendRequest:', e)
       setFriendSearchNotice('Erro ao processar solicitação de amizade.')
     }
-  }, [supabase, friendSearchQuery, user, acceptFriendRequest, playFriendRequestSound, sfxVolume, socialChannelRef, profileDisplayName, displayName, loadFriendships])
+  }, [supabase, friendSearchQuery, user, acceptFriendRequest, playFriendRequestSound, sfxVolume, profileDisplayName, displayName, loadFriendships])
 
   const sendFriendRequestToUser = useCallback(async (targetUserId: string, targetName?: string) => {
     if (!user || targetUserId === user.id) return
@@ -294,16 +270,6 @@ export function useEchoFriendships({
         playFriendRequestSound(sfxVolume)
         showToast('Solicitação enviada!', `Pedido de amizade enviado para @${name}!`, 'friend')
 
-        socialChannelRef.current?.send({
-          type: 'broadcast',
-          event: 'friend-event',
-          payload: {
-            type: 'friend-request-sent',
-            targetUserId,
-            senderId: user.id,
-            senderName: profileDisplayName || displayName || user.email || 'Alguém'
-          }
-        })
 
         await loadFriendships()
       }
@@ -311,12 +277,10 @@ export function useEchoFriendships({
       console.error('Error in sendFriendRequestToUser:', e)
       showToast('Erro', 'Não foi possível enviar a solicitação de amizade.', 'info')
     }
-  }, [user, friendships, supabase, showToast, acceptFriendRequest, loadFriendships, playFriendRequestSound, sfxVolume, socialChannelRef, profileDisplayName, displayName])
+  }, [user, friendships, supabase, showToast, acceptFriendRequest, loadFriendships, playFriendRequestSound, sfxVolume, profileDisplayName, displayName])
 
   const removeFriendship = useCallback(async (friendshipId: string) => {
     if (!supabase) return
-    const req = friendships.find(f => f.id === friendshipId)
-    const targetUserId = req?.user?.id
 
     const { error: fError } = await supabase
       .from('friendships')
@@ -326,20 +290,9 @@ export function useEchoFriendships({
     if (fError) {
       setError(fError.message)
     } else {
-      if (targetUserId) {
-        socialChannelRef.current?.send({
-          type: 'broadcast',
-          event: 'friend-event',
-          payload: {
-            type: 'friend-removed',
-            targetUserId,
-            senderId: user.id
-          }
-        })
-      }
       await loadFriendships()
     }
-  }, [supabase, friendships, setError, socialChannelRef, user.id, loadFriendships])
+  }, [supabase, setError, loadFriendships])
 
   const handleFriendshipPostgresChanges = useCallback((payload: any) => {
     loadFriendships()

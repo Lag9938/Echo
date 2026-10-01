@@ -188,7 +188,8 @@ export function useEchoVoiceSession({
       if (channelsMap.has(sp.id)) return
 
       const channel = sb.channel(`space-voice-${sp.id}`, {
-        config: { presence: { key: user.id } }
+        // Privado: só membros do espaço veem quem está nas calls (regra em realtime.messages, migração 13)
+        config: { private: true, presence: { key: user.id } }
       })
       // Limite do Realtime: 5 atualizações de presença / 30s por cliente (senão o canal é fechado).
       // Batimento mais curto que o padrão para a presença de voz se recuperar rápido após reconexão.
