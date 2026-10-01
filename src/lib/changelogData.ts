@@ -18,11 +18,43 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.51.0',
+    title: 'Echo v0.51.0 - Suas Conversas Só Suas',
+    date: '1 de Outubro de 2026',
+    tagline: 'Uma revisão completa de segurança: mensagens, ligações e avisos agora passam por canais privados conferidos pelo servidor, e pagamentos e anexos ficaram mais protegidos.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🔒',
+        badge: 'PRIVACIDADE',
+        title: 'Conversas em Canais Privados',
+        description: 'Avisos de DMs, grupos, pedidos de amizade e mensagens dos canais agora são enviados pelo próprio servidor, só para quem pode ver. Ninguém de fora consegue mais escutar nem se passar por outra pessoa nesses avisos.'
+      },
+      {
+        icon: '📞',
+        badge: 'SEGURANÇA',
+        title: 'Ligações Só Entre Amigos',
+        description: 'Os convites de ligação e o aviso de "digitando" passam a ser conferidos pelo servidor: só dá para ligar para quem é seu amigo e não te bloqueou.'
+      },
+      {
+        icon: '📎',
+        badge: 'ANEXOS',
+        title: 'Anexos Mais Protegidos',
+        description: 'Cada arquivo só pode ser enviado no lugar certo (sua DM, um canal em que você pode escrever, seu perfil), com limite de 25 MB e tipos de arquivo conferidos. Apagar uma mensagem na DM agora também funciona de verdade.'
+      },
+      {
+        icon: '💳',
+        badge: 'ECHO PRO',
+        title: 'Pagamento do Pro Mais Seguro',
+        description: 'O preço e a validade do Echo Pro agora são conferidos só pelo servidor, e seus dados de cobrança ficam guardados separados do perfil.'
+      }
+    ]
+  },
+  {
     version: '0.50.1',
     title: 'Echo v0.50.1 - Atualizar com um Clique e Bot de Música Sempre de Pé',
     date: '28 de Setembro de 2026',
     tagline: 'O botão "Reiniciar para atualizar" voltou a funcionar em qualquer tela, e o bot de música não fica mais "surdo" quando a conexão com o servidor cai.',
-    isLatest: true,
     highlights: [
       {
         icon: '🔄',
