@@ -1202,7 +1202,7 @@ function Echo({ user }: { user: User }) {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('display_name, avatar_url, avatar_decoration, profile_effect, is_premium, premium_until, asaas_customer_id, banner_url, banner_preset, bio, pronouns, custom_status')
+          .select('display_name, avatar_url, avatar_decoration, profile_effect, is_premium, premium_until, banner_url, banner_preset, bio, pronouns, custom_status')
           .eq('id', user.id)
           .single()
 

@@ -209,10 +209,7 @@ export function SubscriptionTab({
           body: {
             action: 'create-pix',
             name: fullName.trim() || 'Usuário Echo',
-            email: userEmail?.trim() || '',
-            cpfCnpj: cleanCpf,
-            value: 9.90,
-            userId: userId
+            cpfCnpj: cleanCpf
           }
         })
         if (error || !data || !data.success) {
@@ -234,13 +231,6 @@ export function SubscriptionTab({
       }
 
       trackPixGenerated(res.value || 9.90)
-
-      if (res.customerId && userId && supabase) {
-        await supabase
-          .from('profiles')
-          .update({ asaas_customer_id: res.customerId })
-          .eq('id', userId)
-      }
 
       setPixData({
         paymentId: res.paymentId,

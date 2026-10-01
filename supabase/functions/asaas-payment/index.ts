@@ -1,10 +1,18 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "jsr:@supabase/supabase-js@2"
+import { PRO_PRICE, evaluatePayment, normalizeCpfCnpj, type AsaasPayment } from "./billing.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS"
+}
+
+function json(status: number, body: Record<string, unknown>): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" }
+  })
 }
 
 Deno.serve(async (req: Request) => {
@@ -15,10 +23,7 @@ Deno.serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get("Authorization")
     if (!authHeader) {
-      return new Response(JSON.stringify({ success: false, error: "Missing authorization header" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      })
+      return json(401, { success: false, error: "Missing authorization header" })
     }
 
     const supabaseClient = createClient(
@@ -29,10 +34,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
     if (authError || !user) {
-      return new Response(JSON.stringify({ success: false, error: "Invalid or expired session" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      })
+      return json(401, { success: false, error: "Invalid or expired session" })
     }
 
     const body = await req.json().catch(() => ({}))
@@ -40,175 +42,159 @@ Deno.serve(async (req: Request) => {
 
     const apiKey = Deno.env.get("ASAAS_API_KEY") || ""
     const apiUrl = Deno.env.get("ASAAS_API_URL") || "https://api.asaas.com/v3"
+    const asaasHeaders = { "Content-Type": "application/json", access_token: apiKey, "User-Agent": "EchoApp" }
+
+    // Service role: is_premium/premium_until e os IDs do Asaas não podem ser escritos pelo cliente
+    // (trigger da migração 07 e tabela billing_accounts sem política de escrita), só daqui
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    )
+
+    const saveCustomerId = async (customerId: string) => {
+      const { error } = await supabaseAdmin
+        .from("billing_accounts")
+        .upsert({ user_id: user.id, asaas_customer_id: customerId, updated_at: new Date().toISOString() })
+      if (error) console.error("[asaas-payment] Falha ao salvar o cliente do Asaas:", error.message)
+    }
 
     if (action === "create-pix") {
-      const { name, email, cpfCnpj, value = 9.90 } = body
+      // Só dados da própria conta: o e-mail verificado do login (nunca um e-mail vindo do app, que
+      // deixava achar o cadastro de cobrança de OUTRA pessoa e gravar um CPF nele)
+      const name = typeof body.name === "string" && body.name.trim() ? body.name.trim().slice(0, 100) : null
+      const cpfCnpj = normalizeCpfCnpj(body.cpfCnpj)
+      const targetEmail = user.email || undefined
+
       let customerId: string | null = null
 
-      const targetEmail = email || user.email
-      if (targetEmail) {
-        const searchRes = await fetch(`${apiUrl}/customers?email=${encodeURIComponent(targetEmail)}`, {
-          headers: { access_token: apiKey, "User-Agent": "EchoApp" }
-        }).then(r => r.json()).catch(() => null)
+      const { data: account } = await supabaseAdmin
+        .from("billing_accounts")
+        .select("asaas_customer_id")
+        .eq("user_id", user.id)
+        .maybeSingle()
+      if (account?.asaas_customer_id) customerId = account.asaas_customer_id
 
-        if (searchRes && searchRes.data && searchRes.data.length > 0) {
-          customerId = searchRes.data[0].id
-        }
+      if (!customerId && targetEmail) {
+        const searchRes = await fetch(`${apiUrl}/customers?email=${encodeURIComponent(targetEmail)}`, {
+          headers: asaasHeaders
+        }).then(r => r.json()).catch(() => null)
+        if (searchRes?.data?.length > 0) customerId = searchRes.data[0].id
       }
 
       if (!customerId) {
         const createCusRes = await fetch(`${apiUrl}/customers`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", access_token: apiKey, "User-Agent": "EchoApp" },
+          headers: asaasHeaders,
           body: JSON.stringify({
             name: name || user.user_metadata?.display_name || "Membro Echo",
-            email: targetEmail || undefined,
-            cpfCnpj: cpfCnpj ? String(cpfCnpj).replace(/\D/g, "") : undefined
+            email: targetEmail,
+            cpfCnpj
           })
         }).then(r => r.json())
 
-        if (createCusRes && createCusRes.id) {
+        if (createCusRes?.id) {
           customerId = createCusRes.id
-        } else if (createCusRes && createCusRes.errors) {
-          return new Response(JSON.stringify({
+        } else {
+          return json(400, {
             success: false,
-            error: createCusRes.errors[0]?.description || "Erro ao cadastrar cliente no Asaas."
-          }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
+            error: createCusRes?.errors?.[0]?.description || "Erro ao cadastrar cliente no Asaas."
           })
         }
-      }
-
-      if (customerId && cpfCnpj) {
+      } else if (cpfCnpj) {
         await fetch(`${apiUrl}/customers/${customerId}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", access_token: apiKey, "User-Agent": "EchoApp" },
-          body: JSON.stringify({ cpfCnpj: String(cpfCnpj).replace(/\D/g, "") })
+          headers: asaasHeaders,
+          body: JSON.stringify({ cpfCnpj })
         }).catch(() => {})
       }
+
+      await saveCustomerId(customerId as string)
 
       const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0]
       const paymentRes = await fetch(`${apiUrl}/payments`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", access_token: apiKey, "User-Agent": "EchoApp" },
+        headers: asaasHeaders,
         body: JSON.stringify({
           customer: customerId,
           billingType: "PIX",
-          value: Number(value) || 9.90,
+          // Preço fixo no servidor: o valor que o app manda é ignorado
+          value: PRO_PRICE,
           dueDate: tomorrow,
           description: "Assinatura Echo Pro - 60 FPS & Alta Definição (1 Mês)",
           externalReference: user.id
         })
       }).then(r => r.json())
 
-      if (!paymentRes || !paymentRes.id) {
-        return new Response(JSON.stringify({
+      if (!paymentRes?.id) {
+        return json(400, {
           success: false,
           error: paymentRes?.errors?.[0]?.description || "Erro ao gerar cobrança no Asaas."
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
         })
       }
 
       const qrRes = await fetch(`${apiUrl}/payments/${paymentRes.id}/pixQrCode`, {
-        headers: { access_token: apiKey, "User-Agent": "EchoApp" }
+        headers: asaasHeaders
       }).then(r => r.json())
 
-      return new Response(JSON.stringify({
+      return json(200, {
         success: true,
         paymentId: paymentRes.id,
-        customerId: customerId,
         value: paymentRes.value,
         qrCodeImage: qrRes.encodedImage ? `data:image/png;base64,${qrRes.encodedImage}` : null,
         copyPaste: qrRes.payload || null,
         expirationDate: qrRes.expirationDate || null
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
       })
-    } else if (action === "check-status") {
+    }
+
+    if (action === "check-status") {
       const { paymentId } = body
-      if (!paymentId) {
-        return new Response(JSON.stringify({ success: false, error: "ID de pagamento ausente." }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        })
+      if (typeof paymentId !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(paymentId)) {
+        return json(400, { success: false, error: "ID de pagamento inválido." })
       }
 
-      const res = await fetch(`${apiUrl}/payments/${paymentId}`, {
-        headers: { access_token: apiKey, "User-Agent": "EchoApp" }
-      }).then(r => r.json())
+      const payment: AsaasPayment | null = await fetch(`${apiUrl}/payments/${paymentId}`, {
+        headers: asaasHeaders
+      }).then(r => r.json()).catch(() => null)
 
-      const isPaid = Boolean(res && (res.status === "RECEIVED" || res.status === "CONFIRMED"))
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("premium_until")
+        .eq("id", user.id)
+        .maybeSingle()
 
-      // Confirma que este pagamento pertence ao usuário autenticado antes de
-      // conceder qualquer benefício. Sem isso, qualquer usuário logado
-      // poderia informar o paymentId de OUTRA pessoa (adivinhado, vazado ou
-      // reaproveitado) e ganhar Echo Pro sem ter pago nada. O externalReference
-      // é definido como user.id no momento da criação da cobrança (ação
-      // "create-pix" acima) e não pode ser forjado pelo cliente, pois vem da
-      // resposta da própria API do Asaas.
-      const belongsToUser = Boolean(res && res.externalReference === user.id)
-      const grantsPremium = isPaid && belongsToUser
+      const decision = evaluatePayment(payment, user.id, Date.now(), profile?.premium_until)
 
-      if (grantsPremium) {
-        const premiumUntil = new Date(Date.now() + 30 * 86400000).toISOString()
-        // Usa a service role para gravar is_premium/premium_until: essas colunas
-        // são protegidas por trigger contra escrita direta de clientes
-        // autenticados (ver migration_07_protect_subscription_fields.sql), então
-        // a concessão só é possível a partir do servidor, após a verificação acima.
-        const supabaseAdmin = createClient(
-          Deno.env.get("SUPABASE_URL") ?? "",
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-        )
-        await supabaseAdmin
+      if (decision.grant) {
+        const { error } = await supabaseAdmin
           .from("profiles")
-          .update({
-            is_premium: true,
-            premium_until: premiumUntil,
-            asaas_customer_id: typeof res.customer === "string" ? res.customer : undefined
-          })
+          .update({ is_premium: true, premium_until: decision.premiumUntil })
           .eq("id", user.id)
+        if (error) throw new Error(error.message)
+        const customer = (payment as { customer?: unknown } | null)?.customer
+        if (typeof customer === "string") await saveCustomerId(customer)
       }
 
-      return new Response(JSON.stringify({
+      return json(200, {
         success: true,
-        status: res?.status || "UNKNOWN",
-        isPaid: grantsPremium
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+        status: payment?.status || "UNKNOWN",
+        isPaid: decision.grant,
+        premiumUntil: decision.grant ? decision.premiumUntil : null
       })
     }
 
     if (action === "cancel-subscription") {
-      // Desativa o Echo Pro do próprio usuário autenticado (nunca de outro,
-      // pois usamos user.id do token verificado acima, nunca um id vindo do
-      // corpo da requisição). is_premium/premium_until são protegidos por
-      // trigger contra escrita direta do cliente, então essa desativação só
-      // é possível a partir do servidor, com a service role.
-      const supabaseAdmin = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-      )
-      await supabaseAdmin
+      // Só do próprio usuário (user.id do token verificado, nunca um id vindo do corpo)
+      const { error } = await supabaseAdmin
         .from("profiles")
         .update({ is_premium: false, premium_until: null })
         .eq("id", user.id)
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      })
+      if (error) throw new Error(error.message)
+      return json(200, { success: true })
     }
 
-    return new Response(JSON.stringify({ success: false, error: "Ação não suportada." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    })
-  } catch (err: any) {
-    return new Response(JSON.stringify({ success: false, error: err?.message || "Internal server error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    })
+    return json(400, { success: false, error: "Ação não suportada." })
+  } catch (err: unknown) {
+    console.error("[asaas-payment]", err)
+    return json(500, { success: false, error: "Não foi possível concluir agora. Tente de novo em instantes." })
   }
 })

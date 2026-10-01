@@ -720,5 +720,201 @@ console.log('\n[Reversão 11]')
   check('migração 11 reaplica depois do rollback', !re11.error, re11.error)
 }
 
+console.log('\n[Migração 13: tempo real privado, avisos do banco, cobrança e anexos]')
+{
+  // Estado de produção que a migração 13 usa e que os blocos acima não criaram (levantado via SQL de leitura)
+  const setup13 = await applyScript(`
+    alter table public.profiles add column if not exists display_name text;
+    alter table public.profiles add column if not exists avatar_url text;
+    alter table public.profiles add column if not exists asaas_customer_id text;
+    alter table public.profiles add column if not exists asaas_subscription_id text;
+
+    create table public.blocked_users (id uuid primary key default gen_random_uuid(), blocker_id uuid, blocked_id uuid, created_at timestamptz default now());
+    alter table public.blocked_users enable row level security;
+    create policy "Users manage own blocks" on public.blocked_users for all to authenticated
+      using ((select auth.uid()) = blocker_id) with check ((select auth.uid()) = blocker_id);
+
+    create table public.direct_messages (id uuid primary key default gen_random_uuid(), sender_id uuid, receiver_id uuid, body text,
+      attachment_url text, attachment_type text, created_at timestamptz default now(), read_at timestamptz);
+    alter table public.direct_messages enable row level security;
+    create policy "Users read their direct messages" on public.direct_messages for select to authenticated
+      using (sender_id = (select auth.uid()) or receiver_id = (select auth.uid()));
+    create policy "Users send direct messages as themselves" on public.direct_messages for insert to authenticated
+      with check (sender_id = (select auth.uid()));
+
+    create table public.friendships (id uuid primary key default gen_random_uuid(), user_id uuid, friend_id uuid, status text, created_at timestamptz default now());
+    alter table public.friendships enable row level security;
+    create policy "read" on public.friendships for select to authenticated using (user_id = (select auth.uid()) or friend_id = (select auth.uid()));
+    create policy "insert" on public.friendships for insert to authenticated with check (user_id = (select auth.uid()) and status = 'pending');
+    create policy "accept" on public.friendships for update to authenticated using (friend_id = (select auth.uid())) with check (friend_id = (select auth.uid()) and status = 'accepted');
+    create policy "delete" on public.friendships for delete to authenticated using (user_id = (select auth.uid()) or friend_id = (select auth.uid()));
+
+    create table public.group_chats (id uuid primary key default gen_random_uuid(), name text, creator_id uuid, avatar_url text, created_at timestamptz default now());
+    create table public.group_chat_members (id uuid primary key default gen_random_uuid(), group_chat_id uuid, user_id uuid, joined_at timestamptz default now());
+    create table public.group_messages (id uuid primary key default gen_random_uuid(), group_chat_id uuid, sender_id uuid, body text,
+      attachment_url text, attachment_type text, created_at timestamptz default now());
+    alter table public.group_messages enable row level security;
+    create policy "send" on public.group_messages for insert to authenticated with check (sender_id = (select auth.uid())
+      and exists (select 1 from public.group_chat_members m where m.group_chat_id = group_messages.group_chat_id and m.user_id = (select auth.uid())));
+    create policy "read" on public.group_messages for select to authenticated using (true);
+
+    grant select, insert, update, delete on public.blocked_users, public.direct_messages, public.friendships,
+      public.group_chats, public.group_chat_members, public.group_messages to authenticated;
+
+    -- Imitação mínima do Realtime do Supabase: realtime.topic() lê o tópico do canal e realtime.send() publica
+    create schema realtime;
+    create table realtime.messages (id bigserial primary key, topic text, extension text, payload jsonb, event text, private boolean);
+    alter table realtime.messages enable row level security;
+    create function realtime.topic() returns text language sql stable as $$ select nullif(current_setting('realtime.topic', true), '') $$;
+    create table realtime.sent (topic text, event text, payload jsonb, private boolean);
+    create function realtime.send(payload jsonb, event text, topic text, private boolean) returns void language sql
+      as $$ insert into realtime.sent values (topic, event, payload, private) $$;
+    grant usage on schema realtime to anon, authenticated;
+    grant select, insert on realtime.messages to anon, authenticated;
+    grant usage, select on sequence realtime.messages_id_seq to anon, authenticated;
+    insert into realtime.messages (topic, extension) values ('qualquer', 'broadcast');
+
+    -- Imitação mínima do Storage com as regras de produção de antes da migração
+    create schema storage;
+    create table storage.buckets (id text primary key, public boolean, file_size_limit bigint, allowed_mime_types text[]);
+    insert into storage.buckets values ('attachments', true, null, null);
+    create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text,
+      owner_id text default (auth.uid())::text);
+    alter table storage.objects enable row level security;
+    create policy "Permitir leitura pública de anexos" on storage.objects for select to authenticated using (bucket_id = 'attachments');
+    create policy "Permitir upload para usuários autenticados" on storage.objects for insert to authenticated with check (bucket_id = 'attachments');
+    grant usage on schema storage to authenticated;
+    grant select, insert, update on storage.objects to authenticated;
+  `)
+  check('estado de produção para a migração 13 montado', !setup13.error, setup13.error)
+  for (const [k, id] of Object.entries(U)) await admin('update public.profiles set display_name = $1 where id = $2', [`nome ${k}`, id])
+  await admin("update public.profiles set asaas_customer_id = 'cus_A', asaas_subscription_id = 'sub_A' where id = $1", [U.A])
+
+  // Espaço novo: A dono, B membro, D de fora; um canal público e um privado sem cargos autorizados
+  const S7 = (await asUser('A', "insert into public.spaces(name, creator_id) values ('Servidor 7', $1) returning id", [U.A])).rows[0].id
+  await asUser('A', "insert into public.space_members(space_id, user_id, role) values ($1, $2, 'owner')", [S7, U.A])
+  await admin("insert into public.space_members(space_id, user_id, role) values ($1, $2, 'member')", [S7, U.B])
+  const PUB7 = (await admin("insert into public.channels(space_id, name) values ($1, 'geral') returning id", [S7])).rows[0].id
+  const PRIV7 = (await admin("insert into public.channels(space_id, name, is_private, allowed_role_ids) values ($1, 'staff', true, '{}') returning id", [S7])).rows[0].id
+
+  const sql13 = fs.readFileSync(`${REPO}/migration_13_privacidade_tempo_real.sql`, 'utf8')
+  const m13 = await applyScript(sql13)
+  check('migração 13 aplica sem erros', !m13.error, m13.error)
+
+  // ---- Canais do Realtime ----
+  const topic = async (t) => { await db.query("select set_config('realtime.topic', $1, false)", [t]) }
+  const canRead = async (u, t) => { await topic(t); return (await (u === 'anon' ? asAnon : (s, p) => asUser(u, s, p))('select count(*)::int as n from realtime.messages')).rows[0]?.n > 0 }
+  const canWrite = async (u, t, ext = 'broadcast') => { await topic(t); return !(await asUser(u, 'insert into realtime.messages(topic, extension) values ($1, $2)', [t, ext])).error }
+
+  check('dono ouve a própria caixa de entrada', await canRead('A', `user:${U.A}`))
+  check('NINGUÉM ouve a caixa de entrada de outro', !(await canRead('B', `user:${U.A}`)))
+  check('ninguém publica pelo app nem na própria caixa (avisos vêm do banco)', !(await canWrite('A', `user:${U.A}`)))
+  check('ninguém publica na caixa de outro', !(await canWrite('B', `user:${U.A}`)))
+  check('quem está logado entra na presença geral', await canRead('B', 'global-presence') && await canWrite('B', 'global-presence', 'presence'))
+  check('anônimo (só com a chave pública) NÃO entra na presença geral', !(await canRead('anon', 'global-presence')))
+  check('membro entra na voz do espaço', await canRead('B', `space-voice-${S7}`) && await canWrite('B', `space-voice-${S7}`, 'presence'))
+  check('quem não é do espaço NÃO ouve a voz nem a presença do espaço', !(await canRead('D', `space-voice-${S7}`)) && !(await canRead('D', `space-presence-${S7}`)))
+  check('quem não é do espaço NÃO publica na voz do espaço', !(await canWrite('D', `space-voice-${S7}`)))
+  check('membro ouve o canal de texto público', await canRead('B', `room-messages-${PUB7}`))
+  check('membro sem cargo NÃO ouve o canal privado', !(await canRead('B', `room-messages-${PRIV7}`)))
+  check('dono ouve o canal privado', await canRead('A', `room-messages-${PRIV7}`))
+  check('quem não é do espaço NÃO ouve o canal público', !(await canRead('D', `room-messages-${PUB7}`)))
+  check('membro manda "digitando" no canal público', await canWrite('B', `room-messages-${PUB7}`))
+  check('membro NÃO publica no canal privado', !(await canWrite('B', `room-messages-${PRIV7}`)))
+  const [lo, hi] = [U.A, U.B].sort()
+  check('participantes entram na chamada direta', await canRead('A', `voice-dm-call-${lo}-${hi}`) && await canRead('B', `voice-dm-call-${lo}-${hi}`))
+  check('terceiro NÃO entra na chamada direta', !(await canRead('D', `voice-dm-call-${lo}-${hi}`)))
+  check('canal antigo "echo-social-events" e nomes desconhecidos são negados', !(await canRead('A', 'echo-social-events')) && !(await canRead('A', 'room-messages-lixo')) && !(await canWrite('A', 'echo-social-events')))
+  check('publicar com extensão desconhecida é negado', !(await canWrite('A', 'global-presence', 'postgres_changes')))
+
+  // ---- Avisos gerados pelo banco ----
+  const sent = async () => (await admin('select topic, event, payload from realtime.sent')).rows
+  const clearSent = () => admin('delete from realtime.sent')
+
+  await clearSent()
+  check('DM gravada', !(await asUser('A', "insert into public.direct_messages(sender_id, receiver_id, body) values ($1, $2, 'segredo')", [U.A, U.B])).error)
+  let s = await sent()
+  check('DM avisa SÓ a caixa do destinatário', s.length === 1 && s[0].topic === `user:${U.B}` && s[0].event === 'dm-event', JSON.stringify(s))
+  check('o remetente do aviso é o verdadeiro (vem do banco)', s[0]?.payload.senderId === U.A && s[0]?.payload.senderName === 'nome A' && s[0]?.payload.body === 'segredo')
+  check('ninguém grava DM em nome de outro', !!(await asUser('D', "insert into public.direct_messages(sender_id, receiver_id, body) values ($1, $2, 'falso')", [U.A, U.B])).error)
+
+  await asUser('B', 'insert into public.blocked_users(blocker_id, blocked_id) values ($1, $2)', [U.B, U.A])
+  await clearSent()
+  await asUser('A', "insert into public.direct_messages(sender_id, receiver_id, body) values ($1, $2, 'oi')", [U.A, U.B])
+  check('quem bloqueou não recebe aviso de DM', (await sent()).length === 0)
+  await admin('delete from public.blocked_users')
+
+  const GRP = (await admin("insert into public.group_chats(name, creator_id) values ('g', $1) returning id", [U.A])).rows[0].id
+  await admin('insert into public.group_chat_members(group_chat_id, user_id) values ($1, $2), ($1, $3)', [GRP, U.A, U.B])
+  await clearSent()
+  check('membro manda mensagem no grupo', !(await asUser('A', "insert into public.group_messages(group_chat_id, sender_id, body) values ($1, $2, 'olá grupo')", [GRP, U.A])).error)
+  s = await sent()
+  check('mensagem de grupo avisa SÓ os outros membros (antes: todo mundo recebia)', s.length === 1 && s[0].topic === `user:${U.B}` && s[0].payload.groupId === GRP, JSON.stringify(s))
+  check('quem não é do grupo NÃO manda mensagem nele', !!(await asUser('C', "insert into public.group_messages(group_chat_id, sender_id, body) values ($1, $2, 'x')", [GRP, U.C])).error)
+
+  await clearSent()
+  await asUser('A', "insert into public.friendships(user_id, friend_id, status) values ($1, $2, 'pending')", [U.A, U.C])
+  s = await sent()
+  check('pedido de amizade avisa o destinatário', s.length === 1 && s[0].topic === `user:${U.C}` && s[0].payload.type === 'friend-request-sent' && s[0].payload.senderId === U.A)
+  await clearSent()
+  await asUser('C', "update public.friendships set status = 'accepted' where user_id = $1 and friend_id = $2", [U.A, U.C])
+  s = await sent()
+  check('aceite avisa quem pediu', s.length === 1 && s[0].topic === `user:${U.A}` && s[0].payload.type === 'friend-request-accepted' && s[0].payload.senderId === U.C)
+
+  // ---- Chamadas e "digitando" pelo servidor ----
+  await clearSent()
+  check('amigo liga para amigo', !(await rpc('A', 'send_call_event', 'call-invite', U.C)).error)
+  s = await sent()
+  const room = `dm-call-${[U.A, U.C].sort().join('-')}`
+  check('convite de chamada vai só para o destinatário, com a sala certa e o nome verdadeiro',
+    s.length === 1 && s[0].topic === `user:${U.C}` && s[0].payload.callerId === U.A && s[0].payload.roomId === room && s[0].payload.callerName === 'nome A', JSON.stringify(s))
+  check('quem não é amigo NÃO liga', (await rpc('D', 'send_call_event', 'call-invite', U.A)).error?.includes('not_friends'))
+  check('tipo de evento inventado é recusado', (await rpc('A', 'send_call_event', 'call-hack', U.C)).error?.includes('invalid_call_event'))
+  check('anônimo NÃO chama a função de chamada', !!(await rpc('anon', 'send_call_event', 'call-invite', U.C)).error)
+  await clearSent()
+  await rpc('C', 'send_call_event', 'call-accepted', U.A)
+  s = await sent()
+  check('aceitar a chamada avisa quem ligou', s.length === 1 && s[0].topic === `user:${U.A}` && s[0].payload.callerId === U.A && s[0].payload.targetUserId === U.C)
+
+  await clearSent()
+  await rpc('A', 'send_typing', 'dm', U.C)
+  await rpc('D', 'send_typing', 'dm', U.C)
+  await rpc('C', 'send_typing', 'group', GRP)
+  s = await sent()
+  check('"digitando" só entre quem conversa; estranho e não-membro do grupo não avisam ninguém',
+    s.length === 1 && s[0].topic === `user:${U.C}` && s[0].event === 'dm-typing' && s[0].payload.senderId === U.A, JSON.stringify(s))
+
+  // ---- Cobrança ----
+  const prof = (await admin('select asaas_customer_id, asaas_subscription_id from public.profiles where id = $1', [U.A])).rows[0]
+  check('IDs do Asaas saíram de profiles', prof.asaas_customer_id === null && prof.asaas_subscription_id === null)
+  check('…e foram para billing_accounts', (await admin('select asaas_customer_id from public.billing_accounts where user_id = $1', [U.A])).rows[0]?.asaas_customer_id === 'cus_A')
+  check('dono lê a própria conta de cobrança', (await asUser('A', 'select user_id from public.billing_accounts')).rows.length === 1)
+  check('outro usuário NÃO lê a conta de cobrança de ninguém', (await asUser('B', 'select user_id from public.billing_accounts')).rows.length === 0)
+  check('ninguém grava a própria conta de cobrança pelo app', !!(await asUser('B', "insert into public.billing_accounts(user_id, asaas_customer_id) values ($1, 'cus_falso')", [U.B])).error)
+
+  // ---- Anexos ----
+  const up = (u, name) => asUser(u, "insert into storage.objects(bucket_id, name) values ('attachments', $1) returning id", [name])
+  const ok = async (u, name) => !(await up(u, name)).error
+  check('bucket ganhou limite de 25 MB e lista de tipos', (await admin("select file_size_limit, allowed_mime_types from storage.buckets where id = 'attachments'")).rows[0]?.file_size_limit === '26214400' || (await admin("select file_size_limit from storage.buckets where id = 'attachments'")).rows[0]?.file_size_limit == 26214400)
+  check('envia na própria pasta de DM, avatar, banner e figurinha',
+    await ok('A', `dm/${U.A}/f.png`) && await ok('A', `avatars/${U.A}/f.png`) && await ok('A', `banners/${U.A}/f.png`) && await ok('A', `stickers/${U.A}_1_f.png`))
+  check('NÃO envia na pasta de outra pessoa', !(await ok('B', `dm/${U.A}/f.png`)) && !(await ok('B', `avatars/${U.A}/f.png`)) && !(await ok('B', `stickers/${U.A}_1_f.png`)))
+  check('membro anexa no canal público (e áudio)', await ok('B', `channels/${PUB7}/f.png`) && await ok('B', `voice-notes/${PUB7}/a.webm`))
+  check('membro sem acesso NÃO anexa no canal privado; quem é de fora NÃO anexa em nada',
+    !(await ok('B', `channels/${PRIV7}/f.png`)) && !(await ok('D', `channels/${PUB7}/f.png`)))
+  check('dono troca ícone e emojis do espaço; membro comum NÃO', await ok('A', `spaces/${S7}/icon_1.png`) && await ok('A', `spaces/${S7}/emojis/x.png`)
+    && !(await ok('B', `spaces/${S7}/icon_1.png`)) && !(await ok('B', `spaces/${S7}/emojis/x.png`)))
+  check('pastas inventadas e caminhos com ".." são recusados', !(await ok('A', `outra/${U.A}/f.png`)) && !(await ok('A', `dm/${U.A}/../x.png`)) && !(await ok('A', 'f.png')))
+  check('ninguém lista os arquivos dos outros (só os próprios)', (await asUser('B', "select name from storage.objects where name like 'dm/%'")).rows.length === 0
+    && (await asUser('A', "select name from storage.objects where name like 'dm/%'")).rows.length === 1)
+
+  // ---- Reversão ----
+  const rb13 = await applyScript(fs.readFileSync(`${REPO}/rollback_13_privacidade_tempo_real.sql`, 'utf8'))
+  check('rollback 13 aplica sem erros', !rb13.error, rb13.error)
+  check('rollback 13 devolve os IDs do Asaas para profiles', (await admin('select asaas_customer_id from public.profiles where id = $1', [U.A])).rows[0]?.asaas_customer_id === 'cus_A')
+  const re13 = await applyScript(sql13)
+  check('migração 13 reaplica depois do rollback', !re13.error, re13.error)
+}
+
 console.log(`\n${passed} passaram, ${failed} falharam`)
 process.exit(failed ? 1 : 0)
