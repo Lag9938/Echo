@@ -208,6 +208,30 @@
   text-decoration: underline;
 }
 
+.auth-switch:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+/* "Esqueci minha senha": link discreto logo abaixo do campo de senha, alinhado à direita */
+.auth-forgot {
+  justify-self: end;
+  margin-top: -8px;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12.5px;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.auth-forgot:hover {
+  color: #ff9d8a;
+  text-decoration: underline;
+}
+
 .auth-notice {
   padding: 10px 14px;
   color: #ff8b7e;
