@@ -18,11 +18,43 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.51.1',
+    title: 'Echo v0.51.1 - Volume do Bot Só Seu e 60 FPS em Qualquer Jogo',
+    date: '3 de Outubro de 2026',
+    tagline: 'Cada pessoa escolhe o próprio volume do bot de música, a transmissão reconhece muito mais jogos para liberar os 60 FPS, e o visual Cyber Frosted Glass chegou a mais telas.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎵',
+        badge: 'BOT DE MÚSICA',
+        title: 'Volume do Bot Individual',
+        description: 'O controle de volume no painel do bot agora vale só para você: abaixar ou silenciar a música não muda o que as outras pessoas da chamada ouvem. O volume escolhido fica salvo para as próximas chamadas.'
+      },
+      {
+        icon: '🎮',
+        badge: 'TRANSMISSÃO',
+        title: '60 FPS em Qualquer Jogo',
+        description: 'Antes só uma lista fixa de jogos liberava os 60 FPS ao transmitir uma janela. Agora o Echo reconhece jogos instalados pela Steam, Epic, GOG, Riot, Xbox, Ubisoft, EA e Rockstar, mesmo os que não estão na lista.'
+      },
+      {
+        icon: '⌨️',
+        badge: 'CORREÇÃO',
+        title: 'Aviso de Atalho Sem Loop',
+        description: 'Quando uma tecla de atalho já estava em uso por outro programa, o aviso aparecia sem parar e não adiantava fechar. Agora ele aparece uma única vez.'
+      },
+      {
+        icon: '✨',
+        badge: 'VISUAL',
+        title: 'Novo Visual em Mais Telas',
+        description: 'Indicadores de status com símbolos próprios do Echo, chat, mensagens de voz, tela de perfil e o teste de microfone ganharam o acabamento Cyber Frosted Glass.'
+      }
+    ]
+  },
+  {
     version: '0.51.0',
     title: 'Echo v0.51.0 - Suas Conversas Só Suas',
     date: '1 de Outubro de 2026',
     tagline: 'Uma revisão completa de segurança: mensagens, ligações e avisos agora passam por canais privados conferidos pelo servidor, e pagamentos e anexos ficaram mais protegidos.',
-    isLatest: true,
     highlights: [
       {
         icon: '🔒',
