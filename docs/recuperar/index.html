@@ -155,7 +155,7 @@
 
     <!-- 3. Link inválido, vencido ou página aberta sem link -->
     <section id="viewInvalid" hidden>
-      <h1>Link inválido ou vencido</h1>
+      <h1 id="invalidTitle">Link inválido ou vencido</h1>
       <p class="lead" id="invalidText">Este link de recuperação não vale mais. No aplicativo Echo, clique em "Esqueci minha senha" para receber um link novo.</p>
     </section>
   </main>
@@ -184,6 +184,11 @@
       try { window.history.replaceState(null, '', window.location.pathname); } catch (e) {}
 
       if (linkError || !accessToken || linkType !== 'recovery') {
+        // Página aberta direto (sem vir do e-mail) não é "link vencido": explica de onde o link vem
+        if (!linkError && !accessToken) {
+          document.getElementById('invalidTitle').textContent = 'Abra pelo link do e-mail';
+          document.getElementById('invalidText').textContent = 'Esta página só funciona quando aberta pelo link de recuperação que o Echo envia por e-mail. No aplicativo Echo, clique em "Esqueci minha senha", informe seu e-mail e abra o link que chegar.';
+        }
         show('viewInvalid');
         return;
       }
