@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { VoiceParticipant } from '../lib/useVoiceChannel'
+import { isMusicBotIdentity } from '../lib/musicBotState'
+import { useMusicBotStore } from '../stores/useMusicBotStore'
 
 export interface UseEchoPeerAudioOptions {
   userId: string
@@ -27,15 +29,23 @@ export function useEchoPeerAudio({
   // Selected participant for local volume control modal
   const [volumeControlUser, setVolumeControlUser] = useState<VoiceParticipant | null>(null)
 
+  // Volume do bot de música só para este usuário (controle do painel do bot). O bot entra com uma
+  // identidade por canal, então o volume dele não fica em userVolumes (que é por pessoa).
+  const musicBotVolume = useMusicBotStore((s) => s.myVolume)
+
   // Sincronizar volumes locais sempre que participantes ou volumes mudarem
   useEffect(() => {
     participants.forEach(p => {
       if (p.userId !== userId) {
+        if (isMusicBotIdentity(p.userId)) {
+          changePeerVolume(p.userId, musicBotVolume / 100)
+          return
+        }
         const vol = userVolumes[p.userId] !== undefined ? userVolumes[p.userId] : 100
         changePeerVolume(p.userId, vol / 100)
       }
     })
-  }, [participants, userVolumes, changePeerVolume, userId])
+  }, [participants, userVolumes, musicBotVolume, changePeerVolume, userId])
 
   // 3D Spatial Audio & Stereo Panning state
   const [spatialAudioEnabled, setSpatialAudioEnabledState] = useState<boolean>(() => {

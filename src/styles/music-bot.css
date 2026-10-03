@@ -344,6 +344,21 @@
   color: var(--text-muted);
 }
 
+.music-bot-hint-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--accent-color);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.music-bot-hint-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* Fila e recentes: abas no mesmo formato de .type-btn / .type-active */
 .music-bot-list {
   display: flex;
