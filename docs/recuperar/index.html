@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>Criar nova senha | Echo</title>
+  <meta name="theme-color" content="#00f2fe">
+  <link rel="icon" type="image/png" href="../assets/echo-icon.png">
+
+  <!--
+    Página aberta pelo link do e-mail "esqueci minha senha" do Echo. O Supabase confere o link e manda a
+    pessoa para cá com uma sessão temporária no fragmento da URL (#access_token=...). A página tira esse
+    fragmento da barra de endereço na hora, grava a senha nova e encerra a sessão. Não carrega nenhum
+    script de terceiros: só fala com o servidor do Echo.
+  -->
+  <style>
+    :root {
+      --bg-dark: #07090e;
+      --card-bg: rgba(16, 20, 31, 0.92);
+      --accent: #00f2fe;
+      --accent-secondary: #0284c7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: rgba(255, 255, 255, 0.1);
+      --danger: #ff8b7e;
+      --emerald: #10b981;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background:
+        radial-gradient(circle at 15% 10%, rgba(0, 242, 254, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 85% 90%, rgba(99, 102, 241, 0.14) 0%, transparent 50%),
+        var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    .top-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+
+    .brand-mark {
+      width: 32px; height: 32px; border-radius: 10px;
+      background: linear-gradient(135deg, #00f2fe 0%, #0284c7 100%);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 16px rgba(0, 242, 254, 0.4);
+    }
+    .brand-mark svg { width: 18px; height: 18px; color: #030712; }
+    .brand-text { font-size: 20px; font-weight: 900; letter-spacing: -0.03em; }
+
+    .card {
+      width: 100%; max-width: 400px; padding: 28px 26px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    h1 { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .lead { color: var(--text-muted); font-size: 14px; line-height: 1.5; margin-bottom: 22px; }
+
+    form { display: grid; gap: 14px; }
+
+    label {
+      display: grid; gap: 6px;
+      color: var(--text-muted); font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.8px;
+    }
+
+    input {
+      width: 100%; padding: 11px 14px;
+      color: #fff; font-size: 14px; font-family: inherit;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1.5px solid var(--border);
+      border-radius: 10px; outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(0, 242, 254, 0.15); }
+
+    button {
+      margin-top: 6px; padding: 13px;
+      font: inherit; font-size: 14px; font-weight: 700; color: #04121a;
+      background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+      border: 0; border-radius: 10px; cursor: pointer;
+      box-shadow: 0 6px 20px rgba(0, 242, 254, 0.25);
+      transition: transform 0.15s, opacity 0.15s;
+    }
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.5; transform: none; cursor: default; }
+
+    .notice {
+      padding: 10px 14px; font-size: 13px; line-height: 1.45;
+      color: var(--danger);
+      background: rgba(255, 139, 126, 0.08);
+      border: 1px solid rgba(255, 139, 126, 0.25);
+      border-radius: 8px;
+    }
+
+    .done-mark {
+      width: 46px; height: 46px; margin-bottom: 14px; border-radius: 50%;
+      display: grid; place-items: center;
+      color: var(--emerald); font-size: 22px; font-weight: 800;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="top-brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="12" cy="12" r="1.9" fill="currentColor" />
+        <ellipse cx="12" cy="12" rx="9.3" ry="3.5" transform="rotate(30 12 12)" stroke="currentColor" stroke-width="1.6" />
+        <ellipse cx="12" cy="12" rx="9.3" ry="3.5" transform="rotate(90 12 12)" stroke="currentColor" stroke-width="1.6" />
+        <ellipse cx="12" cy="12" rx="9.3" ry="3.5" transform="rotate(150 12 12)" stroke="currentColor" stroke-width="1.6" />
+      </svg>
+    </div>
+    <span class="brand-text">Echo</span>
+  </div>
+
+  <main class="card">
+    <!-- 1. Link válido: formulário da senha nova -->
+    <section id="viewForm" hidden>
+      <h1>Criar nova senha</h1>
+      <p class="lead">Escolha a senha nova da sua conta do Echo.</p>
+      <form id="resetForm" novalidate>
+        <label>Nova senha
+          <input id="password" type="password" autocomplete="new-password" minlength="6" required>
+        </label>
+        <label>Repita a nova senha
+          <input id="confirm" type="password" autocomplete="new-password" minlength="6" required>
+        </label>
+        <div id="formNotice" class="notice" role="alert" hidden></div>
+        <button id="submitBtn" type="submit">Salvar nova senha</button>
+      </form>
+    </section>
+
+    <!-- 2. Senha trocada -->
+    <section id="viewDone" hidden>
+      <div class="done-mark" aria-hidden="true">✓</div>
+      <h1>Senha alterada</h1>
+      <p class="lead" id="doneText">Pronto! Volte ao aplicativo Echo e entre com a senha nova. Você já pode fechar esta página.</p>
+    </section>
+
+    <!-- 3. Link inválido, vencido ou página aberta sem link -->
+    <section id="viewInvalid" hidden>
+      <h1>Link inválido ou vencido</h1>
+      <p class="lead" id="invalidText">Este link de recuperação não vale mais. No aplicativo Echo, clique em "Esqueci minha senha" para receber um link novo.</p>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      var SUPABASE_URL = 'https://fcgizoopltqrldixvyve.supabase.co';
+      // Chave pública do app (a mesma do convite): segura para ficar na página
+      var SUPABASE_KEY = 'sb_publishable_O75gPLOo_oZ2Uy-47UvBDw_MR4cBY8K';
+      var MIN_PASSWORD_LENGTH = 6;
+
+      function show(id) {
+        ['viewForm', 'viewDone', 'viewInvalid'].forEach(function (view) {
+          document.getElementById(view).hidden = view !== id;
+        });
+      }
+
+      // O Supabase manda a sessão (ou o erro) no fragmento; o erro às vezes vem também na query
+      var hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      var query = new URLSearchParams(window.location.search);
+      var accessToken = hash.get('access_token') || '';
+      var linkType = hash.get('type') || '';
+      var linkError = hash.get('error_code') || hash.get('error') || query.get('error_code') || query.get('error') || '';
+
+      // Tira a sessão da barra de endereço e do histórico antes de qualquer outra coisa
+      try { window.history.replaceState(null, '', window.location.pathname); } catch (e) {}
+
+      if (linkError || !accessToken || linkType !== 'recovery') {
+        show('viewInvalid');
+        return;
+      }
+      show('viewForm');
+
+      var form = document.getElementById('resetForm');
+      var passwordInput = document.getElementById('password');
+      var confirmInput = document.getElementById('confirm');
+      var notice = document.getElementById('formNotice');
+      var submitBtn = document.getElementById('submitBtn');
+      passwordInput.focus();
+
+      function setNotice(text) {
+        notice.textContent = text;
+        notice.hidden = !text;
+      }
+
+      function authFetch(path, method, body) {
+        return fetch(SUPABASE_URL + '/auth/v1' + path, {
+          method: method,
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: SUPABASE_KEY,
+            Authorization: 'Bearer ' + accessToken
+          },
+          body: body ? JSON.stringify(body) : undefined
+        });
+      }
+
+      // Encerra a sessão temporária do link: depois de trocar a senha ela não serve para mais nada
+      function endSession() {
+        return authFetch('/logout?scope=local', 'POST').catch(function () {}).then(function () { accessToken = ''; });
+      }
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var password = passwordInput.value;
+        if (password.length < MIN_PASSWORD_LENGTH) {
+          setNotice('A senha precisa de pelo menos ' + MIN_PASSWORD_LENGTH + ' caracteres.');
+          return;
+        }
+        if (password !== confirmInput.value) {
+          setNotice('As duas senhas não são iguais.');
+          return;
+        }
+
+        setNotice('');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Salvando…';
+
+        authFetch('/user', 'PUT', { password: password })
+          .then(function (res) {
+            return res.json().catch(function () { return {}; }).then(function (data) { return { ok: res.ok, status: res.status, data: data }; });
+          })
+          .then(function (result) {
+            var code = (result.data && (result.data.error_code || result.data.code)) || '';
+            if (result.ok) {
+              passwordInput.value = ''; confirmInput.value = '';
+              return endSession().then(function () { show('viewDone'); });
+            }
+            if (code === 'same_password') {
+              passwordInput.value = ''; confirmInput.value = '';
+              return endSession().then(function () {
+                document.getElementById('doneText').textContent = 'Essa já era a senha da sua conta. Volte ao aplicativo Echo e entre com ela. Você já pode fechar esta página.';
+                show('viewDone');
+              });
+            }
+            if (result.status === 401 || result.status === 403) {
+              show('viewInvalid');
+              return;
+            }
+            if (code === 'weak_password' || result.status === 422) {
+              setNotice('Senha fraca demais. Use pelo menos ' + MIN_PASSWORD_LENGTH + ' caracteres e evite senhas muito comuns.');
+            } else if (result.status === 429) {
+              setNotice('Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente de novo.');
+            } else {
+              setNotice('Não foi possível salvar agora. Tente de novo em instantes.');
+            }
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Salvar nova senha';
+          })
+          .catch(function () {
+            setNotice('Sem conexão com o servidor. Verifique sua internet e tente de novo.');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Salvar nova senha';
+          });
+      });
+    })();
+  </script>
+</body>
+</html>

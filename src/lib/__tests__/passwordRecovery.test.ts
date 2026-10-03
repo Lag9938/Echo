@@ -1,43 +1,20 @@
 import { describe, it, expect } from 'vitest'
-import { isSamePasswordError, normalizeRecoveryCode, recoveryErrorMessage } from '../passwordRecovery'
+import { PASSWORD_RECOVERY_URL, recoveryErrorMessage } from '../passwordRecovery'
 
-describe('normalizeRecoveryCode', () => {
-  it('aceita o código colado com espaços, traço ou quebra de linha', () => {
-    expect(normalizeRecoveryCode('123456')).toBe('123456')
-    expect(normalizeRecoveryCode(' 123 456 \n')).toBe('123456')
-    expect(normalizeRecoveryCode('123-456')).toBe('123456')
-    expect(normalizeRecoveryCode('12345678')).toBe('12345678')
-  })
-
-  it('recusa o que não tem tamanho de código', () => {
-    expect(normalizeRecoveryCode('')).toBe('')
-    expect(normalizeRecoveryCode('12345')).toBe('')
-    expect(normalizeRecoveryCode('abcdef')).toBe('')
-    expect(normalizeRecoveryCode('12345678901')).toBe('')
-  })
-})
-
-describe('isSamePasswordError', () => {
-  it('reconhece "a senha nova é igual à antiga" pelo código ou pela mensagem', () => {
-    expect(isSamePasswordError({ code: 'same_password' })).toBe(true)
-    expect(isSamePasswordError({ message: 'New password should be different from the old password.' })).toBe(true)
-    expect(isSamePasswordError({ message: 'Password should be at least 6 characters.' })).toBe(false)
-    expect(isSamePasswordError(null)).toBe(false)
+describe('PASSWORD_RECOVERY_URL', () => {
+  it('aponta para a página de recuperação do site do Echo, em https', () => {
+    expect(PASSWORD_RECOVERY_URL).toBe('https://lag9938.github.io/Echo/recuperar/')
   })
 })
 
 describe('recoveryErrorMessage', () => {
-  it('código errado ou vencido', () => {
-    expect(recoveryErrorMessage({ message: 'Token has expired or is invalid', code: 'otp_expired' })).toMatch(/Código incorreto ou vencido/)
-  })
-
   it('limite de pedidos', () => {
     expect(recoveryErrorMessage({ message: 'For security purposes, you can only request this after 42 seconds.' })).toMatch(/Muitos pedidos/)
     expect(recoveryErrorMessage({ message: 'email rate limit exceeded', code: 'over_email_send_rate_limit', status: 429 })).toMatch(/Muitos pedidos/)
   })
 
-  it('senha fraca', () => {
-    expect(recoveryErrorMessage({ message: 'Password should be at least 6 characters.', code: 'weak_password' })).toMatch(/Senha fraca/)
+  it('e-mail mal digitado', () => {
+    expect(recoveryErrorMessage({ message: 'Unable to validate email address: invalid format', code: 'validation_failed' })).toMatch(/Confira o e-mail/)
   })
 
   it('sem internet e erro desconhecido nunca mostram a mensagem crua em inglês', () => {
