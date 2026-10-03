@@ -1,7 +1,9 @@
 import { create } from 'zustand'
 import type { MusicBotState } from '../lib/musicBotState'
+import { MUSIC_BOT_DEFAULT_AVATAR_ID } from '../lib/musicBotAvatars'
 
 const MY_VOLUME_KEY = 'echo-music-bot-my-volume'
+const MY_AVATAR_KEY = 'echo-music-bot-my-avatar'
 export const MUSIC_BOT_DEFAULT_VOLUME = 100
 export const MUSIC_BOT_MAX_VOLUME = 200
 
@@ -21,6 +23,15 @@ function readMyVolume(): number {
   }
 }
 
+function readMyAvatar(): string {
+  try {
+    const saved = localStorage.getItem(MY_AVATAR_KEY)
+    return saved && typeof saved === 'string' && saved.trim() ? saved.trim() : MUSIC_BOT_DEFAULT_AVATAR_ID
+  } catch {
+    return MUSIC_BOT_DEFAULT_AVATAR_ID
+  }
+}
+
 interface MusicBotStore {
   /** O participante do bot está na chamada em que o usuário está */
   present: boolean
@@ -36,6 +47,11 @@ interface MusicBotStore {
   myVolume: number
 
   /**
+   * Avatar escolhido para o bot localmente por este usuário (preset ou URL personalizada).
+   */
+  myAvatar: string
+
+  /**
    * Manda o volume direto ao bot pela sala do LiveKit (latência de dezenas de ms, sem banco nem chat).
    * Muda o volume para TODOS na chamada; o painel não usa mais (o controle dele é o myVolume).
    * Registrado pela conexão de voz; null fora da chamada. Devolve false se não deu para enviar.
@@ -44,6 +60,7 @@ interface MusicBotStore {
 
   update: (present: boolean, state: MusicBotState | null) => void
   setMyVolume: (percent: number) => void
+  setMyAvatar: (avatarIdOrUrl: string) => void
   setSendVolume: (send: ((percent: number) => Promise<boolean>) | null) => void
   reset: () => void
 }
@@ -53,6 +70,7 @@ export const useMusicBotStore = create<MusicBotStore>((set) => ({
   state: null,
   receivedAt: 0,
   myVolume: readMyVolume(),
+  myAvatar: readMyAvatar(),
   sendVolume: null,
 
   update: (present, state) => set({ present, state, receivedAt: Date.now() }),
@@ -65,7 +83,16 @@ export const useMusicBotStore = create<MusicBotStore>((set) => ({
     }
     set({ myVolume })
   },
+  setMyAvatar: (avatarIdOrUrl: string) => {
+    const val = typeof avatarIdOrUrl === 'string' && avatarIdOrUrl.trim() ? avatarIdOrUrl.trim() : MUSIC_BOT_DEFAULT_AVATAR_ID
+    try {
+      localStorage.setItem(MY_AVATAR_KEY, val)
+    } catch {
+      // Sem armazenamento local
+    }
+    set({ myAvatar: val })
+  },
   setSendVolume: (sendVolume) => set({ sendVolume }),
-  // O volume pessoal não é zerado ao sair da chamada: é uma preferência do usuário
+  // O volume e avatar pessoais não são zerados ao sair da chamada: são preferências do usuário
   reset: () => set({ present: false, state: null, receivedAt: 0, sendVolume: null })
 }))

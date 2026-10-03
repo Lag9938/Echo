@@ -38,6 +38,11 @@ import {
 import { openExternalUrl } from '../lib/openExternal'
 import { useUIStore } from '../stores/useUIStore'
 import { useSpacesStore } from '../stores/useSpacesStore'
+import { useMusicBotStore } from '../stores/useMusicBotStore'
+import { isMusicBotIdentity } from '../lib/musicBotState'
+import { resolveMusicBotAvatarUrl } from '../lib/musicBotAvatars'
+import { MusicBotParticipantCard } from '../components/voice/MusicBotParticipantCard'
+import { MusicBotAvatarPickerModal } from '../components/modals/MusicBotAvatarPickerModal'
 
 // Tile de vídeo de câmera (chamada de vídeo estilo Discord — versão simples).
 // MediaStream não pode ser passado como atributo JSX (precisa de srcObject via ref/efeito).
@@ -287,6 +292,8 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
   } = props
   const openLightbox = useUIStore((s) => s.openLightbox)
   const setShowMusicBotModal = useUIStore((s) => s.setShowMusicBotModal)
+  const myBotAvatar = useMusicBotStore((s) => s.myAvatar)
+  const [isMusicBotAvatarPickerOpen, setIsMusicBotAvatarPickerOpen] = useState(false)
   const [pendingVoicePastedFile, setPendingVoicePastedFile] = useState<File | null>(null)
   const [pendingVoiceImagePreview, setPendingVoiceImagePreview] = useState<string | null>(null)
   const [pendingVoiceImageSize, setPendingVoiceImageSize] = useState<'small' | 'medium' | 'large' | 'original'>('medium')
@@ -537,15 +544,19 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                   <div className={`stream-participants-strip ${sidebarLayout === 'classic' ? 'classic-strip' : 'glass-dock'}`}>
                                     {/* Membros na chamada */}
                                     {callMembersList.map(p => {
-                                      const isSharer = Boolean(p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0))
+                                      const isMusicBot = isMusicBotIdentity(p.userId)
+                                      const isSharer = !isMusicBot && Boolean(p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0))
                                       const isCurrentStreamer = activeScreenSharer?.userId === p.userId
+                                      const botAvatarUrl = isMusicBot ? resolveMusicBotAvatarUrl(myBotAvatar) : null
                                       return (
                                         <div
                                           key={p.userId}
-                                          className={`stream-strip-card ${p.isSpeaking ? 'speaking' : ''} ${isSharer ? 'is-sharer' : ''} ${isCurrentStreamer ? 'active-streamer' : ''}`}
+                                          className={`stream-strip-card ${p.isSpeaking ? 'speaking' : ''} ${isSharer ? 'is-sharer' : ''} ${isCurrentStreamer ? 'active-streamer' : ''} ${isMusicBot ? 'music-bot-strip' : ''}`}
                                           data-user-id={p.userId}
                                           onClick={() => {
-                                            if (isSharer && !isCurrentStreamer) {
+                                            if (isMusicBot) {
+                                              setShowMusicBotModal(true)
+                                            } else if (isSharer && !isCurrentStreamer) {
                                               setSelectedScreenSharerUserId(p.userId)
                                               setIsWatchingStreams(true)
                                               setScreenShareViewMode('focus')
@@ -553,10 +564,16 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                               setVolumeControlUser(p)
                                             }
                                           }}
-                                          title={isSharer ? (isCurrentStreamer ? `Transmissão de ${p.displayName} na tela` : `Clique para assistir à transmissão de ${p.displayName}`) : (p.userId !== user.id ? `Ajustar volume de áudio` : p.displayName)}
+                                          title={isMusicBot ? 'Echo Music Bot (Clique para abrir painel)' : (isSharer ? (isCurrentStreamer ? `Transmissão de ${p.displayName} na tela` : `Clique para assistir à transmissão de ${p.displayName}`) : (p.userId !== user.id ? `Ajustar volume de áudio` : p.displayName))}
                                         >
                                           <div className="stream-strip-avatar">
-                                            {p.avatarUrl ? (
+                                            {isMusicBot ? (
+                                              myBotAvatar === 'letter-e' ? (
+                                                <span style={{ fontWeight: 900, background: 'linear-gradient(135deg, #06b6d4, #f97316)', color: '#fff', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>E</span>
+                                              ) : (
+                                                <img src={botAvatarUrl!} alt="Echo Music Bot" />
+                                              )
+                                            ) : p.avatarUrl ? (
                                               <img src={p.avatarUrl} alt={p.displayName} />
                                             ) : (
                                               <span>{(p.displayName || 'M').slice(0, 1).toUpperCase()}</span>
@@ -569,9 +586,13 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                               <span className="stream-strip-badge live" title={isCurrentStreamer ? 'Ao vivo (na tela)' : 'Transmitindo a tela'}>
                                                 <ScreenIcon />
                                               </span>
+                                            ) : isMusicBot ? (
+                                              <span className="stream-strip-badge live" style={{ background: '#00f2fe', color: '#071320' }} title="Bot de Música">
+                                                <MusicIcon style={{ width: '10px', height: '10px' }} />
+                                              </span>
                                             ) : null}
                                           </div>
-                                          <span className="stream-strip-name">{p.displayName}{p.userId === user.id ? ' (Você)' : ''}</span>
+                                          <span className="stream-strip-name">{isMusicBot ? 'Echo Music Bot' : p.displayName}{p.userId === user.id ? ' (Você)' : ''}</span>
                                         </div>
                                       )
                                     })}
@@ -684,7 +705,19 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                   }
 
                                   return displayList.map(p => {
-                                  const isSharer = Boolean(p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0))
+                                    if (isMusicBotIdentity(p.userId)) {
+                                      return (
+                                        <MusicBotParticipantCard
+                                          key={p.userId}
+                                          participant={p}
+                                          channelId={selectedChannel.id}
+                                          userId={user.id}
+                                          onOpenModal={() => setShowMusicBotModal(true)}
+                                          onOpenAvatarPicker={() => setIsMusicBotAvatarPickerOpen(true)}
+                                        />
+                                      )
+                                    }
+                                    const isSharer = Boolean(p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0))
                                   const hasCam = Boolean(p.isCameraOn && p.cameraStream)
                                   return (
                                     <div
@@ -1200,6 +1233,10 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                       hoverTimeoutRef={hoverTimeoutRef}
                     />
 </div>
+                    <MusicBotAvatarPickerModal
+                      isOpen={isMusicBotAvatarPickerOpen}
+                      onClose={() => setIsMusicBotAvatarPickerOpen(false)}
+                    />
                   </div>
   )
 })

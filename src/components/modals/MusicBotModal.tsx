@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { MUSIC_BOT_DEFAULT_VOLUME, MUSIC_BOT_MAX_VOLUME, useMusicBotStore } from '../../stores/useMusicBotStore'
 import { formatClock, getCurrentPositionMs, type MusicBotStatus } from '../../lib/musicBotState'
+import { resolveMusicBotAvatarUrl } from '../../lib/musicBotAvatars'
+import { MusicBotAvatarPickerModal } from './MusicBotAvatarPickerModal'
 import {
   ArrowUpIcon,
   CloseXIcon,
-  MusicIcon,
   PauseIcon,
   PlayIcon,
   SkipForwardIcon,
@@ -48,6 +49,9 @@ export function MusicBotModal({ isOpen, onClose, channelId, userId, channelName 
   const [status, setStatus] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
   const [tab, setTab] = useState<ListTab>('queue')
   const [now, setNow] = useState(() => Date.now())
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
+  const myAvatar = useMusicBotStore((s) => s.myAvatar)
+  const botAvatarUrl = resolveMusicBotAvatarUrl(myAvatar)
 
   const botPresent = useMusicBotStore((s) => s.present)
   const botState = useMusicBotStore((s) => s.state)
@@ -216,8 +220,17 @@ export function MusicBotModal({ isOpen, onClose, channelId, userId, channelName 
         onClick={(e) => e.stopPropagation()}
       >
         <div className="music-bot-header">
-          <div className="music-bot-badge">
-            <MusicIcon style={{ width: 20, height: 20 }} />
+          <div
+            className="music-bot-badge"
+            onClick={() => setShowAvatarPicker(true)}
+            style={{ cursor: 'pointer', overflow: 'hidden' }}
+            title="Clique para alterar o ícone do bot"
+          >
+            {myAvatar === 'letter-e' ? (
+              <span style={{ fontWeight: 900, color: 'var(--accent-color)', fontSize: '18px' }}>E</span>
+            ) : (
+              <img src={botAvatarUrl} alt="Bot Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+            )}
           </div>
           <div className="music-bot-heading">
             <h3 className="music-bot-title">Bot de Música</h3>
@@ -450,6 +463,11 @@ export function MusicBotModal({ isOpen, onClose, channelId, userId, channelName 
           {status?.text ?? ''}
         </p>
       </div>
+
+      <MusicBotAvatarPickerModal
+        isOpen={showAvatarPicker}
+        onClose={() => setShowAvatarPicker(false)}
+      />
     </div>
   )
 }
