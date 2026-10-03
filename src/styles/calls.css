@@ -2215,13 +2215,16 @@ body.echo-layout-glass .echo-inv-equipped-pill {
   }
 }
 
+/* Anima com transform (scaleY), nunca com height: a altura da barra entrava no cálculo da linha do nome, e
+   cada mensagem com efeito de nome crescia e encolhia uma fração de pixel sem parar. Somando todas, o chat
+   inteiro subia e descia alguns pixels o tempo todo (as letras "vibravam"). O transform não mexe no layout. */
 @keyframes soundwaveBar {
   0% {
-    height: 3px;
+    transform: scaleY(0.3);
     opacity: 0.4;
   }
   100% {
-    height: 10px;
+    transform: scaleY(1);
     opacity: 1;
   }
 }
@@ -2298,20 +2301,19 @@ body.echo-layout-glass .echo-inv-equipped-pill {
 }
 .name-soundwave-bar {
   width: 2px;
+  height: 10px;
   border-radius: 1px;
+  transform-origin: center;
   animation: soundwaveBar 1.2s ease-in-out infinite alternate;
 }
 .name-soundwave-bar:nth-child(1) {
   animation-delay: 0s;
-  height: 4px;
 }
 .name-soundwave-bar:nth-child(2) {
   animation-delay: 0.25s;
-  height: 9px;
 }
 .name-soundwave-bar:nth-child(3) {
   animation-delay: 0.5s;
-  height: 6px;
 }
 
 /* Member card aura interaction */
