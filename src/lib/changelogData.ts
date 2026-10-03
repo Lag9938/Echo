@@ -18,11 +18,43 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.51.2',
+    title: 'Echo v0.51.2 - Chat Firme, Recuperar Conta e Bot com a Sua Cara',
+    date: '3 de Outubro de 2026',
+    tagline: 'O chat parou de tremer, a tela de login ganhou "Esqueci minha senha" e o bot de música tem cartão próprio na chamada, com o ícone que você escolher.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '💬',
+        badge: 'CORREÇÃO',
+        title: 'Chat Sem Tremer',
+        description: 'As barrinhas animadas ao lado dos nomes faziam cada mensagem crescer e encolher uma fração de pixel sem parar, e a conversa inteira subia e descia. A animação foi refeita e o chat ficou parado.'
+      },
+      {
+        icon: '🔑',
+        badge: 'CONTA',
+        title: 'Esqueci Minha Senha',
+        description: 'Na tela de login, peça um link de recuperação pelo seu e-mail. O link abre uma página do Echo para criar a senha nova; depois é só voltar ao app e entrar.'
+      },
+      {
+        icon: '🎵',
+        badge: 'BOT DE MÚSICA',
+        title: 'Cartão do Bot na Chamada',
+        description: 'O bot de música aparece com um cartão próprio: mostra o que está tocando e tem pausar, pular e volume à mão. Você também escolhe o ícone dele (vale só para você).'
+      },
+      {
+        icon: '🎙️',
+        badge: 'AJUSTE',
+        title: 'Teste de Microfone Mais Claro',
+        description: 'O selo do teste de microfone agora diz "TESTE ATIVO", porque nada é transmitido para outras pessoas durante o teste.'
+      }
+    ]
+  },
+  {
     version: '0.51.1',
     title: 'Echo v0.51.1 - Volume do Bot Só Seu e 60 FPS em Qualquer Jogo',
     date: '3 de Outubro de 2026',
     tagline: 'Cada pessoa escolhe o próprio volume do bot de música, a transmissão reconhece muito mais jogos para liberar os 60 FPS, e o visual Cyber Frosted Glass chegou a mais telas.',
-    isLatest: true,
     highlights: [
       {
         icon: '🎵',
