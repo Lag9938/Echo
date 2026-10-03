@@ -224,7 +224,7 @@ export function AudioVideoTab({
             {testingMic ? (
               <span className="audio-studio-live-badge active">
                 <span className="live-dot" />
-                TRANSMISSÃO AO VIVO
+                TESTE ATIVO
               </span>
             ) : (
               <span className="audio-studio-live-badge standby">
