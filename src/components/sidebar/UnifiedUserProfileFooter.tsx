@@ -2,6 +2,7 @@ import { AvatarDecoration } from '../AvatarDecoration'
 import { GameLogo } from '../GameLogos'
 import { formatGameDuration } from '../../lib/formatters'
 import { SparklesIcon, SettingsIcon, CheckIcon } from '../icons'
+import { StatusGlyph } from '../StatusGlyph'
 
 export interface UnifiedUserProfileFooterProps {
   displayName: string
@@ -79,7 +80,9 @@ export function UnifiedUserProfileFooter({
                     className={`status-picker-option ${value}${presenceStatus === value ? ' selected' : ''}`}
                     onClick={() => { updatePresenceStatus(value); setShowStatusMenu?.(false); }}
                   >
-                    <span className="status-dot-bullet" />
+                    <span className="status-dot-bullet">
+                      <StatusGlyph status={value} size={16} withGlow={presenceStatus === value} />
+                    </span>
                     <div className="status-meta">
                       <strong>{label}</strong>
                       <span>{sub}</span>

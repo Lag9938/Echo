@@ -12,6 +12,7 @@ import {
 import { DecoratedAvatar } from './DecoratedAvatar'
 import { ProfileEffect } from './ProfileEffect'
 import { AvatarDecoration } from './AvatarDecoration'
+import { StatusGlyph } from './StatusGlyph'
 import {
   ColoredBackpackIcon,
   ColoredShopBagIcon,
@@ -333,7 +334,9 @@ export function CosmeticsInventory({
                     {previewDeco && previewDeco !== 'none' && (
                       <AvatarDecoration decorationId={previewDeco} />
                     )}
-                    <span className="echo-stage-status-dot status-online" />
+                    <span className="echo-stage-status-dot" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#11131a' }}>
+                      <StatusGlyph status="online" size={12} withGlow />
+                    </span>
                   </div>
                   <span className="echo-stage-card-pill">
                     {CARD_FINISHES.find(f => f.id === previewFinish)?.badge || 'PADRÃO'}
@@ -364,6 +367,12 @@ export function CosmeticsInventory({
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* 3D Holographic Pedestal Platform Base */}
+            <div className="echo-stage-pedestal-platform">
+              <span className="pedestal-disc" />
+              <span className="pedestal-glow" />
             </div>
 
             {/* Stage Controls */}
@@ -473,6 +482,7 @@ export function CosmeticsInventory({
                     key={deco.id}
                     className={`echo-inv-card ${isPreviewing ? 'previewing' : ''} ${isEquipped ? 'is-active' : ''} ${!isAcquired ? 'locked' : ''}`}
                     onClick={() => setPreviewDeco(deco.id)}
+                    style={{ '--item-theme': deco.themeColor } as CSSProperties}
                   >
                     <div className="echo-inv-card-preview-box deco-box">
                       <div className="deco-podium" />
@@ -651,6 +661,7 @@ export function CosmeticsInventory({
                     key={aura.id}
                     className={`echo-inv-card aura-card ${isPreviewing ? 'previewing' : ''} ${isEquipped ? 'is-active' : ''} ${!isAcquired ? 'locked' : ''}`}
                     onClick={() => setPreviewAura(aura.id)}
+                    style={{ '--item-theme': aura.color } as CSSProperties}
                   >
                     <div className="echo-inv-card-preview-box aura-box">
                       <div
@@ -725,6 +736,7 @@ export function CosmeticsInventory({
                     key={finish.id}
                     className={`echo-inv-card finish-card ${isPreviewing ? 'previewing' : ''} ${isEquipped ? 'is-active' : ''} ${!isAcquired ? 'locked' : ''}`}
                     onClick={() => setPreviewFinish(finish.id)}
+                    style={{ '--item-theme': finish.id === 'holographic' ? '#c084fc' : finish.id === 'glass' ? '#00f2fe' : finish.id === 'carbon' ? '#94a3b8' : '#38bdf8' } as CSSProperties}
                   >
                     <div className={`echo-inv-card-preview-box finish-card-visualizer preview-${finish.id}`}>
                       <div className="finish-card-art">
@@ -797,6 +809,7 @@ export function CosmeticsInventory({
                     key={effect.id}
                     className={`echo-inv-card ${isEquipped ? 'equipped' : ''} ${isPreviewing ? 'previewing' : ''}`}
                     onClick={() => setPreviewNameEffect(effect.id)}
+                    style={{ '--item-theme': effect.themeColor } as CSSProperties}
                   >
                     <div className="echo-inv-card-stage" style={{ minHeight: '90px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
                       <span className={`name-effect-${effect.id}`} style={{ fontSize: '15px', fontWeight: 700 }}>

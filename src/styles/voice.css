@@ -1050,12 +1050,14 @@ body.theme-midnight .voice-controls-capsule {
 }
 
 .status-dot-bullet {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
   flex-shrink: 0;
-  background: var(--status-color);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-color) 18%, transparent);
+  background: transparent;
 }
 
 .status-picker-check {
@@ -1093,38 +1095,57 @@ body.theme-midnight .voice-controls-capsule {
 }
 
 .my-status-dot.online {
-  background-color: #23a55a;
+  background-color: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
 }
 .my-status-dot.idle {
-  background-color: #f0b232;
+  background: transparent !important;
+  border: none !important;
+  position: absolute;
+  overflow: visible;
 }
+/* Standby Bars: duas barras verticais de equalizador acústico (sem lua) */
+.my-status-dot.idle::before,
 .my-status-dot.idle::after {
   content: '';
   position: absolute;
-  top: -2px;
-  left: -2px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background-color: var(--bg-secondary);
+  top: 1px;
+  width: 3px;
+  height: 10px;
+  border-radius: 1.5px;
+  background-color: #f59e0b;
+  box-shadow: 0 0 4px rgba(245, 158, 11, 0.4);
+}
+.my-status-dot.idle::before {
+  left: 1px;
+}
+.my-status-dot.idle::after {
+  right: 1px;
+  opacity: 0.8;
 }
 .my-status-dot.dnd {
-  background-color: #f23f43;
+  background-color: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+  position: absolute;
 }
+/* Acoustic Shield: corte transversal de isolamento acústico Ø (sem menos horizontal) */
 .my-status-dot.dnd::after {
   content: '';
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  width: 6px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  width: 8px;
   height: 2px;
-  background-color: var(--bg-secondary);
+  border-radius: 1px;
+  background-color: #ffffff;
 }
 .my-status-dot.offline,
 .my-status-dot.invisible {
-  background-color: #80848e;
+  background-color: transparent !important;
+  border: 1.5px dashed #94a3b8 !important;
 }
+/* Stealth Radar: núcleo camuflado */
 .my-status-dot.offline::after,
 .my-status-dot.invisible::after {
   content: '';
@@ -1132,10 +1153,10 @@ body.theme-midnight .voice-controls-capsule {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 4px;
-  height: 4px;
+  width: 3.5px;
+  height: 3.5px;
   border-radius: 50%;
-  background-color: var(--bg-secondary);
+  background-color: #94a3b8;
 }
 
 /* ── Connection Quality Indicator (Discord-Style) ── */
@@ -1409,16 +1430,23 @@ body.echo-layout-glass .status-picker-option.selected {
 }
 
 body.echo-layout-glass .status-picker-option .status-dot-bullet {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--status-color);
-  box-shadow: 0 0 8px var(--status-color);
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
+  transition: all 0.18s ease;
 }
 
 body.echo-layout-glass .status-picker-option.selected .status-dot-bullet {
-  box-shadow: 0 0 12px var(--status-color);
+  background: rgba(0, 0, 0, 0.5);
+  border-color: color-mix(in srgb, var(--status-color) 45%, rgba(255, 255, 255, 0.2));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--status-color) 35%, transparent);
 }
 
 body.echo-layout-glass .status-picker-check {

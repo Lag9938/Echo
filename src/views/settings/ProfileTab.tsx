@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { AvatarDecoration } from '../../components/AvatarDecoration'
 import { ProfileEffect } from '../../components/ProfileEffect'
 import { PhotoAdjustModal } from '../../components/modals/PhotoAdjustModal'
+import { StatusGlyph } from '../../components/StatusGlyph'
 import {
   BadgeCrownIcon,
   BadgeFounderIcon,
@@ -507,7 +508,9 @@ export const ProfileTab = memo(function ProfileTab({
                     <div className="echo-hero-avatar-overlay" style={{ borderRadius: '50%' }}>
                       <CameraIcon style={{ width: '22px', height: '22px' }} />
                     </div>
-                    <span className={`echo-hero-status-dot status-${localPresenceStatus}`} />
+                    <span className={`echo-hero-status-dot status-${localPresenceStatus}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
+                      <StatusGlyph status={localPresenceStatus} size={15} withGlow />
+                    </span>
                   </div>
                 </div>
 
@@ -697,7 +700,9 @@ export const ProfileTab = memo(function ProfileTab({
                           className={`echo-presence-option ${localPresenceStatus === st.id ? 'active' : ''}`}
                           onClick={() => setLocalPresenceStatus(st.id as any)}
                         >
-                          <span className="echo-presence-dot" style={{ background: st.color, boxShadow: localPresenceStatus === st.id ? `0 0 10px ${st.color}` : 'none' }} />
+                          <span className="echo-presence-dot" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', boxShadow: 'none' }}>
+                            <StatusGlyph status={st.id === 'offline' ? 'invisible' : st.id} size={18} withGlow={localPresenceStatus === st.id} />
+                          </span>
                           <div className="echo-presence-text">
                             <strong>{st.label}</strong>
                             <span>{st.desc}</span>

@@ -1762,39 +1762,57 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   overflow: hidden;
 }
 .member-status-dot.online {
-  background-color: #23a55a !important;
+  background-color: #10b981 !important;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
 }
 .member-status-dot.idle {
-  background-color: #f0b232 !important;
+  background: transparent !important;
+  border: none !important;
+  position: absolute;
+  overflow: visible;
 }
+/* Standby Bars: duas barras verticais de equalizador acústico (sem lua) */
+.member-status-dot.idle::before,
 .member-status-dot.idle::after {
   content: '';
   position: absolute;
-  top: -2px;
-  left: -2px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: var(--bg-tertiary, #111214);
+  top: 1px;
+  width: 3px;
+  height: 9px;
+  border-radius: 1.5px;
+  background-color: #f59e0b;
+  box-shadow: 0 0 4px rgba(245, 158, 11, 0.4);
+}
+.member-status-dot.idle::before {
+  left: 1px;
+}
+.member-status-dot.idle::after {
+  right: 1px;
+  opacity: 0.8;
 }
 .member-status-dot.dnd {
-  background-color: #f23f43 !important;
+  background-color: #ef4444 !important;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+  position: absolute;
 }
+/* Acoustic Shield: corte diagonal transversal de isolamento acústico Ø (sem menos horizontal) */
 .member-status-dot.dnd::after {
   content: '';
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  width: 5px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  width: 7px;
   height: 2px;
   border-radius: 1px;
   background-color: #ffffff;
 }
 .member-status-dot.offline,
 .member-status-dot.invisible {
-  background-color: #80848e !important;
+  background-color: transparent !important;
+  border: 1.5px dashed #94a3b8 !important;
 }
+/* Stealth Radar: núcleo camuflado central */
 .member-status-dot.offline::after,
 .member-status-dot.invisible::after {
   content: '';
@@ -1802,10 +1820,10 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 4px;
-  height: 4px;
+  width: 3px;
+  height: 3px;
   border-radius: 50%;
-  background-color: var(--bg-tertiary, #111214);
+  background-color: #94a3b8;
 }
 .member-status-dot.voice-active {
   box-shadow: 0 0 0 1.5px var(--speaking-color, #22c55e);
@@ -2610,32 +2628,34 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
 }
 .profile-status-indicator.idle {
-  background: #f59e0b;
+  background: linear-gradient(90deg, #f59e0b 0%, #f59e0b 38%, transparent 38%, transparent 62%, #f59e0b 62%, #f59e0b 100%);
   border: none;
-  width: 10px;
-  height: 10px;
+  border-radius: 2px;
+  width: 9px;
+  height: 9px;
   bottom: 0px;
   right: 0px;
-  mask: radial-gradient(circle at 28% 28%, transparent 46%, #000 47%);
-  -webkit-mask: radial-gradient(circle at 28% 28%, transparent 46%, #000 47%);
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.45);
 }
 .profile-status-indicator.dnd {
   background: #ef4444;
   position: relative;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.45);
 }
 .profile-status-indicator.dnd::after {
   content: '';
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  width: 5px;
+  transform: translate(-50%, -50%) rotate(-45deg);
+  width: 7px;
   height: 1.5px;
   background-color: var(--bg-tertiary, #111827);
   border-radius: 1px;
 }
 .profile-status-indicator.invisible {
   background: #64748b;
+  border: 1.5px dashed rgba(255, 255, 255, 0.4);
 }
 .profile-footer-card {
   display: flex;

@@ -1,5 +1,6 @@
 import React from 'react'
 import { AvatarDecoration } from './AvatarDecoration'
+import { StatusGlyph } from './StatusGlyph'
 
 interface DecoratedAvatarProps {
   avatarUrl?: string | null
@@ -106,60 +107,21 @@ export function DecoratedAvatar({
           className={`echo-avatar-status-dot status-${status}`}
           style={{
             position: 'absolute',
-            bottom: '-1px',
-            right: '-1px',
-            width: `${Math.max(10, Math.round(size * 0.28))}px`,
-            height: `${Math.max(10, Math.round(size * 0.28))}px`,
+            bottom: '-2px',
+            right: '-2px',
+            width: `${Math.max(14, Math.round(size * 0.32))}px`,
+            height: `${Math.max(14, Math.round(size * 0.32))}px`,
             borderRadius: '50%',
+            backgroundColor: '#111214',
             border: '2px solid #111214',
-            backgroundColor:
-              status === 'online'
-                ? '#23a55a'
-                : status === 'idle'
-                ? '#f0b232'
-                : status === 'dnd'
-                ? '#f23f43'
-                : '#80848e',
             zIndex: 3,
-            overflow: 'hidden',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.5)'
           }}
         >
-          {status === 'idle' && (
-            <span
-              style={{
-                position: 'absolute',
-                top: '-20%',
-                left: '-20%',
-                width: '75%',
-                height: '75%',
-                borderRadius: '50%',
-                backgroundColor: '#111214'
-              }}
-            />
-          )}
-          {status === 'dnd' && (
-            <span
-              style={{
-                width: '60%',
-                height: '2px',
-                borderRadius: '1px',
-                backgroundColor: '#ffffff'
-              }}
-            />
-          )}
-          {status === 'offline' && (
-            <span
-              style={{
-                width: '45%',
-                height: '45%',
-                borderRadius: '50%',
-                backgroundColor: '#111214'
-              }}
-            />
-          )}
+          <StatusGlyph status={status} size={Math.max(10, Math.round(size * 0.26))} />
         </span>
       )}
     </div>

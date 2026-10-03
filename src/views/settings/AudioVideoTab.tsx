@@ -183,7 +183,10 @@ export function AudioVideoTab({
       
       <div className="device-selectors-grid">
         <div className="selector-card">
-          <label>Microfone (Entrada)</label>
+          <label>
+            <ColoredMicActiveIcon size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+            Microfone (Entrada)
+          </label>
           <select value={selectedInputId} onChange={(e) => onInputDeviceChange(e.target.value)}>
             <option value="default">Microfone padrão do sistema</option>
             {audioInputs.map(input => (
@@ -195,7 +198,10 @@ export function AudioVideoTab({
         </div>
 
         <div className="selector-card">
-          <label>Dispositivo de Saída (Fones / Alto-falante)</label>
+          <label>
+            <ColoredHeadphonesIcon size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+            Dispositivo de Saída (Fones / Alto-falante)
+          </label>
           <select value={selectedOutputId} onChange={(e) => onOutputDeviceChange(e.target.value)}>
             <option value="default">Saída padrão do sistema</option>
             {audioOutputs.map(output => (
@@ -207,16 +213,79 @@ export function AudioVideoTab({
         </div>
       </div>
 
-      <div className="mic-test-panel">
-        <h3>Testar Microfone</h3>
-        <p>Fale no seu microfone para conferir se o Echo está capturando a sua voz.</p>
+      {/* Cyber Studio VU Meter Cockpit */}
+      <div className="mic-test-panel audio-cockpit-panel">
+        <div className="cockpit-panel-header">
+          <div>
+            <h3>Testar Microfone & Nível de Entrada</h3>
+            <p>Fale no seu microfone para conferir o espectro de frequências e decibéis em tempo real.</p>
+          </div>
+          <div className="cockpit-live-badge-wrap">
+            {testingMic ? (
+              <span className="audio-studio-live-badge active">
+                <span className="live-dot" />
+                TRANSMISSÃO AO VIVO
+              </span>
+            ) : (
+              <span className="audio-studio-live-badge standby">
+                STANDBY
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* 36-Segment Cyber Studio VU Meter */}
+        <div className="audio-vu-meter-cockpit">
+          <div className="vu-meter-scale">
+            <span>-60 dB</span>
+            <span>-40 dB</span>
+            <span>-25 dB</span>
+            <span>-15 dB</span>
+            <span>-6 dB</span>
+            <span style={{ color: '#ef4444' }}>0 dB (CLIP)</span>
+          </div>
+
+          <div className="vu-meter-segments">
+            {Array.from({ length: 36 }).map((_, idx) => {
+              const threshold = ((idx + 1) / 36) * 100
+              const isLit = testVolume >= threshold
+              let segClass = 'seg-low'
+              if (idx >= 22 && idx < 30) segClass = 'seg-mid'
+              if (idx >= 30) segClass = 'seg-high'
+              return (
+                <div
+                  key={idx}
+                  className={`vu-segment ${segClass} ${isLit ? 'lit' : ''}`}
+                />
+              )
+            })}
+          </div>
+
+          <div className="vu-meter-footer">
+            <span className="vu-db-readout">
+              {testingMic && testVolume > 0
+                ? `${Math.round(-60 + (testVolume / 100) * 60)} dB`
+                : '-∞ dB'}
+            </span>
+            <span className={`vu-level-status ${testVolume > 85 ? 'peak' : testVolume > 20 ? 'optimal' : 'idle'}`}>
+              {!testingMic
+                ? 'TESTE DESATIVADO'
+                : testVolume > 85
+                ? '⚠️ PICO ELEVADO (GANHO ALTO)'
+                : testVolume > 15
+                ? '✓ NÍVEL IDEAL DE TRANSMISSÃO'
+                : 'AGUARDANDO VOZ...'}
+            </span>
+          </div>
+        </div>
+
         <div className="mic-test-row">
           <button 
             type="button" 
             className={`mic-test-btn ${testingMic ? 'testing' : ''}`} 
             onClick={toggleMicTest}
           >
-            {testingMic ? 'Parar Teste' : 'Testar Mic'}
+            {testingMic ? '⏹ Parar Teste' : '🎙 Iniciar Teste de Microfone'}
           </button>
           <div className="volume-meter-bg">
             <div className="volume-meter-fill" style={{ width: `${testVolume}%` }} />
@@ -269,24 +338,72 @@ export function AudioVideoTab({
           </label>
 
           {noiseGateEnabled && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '28px', marginTop: '4px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                <span>Limiar de Sensibilidade:</span>
-                <strong>{noiseGateThreshold} dB</strong>
+            <div className="noise-gate-interactive-box">
+              <div className="noise-gate-graph-header">
+                <span className="gate-status-text">
+                  {testVolume > Math.max(5, (noiseGateThreshold + 60) * (100 / 35))
+                    ? '🔊 Portão Aberto (Voz Transmitida)'
+                    : '🔇 Portão Fechado (Ruído Silenciado)'}
+                </span>
+                <span className="gate-threshold-value">
+                  Limiar: <strong>{noiseGateThreshold} dB</strong>
+                </span>
               </div>
-              <input 
-                type="range" 
-                min="-60" 
-                max="-25" 
-                step="1" 
-                value={noiseGateThreshold} 
-                onChange={(e) => onNoiseGateThresholdChange(parseFloat(e.target.value))} 
-                className="slider-setting"
-                style={{ cursor: 'pointer' }}
-              />
-              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                Valores menores (ex: -55 dB) abrem o portão com sons mais baixos. Padrão: -45 dB.
-              </span>
+
+              {/* Acoustic Waveform Visualizer with Threshold Cutoff Line */}
+              <div className="noise-gate-visualizer-canvas">
+                <svg className="gate-wave-svg" viewBox="0 0 400 64" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="gateWaveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#00f2fe" stopOpacity="0.4" />
+                      <stop offset="100%" stopColor="#00f2fe" stopOpacity="0.03" />
+                    </linearGradient>
+                  </defs>
+                  <path
+                    d="M0,52 Q40,48 80,50 T160,36 T240,14 T300,38 T400,52 L400,64 L0,64 Z"
+                    fill="url(#gateWaveGrad)"
+                  />
+                  <path
+                    d="M0,52 Q40,48 80,50 T160,36 T240,14 T300,38 T400,52"
+                    fill="none"
+                    stroke="#00f2fe"
+                    strokeWidth="1.8"
+                  />
+                </svg>
+
+                {/* Animated / Placed Red Threshold Cutoff Line */}
+                <div
+                  className="noise-gate-threshold-line"
+                  style={{
+                    left: `${Math.max(5, Math.min(95, ((noiseGateThreshold - (-60)) / 35) * 100))}%`
+                  }}
+                >
+                  <span className="threshold-tag">Corte: {noiseGateThreshold} dB</span>
+                </div>
+              </div>
+
+              <div className="gate-zones-legend">
+                <span className="zone-cut">◀ Zona Silenciada (Cortada)</span>
+                <span className="zone-pass">Zona de Voz (Transmitida) ▶</span>
+              </div>
+
+              <div style={{ marginTop: '10px' }}>
+                <input 
+                  type="range" 
+                  min="-60" 
+                  max="-25" 
+                  step="1" 
+                  value={noiseGateThreshold} 
+                  onChange={(e) => onNoiseGateThresholdChange(parseFloat(e.target.value))} 
+                  className="slider-setting"
+                  style={{ cursor: 'pointer' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  <span>-60 dB (Mais Sensível)</span>
+                  <span>-45 dB (Padrão Recomendado)</span>
+                  <span>-25 dB (Menos Sensível)</span>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -316,7 +433,7 @@ export function AudioVideoTab({
       </div>
 
       {/* AI Noise Suppression (RNNoise) Card */}
-      <div className="mic-test-panel" style={{ marginTop: '20px', border: '1.5px solid rgba(168, 85, 247, 0.3)', background: 'rgba(168, 85, 247, 0.04)' }}>
+      <div className="mic-test-panel tech-card ai-denoise-card" style={{ marginTop: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
           <div>
             <h3 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -352,7 +469,7 @@ export function AudioVideoTab({
       </div>
 
       {/* Spatial 3D Audio Card */}
-      <div className="mic-test-panel" style={{ marginTop: '20px', border: '1.5px solid rgba(0, 242, 254, 0.25)', background: 'rgba(0, 242, 254, 0.03)' }}>
+      <div className="mic-test-panel tech-card spatial-audio-card" style={{ marginTop: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
           <div>
             <h3 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
