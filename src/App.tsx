@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
-import type { FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { Auth } from './components/auth/Auth'
@@ -67,6 +66,8 @@ import { useEchoGlobalVoiceShortcuts } from './hooks/useEchoGlobalVoiceShortcuts
 import { useEchoAutoUpdate } from './hooks/useEchoAutoUpdate'
 import { useEchoInviteLinks } from './hooks/useEchoInviteLinks'
 import { useEchoNotificationNavigation } from './hooks/useEchoNotificationNavigation'
+import { useEchoDMActions } from './hooks/useEchoDMActions'
+import { useEchoAudioPreferences, useEchoAudioSettingsActions } from './hooks/useEchoAudioPreferences'
 
 import type { Space, Channel, Message, DirectMessage, FriendshipRequest, SavedMessageItem, Page, Toast, RolePermissions, ServerRole, ServerAuditLog, ServerEmoji, PinnedMessage, GroupChat, GroupMessage } from './types'
 export type { Space, Channel, Message, DirectMessage, FriendshipRequest, SavedMessageItem, Page, Toast, RolePermissions, ServerRole, ServerAuditLog, ServerEmoji, PinnedMessage, GroupChat, GroupMessage }
@@ -485,16 +486,20 @@ function Echo({ user }: { user: User }) {
   const activeVoiceChannelIdRef = useRef<string | null>(null)
   const activeVoiceSpaceIdRef = useRef<string | null>(null)
   const [showStatusMenu, setShowStatusMenu] = useState(false)
-  const [noiseSuppressionEnabled, setNoiseSuppressionEnabled] = useState(() => localStorage.getItem('echo-noise-suppression') !== 'false')
-  const [echoCancellationEnabled, setEchoCancellationEnabled] = useState(() => localStorage.getItem('echo-echo-cancellation') !== 'false')
-  const [noiseGateEnabled, setNoiseGateEnabled] = useState(() => localStorage.getItem('echo-noise-gate-enabled') !== 'false')
-  const [noiseGateThreshold, setNoiseGateThreshold] = useState(() => parseFloat(localStorage.getItem('echo-noise-gate-threshold') || '-45'))
-  const [sfxVolume, setSfxVolume] = useState(() => {
-    const val = localStorage.getItem('echo-sfx-volume')
-    return val !== null ? parseFloat(val) : 0.5
-  })
-  const sfxVolumeRef = useRef(sfxVolume)
-  sfxVolumeRef.current = sfxVolume
+  // Preferências de áudio salvas no aparelho (supressão de ruído, eco, portão de ruído, volume dos efeitos)
+  const {
+    noiseSuppressionEnabled,
+    setNoiseSuppressionEnabled,
+    echoCancellationEnabled,
+    setEchoCancellationEnabled,
+    noiseGateEnabled,
+    noiseGateThreshold,
+    sfxVolume,
+    sfxVolumeRef,
+    handleSfxVolumeChange,
+    handleNoiseGateEnabledChange,
+    handleNoiseGateThresholdChange
+  } = useEchoAudioPreferences()
 
   // Atualização automática (baixando / pronta), vinda do Electron
   const { updateStatus, updateVersion, updateProgress } = useEchoAutoUpdate()
@@ -1568,71 +1573,33 @@ function Echo({ user }: { user: User }) {
     return spaces.some(s => s.creator_id === user.id)
   }, [spaces, user.id])
 
-  const handleOpenDM = useCallback((friendId: string) => {
-    setSelectedDMUserId(friendId)
-    setUnreadDMs(prev => {
-      if (!prev[friendId]) return prev
-      const next = { ...prev }
-      delete next[friendId]
-      return next
-    })
-    loadDirectMessages(friendId)
-  }, [setSelectedDMUserId, setUnreadDMs, loadDirectMessages])
-
-  const handleOpenDMAndNavigate = useCallback((targetUserId: string) => {
-    handleOpenDM(targetUserId)
-    setPage('Amigos')
-  }, [handleOpenDM, setPage])
-
-  const handleCloseDM = useCallback(() => {
-    setSelectedDMUserId(null)
-    setDirectMessages([])
-  }, [setSelectedDMUserId, setDirectMessages])
-
-  const handleSendDMForm = useCallback(async (e: FormEvent) => {
-    e.preventDefault()
-    const trimmed = dmDraft.trim()
-    if (!trimmed) return
-    await sendDirectMessage(trimmed)
-  }, [dmDraft, sendDirectMessage])
-
-  const handleUploadDMFile = useCallback(async (file: File, caption?: string) => {
-    if (!supabase) return
-    setIsUploading(true)
-    const rawExt = file.name && file.name.includes('.') ? file.name.split('.').pop() : (file.type.split('/')[1] || 'png')
-    const ext = (rawExt || 'png').replace(/[^a-zA-Z0-9]/g, '')
-    const path = `dm/${user.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`
-    const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file)
-    if (uploadError) { setError(uploadError.message); setIsUploading(false); return }
-    const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
-    const fileType = file.type.startsWith('image/') ? 'image' : 'file'
-    const messageText = caption && caption.trim() ? caption.trim() : (dmDraft.trim() || file.name || 'Imagem')
-    await sendDirectMessage(messageText, urlData.publicUrl, fileType)
-    setIsUploading(false)
-  }, [user.id, dmDraft, sendDirectMessage, setError, setIsUploading])
-
-  const handleRemoveRecentDM = useCallback((dmId: string) => {
-    setRecentDMUserIds(prev => prev.filter(id => id !== dmId))
-    if (selectedDMUserIdRef.current === dmId) {
-      setSelectedDMUserId(null)
-      setDirectMessages([])
-    }
-  }, [setRecentDMUserIds, setSelectedDMUserId, setDirectMessages, selectedDMUserIdRef])
-
-  const handleStartVoiceNoteDM = useCallback(() => {
-    startVoiceNoteRecording('dm')
-  }, [startVoiceNoteRecording])
-
-  const handleToggleSaveDM = useCallback((msg: any, targetUser: any) => {
-    toggleSaveMessage(msg, 'dm', {
-      sourceName: `@${targetUser.display_name}`,
-      dmUserId: targetUser.id
-    })
-  }, [toggleSaveMessage])
-
-  const handleSendDMSticker = useCallback((url: string, name?: string) => {
-    sendDirectMessage(name ? `[Sticker: ${name}]` : 'Sticker', url, 'sticker')
-  }, [sendDirectMessage])
+  // Ações da tela de mensagens diretas
+  const {
+    handleOpenDM,
+    handleOpenDMAndNavigate,
+    handleCloseDM,
+    handleSendDMForm,
+    handleUploadDMFile,
+    handleRemoveRecentDM,
+    handleStartVoiceNoteDM,
+    handleToggleSaveDM,
+    handleSendDMSticker
+  } = useEchoDMActions({
+    userId: user.id,
+    dmDraft,
+    selectedDMUserIdRef,
+    setSelectedDMUserId,
+    setUnreadDMs,
+    setDirectMessages,
+    setRecentDMUserIds,
+    loadDirectMessages,
+    sendDirectMessage,
+    setPage,
+    setIsUploading,
+    setError,
+    startVoiceNoteRecording,
+    toggleSaveMessage
+  })
 
   const handleSignOut = useCallback(() => {
     supabase?.auth.signOut()
@@ -1740,49 +1707,25 @@ function Echo({ user }: { user: User }) {
     }
   }, [user.id, avatarDecoration, profileEffect, nameEffect, presenceStatus, myGamePresence, profileDisplayName])
 
-  const handleNoiseSuppressionChange = useCallback((val: boolean) => {
-    setNoiseSuppressionEnabled(val)
-    localStorage.setItem('echo-noise-suppression', val ? 'true' : 'false')
-    if (activeVoiceChannelId) {
-      changeInputDevice(selectedInputId, val, echoCancellationEnabled)
-    }
-  }, [activeVoiceChannelId, changeInputDevice, selectedInputId, echoCancellationEnabled])
-
-  const handleEchoCancellationChange = useCallback((val: boolean) => {
-    setEchoCancellationEnabled(val)
-    localStorage.setItem('echo-echo-cancellation', val ? 'true' : 'false')
-    if (activeVoiceChannelId) {
-      changeInputDevice(selectedInputId, noiseSuppressionEnabled, val)
-    }
-  }, [activeVoiceChannelId, changeInputDevice, selectedInputId, noiseSuppressionEnabled])
-
-  const handleSfxVolumeChange = useCallback((val: number) => {
-    setSfxVolume(val)
-    localStorage.setItem('echo-sfx-volume', val.toString())
-  }, [])
-
-  const handleNoiseGateEnabledChange = useCallback((val: boolean) => {
-    setNoiseGateEnabled(val)
-    localStorage.setItem('echo-noise-gate-enabled', val ? 'true' : 'false')
-  }, [])
-
-  const handleNoiseGateThresholdChange = useCallback((val: number) => {
-    setNoiseGateThreshold(val)
-    localStorage.setItem('echo-noise-gate-threshold', val.toString())
-  }, [])
-
-  const handleToggleSpatialAudio = useCallback((val: boolean) => {
-    setSpatialAudioEnabledState(val)
-    localStorage.setItem('echo-spatial-audio-enabled', val ? 'true' : 'false')
-  }, [setSpatialAudioEnabledState])
-
-  const handleResetAllPans = useCallback(() => {
-    setUserStereoPans({})
-    localStorage.removeItem('echo-user-stereo-pans')
-    participants.forEach(p => {
-      changePeerPan(p.userId, 0)
-    })
-  }, [setUserStereoPans, participants, changePeerPan])
+  // Ações de áudio que dependem da chamada em andamento (reabrir o microfone, áudio espacial)
+  const {
+    handleNoiseSuppressionChange,
+    handleEchoCancellationChange,
+    handleToggleSpatialAudio,
+    handleResetAllPans
+  } = useEchoAudioSettingsActions({
+    activeVoiceChannelId,
+    selectedInputId,
+    changeInputDevice,
+    noiseSuppressionEnabled,
+    setNoiseSuppressionEnabled,
+    echoCancellationEnabled,
+    setEchoCancellationEnabled,
+    setSpatialAudioEnabledState,
+    setUserStereoPans,
+    participants,
+    changePeerPan
+  })
 
   return (
     <main className="echo-app">
