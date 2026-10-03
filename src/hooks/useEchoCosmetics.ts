@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { THEMES } from '../lib/themes'
+import { buildPresencePayload } from '../lib/presencePayload'
 
 export interface UseEchoCosmeticsOptions {
   user: User
   getProfileDisplayName?: () => string
+  getProfileAvatarUrl?: () => string
   presenceStatus: string
   getMyGamePresence?: () => any
   presenceChannelRef: React.MutableRefObject<any>
@@ -16,6 +18,7 @@ export interface UseEchoCosmeticsOptions {
 export function useEchoCosmetics({
   user,
   getProfileDisplayName,
+  getProfileAvatarUrl,
   presenceStatus,
   getMyGamePresence,
   presenceChannelRef,
@@ -147,42 +150,21 @@ export function useEchoCosmetics({
   // all equip handlers now always broadcast the FULL, canonical presence
   // payload, built fresh from localStorage/refs, regardless of which
   // single field actually changed.
-  const buildFullPresencePayload = (overrides: Record<string, any> = {}) => {
-    const savedPresenceStatus = presenceStatus
-    const savedStatus = savedPresenceStatus === 'invisible' ? '' : (localStorage.getItem('echo-custom-status') || '')
-    const gameData = savedPresenceStatus === 'invisible' ? null : (getMyGamePresence ? getMyGamePresence() : null)
-    const profName = getProfileDisplayName ? getProfileDisplayName() : ''
-    const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
-    const curEffect = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
-    const curNameEff = localStorage.getItem(`echo-name-effect-${user.id}`) || nameEffect || 'resonance_cyan'
-    const curShowBadge = localStorage.getItem(`echo-show-badge-${user.id}`) !== 'false'
-    const curBadge = curShowBadge ? (localStorage.getItem(`echo-badge-${user.id}`) || 'owner') : 'none'
-    const rawBanner = localStorage.getItem(`echo-banner-custom-${user.id}`) || localStorage.getItem('echo-banner-custom') || ''
-    const safeBanner = (rawBanner && !rawBanner.startsWith('data:') && rawBanner.length < 2048) ? rawBanner : ''
-    const bannerPreset = localStorage.getItem(`echo-banner-preset-${user.id}`) || 'synthwave'
-    const voiceChanId = activeVoiceChannelIdRef?.current || null
-    const voiceSpId = activeVoiceSpaceIdRef?.current || null
-
-    return {
-      user_id: user.id,
-      display_name: profName,
-      online_at: new Date().toISOString(),
-      custom_status: savedStatus,
-      presence_status: savedPresenceStatus,
-      current_game: gameData,
-      game_presence: gameData,
-      avatar_decoration: curDeco,
-      profile_effect: curEffect,
-      name_effect: curNameEff,
-      badge: curBadge,
-      banner_custom: safeBanner,
-      banner_preset: bannerPreset,
-      banner_url: safeBanner,
-      voice_channel_id: voiceChanId,
-      voice_space_id: voiceSpId,
-      ...overrides
-    }
-  }
+  const buildFullPresencePayload = (overrides: Record<string, any> = {}) => ({
+    ...buildPresencePayload({
+      userId: user.id,
+      displayName: getProfileDisplayName ? getProfileDisplayName() : '',
+      avatarUrl: getProfileAvatarUrl ? getProfileAvatarUrl() : undefined,
+      presenceStatus,
+      game: getMyGamePresence ? getMyGamePresence() : null,
+      avatarDecoration,
+      profileEffect,
+      nameEffect,
+      voiceChannelId: activeVoiceChannelIdRef?.current,
+      voiceSpaceId: activeVoiceSpaceIdRef?.current
+    }),
+    ...overrides
+  })
 
   const handleEquipDecoration = async (decorationId: string) => {
     const val = decorationId === 'none' ? '' : decorationId

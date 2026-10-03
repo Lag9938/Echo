@@ -67,6 +67,7 @@ import { useEchoAutoUpdate } from './hooks/useEchoAutoUpdate'
 import { useEchoInviteLinks } from './hooks/useEchoInviteLinks'
 import { useEchoNotificationNavigation } from './hooks/useEchoNotificationNavigation'
 import { useEchoDMActions } from './hooks/useEchoDMActions'
+import { buildPresencePayload } from './lib/presencePayload'
 import { useEchoAudioPreferences, useEchoAudioSettingsActions } from './hooks/useEchoAudioPreferences'
 
 import type { Space, Channel, Message, DirectMessage, FriendshipRequest, SavedMessageItem, Page, Toast, RolePermissions, ServerRole, ServerAuditLog, ServerEmoji, PinnedMessage, GroupChat, GroupMessage } from './types'
@@ -542,6 +543,7 @@ function Echo({ user }: { user: User }) {
   } = useEchoCosmetics({
     user,
     getProfileDisplayName: () => profileDisplayNameRef.current,
+    getProfileAvatarUrl: () => profileAvatarUrlRef.current,
     presenceStatus,
     getMyGamePresence: () => myGamePresenceRef.current,
     presenceChannelRef,
@@ -565,34 +567,18 @@ function Echo({ user }: { user: User }) {
     useUIStore.getState().setPresenceStatus(status)
     localStorage.setItem('echo-presence-status', status)
     if (presenceChannelRef.current) {
-      const savedStatus = status === 'invisible' ? '' : (localStorage.getItem('echo-custom-status') || '')
-      const gameData = status === 'invisible' ? null : myGamePresence
-      const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || avatarDecoration || ''
-      const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || profileEffect || ''
-      const curNameEff = localStorage.getItem(`echo-name-effect-${user.id}`) || nameEffect || 'resonance_cyan'
-      const curBadge = localStorage.getItem(`echo-show-badge-${user.id}`) !== 'false' ? (localStorage.getItem(`echo-badge-${user.id}`) || 'owner') : 'none'
-      const rawBanner = localStorage.getItem(`echo-banner-custom-${user.id}`) || ''
-      const safeBanner = (rawBanner && !rawBanner.startsWith('data:') && rawBanner.length < 2048) ? rawBanner : ''
-      const bannerPreset = localStorage.getItem(`echo-banner-preset-${user.id}`) || 'synthwave'
-      await presenceChannelRef.current.track({
-        user_id: user.id,
-        display_name: profileDisplayName,
-        avatar_url: profileAvatarUrl,
-        online_at: new Date().toISOString(),
-        custom_status: savedStatus,
-        presence_status: status,
-        current_game: gameData,
-        game_presence: gameData,
-        avatar_decoration: curDeco,
-        profile_effect: curEff,
-        name_effect: curNameEff,
-        badge: curBadge,
-        banner_custom: safeBanner,
-        banner_preset: bannerPreset,
-        banner_url: safeBanner,
-        voice_channel_id: activeVoiceChannelIdRef.current,
-        voice_space_id: activeVoiceSpaceIdRef.current
-      })
+      await presenceChannelRef.current.track(buildPresencePayload({
+        userId: user.id,
+        displayName: profileDisplayName,
+        avatarUrl: profileAvatarUrl,
+        presenceStatus: status,
+        game: myGamePresence,
+        avatarDecoration,
+        profileEffect,
+        nameEffect,
+        voiceChannelId: activeVoiceChannelIdRef.current,
+        voiceSpaceId: activeVoiceSpaceIdRef.current
+      }))
     }
   }
 
@@ -644,6 +630,7 @@ function Echo({ user }: { user: User }) {
   const { myGamePresence } = useEchoGamePresence({
     userId: user.id,
     profileDisplayName,
+    getProfileAvatarUrl: () => profileAvatarUrlRef.current,
     avatarDecoration,
     profileEffect,
     nameEffect,
@@ -664,6 +651,7 @@ function Echo({ user }: { user: User }) {
   } = useEchoGlobalPresence({
     user,
     profileDisplayName,
+    getProfileAvatarUrl: () => profileAvatarUrlRef.current,
     displayName,
     avatarDecoration,
     profileEffect,
@@ -1642,33 +1630,21 @@ function Echo({ user }: { user: User }) {
         }
       } : m))
       if (presenceChannelRef.current) {
-        const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
-        const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
-        const curNameEff = localStorage.getItem(`echo-name-effect-${user.id}`) || nameEffect || 'resonance_cyan'
-        const gameData = presenceStatus === 'invisible' ? null : myGamePresence
-        const rawBanner = bannerUrl || localStorage.getItem(`echo-banner-custom-${user.id}`) || ''
-        const safeBanner = (rawBanner && !rawBanner.startsWith('data:') && rawBanner.length < 2048) ? rawBanner : ''
-        const curBadge = localStorage.getItem(`echo-show-badge-${user.id}`) !== 'false' ? (localStorage.getItem(`echo-badge-${user.id}`) || 'owner') : 'none'
-        const preset = bannerPreset || localStorage.getItem(`echo-banner-preset-${user.id}`) || 'synthwave'
-        presenceChannelRef.current.track({
-          user_id: user.id,
-          display_name: name,
-          avatar_url: avatar,
-          online_at: new Date().toISOString(),
-          custom_status: customStatus,
-          presence_status: presenceStatus,
-          current_game: gameData,
-          game_presence: gameData,
-          avatar_decoration: curDeco,
-          profile_effect: curEff,
-          name_effect: curNameEff,
-          banner_custom: safeBanner,
-          banner_preset: preset,
-          banner_url: safeBanner,
-          badge: curBadge,
-          voice_channel_id: activeVoiceChannelIdRef.current,
-          voice_space_id: activeVoiceSpaceIdRef.current
-        }).catch(() => {})
+        presenceChannelRef.current.track(buildPresencePayload({
+          userId: user.id,
+          displayName: name,
+          avatarUrl: avatar,
+          presenceStatus,
+          customStatus,
+          game: myGamePresence,
+          avatarDecoration,
+          profileEffect,
+          nameEffect,
+          bannerUrl,
+          bannerPreset,
+          voiceChannelId: activeVoiceChannelIdRef.current,
+          voiceSpaceId: activeVoiceSpaceIdRef.current
+        })).catch(() => {})
       }
     }
   }, [user, updateLocalProfile, setSpaceMembers, avatarDecoration, profileEffect, nameEffect, presenceStatus, myGamePresence, customStatus])
@@ -1677,35 +1653,21 @@ function Echo({ user }: { user: User }) {
     setCustomStatus(status)
     localStorage.setItem('echo-custom-status', status)
     if (presenceChannelRef.current) {
-      const curDeco = localStorage.getItem(`echo-avatar-decoration-${user.id}`) || localStorage.getItem('echo-avatar-decoration') || avatarDecoration || ''
-      const curEff = localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || profileEffect || ''
-      const curNameEff = localStorage.getItem(`echo-name-effect-${user.id}`) || nameEffect || 'resonance_cyan'
-      const curBadge = localStorage.getItem(`echo-show-badge-${user.id}`) !== 'false' ? (localStorage.getItem(`echo-badge-${user.id}`) || 'owner') : 'none'
-      const rawBanner = localStorage.getItem(`echo-banner-custom-${user.id}`) || ''
-      const safeBanner = (rawBanner && !rawBanner.startsWith('data:') && rawBanner.length < 2048) ? rawBanner : ''
-      const bannerPreset = localStorage.getItem(`echo-banner-preset-${user.id}`) || 'synthwave'
-      const gameData = presenceStatus === 'invisible' ? null : myGamePresence
-      await presenceChannelRef.current.track({
-        user_id: user.id,
-        display_name: profileDisplayName,
-        avatar_url: profileAvatarUrl,
-        online_at: new Date().toISOString(),
-        custom_status: status,
-        presence_status: presenceStatus,
-        current_game: gameData,
-        game_presence: gameData,
-        avatar_decoration: curDeco,
-        profile_effect: curEff,
-        name_effect: curNameEff,
-        badge: curBadge,
-        banner_custom: safeBanner,
-        banner_preset: bannerPreset,
-        banner_url: safeBanner,
-        voice_channel_id: activeVoiceChannelIdRef.current,
-        voice_space_id: activeVoiceSpaceIdRef.current
-      })
+      await presenceChannelRef.current.track(buildPresencePayload({
+        userId: user.id,
+        displayName: profileDisplayName,
+        avatarUrl: profileAvatarUrl,
+        presenceStatus,
+        customStatus: status,
+        game: myGamePresence,
+        avatarDecoration,
+        profileEffect,
+        nameEffect,
+        voiceChannelId: activeVoiceChannelIdRef.current,
+        voiceSpaceId: activeVoiceSpaceIdRef.current
+      }))
     }
-  }, [user.id, avatarDecoration, profileEffect, nameEffect, presenceStatus, myGamePresence, profileDisplayName])
+  }, [user.id, avatarDecoration, profileEffect, nameEffect, presenceStatus, myGamePresence, profileDisplayName, profileAvatarUrl])
 
   // Ações de áudio que dependem da chamada em andamento (reabrir o microfone, áudio espacial)
   const {

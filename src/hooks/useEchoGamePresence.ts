@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
+import { buildPresencePayload } from '../lib/presencePayload'
 
 export interface GamePresenceData {
   name: string
@@ -10,6 +11,7 @@ export interface GamePresenceData {
 export interface UseEchoGamePresenceOptions {
   userId: string
   profileDisplayName: string
+  getProfileAvatarUrl?: () => string
   avatarDecoration?: string | null
   profileEffect?: string | null
   nameEffect?: string | null
@@ -22,6 +24,7 @@ export interface UseEchoGamePresenceOptions {
 export function useEchoGamePresence({
   userId,
   profileDisplayName,
+  getProfileAvatarUrl,
   avatarDecoration,
   profileEffect,
   nameEffect,
@@ -85,36 +88,18 @@ export function useEchoGamePresence({
   // Auto-broadcast game presence to Supabase presence channel
   useEffect(() => {
     if (presenceChannelRef && presenceChannelRef.current) {
-      const savedStatus = presenceStatus === 'invisible' ? '' : (localStorage.getItem('echo-custom-status') || '')
-      const gameData = presenceStatus === 'invisible' ? null : myGamePresence
-      const curDeco = localStorage.getItem(`echo-avatar-decoration-${userId}`) || avatarDecoration || ''
-      const curEff = localStorage.getItem(`echo-profile-effect-${userId}`) || profileEffect || ''
-      const curNameEff = localStorage.getItem(`echo-name-effect-${userId}`) || nameEffect || 'resonance_cyan'
-      const rawBanner = localStorage.getItem(`echo-banner-custom-${userId}`) || localStorage.getItem('echo-banner-custom') || ''
-      const safeBanner = (rawBanner && !rawBanner.startsWith('data:') && rawBanner.length < 2048) ? rawBanner : ''
-      const preset = localStorage.getItem(`echo-banner-preset-${userId}`) || 'synthwave'
-      const curShowBadge = localStorage.getItem(`echo-show-badge-${userId}`) !== 'false'
-      const curBadge = curShowBadge ? (localStorage.getItem(`echo-badge-${userId}`) || 'owner') : 'none'
-      const voiceChanId = activeVoiceChannelIdRef?.current || null
-      const voiceSpId = activeVoiceSpaceIdRef?.current || null
-      presenceChannelRef.current.track({
-        user_id: userId,
-        display_name: profileDisplayName,
-        online_at: new Date().toISOString(),
-        custom_status: savedStatus,
-        presence_status: presenceStatus,
-        current_game: gameData,
-        game_presence: gameData,
-        avatar_decoration: curDeco,
-        profile_effect: curEff,
-        name_effect: curNameEff,
-        badge: curBadge,
-        banner_custom: safeBanner,
-        banner_preset: preset,
-        banner_url: safeBanner,
-        voice_channel_id: voiceChanId,
-        voice_space_id: voiceSpId
-      }).catch(() => {})
+      presenceChannelRef.current.track(buildPresencePayload({
+        userId,
+        displayName: profileDisplayName,
+        avatarUrl: getProfileAvatarUrl ? getProfileAvatarUrl() : undefined,
+        presenceStatus,
+        game: myGamePresence,
+        avatarDecoration,
+        profileEffect,
+        nameEffect,
+        voiceChannelId: activeVoiceChannelIdRef?.current,
+        voiceSpaceId: activeVoiceSpaceIdRef?.current
+      })).catch(() => {})
     }
   }, [myGamePresence, presenceStatus, profileDisplayName, avatarDecoration, profileEffect, nameEffect, userId, presenceChannelRef])
 
