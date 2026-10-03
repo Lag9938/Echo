@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { matchGameProcess } from '../ipc/gameDetection.js'
+import { matchGameProcess, isGameExecutable, parseProcessPaths } from '../ipc/gameDetection.js'
 
 describe('Electron IPC - Game Detection', () => {
   it('detecta VALORANT com sufixo .exe e shipping', () => {
@@ -49,6 +49,41 @@ describe('Electron IPC - Game Detection', () => {
     expect(matchGameProcess('Discord.exe', 'Falando sobre VALORANT no chat')).toBeNull()
     expect(matchGameProcess(null, 'League of Legends')).toBeNull()
     expect(matchGameProcess('', 'Counter-Strike 2 patch notes')).toBeNull()
+  })
+
+  it('reconhece como jogo qualquer executável instalado numa pasta de jogos, mesmo fora da lista', () => {
+    // Bug real: o Horizon Forbidden West não está na lista de jogos e ficava sem 60 FPS na transmissão
+    expect(isGameExecutable(
+      'HorizonForbiddenWest',
+      'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Horizon Forbidden West Complete Edition\\HorizonForbiddenWest.exe'
+    )).toBe(true)
+    expect(isGameExecutable('AlanWake2', 'D:\\Epic Games\\AlanWake2\\AlanWake2.exe')).toBe(true)
+    expect(isGameExecutable('witcher3', 'E:/GOG Games/The Witcher 3/bin/x64/witcher3.exe')).toBe(true)
+    expect(isGameExecutable('forza', 'C:\\XboxGames\\Forza Horizon 5\\Content\\ForzaHorizon5.exe')).toBe(true)
+    expect(isGameExecutable('algum', 'D:\\Jogos\\Algum Jogo\\algum.exe')).toBe(true)
+  })
+
+  it('não trata como jogo os programas comuns nem as lojas e launchers', () => {
+    expect(isGameExecutable('chrome', 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe')).toBe(false)
+    expect(isGameExecutable('NVIDIA App', 'C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\CEF\\NVIDIA App.exe')).toBe(false)
+    expect(isGameExecutable('steamwebhelper', 'C:\\Program Files (x86)\\Steam\\bin\\cef\\cef.win64\\steamwebhelper.exe')).toBe(false)
+    expect(isGameExecutable('EpicGamesLauncher', 'C:\\Program Files (x86)\\Epic Games\\Launcher\\Portal\\Binaries\\Win64\\EpicGamesLauncher.exe')).toBe(false)
+    expect(isGameExecutable('RiotClientUx', 'C:\\Riot Games\\Riot Client\\UX\\RiotClientUx.exe')).toBe(false)
+    expect(isGameExecutable('wallpaper64', 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\wallpaper_engine\\wallpaper64.exe')).toBe(false)
+  })
+
+  it('sem o caminho do executável (processo protegido), decide só pela lista de jogos conhecidos', () => {
+    expect(isGameExecutable('VALORANT-Win64-Shipping', null)).toBe(true)
+    expect(isGameExecutable('HorizonForbiddenWest', null)).toBe(false)
+    expect(isGameExecutable('', '')).toBe(false)
+    expect(isGameExecutable(null, undefined)).toBe(false)
+  })
+
+  it('lê a saída "pid|caminho" e ignora linhas sem caminho ou quebradas', () => {
+    const paths = parseProcessPaths('9996|\r\n14056|C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\r\nlixo\r\n\r\nabc|C:\\x.exe\r\n28304|D:\\a|b\\jogo.exe\r\n')
+    expect(paths.size).toBe(2)
+    expect(paths.get(14056)).toBe('C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe')
+    expect(paths.get(28304)).toBe('D:\\a|b\\jogo.exe')
   })
 
   it('divide linhas de stdout do tasklist com CRLF corretamente', () => {

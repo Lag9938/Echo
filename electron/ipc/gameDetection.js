@@ -72,6 +72,112 @@ export function matchGameProcess(procName, _windowTitle = '') {
   return null
 }
 
+// Pastas onde as lojas instalam jogos (Steam, Epic, GOG, Riot, Xbox, Ubisoft, EA, Rockstar) e as pastas
+// "Games"/"Jogos" que as pessoas criam. A lista POPULAR_GAMES nunca vai ter todos os jogos (o Horizon
+// Forbidden West, por exemplo, não estava nela e ficava sem 60 FPS na transmissão); o lugar onde o
+// executável está instalado reconhece qualquer jogo dessas lojas sem precisar cadastrar um por um.
+const GAME_LIBRARY_MARKERS = [
+  '\\steamapps\\common\\',
+  '\\epic games\\',
+  '\\gog galaxy\\games\\',
+  '\\gog games\\',
+  '\\riot games\\',
+  '\\xboxgames\\',
+  '\\ubisoft game launcher\\games\\',
+  '\\ea games\\',
+  '\\origin games\\',
+  '\\rockstar games\\',
+  '\\games\\',
+  '\\jogos\\'
+]
+
+// Programas que moram nessas pastas (ou ao lado delas) mas não são o jogo: lojas, launchers e utilitários
+const NON_GAME_PROCESSES = new Set([
+  'steam', 'steamwebhelper', 'steamservice', 'gameoverlayui',
+  'epicgameslauncher', 'epicwebhelper',
+  'riotclientservices', 'riotclientux', 'riotclientuxrender', 'riotclientcrashhandler',
+  'galaxyclient', 'galaxyclient helper',
+  'upc', 'ubisoftconnect', 'uplaywebcore',
+  'eadesktop', 'ealauncher', 'origin',
+  'launcher', 'launcherpatcher', 'socialclubhelper',
+  'wallpaper32', 'wallpaper64', 'ui32',
+  'unitycrashhandler32', 'unitycrashhandler64', 'crashreportclient'
+])
+
+/**
+ * A janela é de um jogo? Vale a lista de jogos conhecidos (pelo nome do processo) ou o executável estar
+ * numa pasta de jogos. `exePath` pode faltar (processo protegido por anti-cheat): aí só a lista decide.
+ */
+export function isGameExecutable(processName, exePath) {
+  const name = (processName || '').replace(/\.exe$/i, '').toLowerCase().trim()
+  if (name && NON_GAME_PROCESSES.has(name)) return false
+  if (matchGameProcess(processName)) return true
+  if (!exePath || typeof exePath !== 'string') return false
+  const normalized = exePath.replace(/\//g, '\\').toLowerCase()
+  return GAME_LIBRARY_MARKERS.some(marker => normalized.includes(marker))
+}
+
+/** Saída "pid|caminho" (uma por linha) → Map<pid, caminho>; linhas sem caminho são ignoradas */
+export function parseProcessPaths(stdout) {
+  const paths = new Map()
+  for (const line of String(stdout || '').split(/\r?\n/)) {
+    const separator = line.indexOf('|')
+    if (separator <= 0) continue
+    const pid = Number(line.slice(0, separator))
+    const exePath = line.slice(separator + 1).trim()
+    if (Number.isInteger(pid) && pid > 0 && exePath) paths.set(pid, exePath)
+  }
+  return paths
+}
+
+export function resolveHelperPath(rootDir) {
+  const candidates = [
+    path.join(rootDir, 'src', 'native', 'AudioCaptureHelper', 'bin', 'AudioCaptureHelper.exe'),
+    path.join(rootDir, 'dist-desktop', 'win-unpacked', 'resources', 'AudioCaptureHelper.exe')
+  ]
+  if (process.resourcesPath) candidates.push(path.join(process.resourcesPath, 'AudioCaptureHelper.exe'))
+  return candidates.find(candidate => fs.existsSync(candidate)) || null
+}
+
+async function getProcessPaths(pids) {
+  if (pids.length === 0) return new Map()
+  const powershell = process.env.SystemRoot
+    ? path.join(process.env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+    : 'powershell.exe'
+  // pids são inteiros conferidos por quem chama; nada vindo de fora entra no comando
+  const command = `Get-Process -Id ${pids.join(',')} -ErrorAction SilentlyContinue | ForEach-Object { '{0}|{1}' -f $_.Id, $_.Path }`
+  const { stdout } = await execFileAsync(
+    fs.existsSync(powershell) ? powershell : 'powershell.exe',
+    ['-NoProfile', '-NonInteractive', '-Command', command],
+    { timeout: 4000, windowsHide: true, maxBuffer: 1024 * 1024 }
+  )
+  return parseProcessPaths(stdout)
+}
+
+/**
+ * De qual programa é cada janela capturável: Map<"window:<hwnd>:0", { processName, exePath }>, com as
+ * mesmas chaves do desktopCapturer. Qualquer falha devolve o que deu para descobrir (ou nada): a lista de
+ * janelas da transmissão nunca pode deixar de abrir por causa disso.
+ */
+export async function getWindowProcesses(rootDir) {
+  const result = new Map()
+  if (process.platform !== 'win32') return result
+  try {
+    const helperPath = resolveHelperPath(rootDir)
+    if (!helperPath) return result
+    const { stdout } = await execFileAsync(helperPath, ['--list-windows'], { timeout: 4000, windowsHide: true, maxBuffer: 5 * 1024 * 1024 })
+    const windows = JSON.parse(stdout.trim())
+    if (!Array.isArray(windows)) return result
+
+    const valid = windows.filter(w => w && typeof w.id === 'string' && Number.isInteger(w.pid) && w.pid > 0)
+    for (const w of valid) result.set(w.id, { processName: w.processName || '', exePath: null })
+
+    const paths = await getProcessPaths([...new Set(valid.map(w => w.pid))])
+    for (const w of valid) result.set(w.id, { processName: w.processName || '', exePath: paths.get(w.pid) || null })
+  } catch (e) {}
+  return result
+}
+
 let activeGame = null
 let activeGameStartTime = null
 let gameScanInterval = null
@@ -123,18 +229,7 @@ export async function scanRunningGames(getMainWindow, rootDir) {
       } catch (e) {}
     }
 
-    let helperPath = null
-    const devPath1 = path.join(rootDir, 'src', 'native', 'AudioCaptureHelper', 'bin', 'AudioCaptureHelper.exe')
-    const devPath2 = path.join(rootDir, 'dist-desktop', 'win-unpacked', 'resources', 'AudioCaptureHelper.exe')
-    const prodPath = path.join(process.resourcesPath, 'AudioCaptureHelper.exe')
-
-    if (fs.existsSync(devPath1)) {
-      helperPath = devPath1
-    } else if (fs.existsSync(devPath2)) {
-      helperPath = devPath2
-    } else if (fs.existsSync(prodPath)) {
-      helperPath = prodPath
-    }
+    const helperPath = resolveHelperPath(rootDir)
 
     if (helperPath) {
       try {

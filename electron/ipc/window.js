@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import { execFile } from 'node:child_process'
-import { POPULAR_GAMES } from './gameDetection.js'
+import { POPULAR_GAMES, getWindowProcesses, isGameExecutable } from './gameDetection.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -62,6 +62,8 @@ export function setupWindowIpc(safeHandle, getMainWindow, setIsQuitting, rootDir
 
   safeHandle('get-sources', async () => {
     let sources = []
+    // Em paralelo com a captura das miniaturas: de qual programa é cada janela (para reconhecer jogos)
+    const windowProcessesPromise = getWindowProcesses(rootDir).catch(() => new Map())
     try {
       sources = await desktopCapturer.getSources({
         types: ['window', 'screen'],
@@ -71,6 +73,7 @@ export function setupWindowIpc(safeHandle, getMainWindow, setIsQuitting, rootDir
     } catch (err) {
       console.warn('desktopCapturer.getSources error:', err)
     }
+    const windowProcesses = await windowProcessesPromise
 
     const screens = []
     const windowsMap = new Map()
@@ -101,7 +104,11 @@ export function setupWindowIpc(safeHandle, getMainWindow, setIsQuitting, rootDir
         continue
       }
 
-      const isGame = POPULAR_GAMES.some(g => g.match.some(m => lower.includes(m)))
+      // Jogo conhecido pelo título, ou qualquer jogo reconhecido pelo programa dono da janela (lista de
+      // processos e pasta de instalação). É o que libera os 60 FPS na transmissão de janela.
+      const owner = windowProcesses.get(source.id)
+      const isGame = POPULAR_GAMES.some(g => g.match.some(m => lower.includes(m))) ||
+        Boolean(owner && isGameExecutable(owner.processName, owner.exePath))
       let cleanName = rawName
 
       const dedupeKey = isGame ? cleanName.toLowerCase() : `${cleanName.toLowerCase()}::${source.id}`
