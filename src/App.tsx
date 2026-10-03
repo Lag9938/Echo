@@ -64,6 +64,9 @@ import { useEchoPinnedMessages } from './hooks/useEchoPinnedMessages'
 import { useEchoBlockedUsers } from './hooks/useEchoBlockedUsers'
 import { useEchoGroupChats } from './hooks/useEchoGroupChats'
 import { useEchoGlobalVoiceShortcuts } from './hooks/useEchoGlobalVoiceShortcuts'
+import { useEchoAutoUpdate } from './hooks/useEchoAutoUpdate'
+import { useEchoInviteLinks } from './hooks/useEchoInviteLinks'
+import { useEchoNotificationNavigation } from './hooks/useEchoNotificationNavigation'
 
 import type { Space, Channel, Message, DirectMessage, FriendshipRequest, SavedMessageItem, Page, Toast, RolePermissions, ServerRole, ServerAuditLog, ServerEmoji, PinnedMessage, GroupChat, GroupMessage } from './types'
 export type { Space, Channel, Message, DirectMessage, FriendshipRequest, SavedMessageItem, Page, Toast, RolePermissions, ServerRole, ServerAuditLog, ServerEmoji, PinnedMessage, GroupChat, GroupMessage }
@@ -232,7 +235,6 @@ function Echo({ user }: { user: User }) {
   const handleJoinVoiceRef = useRef<(channelId: string, explicitSpaceId?: string) => Promise<void>>(() => Promise.resolve())
   const setMessagesRef = useRef<(msgs: any[]) => void>(() => {})
   const processSpaceInviteRef = useRef<((url: string) => Promise<void>) | null>(null)
-  const pendingDeepLinkUrlRef = useRef<string | null>(null)
 
   // Spaces, Channels & Members Hook
   const {
@@ -494,10 +496,8 @@ function Echo({ user }: { user: User }) {
   const sfxVolumeRef = useRef(sfxVolume)
   sfxVolumeRef.current = sfxVolume
 
-  // Auto-update state
-  const [updateStatus, setUpdateStatus] = useState<'idle' | 'downloading' | 'ready'>('idle')
-  const [updateVersion, setUpdateVersion] = useState('')
-  const [updateProgress, setUpdateProgress] = useState(0)
+  // Atualização automática (baixando / pronta), vinda do Electron
+  const { updateStatus, updateVersion, updateProgress } = useEchoAutoUpdate()
 
   // Cosmetics, Shop, Appearance & Themes Hook
   const {
@@ -836,60 +836,16 @@ function Echo({ user }: { user: User }) {
   })
   setMessagesRef.current = setMessages
 
-  // Auto-update listener
-  useEffect(() => {
-    const api = (window as any).electronAPI
-    if (!api?.onUpdateAvailable) return
-    api.onUpdateAvailable((info: { version: string }) => {
-      setUpdateStatus('downloading')
-      setUpdateVersion(info.version)
-    })
-    api.onUpdateProgress((progress: { percent: number }) => {
-      setUpdateProgress(progress.percent)
-    })
-    api.onUpdateReady((info: { version: string }) => {
-      setUpdateStatus('ready')
-      setUpdateVersion(info.version)
-    })
-  }, [])
-
-  // Windows Native & Web notification click navigation
-  useEffect(() => {
-    const handleNotificationPayload = (data: any) => {
-      if (!data) return
-      if (data.type === 'dm' && data.senderId) {
-        handleOpenDirectChat(data.senderId)
-        setPage('Amigos')
-      } else if (data.type === 'group' && data.groupId) {
-        handleOpenGroup(data.groupId)
-        setPage('Amigos')
-      } else if (data.type === 'channel' && data.channelId) {
-        const allChannels = Object.values(spaceChannelsRef.current).flat()
-        const targetCh = allChannels.find(c => c.id === data.channelId)
-        if (targetCh) {
-          if (targetCh.space_id) {
-            const sp = spaces.find(s => s.id === targetCh.space_id)
-            if (sp) setExpandedSpace(sp.id)
-          }
-          setSelectedChannel(targetCh)
-          setPage('Servidores')
-        }
-      }
-    }
-
-    if ((window as any).electronAPI?.onNotificationClicked) {
-      ;(window as any).electronAPI.onNotificationClicked(handleNotificationPayload)
-    }
-
-    const handleCustomClick = (e: any) => {
-      handleNotificationPayload(e.detail)
-    }
-    window.addEventListener('echo-notification-clicked', handleCustomClick)
-
-    return () => {
-      window.removeEventListener('echo-notification-clicked', handleCustomClick)
-    }
-  }, [handleOpenDirectChat, handleOpenGroup, spaces])
+  // Clique em notificação (Windows ou do app) leva para a conversa de onde ela veio
+  useEchoNotificationNavigation({
+    spaces,
+    spaceChannelsRef,
+    handleOpenDirectChat,
+    handleOpenGroup,
+    setExpandedSpace,
+    setSelectedChannel,
+    setPage
+  })
 
   // Voice Session Refs & Hook (Phase 18)
   const selectedInputIdRef = useRef('')
@@ -1051,58 +1007,8 @@ function Echo({ user }: { user: User }) {
     return seen !== APP_CURRENT_VERSION
   })
 
-  // In-App & Custom Invite Event Listener (Tratamento interno 100% no app sem abrir navegador)
-  useEffect(() => {
-    const handleInAppInviteEvent = (e: any) => {
-      const input = e.detail?.input
-      if (input && processSpaceInviteRef.current) {
-        console.log('[InAppInvite] Processando convite internamente:', input)
-        processSpaceInviteRef.current(input)
-      }
-    }
-    window.addEventListener('echo-process-invite', handleInAppInviteEvent as EventListener)
-    return () => {
-      window.removeEventListener('echo-process-invite', handleInAppInviteEvent as EventListener)
-    }
-  }, [])
-
-  // Deep-Link Protocol Listener (echo://invite/... ou URLs externas)
-  useEffect(() => {
-    if (!(window as any).electronAPI) return
-
-    const handleInviteUrl = (url: string) => {
-      if (url && typeof url === 'string' && (url.startsWith('echo://') || url.includes('/invite') || url.includes('space='))) {
-        console.log('[DeepLink] Convite recebido via deep-link ou web:', url)
-        if (user?.id && processSpaceInviteRef.current) {
-          processSpaceInviteRef.current(url)
-        } else {
-          pendingDeepLinkUrlRef.current = url
-        }
-      }
-    }
-
-    if (typeof (window as any).electronAPI.onDeepLinkInvite === 'function') {
-      ;(window as any).electronAPI.onDeepLinkInvite(handleInviteUrl)
-    }
-
-    if (typeof (window as any).electronAPI.getInitialInviteUrl === 'function') {
-      ;(window as any).electronAPI.getInitialInviteUrl().then((initialUrl: string | null) => {
-        if (initialUrl) {
-          handleInviteUrl(initialUrl)
-        }
-      }).catch(() => {})
-    }
-  }, [])
-
-  // Processa convite pendente recebido antes de o usuário estar autenticado
-  useEffect(() => {
-    if (user?.id && pendingDeepLinkUrlRef.current && processSpaceInviteRef.current) {
-      const url = pendingDeepLinkUrlRef.current
-      pendingDeepLinkUrlRef.current = null
-      console.log('[DeepLink] Executando convite pendente após login:', url)
-      processSpaceInviteRef.current(url)
-    }
-  }, [user?.id])
+  // Links de convite: colados no app, abertos pelo sistema (echo://) e os que chegam antes do login
+  useEchoInviteLinks({ userId: user?.id, processSpaceInviteRef })
 
   // Push-to-Talk settings via custom hook
   const {
