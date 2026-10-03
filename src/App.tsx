@@ -63,6 +63,7 @@ import { useEchoServerEmojis } from './hooks/useEchoServerEmojis'
 import { useEchoPinnedMessages } from './hooks/useEchoPinnedMessages'
 import { useEchoBlockedUsers } from './hooks/useEchoBlockedUsers'
 import { useEchoGroupChats } from './hooks/useEchoGroupChats'
+import { useEchoGlobalVoiceShortcuts } from './hooks/useEchoGlobalVoiceShortcuts'
 
 import type { Space, Channel, Message, DirectMessage, FriendshipRequest, SavedMessageItem, Page, Toast, RolePermissions, ServerRole, ServerAuditLog, ServerEmoji, PinnedMessage, GroupChat, GroupMessage } from './types'
 export type { Space, Channel, Message, DirectMessage, FriendshipRequest, SavedMessageItem, Page, Toast, RolePermissions, ServerRole, ServerAuditLog, ServerEmoji, PinnedMessage, GroupChat, GroupMessage }
@@ -1027,70 +1028,21 @@ function Echo({ user }: { user: User }) {
     trackMyPresence()
   }, [activeVoiceChannelId, activeVoiceChannel, trackMyPresence])
 
-  // Global In-Game Voice Shortcuts state (Mute / Deafen / AI Denoise)
-  const [muteShortcut, setMuteShortcut] = useState<string>(() => localStorage.getItem('echo-shortcut-mute') || 'F8')
-  const [deafenShortcut, setDeafenShortcut] = useState<string>(() => localStorage.getItem('echo-shortcut-deafen') || 'F9')
-  const [aiDenoiseShortcut, setAiDenoiseShortcut] = useState<string>(() => localStorage.getItem('echo-shortcut-ai-denoise') || 'F7')
-
-  // Registro dos atalhos globais no Electron. Fica num efeito só dele, que depende apenas das teclas: antes
-  // ele rodava junto com o ouvinte abaixo, que é refeito a cada renderização, e um atalho recusado mostrava
-  // o aviso, o aviso renderizava a tela, a tela registrava de novo... e o aviso aparecia sem parar.
-  const warnedShortcutsRef = useRef<Record<string, string>>({})
-  useEffect(() => {
-    const api = (window as any).electronAPI
-    if (!api?.registerGlobalVoiceShortcut) return
-
-    // Antes o resultado do registro era ignorado: se o Windows recusasse a tecla (já usada por outro
-    // programa, ou uma combinação que ele não deixa registrar sem Ctrl/Alt/Shift), a pessoa via o atalho
-    // "salvo" nas Configurações mas ele simplesmente não funcionava, sem nenhum aviso.
-    const registerOrWarn = (action: 'toggle-mute' | 'toggle-deafen' | 'toggle-ai-denoise', shortcut: string, label: string) => {
-      if (!shortcut || shortcut === 'none') {
-        delete warnedShortcutsRef.current[action]
-        api.unregisterGlobalVoiceShortcut?.(action)
-        return
-      }
-      Promise.resolve(api.registerGlobalVoiceShortcut(action, shortcut)).then((result: any) => {
-        if (!result || result.success !== false) {
-          delete warnedShortcutsRef.current[action]
-          return
-        }
-        // Um aviso por tecla recusada; só avisa de novo se a pessoa escolher outra tecla e ela também falhar
-        if (warnedShortcutsRef.current[action] === shortcut) return
-        warnedShortcutsRef.current[action] = shortcut
-        showToast(
-          'Atalho não pôde ser ativado',
-          `"${shortcut}" para ${label} não funcionou — provavelmente já está em uso por outro programa aberto. Escolha outra tecla nas Configurações.`,
-          'info'
-        )
-      }).catch(() => {})
-    }
-
-    registerOrWarn('toggle-mute', muteShortcut, 'Mutar Microfone')
-    registerOrWarn('toggle-deafen', deafenShortcut, 'Silenciar Fone')
-    registerOrWarn('toggle-ai-denoise', aiDenoiseShortcut, 'Filtro de Ruído IA')
-  }, [muteShortcut, deafenShortcut, aiDenoiseShortcut, showToast])
-
-  // Global Voice Shortcuts (Mute / Deafen / AI Denoise) via Electron IPC
-  useEffect(() => {
-    const api = (window as any).electronAPI
-    if (!api?.onGlobalVoiceToggle) return
-
-    const removeListener = api.onGlobalVoiceToggle((action: string) => {
-      if (action === 'toggle-mute') {
-        handleToggleMute()
-      } else if (action === 'toggle-deafen') {
-        handleToggleDeafen()
-      } else if (action === 'toggle-ai-denoise') {
-        toggleAiDenoise()
-        const willBeActive = !isAiDenoiseEnabled
-        showToast('Filtro de Ruído IA', willBeActive ? 'Supressão por IA Ativada' : 'Supressão por IA Desativada', 'info')
-      }
-    })
-
-    return () => {
-      if (typeof removeListener === 'function') removeListener()
-    }
-  }, [handleToggleMute, handleToggleDeafen, toggleAiDenoise, isAiDenoiseEnabled, showToast])
+  // Atalhos globais de voz (mutar / silenciar fone / filtro de ruído), registrados no Electron
+  const {
+    muteShortcut,
+    setMuteShortcut,
+    deafenShortcut,
+    setDeafenShortcut,
+    aiDenoiseShortcut,
+    setAiDenoiseShortcut
+  } = useEchoGlobalVoiceShortcuts({
+    handleToggleMute,
+    handleToggleDeafen,
+    toggleAiDenoise,
+    isAiDenoiseEnabled,
+    showToast
+  })
 
   // Soundboard & WhatsNew Modals
   const [showSoundboardModal, setShowSoundboardModal] = useState(false)
