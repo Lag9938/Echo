@@ -3,7 +3,8 @@ import { supabase } from '../../lib/supabase'
 import { Brand } from '../navigation/Brand'
 import { WindowControls } from '../navigation/WindowControls'
 import { EchoAtomLogo } from '../icons'
-import { PASSWORD_RECOVERY_URL, recoveryErrorMessage } from '../../lib/passwordRecovery'
+import { PASSWORD_RECOVERY_URL } from '../../lib/passwordRecovery'
+import { authErrorMessage } from '../../lib/authMessages'
 
 type AuthMode = 'login' | 'signup' | 'recover'
 
@@ -39,20 +40,20 @@ export function Auth() {
     try {
       if (mode === 'signup') {
         const { error, data } = await supabase.auth.signUp({ email, password, options: { data: { display_name: name } } })
-        if (error) setNotice(error.message)
+        if (error) setNotice(authErrorMessage(error))
         else if (!data.session) setNotice('Conta criada! Faça login para acessar.')
       } else if (mode === 'recover') {
         // O link do e-mail abre a página de recuperação no navegador (veja lib/passwordRecovery.ts)
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: PASSWORD_RECOVERY_URL })
-        if (error) setNotice(recoveryErrorMessage(error))
+        if (error) setNotice(authErrorMessage(error))
         // A resposta é a mesma exista ou não a conta, para ninguém descobrir quais e-mails têm cadastro
         else goTo('login', 'Se existir uma conta com esse e-mail, o link chega em instantes (veja também o spam). Abra o link, crie a senha nova e volte aqui para entrar.')
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) setNotice(error.message)
+        if (error) setNotice(authErrorMessage(error))
       }
     } catch (error) {
-      setNotice(recoveryErrorMessage(error as { message?: string }))
+      setNotice(authErrorMessage(error as { message?: string }))
     }
     setBusy(false)
   }
