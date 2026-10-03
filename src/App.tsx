@@ -1263,7 +1263,7 @@ function Echo({ user }: { user: User }) {
           }
           return
         }
-      } catch (e) {}
+      } catch (error) { console.warn('[Echo Pro] Falha ao conferir a assinatura:', error) }
 
       const { data } = await supabase.from('profiles').select('display_name, avatar_url').eq('id', user.id).single()
       if (data) {

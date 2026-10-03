@@ -58,7 +58,7 @@ export function useEchoScreenShare({
           sources.push(s)
         }
         setScreenSources(sources)
-      } catch (e) {}
+      } catch (error) { console.warn('[Transmissão] Falha ao listar telas e janelas:', error) }
     }, 2500)
     return () => clearInterval(interval)
   }, [showScreenPicker])

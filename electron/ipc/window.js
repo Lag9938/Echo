@@ -294,7 +294,7 @@ export function setupWindowIpc(safeHandle, getMainWindow, setIsQuitting, rootDir
       try {
         const autostartConfigFile = path.join(app.getPath('userData'), 'autostart_preference.json')
         fs.writeFileSync(autostartConfigFile, JSON.stringify({ configured: true, openAtLogin: willOpen, openAsHidden: isHidden, timestamp: Date.now() }))
-      } catch (e) {}
+      } catch (error) { console.warn('[Inicialização] Falha ao salvar a preferência de abrir com o Windows:', error) }
 
       const updated = app.getLoginItemSettings()
       return {

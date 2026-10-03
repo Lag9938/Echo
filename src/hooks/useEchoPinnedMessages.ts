@@ -108,7 +108,7 @@ export function useEchoPinnedMessages({
           localStorage.setItem(`echo-pinned-messages-${channelId}`, JSON.stringify(list))
         } catch {}
       }
-    } catch {}
+    } catch (error) { console.warn('[Fixadas] Falha ao carregar as mensagens fixadas:', error) }
   }
 
   async function togglePinMessage(msg: Message, spaceId: string, channelId: string) {

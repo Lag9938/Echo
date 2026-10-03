@@ -174,7 +174,7 @@ export async function getWindowProcesses(rootDir) {
 
     const paths = await getProcessPaths([...new Set(valid.map(w => w.pid))])
     for (const w of valid) result.set(w.id, { processName: w.processName || '', exePath: paths.get(w.pid) || null })
-  } catch (e) {}
+  } catch (error) { console.warn('[Jogos] Falha ao descobrir o programa de cada janela:', error) }
   return result
 }
 
@@ -226,7 +226,7 @@ export async function scanRunningGames(getMainWindow, rootDir) {
             }
           }
         }
-      } catch (e) {}
+      } catch (error) { console.warn('[Jogos] Falha ao listar os processos (tasklist):', error) }
     }
 
     const helperPath = resolveHelperPath(rootDir)
@@ -249,7 +249,7 @@ export async function scanRunningGames(getMainWindow, rootDir) {
             }
           }
         }
-      } catch (e) {}
+      } catch (error) { console.warn('[Jogos] Falha ao consultar a janela em primeiro plano:', error) }
     }
 
     const mainWindow = getMainWindow()

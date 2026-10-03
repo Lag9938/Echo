@@ -514,7 +514,7 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                     moveParticipant?.(data.userId, ch.id, ch.name).then(ok => {
                       if (ok) showToast('Membro Movido', `${data.displayName} foi movido para o canal #${ch.name}.`, 'info')
                     })
-                  } catch (err) {}
+                  } catch (error) { console.warn('[Voz] Falha ao mover o membro arrastado:', error) }
                 }}
               >
                 <button 

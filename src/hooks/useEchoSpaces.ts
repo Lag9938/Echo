@@ -338,7 +338,7 @@ export function useEchoSpaces({
           if (creatorProf) {
             memberMap.set(spObj.creator_id, { role: 'owner', user: creatorProf, space_id: spaceId })
           }
-        } catch (crErr) {}
+        } catch (error) { console.warn('[Espaços] Falha ao carregar o perfil do dono do espaço:', error) }
       }
 
       // 4. Se o usuário logado for o criador do servidor, garante na lista

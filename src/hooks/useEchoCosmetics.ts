@@ -201,7 +201,7 @@ export function useEchoCosmetics({
     if (presenceChannelRef.current) {
       try {
         await presenceChannelRef.current.track(buildFullPresencePayload({ avatar_decoration: val }))
-      } catch (e) {}
+      } catch (error) { console.warn('[Cosméticos] Falha ao avisar a presença sobre a decoração:', error) }
     }
   }
 
@@ -222,7 +222,7 @@ export function useEchoCosmetics({
     if (presenceChannelRef.current) {
       try {
         await presenceChannelRef.current.track(buildFullPresencePayload({ profile_effect: val }))
-      } catch (e) {}
+      } catch (error) { console.warn('[Cosméticos] Falha ao avisar a presença sobre o efeito de perfil:', error) }
     }
   }
 
@@ -244,7 +244,7 @@ export function useEchoCosmetics({
       if (presenceChannelRef.current) {
         presenceChannelRef.current.track(buildFullPresencePayload({ name_effect: effId })).catch(() => {})
       }
-    } catch (e) {}
+    } catch (error) { console.warn('[Cosméticos] Falha ao salvar o efeito de nome:', error) }
   }
 
   function selectTheme(themeId: string) {
