@@ -247,6 +247,17 @@
   }
 }
 
+/* Reexibir a barra de conversas: aparece em qualquer largura. Com a mesma classe do "voltar" (que só existe
+   em janela estreita) o botão ficava invisível e não havia como trazer a barra de volta de dentro da conversa. */
+.dm-back-to-friends-btn.dm-show-sidebar-btn {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.dm-back-to-friends-btn.dm-show-sidebar-btn:hover {
+  background: var(--bg-tertiary);
+}
+
 .dm-header-avatar-wrap {
   position: relative;
   flex-shrink: 0;

@@ -59,7 +59,7 @@ export const GroupConversation = memo(function GroupConversation({
           {!showSidebar && (
             <button
               type="button"
-              className="dm-back-to-friends-btn"
+              className="dm-back-to-friends-btn dm-show-sidebar-btn"
               onClick={() => setShowSidebar(true)}
               title="Mostrar barra de conversas"
               style={{ marginRight: '6px' }}
