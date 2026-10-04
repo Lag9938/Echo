@@ -5,6 +5,7 @@ import { AudioLevelMeter } from '../voice/AudioLevelMeter'
 import { useScreenShareStatsStore } from '../../stores/useScreenShareStatsStore'
 import { STREAM_SMOOTHING_PRESETS, useStreamSettingsStore } from '../../stores/useStreamSettingsStore'
 import { describeLimitation, describeTransport, formatBitrate, isBelowTarget } from '../../lib/screenShareStats'
+import { describeWatchProblem, diagnoseInbound } from '../../lib/streamWatchReport'
 import {
   BarChartIcon,
   EyeIcon,
@@ -77,6 +78,9 @@ export function StreamTile({
   const belowTarget = outboundStats
     ? isBelowTarget(outboundStats.fps, targetFps, outboundStats.captureFps)
     : Boolean(inboundStats && (inboundStats.droppedPct >= 5 || inboundStats.packetLossPct >= 2 || inboundStats.freezes > 0))
+
+  // Para quem assiste: o que está atrapalhando agora (rede, este computador ou a origem)
+  const watchProblem = inboundStats ? diagnoseInbound(inboundStats, targetFps) : 'ok'
 
   const handleMouseMove = () => {
     setIsControlsVisible(true)
@@ -353,6 +357,10 @@ export function StreamTile({
                     <div className="stats-row">
                       <span>Travadas (últimos 2 s):</span>
                       <strong style={{ color: inboundStats.freezes > 0 ? '#f59e0b' : undefined }}>{inboundStats.freezes}</strong>
+                    </div>
+                    <div className="stats-row">
+                      <span>Diagnóstico:</span>
+                      <strong style={{ color: watchProblem === 'ok' ? '#10b981' : '#f59e0b' }}>{describeWatchProblem(watchProblem)}</strong>
                     </div>
                   </>
                 )}

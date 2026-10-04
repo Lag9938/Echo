@@ -1,4 +1,5 @@
 import posthog from 'posthog-js'
+import type { WatchSessionSummary } from './streamWatchReport'
 
 const POSTHOG_KEY = (import.meta.env.VITE_POSTHOG_KEY as string) || ''
 const POSTHOG_HOST = (import.meta.env.VITE_POSTHOG_HOST as string) || 'https://us.i.posthog.com'
@@ -117,6 +118,23 @@ export function trackScreenShareStopped(durationSeconds?: number, quality?: Reco
   trackEvent('screenshare_stopped', {
     duration_seconds: durationSeconds ? Math.round(durationSeconds) : undefined,
     ...quality
+  })
+}
+
+/** Fluidez de uma transmissão ASSISTIDA (só números da medição do WebRTC). Menos de 20 s não diz nada. */
+export function trackScreenShareWatched(summary: WatchSessionSummary) {
+  if (summary.samples < 10) return
+  trackEvent('screenshare_watched', {
+    target_fps: summary.targetFps,
+    avg_fps: summary.avgFps,
+    avg_packet_loss_pct: summary.avgPacketLossPct,
+    avg_dropped_pct: summary.avgDroppedPct,
+    freezes: summary.freezes,
+    network_pct: summary.networkPct,
+    decoder_pct: summary.decoderPct,
+    source_pct: summary.sourcePct,
+    transport: summary.transport,
+    problem: summary.problem
   })
 }
 

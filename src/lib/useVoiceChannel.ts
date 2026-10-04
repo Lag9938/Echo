@@ -25,7 +25,7 @@ import { NOISE_GATE_PROCESSOR, type NoiseGateParams } from './audio/noiseGate'
 import { browserNoiseSuppression } from './audio/noiseSuppression'
 import { PeerBoost } from './audio/peerBoost'
 import { playJoinSound, playLeaveSound, playSoundboardEffect } from './soundEffects'
-import { trackVoiceJoined, trackVoiceLeft, trackScreenShareStarted, trackScreenShareStopped } from './analytics'
+import { trackVoiceJoined, trackVoiceLeft, trackScreenShareStarted, trackScreenShareStopped, trackScreenShareWatched } from './analytics'
 import { installPresenceTrackThrottle } from './presenceThrottle'
 import { isMusicBotIdentity, parseMusicBotState, encodeMusicBotVolume, MUSIC_BOT_CONTROL_TOPIC } from './musicBotState'
 import { useMusicBotStore } from '../stores/useMusicBotStore'
@@ -38,6 +38,7 @@ import { screenPlayoutDelays, setTrackPlayoutDelay } from './playoutDelay'
 import { screenShareBitrate } from './screenShareQuality'
 import { syncTrackSubscription } from './trackSubscription'
 import { createStreamSession, describeStreamSummary, type StreamSession } from './streamSessionReport'
+import { createWatchSession, targetFpsFromTrackName, type WatchSession } from './streamWatchReport'
 import { parseModerationNotice } from './voiceModeration'
 
 export type VoiceParticipant = {
@@ -353,6 +354,8 @@ export function useVoiceChannel(options?: {
   const screenShareStartTimeRef = useRef<number | null>(null)
   // Medições da transmissão em andamento, para o resumo de fluidez ao encerrar
   const streamSessionRef = useRef<StreamSession | null>(null)
+  // O mesmo para cada transmissão que este app está assistindo (por id da faixa de vídeo)
+  const watchSessionsRef = useRef<Map<string, WatchSession>>(new Map())
   
   // Audio playback elements & volume/pan
   const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map())
@@ -486,6 +489,31 @@ export function useVoiceChannel(options?: {
         previousShare = share.counters
         useScreenShareStatsStore.getState().setStats(share.outbound, share.inbound)
         if (share.outbound) streamSessionRef.current?.add(share.outbound)
+
+        // Quem assiste: um resumo por transmissão recebida, fechado (e enviado à análise de uso) quando ela
+        // deixa de chegar — é o que diz se o engasgo foi da rede, deste computador ou da origem.
+        const watching = watchSessionsRef.current
+        for (const [trackId, stats] of Object.entries(share.inbound)) {
+          let session = watching.get(trackId)
+          if (!session) {
+            let trackName: string | undefined
+            roomRef.current?.remoteParticipants.forEach((rp) => {
+              const pub = rp.getTrackPublication(Track.Source.ScreenShare)
+              if (pub?.track?.mediaStreamTrack?.id === trackId) trackName = pub.trackName
+            })
+            // Câmeras também chegam aqui: só as transmissões de tela (com o FPS no nome) são acompanhadas
+            const targetFps = targetFpsFromTrackName(trackName)
+            if (!targetFps) continue
+            session = createWatchSession(targetFps)
+            watching.set(trackId, session)
+          }
+          session.add(stats)
+        }
+        for (const [trackId, session] of watching) {
+          if (share.inbound[trackId]) continue
+          watching.delete(trackId)
+          trackScreenShareWatched(session.summary())
+        }
       } catch {
         // Sem medição por enquanto: a estimativa pela nota de qualidade continua valendo
       }
@@ -496,6 +524,9 @@ export function useVoiceChannel(options?: {
     return () => {
       cancelled = true
       clearInterval(timer)
+      // Saiu da chamada assistindo: fecha os resumos em aberto
+      watchSessionsRef.current.forEach((session) => trackScreenShareWatched(session.summary()))
+      watchSessionsRef.current.clear()
       useScreenShareStatsStore.getState().reset()
     }
   }, [isConnected])
