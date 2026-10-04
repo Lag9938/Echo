@@ -18,11 +18,43 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.53.2',
+    title: 'Echo v0.53.2 - Diagnóstico das Transmissões',
+    date: '4 de Outubro de 2026',
+    tagline: 'O Echo passa a dizer por que uma transmissão engasga, para quem assiste e para quem transmite, e ganha prioridade no computador enquanto você transmite.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🩺',
+        badge: 'NOVO',
+        title: 'Diagnóstico para Quem Assiste',
+        description: 'O painel de estatísticas da transmissão agora diz o que está atrapalhando: a rede, o seu computador ou a própria origem da transmissão. Também mostra se a conexão está indo por UDP ou TCP.'
+      },
+      {
+        icon: '📋',
+        badge: 'NOVO',
+        title: 'Resumo ao Encerrar a Transmissão',
+        description: 'Se a sua transmissão perdeu fluidez, ao encerrar o Echo avisa em que etapa foi (captura da tela, codificação ou internet de envio) e o que fazer.'
+      },
+      {
+        icon: '🚀',
+        badge: 'DESEMPENHO',
+        title: 'Prioridade Enquanto Você Transmite',
+        description: 'Enquanto você transmite a tela, o Echo roda com prioridade acima do normal, para um jogo pesado não tomar todo o processador da captura e da codificação. Ao encerrar, volta ao normal.'
+      },
+      {
+        icon: '📊',
+        badge: 'CORREÇÃO',
+        title: 'Painel de Quem Assiste Volta a Medir',
+        description: 'O painel de estatísticas de quem assiste ficava parado em "medindo…" e não mostrava os números reais. Agora mostra quadros recebidos, perdas e travadas.'
+      }
+    ]
+  },
+  {
     version: '0.53.1',
     title: 'Echo v0.53.1 - Menu da Chamada e Transmissões Sem Desperdício',
     date: '4 de Outubro de 2026',
     tagline: 'O menu de quem está na chamada abre inteiro, e a transmissão de tela só é entregue a quem está assistindo.',
-    isLatest: true,
     highlights: [
       {
         icon: '🎚️',
