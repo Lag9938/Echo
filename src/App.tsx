@@ -70,6 +70,7 @@ import { useEchoDMActions } from './hooks/useEchoDMActions'
 import { buildPresencePayload } from './lib/presencePayload'
 import { planThreadReplyNotice, type ThreadReplyNotice } from './lib/threads'
 import { useThreadsStore } from './stores/useThreadsStore'
+import { startBackgroundAnimationSaver } from './lib/backgroundAnimations'
 import { useEchoAudioPreferences, useEchoAudioSettingsActions } from './hooks/useEchoAudioPreferences'
 
 import type { Space, Channel, Message, DirectMessage, FriendshipRequest, SavedMessageItem, Page, Toast, RolePermissions, ServerRole, ServerAuditLog, ServerEmoji, PinnedMessage, GroupChat, GroupMessage } from './types'
@@ -503,6 +504,9 @@ function Echo({ user }: { user: User }) {
     handleNoiseGateEnabledChange,
     handleNoiseGateThresholdChange
   } = useEchoAudioPreferences()
+
+  // Com o Echo em segundo plano (minimizado ou sem foco), as animações decorativas param de gastar placa de vídeo
+  useEffect(() => startBackgroundAnimationSaver(), [])
 
   // Atualização automática (baixando / pronta), vinda do Electron
   const { updateStatus, updateVersion, updateProgress } = useEchoAutoUpdate()

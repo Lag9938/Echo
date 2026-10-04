@@ -1109,7 +1109,9 @@ body.echo-layout-glass .music-mini-bar i {
   width: 2.5px;
   background: #00f2fe;
   border-radius: 9999px;
-  height: 4px;
+  height: 14px;
+  transform: scaleY(0.21);
+  transform-origin: bottom;
 }
 
 .music-bot-eq-bar:nth-child(1) { animation: musicBotEq 0.8s ease-in-out infinite 0.1s; }
@@ -1117,9 +1119,11 @@ body.echo-layout-glass .music-mini-bar i {
 .music-bot-eq-bar:nth-child(3) { animation: musicBotEq 1.0s ease-in-out infinite 0.15s; }
 .music-bot-eq-bar:nth-child(4) { animation: musicBotEq 0.7s ease-in-out infinite 0.35s; }
 
+/* Escala em vez de altura: animar height refaz o layout a cada quadro (o mesmo tipo de animação fazia o
+   chat tremer). 3px de 14px = 0.21. */
 @keyframes musicBotEq {
-  0%, 100% { height: 3px; }
-  50% { height: 14px; }
+  0%, 100% { transform: scaleY(0.21); }
+  50% { transform: scaleY(1); }
 }
 
 /* Ações sutis no hover */

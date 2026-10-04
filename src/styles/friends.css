@@ -2155,12 +2155,14 @@
   pointer-events: none;
 }
 
+/* O brilho atravessa o selo por transform (não por left): mover com transform não refaz o layout a cada
+   quadro. A faixa tem 60% da largura do selo; ir de -120% a 160% do selo dá 280% dele = 466.67% da faixa. */
 @keyframes badgeShimmer {
   0%, 65% {
-    left: -120%;
+    transform: translateX(0) skewX(-22deg);
   }
   85%, 100% {
-    left: 160%;
+    transform: translateX(466.67%) skewX(-22deg);
   }
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, memo } from 'react'
+import { isAppInBackground } from '../lib/backgroundAnimations'
 
 export interface SpriteConfig {
   url: string
@@ -196,8 +197,23 @@ export const EchoSpriteDecoration = memo(function EchoSpriteDecoration({
     observer.observe(canvas)
     animId = requestAnimationFrame(render)
 
+    // Como os outros efeitos (canvas e Lottie): para de desenhar com o app minimizado ou sem foco
+    const syncWithAppFocus = () => {
+      cancelAnimationFrame(animId)
+      if (isVisible && !isAppInBackground()) {
+        lastFrameTime = performance.now()
+        animId = requestAnimationFrame(render)
+      }
+    }
+    document.addEventListener('visibilitychange', syncWithAppFocus)
+    window.addEventListener('blur', syncWithAppFocus)
+    window.addEventListener('focus', syncWithAppFocus)
+
     return () => {
       observer.disconnect()
+      document.removeEventListener('visibilitychange', syncWithAppFocus)
+      window.removeEventListener('blur', syncWithAppFocus)
+      window.removeEventListener('focus', syncWithAppFocus)
       cancelAnimationFrame(animId)
     }
   }, [loaded, config])
