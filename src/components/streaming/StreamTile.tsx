@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { VoiceParticipant } from '../../lib/useVoiceChannel'
 import { AudioLevelMeter } from '../voice/AudioLevelMeter'
+import { useScreenShareStatsStore } from '../../stores/useScreenShareStatsStore'
+import { describeLimitation, formatBitrate, isBelowTarget } from '../../lib/screenShareStats'
 import {
   BarChartIcon,
   EyeIcon,
@@ -56,7 +58,21 @@ export function StreamTile({
   const volumeVal = peerScreenVolumes[participant.userId] !== undefined ? peerScreenVolumes[participant.userId] : 100
   const [showLocalPreview, setShowLocalPreview] = useState(false)
   const [detectedFps, setDetectedFps] = useState<number>(participant.screenFps || 30)
-  const streamFps = isLocalSharer ? (localScreenFps || 30) : (participant.screenFps || detectedFps || 30)
+  // FPS pedido (a meta): o que a pessoa escolheu ao transmitir, ou o que quem transmite anunciou
+  const targetFps = isLocalSharer ? (localScreenFps || 30) : (participant.screenFps || detectedFps || 30)
+
+  // Medição real do WebRTC (a cada 2 s): o que este app envia, ou o que recebe desta transmissão
+  const screenTrackId = participant.screenStream?.getVideoTracks?.()[0]?.id
+  const outboundStats = useScreenShareStatsStore((s) => (isLocalSharer ? s.outbound : null))
+  const inboundStats = useScreenShareStatsStore((s) => (!isLocalSharer && screenTrackId ? s.inbound[screenTrackId] : undefined))
+  const realStats = isLocalSharer ? outboundStats : (inboundStats ?? null)
+  // Enquanto ainda não mediu, mostra a meta (marcada como tal no painel)
+  const streamFps = realStats ? Math.round(realStats.fps) : targetFps
+  // Alerta (em âmbar): quem transmite, quando a tela gera os quadros e o envio não acompanha; quem assiste,
+  // quando a recepção está perdendo quadros. Poucos quadros com a tela parada não é problema e não alerta.
+  const belowTarget = outboundStats
+    ? isBelowTarget(outboundStats.fps, targetFps, outboundStats.captureFps)
+    : Boolean(inboundStats && (inboundStats.droppedPct >= 5 || inboundStats.packetLossPct >= 2 || inboundStats.freezes > 0))
 
   const handleMouseMove = () => {
     setIsControlsVisible(true)
@@ -289,13 +305,60 @@ export function StreamTile({
             <button type="button" onClick={() => setShowStatsHud(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>✕</button>
           </div>
           <div className="stream-stats-hud-grid">
-            <div className="stats-row"><span>Resolução Real:</span> <strong>{streamResolution || '1920x1080'}</strong></div>
-            <div className="stats-row"><span>Taxa de Quadros:</span> <strong style={{ color: '#10b981' }}>{streamFps} FPS {streamFps >= 60 ? '(Ultra Suave)' : '(Padrão / Fluido)'}</strong></div>
-            <div className="stats-row"><span>Bitrate de Vídeo:</span> <strong>~2.4 - 3.2 Mbps (Otimizado SFU / Simulcast)</strong></div>
-            <div className="stats-row"><span>Codec de Vídeo:</span> <strong>H.264 High Profile (GPU HW)</strong></div>
-            <div className="stats-row"><span>Áudio do Jogo:</span> <strong>Opus 48kHz Estéreo (128 kbps)</strong></div>
-            <div className="stats-row"><span>Sincronia Labial:</span> <strong style={{ color: '#10b981' }}>{screenAudioSyncDelayMs !== undefined && screenAudioSyncDelayMs > 0 ? `+${screenAudioSyncDelayMs}ms (Manual [ / ])` : 'Automática (Tempo Real / 20ms Buffer)'}</strong></div>
-            <div className="stats-row"><span>Degradação:</span> <strong>Maintain Framerate (Sem Lag)</strong></div>
+            {realStats ? (
+              <>
+                <div className="stats-row">
+                  <span>{isLocalSharer ? 'Quadros enviados:' : 'Quadros recebidos:'}</span>
+                  <strong style={{ color: belowTarget ? '#f59e0b' : '#10b981' }}>{realStats.fps.toFixed(1)} FPS (meta {targetFps})</strong>
+                </div>
+                {outboundStats && outboundStats.captureFps !== null && (
+                  <div className="stats-row"><span>Quadros capturados:</span> <strong>{outboundStats.captureFps.toFixed(1)} FPS</strong></div>
+                )}
+                <div className="stats-row">
+                  <span>Resolução:</span>
+                  <strong>{realStats.width > 0 ? `${realStats.width}x${realStats.height}` : (streamResolution || 'medindo…')}</strong>
+                </div>
+                <div className="stats-row"><span>Bitrate de vídeo:</span> <strong>{formatBitrate(realStats.kbps)}</strong></div>
+                <div className="stats-row">
+                  <span>Codec:</span>
+                  <strong>
+                    {realStats.codec || 'medindo…'}
+                    {realStats.hardware === true ? ' (placa de vídeo)' : realStats.hardware === false ? ' (processador)' : ''}
+                  </strong>
+                </div>
+                {outboundStats && (
+                  <div className="stats-row">
+                    <span>Limitação:</span>
+                    <strong style={{ color: outboundStats.limitation === 'none' ? '#10b981' : '#f59e0b' }}>{describeLimitation(outboundStats.limitation)}</strong>
+                  </div>
+                )}
+                {inboundStats && (
+                  <>
+                    <div className="stats-row">
+                      <span>Quadros descartados:</span>
+                      <strong style={{ color: inboundStats.droppedPct >= 5 ? '#f59e0b' : undefined }}>{inboundStats.droppedPct}%</strong>
+                    </div>
+                    <div className="stats-row">
+                      <span>Pacotes perdidos:</span>
+                      <strong style={{ color: inboundStats.packetLossPct >= 2 ? '#f59e0b' : undefined }}>{inboundStats.packetLossPct}%</strong>
+                    </div>
+                    <div className="stats-row">
+                      <span>Travadas (últimos 2 s):</span>
+                      <strong style={{ color: inboundStats.freezes > 0 ? '#f59e0b' : undefined }}>{inboundStats.freezes}</strong>
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="stats-row"><span>Medição:</span> <strong>medindo…</strong></div>
+                <div className="stats-row"><span>Meta de quadros:</span> <strong>{targetFps} FPS</strong></div>
+                {streamResolution && <div className="stats-row"><span>Resolução:</span> <strong>{streamResolution}</strong></div>}
+              </>
+            )}
+            {!isLocalSharer && (
+              <div className="stats-row"><span>Sincronia labial:</span> <strong>{screenAudioSyncDelayMs !== undefined && screenAudioSyncDelayMs > 0 ? `+${screenAudioSyncDelayMs} ms (manual, teclas [ e ])` : 'Automática'}</strong></div>
+            )}
           </div>
         </div>
       )}
@@ -324,7 +387,11 @@ export function StreamTile({
             <span className="stream-author-name">{participant.displayName}</span>
           </div>
 
-          <span className="stream-quality-pill">
+          <span
+            className="stream-quality-pill"
+            style={belowTarget ? { color: '#f59e0b' } : undefined}
+            title={realStats ? `FPS medido agora (meta: ${targetFps})` : `Meta de ${targetFps} FPS (ainda medindo)`}
+          >
             {streamResolution ? `${streamFps} FPS • ${streamResolution}` : `${streamFps} FPS`}
           </span>
 

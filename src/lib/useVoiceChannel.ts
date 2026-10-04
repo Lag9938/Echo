@@ -31,6 +31,8 @@ import { isMusicBotIdentity, parseMusicBotState, encodeMusicBotVolume, MUSIC_BOT
 import { useMusicBotStore } from '../stores/useMusicBotStore'
 import { useCallStatsStore } from '../stores/useCallStatsStore'
 import { summarizeRtcStats, type InboundCounters } from './rtcStats'
+import { summarizeScreenShareStats, type ScreenShareCounters } from './screenShareStats'
+import { useScreenShareStatsStore } from '../stores/useScreenShareStatsStore'
 import { parseModerationNotice } from './voiceModeration'
 
 export type VoiceParticipant = {
@@ -448,6 +450,7 @@ export function useVoiceChannel(options?: {
     if (!isConnected) return
     let cancelled = false
     let previous: InboundCounters | null = null
+    let previousShare: ScreenShareCounters | null = null
 
     const measure = async () => {
       const manager = (roomRef.current as any)?.engine?.pcManager
@@ -465,6 +468,16 @@ export function useVoiceChannel(options?: {
           setRtcStats(stats)
           useCallStatsStore.getState().setStats(stats)
         }
+
+        // Transmissão de tela: quadros realmente enviados e recebidos (o painel de estatísticas lê daqui)
+        const screenPublication = roomRef.current?.localParticipant?.getTrackPublication?.(Track.Source.ScreenShare)
+        const screenTrackIds = [
+          screenPublication?.track?.mediaStreamTrack?.id,
+          ...(localScreenStreamRef.current?.getVideoTracks().map((track) => track.id) ?? [])
+        ].filter((id): id is string => typeof id === 'string')
+        const share = summarizeScreenShareStats(publisherStats, subscriberStats, previousShare, screenTrackIds)
+        previousShare = share.counters
+        useScreenShareStatsStore.getState().setStats(share.outbound, share.inbound)
       } catch {
         // Sem medição por enquanto: a estimativa pela nota de qualidade continua valendo
       }
@@ -475,6 +488,7 @@ export function useVoiceChannel(options?: {
     return () => {
       cancelled = true
       clearInterval(timer)
+      useScreenShareStatsStore.getState().reset()
     }
   }, [isConnected])
 
