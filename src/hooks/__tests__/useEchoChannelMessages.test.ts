@@ -3,6 +3,7 @@ import { renderHook, act } from '@testing-library/react'
 import { useEchoChannelMessages } from '../useEchoChannelMessages'
 import type { Channel, Space } from '../../types'
 import type { User } from '@supabase/supabase-js'
+import { onNotice } from '../../lib/realtimeNotices'
 
 describe('useEchoChannelMessages', () => {
   const mockUser: User = {
@@ -156,6 +157,77 @@ describe('useEchoChannelMessages', () => {
       act(() => handlers['new-message']({ payload: { ...row('m9', '🎵 Tocando agora'), profile: { display_name: 'Echo Music Bot' } } }))
 
       expect(result.current.messages.map((m) => m.body)).toContain('🎵 Tocando agora')
+    })
+  })
+
+  describe('avisos do banco no canal aberto (sem ouvintes de tabela)', () => {
+    function captureRealtime() {
+      const handlers: Record<string, (event: { payload: any }) => void> = {}
+      const kinds: string[] = []
+      const realtime = {
+        on: vi.fn((kind: string, filter: { event?: string }, handler: (event: { payload: any }) => void) => {
+          kinds.push(kind)
+          if (filter?.event) handlers[filter.event] = handler
+          return realtime
+        }),
+        subscribe: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }),
+        send: vi.fn().mockResolvedValue(undefined)
+      }
+      mockSupabase.channel = vi.fn().mockReturnValue(realtime)
+      return { handlers, kinds }
+    }
+
+    it('o canal aberto não usa mais postgres_changes: só broadcast em canal privado', async () => {
+      const { handlers, kinds } = captureRealtime()
+      setupHook()
+      await vi.waitFor(() => expect(handlers['update-message']).toBeTypeOf('function'))
+      expect(kinds.every((kind) => kind === 'broadcast')).toBe(true)
+      expect(mockSupabase.channel).toHaveBeenCalledTimes(1)
+      expect(mockSupabase.channel).toHaveBeenCalledWith('room-messages-channel-1', expect.objectContaining({ config: expect.objectContaining({ private: true }) }))
+    })
+
+    it('mensagem editada por outra pessoa recarrega o canal; edição de resposta de tópico não', async () => {
+      const { handlers } = captureRealtime()
+      setupHook()
+      await vi.waitFor(() => expect(handlers['update-message']).toBeTypeOf('function'))
+      const messageLoads = () => mockSupabase.from.mock.calls.filter(([table]: [string]) => table === 'messages').length
+      await vi.waitFor(() => expect(messageLoads()).toBeGreaterThan(0))
+      const before = messageLoads()
+
+      act(() => handlers['update-message']({ payload: { id: 'm1', channel_id: 'channel-1', body: 'editada', thread_root_id: 'raiz' } }))
+      expect(messageLoads()).toBe(before)
+
+      act(() => handlers['update-message']({ payload: { id: 'm1', channel_id: 'outro-canal', body: 'editada' } }))
+      expect(messageLoads()).toBe(before)
+
+      act(() => handlers['update-message']({ payload: { id: 'm1', channel_id: 'channel-1', body: 'editada' } }))
+      await vi.waitFor(() => expect(messageLoads()).toBeGreaterThan(before))
+    })
+
+    it('reação de outra pessoa recarrega as reações do canal', async () => {
+      const { handlers } = captureRealtime()
+      setupHook()
+      await vi.waitFor(() => expect(handlers['reactions-changed']).toBeTypeOf('function'))
+      const reactionLoads = () => mockSupabase.from.mock.calls.filter(([table]: [string]) => table === 'message_reactions').length
+      act(() => handlers['new-message']({ payload: { id: 'm1', channel_id: 'channel-1', body: 'oi', author_id: 'ana', created_at: new Date().toISOString() } }))
+      const before = reactionLoads()
+
+      act(() => handlers['reactions-changed']({ payload: { message_id: 'm1', channel_id: 'channel-1' } }))
+
+      await vi.waitFor(() => expect(reactionLoads()).toBeGreaterThan(before))
+    })
+
+    it('fixada mudou: repassa o aviso para quem cuida das fixadas, dizendo o canal', async () => {
+      const { handlers } = captureRealtime()
+      const seen: any[] = []
+      const stop = onNotice('pins-changed', (notice) => seen.push(notice))
+      setupHook()
+      await vi.waitFor(() => expect(handlers['pins-changed']).toBeTypeOf('function'))
+
+      act(() => handlers['pins-changed']({ payload: { channel_id: 'channel-1' } }))
+      stop()
+
+      expect(seen).toEqual([{ channel_id: 'channel-1' }])
     })
   })
 

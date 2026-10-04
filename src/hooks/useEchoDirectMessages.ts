@@ -32,7 +32,6 @@ export function useEchoDirectMessages({
   user,
   profileDisplayName,
   displayName,
-  friendships,
   spaceMembers,
   socialChannelRef,
   sfxVolume,
@@ -255,42 +254,6 @@ export function useEchoDirectMessages({
     loadDirectMessages(targetId)
   }, [setInspectedMember, setHoveredMemberPopover, setKnownProfiles, spaceMembers, setPage, loadDirectMessages, blockedUserIds, showToast])
 
-  const handleNewDMPostgresChanges = useCallback((payload: any) => {
-    const newMsg = payload.new as DirectMessage
-    if (blockedUserIds?.has(newMsg.sender_id)) return
-    if (newMsg.sender_id === user.id || newMsg.receiver_id === user.id) {
-      const friendObj = friendships.find(f => f.user.id === newMsg.sender_id)
-      const senderName = friendObj?.user.display_name || 'Um amigo'
-
-      if (newMsg.receiver_id === user.id && !document.hasFocus()) {
-        triggerDesktopNotification(`Mensagem de ${senderName}`, newMsg.body || '', {
-          type: 'dm',
-          senderId: newMsg.sender_id,
-          senderName
-        })
-      }
-
-      if (selectedDMUserIdRef.current && (newMsg.sender_id === selectedDMUserIdRef.current || newMsg.receiver_id === selectedDMUserIdRef.current)) {
-        loadDirectMessages(selectedDMUserIdRef.current)
-      } else if (newMsg.receiver_id === user.id) {
-        playDmNotificationSound(sfxVolume)
-        setUnreadDMs(prev => {
-          const currentCount = prev[newMsg.sender_id] || 0
-          return { ...prev, [newMsg.sender_id]: currentCount + 1 }
-        })
-        showToast(
-          `Nova mensagem de ${senderName}`, 
-          newMsg.body.substring(0, 50) + (newMsg.body.length > 50 ? '...' : ''), 
-          'message',
-          () => {
-            handleOpenDirectChat(newMsg.sender_id)
-            setPage('Amigos')
-          }
-        )
-      }
-    }
-  }, [user.id, friendships, triggerDesktopNotification, loadDirectMessages, playDmNotificationSound, sfxVolume, showToast, handleOpenDirectChat, setPage])
-
   const handleDMBroadcast = useCallback((data: any) => {
     if (!data) return
     if (blockedUserIds?.has(data.senderId)) return
@@ -364,7 +327,6 @@ export function useEchoDirectMessages({
     sendDirectMessage,
     handleDeleteDM,
     handleOpenDirectChat,
-    handleNewDMPostgresChanges,
     handleDMBroadcast,
     handleDMDeleteBroadcast,
     handleDMTypingBroadcast

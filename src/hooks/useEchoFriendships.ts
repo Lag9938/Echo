@@ -294,24 +294,6 @@ export function useEchoFriendships({
     }
   }, [supabase, setError, loadFriendships])
 
-  const handleFriendshipPostgresChanges = useCallback((payload: any) => {
-    loadFriendships()
-    if (payload.eventType === 'INSERT') {
-      const newFriendship = payload.new
-      if (newFriendship?.friend_id === user.id) {
-        playFriendRequestSound(sfxVolume)
-        showToast('Solicitação de Amizade', 'Você recebeu um novo convite de amizade.', 'friend')
-        triggerDesktopNotification('Solicitação de Amizade', 'Você recebeu um novo convite de amizade.')
-      }
-    } else if (payload.eventType === 'UPDATE') {
-      const updatedFriendship = payload.new
-      if (updatedFriendship?.status === 'accepted' && (updatedFriendship.user_id === user.id || updatedFriendship.friend_id === user.id)) {
-        playFriendAcceptSound(sfxVolume)
-        showToast('Amizade Aceita!', 'Um amigo aceitou sua solicitação!', 'friend')
-      }
-    }
-  }, [loadFriendships, user.id, playFriendRequestSound, sfxVolume, showToast, triggerDesktopNotification, playFriendAcceptSound])
-
   const handleFriendEvent = useCallback((data: any) => {
     if (!data) return
     if (data.targetUserId === user.id) {
@@ -345,7 +327,6 @@ export function useEchoFriendships({
     sendFriendRequestToUser,
     acceptFriendRequest,
     removeFriendship,
-    handleFriendshipPostgresChanges,
     handleFriendEvent
   }
 }

@@ -3,6 +3,7 @@ import type { User, RealtimeChannel } from '@supabase/supabase-js'
 import type { Message, Channel, Space, RolePermissions } from '../types'
 import { trackMessageSent } from '../lib/analytics'
 import { MESSAGE_DELETED_EVENT, THREAD_MESSAGE_EVENT, isMissingThreadColumn, threadSupport } from '../lib/threads'
+import { emitNotice } from '../lib/realtimeNotices'
 import {
   generateTempMessageId,
   createAntiSpamState,
@@ -727,32 +728,22 @@ export function useEchoChannelMessages({
       })
     })
 
-    // 3. PostgreSQL Changes — mensagens (DELETE/UPDATE)
-    live.on('postgres_changes', { 
-      event: '*', 
-      schema: 'public', 
-      table: 'messages', 
-      filter: `channel_id=eq.${selectedChannel.id}` 
-    }, (payload: any) => {
-      const isDeleteOrUpdate = payload && (payload.eventType === 'DELETE' || payload.eventType === 'UPDATE')
-      // Mensagem nova que já chegou pelo broadcast (ou pelo envio confirmado): não precisa rebuscar tudo
-      if (payload?.eventType === 'INSERT' && payload.new?.id &&
-          messagesRef.current.some(m => m.id === payload.new.id && m.status === 'sent')) {
-        return
-      }
+    // 3. Avisos do banco (migração 15) no lugar dos ouvintes de tabela: mensagem editada, reações e fixadas.
+    //    Mensagem nova e apagada já chegam por "new-message" / "delete-message".
+    live.on('broadcast', { event: 'update-message' }, ({ payload }: { payload: any }) => {
+      if (!payload || !payload.id) return
+      if (payload.channel_id && payload.channel_id !== selectedChannel.id) return
       // Resposta de tópico não muda o chat principal
-      if (payload?.eventType === 'INSERT' && payload.new?.thread_root_id) return
-      loadMessages(selectedChannel.id, isDeleteOrUpdate)
+      if (payload.thread_root_id) return
+      loadMessages(selectedChannel.id, true)
     })
 
-    // 4. PostgreSQL Changes — reações em tempo real (todos os membros veem as reações sincronizadas)
-    live.on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'message_reactions'
-    }, (_payload: any) => {
-      // Recarrega as reações para o canal atual quando qualquer reação mudar
+    live.on('broadcast', { event: 'reactions-changed' }, () => {
       loadReactionsForChannel(selectedChannel.id)
+    })
+
+    live.on('broadcast', { event: 'pins-changed' }, () => {
+      emitNotice('pins-changed', { channel_id: selectedChannel.id })
     })
 
     live.subscribe()

@@ -7,6 +7,7 @@ import { parseInvite } from '../lib/invite'
 import { joinSpaceWithInvite } from '../lib/spaceInvites'
 import { installPresenceTrackThrottle } from '../lib/presenceThrottle'
 import { startBackgroundSync } from '../lib/backgroundSync'
+import { onNotice } from '../lib/realtimeNotices'
 
 export interface UseEchoSpacesOptions {
   user: User
@@ -195,29 +196,12 @@ export function useEchoSpaces({
     }
   }
 
-  // Inscrição Realtime global para mudanças nos espaços deste usuário (adicionado ou removido de espaços)
+  // Entrei, saí ou fui removido de um espaço: o banco avisa na minha caixa de entrada (migração 15)
   useEffect(() => {
     if (!supabase || !user?.id) return
-
-    const userSpacesChannel = supabase
-      .channel(`user-spaces-membership-${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'space_members',
-          filter: `user_id=eq.${user.id}`
-        },
-        () => {
-          loadSpaces()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(userSpacesChannel)
-    }
+    return onNotice('space-membership', () => {
+      loadSpaces()
+    })
   }, [supabase, user?.id])
 
   async function loadChannelsForSpace(spaceId: string) {
@@ -396,23 +380,17 @@ export function useEchoSpaces({
       }, 600)
     }
 
-    // Canal Realtime para mudanças no banco (Postgres changes)
-    const membersChannel = supabase
-      .channel(`public-space-members-${currentSpaceId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'space_members', filter: `space_id=eq.${currentSpaceId}` }, () => {
-        debouncedLoadMembers(currentSpaceId)
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'space_roles', filter: `space_id=eq.${currentSpaceId}` }, () => {
-        loadSpaceRoles?.(currentSpaceId)
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'space_member_roles', filter: `space_id=eq.${currentSpaceId}` }, () => {
-        loadMemberRoles?.(currentSpaceId)
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'spaces', filter: `id=eq.${currentSpaceId}` }, () => {
-        loadSpaces()
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload: any) => {
-        const updated = payload.new as any
+    // Mudanças do espaço aberto: o banco avisa pelo canal privado do espaço (useEchoSpaceEvents) e a lista
+    // é recarregada pela API. Antes eram ouvintes de tabela num canal público.
+    const forThisSpace = (handler: () => void) => (notice: { space_id: string }) => {
+      if (notice?.space_id === currentSpaceId) handler()
+    }
+    const stopSpaceNotices = [
+      onNotice('members-changed', forThisSpace(() => debouncedLoadMembers(currentSpaceId))),
+      onNotice('roles-changed', forThisSpace(() => { loadSpaceRoles?.(currentSpaceId) })),
+      onNotice('member-roles-changed', forThisSpace(() => { loadMemberRoles?.(currentSpaceId) })),
+      onNotice('space-updated', forThisSpace(() => { loadSpaces() })),
+      onNotice('member-profile', (updated) => {
         if (!updated?.id) return
         setSpaceMembersMap(prev => {
           const list = prev[currentSpaceId] || []
@@ -432,7 +410,7 @@ export function useEchoSpaces({
           return { ...prev, [currentSpaceId]: nextList }
         })
       })
-      .subscribe()
+    ]
 
     // Canal Realtime de Presença do Servidor (WebSockets direto, imune a RLS)
     const spacePresenceChannel = supabase.channel(`space-presence-${currentSpaceId}`, {
@@ -575,7 +553,7 @@ export function useEchoSpaces({
       window.removeEventListener('echo-presence-refresh', handlePresenceRefresh)
       window.removeEventListener('storage', handlePresenceRefresh)
       spacePresenceChannel.untrack().catch(() => {})
-      supabase?.removeChannel(membersChannel)
+      stopSpaceNotices.forEach(stop => stop())
       supabase?.removeChannel(spacePresenceChannel)
     }
   }, [expandedSpace, selectedChannel?.space_id, user?.id])

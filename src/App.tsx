@@ -69,6 +69,8 @@ import { useEchoNotificationNavigation } from './hooks/useEchoNotificationNaviga
 import { useEchoDMActions } from './hooks/useEchoDMActions'
 import { buildPresencePayload } from './lib/presencePayload'
 import { planThreadReplyNotice, type ThreadReplyNotice } from './lib/threads'
+import { emitNotice, onNotice } from './lib/realtimeNotices'
+import { useEchoSpaceEvents } from './hooks/useEchoSpaceEvents'
 import { useThreadsStore } from './stores/useThreadsStore'
 import { startBackgroundAnimationSaver } from './lib/backgroundAnimations'
 import { useEchoAudioPreferences, useEchoAudioSettingsActions } from './hooks/useEchoAudioPreferences'
@@ -683,7 +685,6 @@ function Echo({ user }: { user: User }) {
     sendFriendRequestToUser,
     acceptFriendRequest,
     removeFriendship,
-    handleFriendshipPostgresChanges,
     handleFriendEvent
   } = useEchoFriendships({
     user,
@@ -735,7 +736,6 @@ function Echo({ user }: { user: User }) {
     sendDirectMessage,
     handleDeleteDM,
     handleOpenDirectChat,
-    handleNewDMPostgresChanges,
     handleDMBroadcast,
     handleDMDeleteBroadcast,
     handleDMTypingBroadcast
@@ -1360,69 +1360,60 @@ function Echo({ user }: { user: User }) {
     loadGroupChats()
     loadAudioDevices()
 
-    const client = supabase
-    if (!client) return
+    // Mensagem nova em qualquer canal que eu vejo (não lidas, menções e notificação). O aviso vem do banco:
+    // pelo canal do espaço quando todo membro vê o canal, ou pela minha caixa de entrada quando é restrito.
+    return onNotice('channel-activity', (newMsg) => {
+      if (!newMsg || newMsg.author_id === userRef.current?.id) return
 
-    // Setup global realtime messages listener to detect unread messages and mentions
-    const globalMessagesChannel = client.channel('global-messages')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-        const newMsg = payload.new as any
-        if (!newMsg || newMsg.author_id === userRef.current?.id) return
+      const isCurrentChannel = newMsg.channel_id === selectedChannelRef.current?.id
+      const isAppFocused = typeof document !== 'undefined' && document.hasFocus()
+      // Resposta de tópico não marca o canal como não lido nem notifica todo mundo: quem participa do
+      // tópico é avisado pela caixa de entrada ("thread-reply"). Menção continua valendo.
+      const isThreadReply = Boolean(newMsg.thread_root_id)
 
-        const isCurrentChannel = newMsg.channel_id === selectedChannelRef.current?.id
-        const isAppFocused = typeof document !== 'undefined' && document.hasFocus()
-        // Resposta de tópico não marca o canal como não lido nem notifica todo mundo: quem participa do
-        // tópico é avisado pela caixa de entrada ("thread-reply"). Menção continua valendo.
-        const isThreadReply = Boolean(newMsg.thread_root_id)
+      if (!isCurrentChannel && !isThreadReply) {
+        setUnreadChannels(prev => {
+          if (prev.has(newMsg.channel_id)) return prev
+          const next = new Set(prev)
+          next.add(newMsg.channel_id)
+          return next
+        })
+      }
 
-        if (!isCurrentChannel && !isThreadReply) {
-          setUnreadChannels(prev => {
-            if (prev.has(newMsg.channel_id)) return prev
-            const next = new Set(prev)
-            next.add(newMsg.channel_id)
-            return next
-          })
+      const isSpaceMuted = Object.entries(spaceChannelsRef.current).some(([sId, chList]) =>
+        mutedSpacesRef.current.has(sId) && chList.some(c => c.id === newMsg.channel_id)
+      )
+
+      // Verifica se o usuário foi mencionado
+      const myName = (profileDisplayNameRef.current || userRef.current?.user_metadata?.display_name || '').toLowerCase()
+      const myId = (userRef.current?.id || '').toLowerCase()
+      const bodyLower = (newMsg.body || '').toLowerCase()
+      const isMentioned = 
+        (myName && bodyLower.includes(`@${myName}`)) ||
+        (myId && bodyLower.includes(`@${myId}`)) ||
+        bodyLower.includes('@everyone') ||
+        bodyLower.includes('@here')
+
+      // Se o app não estiver em foco e (for mencionado OU for mensagem em outro canal não mutado)
+      if (!isAppFocused && (isMentioned || (!isSpaceMuted && !isCurrentChannel && !isThreadReply))) {
+        const chObj = Object.values(spaceChannelsRef.current).flat().find(c => c.id === newMsg.channel_id)
+        const chName = chObj?.name ? `#${chObj.name}` : 'canal'
+        const title = isMentioned ? `Mencionado em ${chName}` : `Nova mensagem em ${chName}`
+
+        triggerDesktopNotification(title, newMsg.body || '', {
+          type: 'channel',
+          channelId: newMsg.channel_id
+        })
+
+        if (typeof (window as any).electronAPI?.flashFrame === 'function') {
+          ;(window as any).electronAPI.flashFrame(true)
         }
 
-        const isSpaceMuted = Object.entries(spaceChannelsRef.current).some(([sId, chList]) =>
-          mutedSpacesRef.current.has(sId) && chList.some(c => c.id === newMsg.channel_id)
-        )
-
-        // Verifica se o usuário foi mencionado
-        const myName = (profileDisplayNameRef.current || userRef.current?.user_metadata?.display_name || '').toLowerCase()
-        const myId = (userRef.current?.id || '').toLowerCase()
-        const bodyLower = (newMsg.body || '').toLowerCase()
-        const isMentioned = 
-          (myName && bodyLower.includes(`@${myName}`)) ||
-          (myId && bodyLower.includes(`@${myId}`)) ||
-          bodyLower.includes('@everyone') ||
-          bodyLower.includes('@here')
-
-        // Se o app não estiver em foco e (for mencionado OU for mensagem em outro canal não mutado)
-        if (!isAppFocused && (isMentioned || (!isSpaceMuted && !isCurrentChannel && !isThreadReply))) {
-          const chObj = Object.values(spaceChannelsRef.current).flat().find(c => c.id === newMsg.channel_id)
-          const chName = chObj?.name ? `#${chObj.name}` : 'canal'
-          const title = isMentioned ? `Mencionado em ${chName}` : `Nova mensagem em ${chName}`
-
-          triggerDesktopNotification(title, newMsg.body || '', {
-            type: 'channel',
-            channelId: newMsg.channel_id
-          })
-
-          if (typeof (window as any).electronAPI?.flashFrame === 'function') {
-            ;(window as any).electronAPI.flashFrame(true)
-          }
-
-          if (isMentioned) {
-            playDmNotificationSound(sfxVolumeRef.current)
-          }
+        if (isMentioned) {
+          playDmNotificationSound(sfxVolumeRef.current)
         }
-      })
-      .subscribe()
-
-    return () => {
-      client.removeChannel(globalMessagesChannel)
-    }
+      }
+    })
   }, [])
 
   // Sincronização do contador de não lidos com o ícone do aplicativo e parada do flash da barra ao focar
@@ -1455,19 +1446,30 @@ function Echo({ user }: { user: User }) {
     mutedSpacesRef.current = mutedSpaces
   }, [mutedSpaces])
 
-  // Listen for realtime direct messages and show notifications (Realtime Broadcast + Database)
-  useEffect(() => {
-    if (!supabase || !user) return
+  // Um canal privado por espaço de que participo: mensagens novas, membros, cargos e dados do espaço
+  const joinedSpaceIds = useMemo(() => spaces.map(s => s.id), [spaces])
+  useEchoSpaceEvents({ supabase, userId: user?.id, spaceIds: joinedSpaceIds })
 
-    const liveDMs = supabase
-      .channel('public-direct-messages')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages' }, handleNewDMPostgresChanges)
-      .subscribe()
-
-    return () => {
-      supabase?.removeChannel(liveDMs)
+  // Meu perfil mudou no banco (outro aparelho, ou a assinatura confirmada pelo servidor de cobrança)
+  const handleOwnProfileNotice = useCallback((updated: any) => {
+    if (!updated || updated.id !== userRef.current?.id) return
+    if (updated.avatar_decoration !== undefined) setAvatarDecoration(updated.avatar_decoration || '')
+    if (updated.profile_effect !== undefined) setProfileEffect(updated.profile_effect || '')
+    if (updated.display_name) setProfileDisplayName(updated.display_name)
+    if (updated.avatar_url) setProfileAvatarUrl(updated.avatar_url)
+    if (updated.is_premium !== undefined) {
+      const hasActivePro = Boolean(
+        updated.is_premium &&
+        (!updated.premium_until || new Date(updated.premium_until).getTime() > Date.now())
+      )
+      setIsPremiumUser(hasActivePro)
+      if (hasActivePro) {
+        localStorage.setItem('echo-premium', 'true')
+      } else {
+        localStorage.removeItem('echo-premium')
+      }
     }
-  }, [handleNewDMPostgresChanges, supabase, user])
+  }, [setAvatarDecoration, setProfileEffect, setProfileDisplayName, setProfileAvatarUrl, setIsPremiumUser])
 
   // Alguém respondeu num tópico de que participo (aviso do banco na caixa de entrada, sem o texto)
   const handleThreadReplyNotice = useCallback((notice: ThreadReplyNotice | null | undefined) => {
@@ -1500,33 +1502,6 @@ function Echo({ user }: { user: User }) {
   // Global Social Broadcast Channel for 0ms instant friend and DM delivery
   useEffect(() => {
     if (!supabase || !user) return
-
-    const liveFriendships = supabase
-      .channel('public-friendships')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, handleFriendshipPostgresChanges)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload: any) => {
-        handleFriendshipPostgresChanges(payload)
-        const updated = payload.new as any
-        if (updated && updated.id === user.id) {
-          if (updated.avatar_decoration !== undefined) setAvatarDecoration(updated.avatar_decoration || '')
-          if (updated.profile_effect !== undefined) setProfileEffect(updated.profile_effect || '')
-          if (updated.display_name) setProfileDisplayName(updated.display_name)
-          if (updated.avatar_url) setProfileAvatarUrl(updated.avatar_url)
-          if (updated.is_premium !== undefined) {
-            const hasActivePro = Boolean(
-              updated.is_premium &&
-              (!updated.premium_until || new Date(updated.premium_until).getTime() > Date.now())
-            )
-            setIsPremiumUser(hasActivePro)
-            if (hasActivePro) {
-              localStorage.setItem('echo-premium', 'true')
-            } else {
-              localStorage.removeItem('echo-premium')
-            }
-          }
-        }
-      })
-      .subscribe()
 
     // Dedicated Realtime WebSockets Broadcast Channel
     // Caixa de entrada pessoal e privada: só este usuário ouve (regra em realtime.messages, migração 13).
@@ -1561,13 +1536,25 @@ function Echo({ user }: { user: User }) {
       .on('broadcast', { event: 'thread-reply' }, (payload: any) => {
         handleThreadReplyNotice(payload?.payload)
       })
+      // Avisos do banco que antes vinham de ouvintes de tabela (migração 15)
+      .on('broadcast', { event: 'channel-activity' }, (payload: any) => {
+        emitNotice('channel-activity', payload?.payload)
+      })
+      .on('broadcast', { event: 'space-membership' }, (payload: any) => {
+        emitNotice('space-membership', payload?.payload)
+      })
+      .on('broadcast', { event: 'profile-updated' }, (payload: any) => {
+        handleOwnProfileNotice(payload?.payload)
+      })
+      .on('broadcast', { event: 'friend-profile' }, () => {
+        loadFriendships()
+      })
       .subscribe()
 
     return () => {
-      supabase?.removeChannel(liveFriendships)
       supabase?.removeChannel(socialChannel)
     }
-  }, [handleFriendshipPostgresChanges, handleFriendEvent, handleDMBroadcast, handleDMDeleteBroadcast, handleCallEvent, handleDMTypingBroadcast, handleGroupMessageBroadcast, handleGroupTypingBroadcast, handleThreadReplyNotice, supabase, user])
+  }, [handleOwnProfileNotice, loadFriendships, handleFriendEvent, handleDMBroadcast, handleDMDeleteBroadcast, handleCallEvent, handleDMTypingBroadcast, handleGroupMessageBroadcast, handleGroupTypingBroadcast, handleThreadReplyNotice, supabase, user])
 
   // Sincronização de redundância (o normal já chega em tempo real): a cada 5 min com a janela visível e ao voltar para ela
   useEffect(() => {

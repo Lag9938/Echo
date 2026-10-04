@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Message, PinnedMessage } from '../types'
+import { onNotice } from '../lib/realtimeNotices'
 
 export interface UseEchoPinnedMessagesOptions {
   profileDisplayName: string
@@ -18,7 +19,7 @@ export function useEchoPinnedMessages({
 }: UseEchoPinnedMessagesOptions) {
   const [pinnedMessages, setPinnedMessages] = useState<Record<string, PinnedMessage[]>>({})
   const [showPinnedMessagesPanel, setShowPinnedMessagesPanel] = useState(false)
-  const pinnedSubRef = useRef<any>(null)
+  const pinnedSubRef = useRef<(() => void) | null>(null)
 
   async function loadPinnedMessages(channelId: string) {
     // 1. Carrega cache local imediatamente (sem flicker)
@@ -62,22 +63,12 @@ export function useEchoPinnedMessages({
       console.warn('loadPinnedMessages error:', err)
     }
 
-    // 3. Subscrição realtime para sincronizar com outros membros
-    if (pinnedSubRef.current) {
-      supabase.removeChannel(pinnedSubRef.current)
-    }
-    pinnedSubRef.current = supabase
-      .channel(`pinned-messages-${channelId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'pinned_messages',
-        filter: `channel_id=eq.${channelId}`
-      }, () => {
-        // Recarrega ao detectar qualquer mudança
-        loadPinnedMessagesQuiet(channelId)
-      })
-      .subscribe()
+    // 3. Sincroniza com os outros membros: o banco avisa "pins-changed" no canal privado do canal aberto
+    //    (quem assina é o useEchoChannelMessages) e a lista é recarregada
+    pinnedSubRef.current?.()
+    pinnedSubRef.current = onNotice('pins-changed', (notice) => {
+      if (notice?.channel_id === channelId) loadPinnedMessagesQuiet(channelId)
+    })
   }
 
   async function loadPinnedMessagesQuiet(channelId: string) {
@@ -172,12 +163,11 @@ export function useEchoPinnedMessages({
     }
   }
 
-  // Cleanup da subscrição ao desmontar
+  // Para de ouvir ao desmontar
   useEffect(() => {
     return () => {
-      if (pinnedSubRef.current && supabase) {
-        supabase.removeChannel(pinnedSubRef.current)
-      }
+      pinnedSubRef.current?.()
+      pinnedSubRef.current = null
     }
   }, [supabase])
 

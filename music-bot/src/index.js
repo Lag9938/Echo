@@ -22,13 +22,13 @@ console.log('[Echo Music Bot] Iniciando...')
 console.log(`[Echo Music Bot] LiveKit: ${config.livekitUrl}`)
 console.log(`[Echo Music Bot] Limite de sessões simultâneas: ${config.maxConcurrentSessions}`)
 
-// Supabase Realtime só filtra por igualdade (não dá pra filtrar "body
-// começa com !"), então assina todo INSERT em messages e filtra os
-// comandos aqui na aplicação. Pra uma comunidade de porte pequeno/médio
-// isso é totalmente tranquilo — o volume de mensagens é baixo perto do
-// que o Realtime aguenta.
-async function handleMessageInsert(payload) {
-    const msg = payload.new
+// O banco avisa cada comando (mensagem que começa com "!" num canal de voz) no canal privado
+// "music-bot-commands" (migração 15), que só a chave do servidor consegue ouvir. Antes o bot assinava
+// TODO INSERT de messages por postgres_changes num canal público e filtrava aqui — a parte mais cara do
+// Realtime no banco, e o que impedia fechar o acesso público.
+// ⚠️ Esta versão do bot precisa da migração 15 aplicada: sem ela nenhum comando chega.
+async function handleCommandNotice({ payload }) {
+    const msg = payload
     if (!msg || msg.author_id === config.botAuthorId) return // ignora as próprias mensagens do bot
 
     const command = parseCommand(msg.body)
@@ -64,8 +64,8 @@ async function handleMessageInsert(payload) {
 // systemd (Restart=always) sobe um bot novo em vez de ele ficar rodando sem ouvir os comandos.
 const commandsSubscription = keepSubscribed({
   subscribe: (onStatus) => supabase
-    .channel('music-bot-commands')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, handleMessageInsert)
+    .channel('music-bot-commands', { config: { private: true } })
+    .on('broadcast', { event: 'command' }, handleCommandNotice)
     .subscribe(onStatus),
   unsubscribe: (channel) => supabase.removeChannel(channel),
   isHealthy: (channel) => channel.state === 'joined' && supabase.realtime.isConnected(),

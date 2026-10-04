@@ -1035,6 +1035,167 @@ console.log('\n[Migração 13: tempo real privado, avisos do banco, cobrança e 
   check('depois do rollback, mensagem comum segue sendo avisada', (await sent()).some(x => x.event === 'new-message'))
   const re14 = await applyScript(sql14)
   check('migração 14 reaplica depois do rollback', !re14.error, re14.error)
+
+  // =========================================================================
+  console.log('\n[Migração 15: avisos do banco no lugar do postgres_changes]')
+  // =========================================================================
+  const setup15 = await applyScript(`
+    alter table public.profiles add column if not exists is_premium boolean default false;
+    alter table public.profiles add column if not exists premium_until timestamptz;
+    alter table public.profiles add column if not exists banner_url text;
+    alter table public.profiles add column if not exists banner_preset text;
+    alter table public.profiles add column if not exists bio text;
+    alter table public.profiles add column if not exists pronouns text;
+    alter table public.profiles add column if not exists custom_status text;
+    create table if not exists public.message_reactions (id uuid primary key default gen_random_uuid(),
+      message_id uuid not null references public.messages(id) on delete cascade, user_id uuid, emoji text, created_at timestamptz default now());
+  `)
+  check('estado de produção para a migração 15 montado', !setup15.error, setup15.error)
+  const sql15 = fs.readFileSync(`${REPO}/migration_15_avisos_do_banco.sql`, 'utf8')
+  const m15 = await applyScript(sql15)
+  check('migração 15 aplica sem erros', !m15.error, m15.error)
+  const m15again = await applyScript(sql15)
+  check('migração 15 pode ser reaplicada', !m15again.error, m15again.error)
+
+  // ---- Canais novos ----
+  check('membro ouve os avisos do espaço', await canRead('B', `space-events-${S7}`))
+  check('quem não é do espaço NÃO ouve os avisos do espaço', !(await canRead('D', `space-events-${S7}`)))
+  check('ninguém publica pelo app nos avisos do espaço (nem o dono)', !(await canWrite('A', `space-events-${S7}`)) && !(await canWrite('B', `space-events-${S7}`)))
+  check('o app NÃO ouve nem publica no canal de comandos do bot', !(await canRead('A', 'music-bot-commands')) && !(await canWrite('A', 'music-bot-commands')))
+  check('as regras da migração 13 continuam valendo', await canRead('A', `user:${U.A}`) && !(await canRead('B', `user:${U.A}`))
+    && await canRead('B', `room-messages-${PUB7}`) && !(await canRead('B', `room-messages-${PRIV7}`)) && await canWrite('B', `space-voice-${S7}`, 'presence'))
+
+  // ---- Mensagem nova em canal que todo membro vê ----
+  const activity = (rows) => rows.filter(x => x.event === 'channel-activity')
+  await clearSent()
+  const M15 = (await post('B', PUB7, 'alguém online? @nome A')).rows[0]?.id
+  let a = await sent()
+  check('mensagem em canal aberto avisa o espaço UMA vez, com o texto (para menção e notificação)',
+    activity(a).length === 1 && activity(a)[0].topic === `space-events-${S7}` && activity(a)[0].payload.id === M15
+      && activity(a)[0].payload.channel_id === PUB7 && activity(a)[0].payload.author_id === U.B
+      && activity(a)[0].payload.body === 'alguém online? @nome A' && activity(a)[0].payload.thread_root_id === null, JSON.stringify(activity(a)))
+  check('…e o "new-message" do canal aberto continua saindo', a.some(x => x.event === 'new-message' && x.topic === `room-messages-${PUB7}`))
+  await clearSent()
+  await post('C', PUB7, 'resposta no tópico', M15)
+  check('resposta de tópico também avisa o espaço, marcada como tópico',
+    activity(await sent())[0]?.payload.thread_root_id === M15)
+
+  // ---- Canal restrito: o texto só vai para quem enxerga o canal ----
+  await clearSent()
+  await post('A', PRIV7, 'só a staff lê isto')
+  a = await sent()
+  check('mensagem em canal privado NÃO vai para o canal do espaço nem para quem não vê o canal',
+    activity(a).length === 0 && !JSON.stringify(a.filter(x => x.topic.startsWith('space-events-'))).includes('staff'), JSON.stringify(a))
+  const ROLE15 = (await admin("insert into public.space_roles(space_id, name, position, permissions) values ($1, 'Staff', 1, '{}') returning id", [S7])).rows[0].id
+  await admin('insert into public.space_member_roles(space_id, user_id, role_id) values ($1, $2, $3)', [S7, U.C, ROLE15])
+  await admin('update public.channels set allowed_role_ids = array[$1::text] where id = $2', [ROLE15, PRIV7])
+  await clearSent()
+  await post('A', PRIV7, 'reunião da staff')
+  a = activity(await sent())
+  check('…quem tem o cargo do canal privado é avisado na PRÓPRIA caixa de entrada, e só ele',
+    a.length === 1 && a[0].topic === `user:${U.C}` && a[0].payload.body === 'reunião da staff', JSON.stringify(a))
+  await clearSent()
+  await post('C', PRIV7, 'ok, estou dentro')
+  a = activity(await sent())
+  check('…e o dono (que vê tudo) é avisado quando outro escreve no canal privado; o autor não avisa a si mesmo',
+    a.length === 1 && a[0].topic === `user:${U.A}`, JSON.stringify(a))
+
+  // ---- Comandos do bot de música ----
+  const VOICE7 = (await admin("insert into public.channels(space_id, name, type) values ($1, 'resenha', 'voice') returning id", [S7])).rows[0].id
+  const commands = async () => (await sent()).filter(x => x.topic === 'music-bot-commands')
+  await clearSent()
+  const CMD = (await post('B', VOICE7, '  !play lofi')).rows[0]?.id
+  let c = await commands()
+  check('comando em canal de voz vai para o canal do bot, com canal, autor e texto',
+    c.length === 1 && c[0].event === 'command' && c[0].payload.id === CMD && c[0].payload.channel_id === VOICE7
+      && c[0].payload.author_id === U.B && c[0].payload.body === '  !play lofi', JSON.stringify(c))
+  await clearSent()
+  await post('B', VOICE7, 'conversa normal na chamada')
+  await post('B', PUB7, '!play em canal de texto')
+  check('conversa comum e "!" em canal de texto NÃO vão para o bot', (await commands()).length === 0)
+
+  // ---- Canal aberto: edição, reações e fixadas ----
+  await clearSent()
+  await asUser('B', "update public.messages set body = 'editada' where id = $1", [M15])
+  a = await sent()
+  check('edição de mensagem avisa o canal aberto',
+    a.length === 1 && a[0].event === 'update-message' && a[0].topic === `room-messages-${PUB7}` && a[0].payload.id === M15 && a[0].payload.body === 'editada', JSON.stringify(a))
+  await clearSent()
+  await admin("insert into public.message_reactions(message_id, user_id, emoji) values ($1, $2, '🔥')", [M15, U.A])
+  a = await sent()
+  check('reação avisa o canal da mensagem',
+    a.length === 1 && a[0].event === 'reactions-changed' && a[0].topic === `room-messages-${PUB7}` && a[0].payload.message_id === M15, JSON.stringify(a))
+  await clearSent()
+  await admin('delete from public.message_reactions where message_id = $1', [M15])
+  check('tirar a reação também avisa', (await sent()).filter(x => x.event === 'reactions-changed').length === 1)
+  await clearSent()
+  await admin("insert into public.pinned_messages(channel_id, message_id, body) values ($1, $2, 'editada')", [PUB7, M15])
+  a = await sent()
+  check('fixar mensagem avisa o canal', a.length === 1 && a[0].event === 'pins-changed' && a[0].topic === `room-messages-${PUB7}`, JSON.stringify(a))
+  await clearSent()
+  await admin('delete from public.pinned_messages where channel_id = $1', [PUB7])
+  check('desafixar também avisa', (await sent()).filter(x => x.event === 'pins-changed').length === 1)
+
+  // ---- Espaço: membros, cargos e dados ----
+  await clearSent()
+  await admin("insert into public.space_members(space_id, user_id, role) values ($1, $2, 'member')", [S7, U.E])
+  a = await sent()
+  check('entrada de membro avisa o espaço e a caixa de quem entrou',
+    a.some(x => x.event === 'members-changed' && x.topic === `space-events-${S7}`)
+      && a.some(x => x.event === 'space-membership' && x.topic === `user:${U.E}` && x.payload.space_id === S7 && x.payload.op === 'INSERT'), JSON.stringify(a))
+  check('o aviso de membros NÃO leva dados de ninguém (o app recarrega pela API)',
+    !JSON.stringify(a.find(x => x.event === 'members-changed')?.payload ?? {}).includes(U.E))
+  await clearSent()
+  await admin('delete from public.space_members where space_id = $1 and user_id = $2', [S7, U.E])
+  a = await sent()
+  check('saída/remoção avisa o espaço e a caixa de quem saiu',
+    a.some(x => x.event === 'members-changed') && a.some(x => x.event === 'space-membership' && x.topic === `user:${U.E}` && x.payload.op === 'DELETE'), JSON.stringify(a))
+  await clearSent()
+  await admin("update public.space_roles set color = '#ff0000' where id = $1", [ROLE15])
+  check('mudança de cargo avisa o espaço', (await sent()).some(x => x.event === 'roles-changed' && x.topic === `space-events-${S7}`))
+  await clearSent()
+  await admin('delete from public.space_member_roles where space_id = $1 and user_id = $2', [S7, U.C])
+  check('tirar cargo de membro avisa o espaço', (await sent()).some(x => x.event === 'member-roles-changed' && x.topic === `space-events-${S7}`))
+  await clearSent()
+  await admin("update public.spaces set description = 'nova descrição' where id = $1", [S7])
+  check('mudança nos dados do espaço avisa o espaço', (await sent()).some(x => x.event === 'space-updated' && x.topic === `space-events-${S7}`))
+
+  // ---- Perfil ----
+  await admin('delete from public.friendships')
+  await admin("insert into public.friendships(user_id, friend_id, status) values ($1, $2, 'accepted'), ($3, $1, 'pending')", [U.B, U.F, U.G])
+  await clearSent()
+  await admin("update public.profiles set display_name = 'B de cara nova' where id = $1", [U.B])
+  a = await sent()
+  check('mudança de perfil avisa o próprio dono',
+    a.some(x => x.event === 'profile-updated' && x.topic === `user:${U.B}` && x.payload.display_name === 'B de cara nova'), JSON.stringify(a))
+  const spaceCountB = (await admin('select count(*)::int as n from public.space_members where user_id = $1', [U.B])).rows[0].n
+  check('…cada espaço de que ele participa (e nenhum outro)', a.filter(x => x.event === 'member-profile').length === spaceCountB
+    && a.some(x => x.event === 'member-profile' && x.topic === `space-events-${S7}` && x.payload.id === U.B),
+    JSON.stringify(a.filter(x => x.event === 'member-profile').map(x => x.topic)))
+  check('…e só os amigos ACEITOS (pedido pendente não conta)',
+    a.filter(x => x.event === 'friend-profile').map(x => x.topic).join() === `user:${U.F}`, JSON.stringify(a.filter(x => x.event === 'friend-profile')))
+  check('o aviso para os outros NÃO leva o estado da assinatura',
+    !('is_premium' in (a.find(x => x.event === 'member-profile')?.payload ?? {})) && 'is_premium' in (a.find(x => x.event === 'profile-updated')?.payload ?? {}))
+  await clearSent()
+  await admin("update public.profiles set premium_until = now() + interval '30 days' where id = $1", [U.B])
+  a = await sent()
+  check('mudança só da assinatura avisa SÓ o dono',
+    a.length === 1 && a[0].event === 'profile-updated' && a[0].topic === `user:${U.B}`, JSON.stringify(a))
+  await clearSent()
+  await admin('update public.profiles set display_name = display_name where id = $1', [U.B])
+  check('gravar o perfil sem mudar nada não avisa ninguém', (await sent()).length === 0)
+
+  // ---- Reversão ----
+  const rb15 = await applyScript(fs.readFileSync(`${REPO}/rollback_15_avisos_do_banco.sql`, 'utf8'))
+  check('rollback 15 aplica sem erros', !rb15.error, rb15.error)
+  await clearSent()
+  await post('B', PUB7, 'depois do rollback 15')
+  a = await sent()
+  check('depois do rollback 15, a mensagem segue saindo no canal aberto e os avisos novos param',
+    a.length === 1 && a[0].event === 'new-message', JSON.stringify(a))
+  check('depois do rollback 15, o canal de avisos do espaço deixa de existir', !(await canRead('B', `space-events-${S7}`)))
+  const re15 = await applyScript(sql15)
+  check('migração 15 reaplica depois do rollback', !re15.error, re15.error)
 }
 
 console.log(`\n${passed} passaram, ${failed} falharam`)
