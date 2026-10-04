@@ -18,11 +18,43 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.51.3',
+    title: 'Echo v0.51.3 - Presença Mais Fiel e Casa Arrumada por Dentro',
+    date: '4 de Outubro de 2026',
+    tagline: 'Sua foto não some mais da presença, o modo invisível esconde de verdade o status e o jogo, e os avisos do login estão em português. Por dentro, o app foi reorganizado e ganhou muito mais testes.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🟢',
+        badge: 'PRESENÇA',
+        title: 'Presença Sempre Completa',
+        description: 'Em alguns momentos (ao abrir um jogo, por exemplo) sua foto deixava de ir junto com a presença. Agora todo aviso de presença leva o pacote completo: foto, status, jogo e cosméticos.'
+      },
+      {
+        icon: '🕶️',
+        badge: 'PRIVACIDADE',
+        title: 'Invisível de Verdade',
+        description: 'No modo invisível, o status personalizado e o jogo em andamento não são mais publicados em nenhuma situação.'
+      },
+      {
+        icon: '🔑',
+        badge: 'LOGIN',
+        title: 'Avisos do Login em Português',
+        description: 'Erros ao entrar ou criar conta agora aparecem em português claro, como "E-mail ou senha incorretos", em vez do texto em inglês do servidor.'
+      },
+      {
+        icon: '🧰',
+        badge: 'POR DENTRO',
+        title: 'App Reorganizado e Mais Testado',
+        description: 'Atalhos globais, atualização automática, convites, notificações, mensagens diretas e preferências de áudio foram separados em partes menores, cada uma com seus testes. Não muda nada no uso, mas deixa o Echo mais estável a cada versão.'
+      }
+    ]
+  },
+  {
     version: '0.51.2',
     title: 'Echo v0.51.2 - Chat Firme, Recuperar Conta e Bot com a Sua Cara',
     date: '3 de Outubro de 2026',
     tagline: 'O chat parou de tremer, a tela de login ganhou "Esqueci minha senha" e o bot de música tem cartão próprio na chamada, com o ícone que você escolher.',
-    isLatest: true,
     highlights: [
       {
         icon: '💬',
