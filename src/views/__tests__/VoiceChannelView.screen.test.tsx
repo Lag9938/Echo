@@ -200,4 +200,31 @@ describe('Tela da chamada de voz', () => {
     expect(button(container, '.control-btn.mic-btn').title).not.toBe('Mutar microfone')
     expect(button(container, '.control-btn.deafen-btn').title).not.toBe('Ensurdecer (Silenciar chamada)')
   })
+
+  describe('menu de qualidade com a transmissão em andamento', () => {
+    const sharing = (activeSharingSource: Record<string, unknown>) => {
+      const props = inCall({ localScreenStream: new MediaStream(), showScreenMenu: true, activeSharingSource })
+      const view = render(<VoiceChannelView {...props} />)
+      const options = [...view.container.querySelectorAll('.dropdown-option')] as HTMLButtonElement[]
+      return { props, sixty: options.find((option) => option.textContent?.includes('60 FPS')), thirty: options.find((option) => option.textContent?.includes('30 FPS')) }
+    }
+
+    it('transmitindo uma janela de navegador, 60 FPS fica bloqueado e o clique não troca nada', () => {
+      const { props, sixty, thirty } = sharing({ id: 'window:1:0', type: 'window', name: 'YouTube - Google Chrome', isGame: false })
+      expect(sixty?.disabled).toBe(true)
+      expect(sixty?.textContent).toContain('🔒')
+      fireEvent.click(sixty as HTMLElement)
+      expect(props.handleFpsChange).not.toHaveBeenCalled()
+
+      fireEvent.click(thirty as HTMLElement)
+      expect(props.handleFpsChange).toHaveBeenCalledWith(30)
+    })
+
+    it('transmitindo um jogo ou a tela inteira, 60 FPS continua liberado', () => {
+      const game = sharing({ id: 'window:2:0', type: 'window', name: 'Horizon Forbidden West', isGame: true })
+      expect(game.sixty?.disabled).toBe(false)
+      fireEvent.click(game.sixty as HTMLElement)
+      expect(game.props.handleFpsChange).toHaveBeenCalledWith(60)
+    })
+  })
 })

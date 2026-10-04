@@ -35,6 +35,7 @@ import { summarizeScreenShareStats, type ScreenShareCounters } from './screenSha
 import { useScreenShareStatsStore } from '../stores/useScreenShareStatsStore'
 import { useStreamSettingsStore } from '../stores/useStreamSettingsStore'
 import { screenPlayoutDelays, setTrackPlayoutDelay } from './playoutDelay'
+import { screenShareBitrate } from './screenShareQuality'
 import { parseModerationNotice } from './voiceModeration'
 
 export type VoiceParticipant = {
@@ -2168,11 +2169,8 @@ export function useVoiceChannel(options?: {
             localVideoTrack.mediaStreamTrack.contentHint = 'motion'
           } catch (e) {}
 
-          // Bitrate e taxa de quadros para alta fidelidade e fluidez 60 FPS:
-          // 1080p 60fps = 5.0 Mbps | 1080p 30fps = 3.0 Mbps | 720p 60fps = 3.0 Mbps | 720p 30fps = 1.8 Mbps
-          const calculatedBitrate = targetWidth > 1280
-            ? (targetFps >= 60 ? 5000000 : 3000000)
-            : (targetFps >= 60 ? 3000000 : 1800000)
+          // Teto de bitrate conforme resolução e FPS (regras em lib/screenShareQuality.ts)
+          const calculatedBitrate = screenShareBitrate(targetWidth, targetFps)
 
           await room.localParticipant.publishTrack(localVideoTrack, {
             source: Track.Source.ScreenShare,
@@ -2372,11 +2370,9 @@ export function useVoiceChannel(options?: {
             if (fps) {
               params.encodings[0].maxFramerate = fps
             }
-            if (width && fps) {
-              const newBitrate = width > 1280
-                ? (fps >= 60 ? 5000000 : 3000000)
-                : (fps >= 60 ? 3000000 : 1800000)
-              params.encodings[0].maxBitrate = newBitrate
+            if (fps) {
+              // Sem largura = resolução nativa da fonte (tratada como alta)
+              params.encodings[0].maxBitrate = screenShareBitrate(width, fps)
             }
             if ((params as any).degradationPreference) {
               ;(params as any).degradationPreference = (fps && fps >= 60) ? 'maintain-framerate' : 'balanced'

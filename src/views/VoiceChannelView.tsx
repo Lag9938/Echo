@@ -40,6 +40,7 @@ import { useUIStore } from '../stores/useUIStore'
 import { useSpacesStore } from '../stores/useSpacesStore'
 import { useMusicBotStore } from '../stores/useMusicBotStore'
 import { isMusicBotIdentity } from '../lib/musicBotState'
+import { isSixtyFpsAllowed } from '../lib/screenShareQuality'
 import { resolveMusicBotAvatarUrl } from '../lib/musicBotAvatars'
 import { MusicBotParticipantCard } from '../components/voice/MusicBotParticipantCard'
 import { MusicBotAvatarPickerModal } from '../components/modals/MusicBotAvatarPickerModal'
@@ -250,7 +251,7 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
     handleFpsChange,
     isPremiumUser: _isPremiumUser = false,
     onOpenSubscription: _onOpenSubscription,
-    activeSharingSource: _activeSharingSource,
+    activeSharingSource,
     peerScreenVolumes,
     setPeerScreenVolumes,
     screenAudioSyncDelayMs,
@@ -912,15 +913,22 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                           <div className="dropdown-divider" />
                                           <div className="dropdown-section">
                                             <span className="section-title">FPS</span>
-                                            {([15, 30, 60] as const).map(fps => (
-                                              <button 
-                                                key={fps} 
-                                                className={`dropdown-option ${screenFps === fps ? 'selected' : ''}`}
-                                                onClick={() => handleFpsChange(fps)}
-                                              >
-                                                <span>{fps} FPS</span>
-                                              </button>
-                                            ))}
+                                            {([15, 30, 60] as const).map(fps => {
+                                              // 60 FPS só para jogos e telas inteiras, como na tela de escolher o que transmitir
+                                              const isLocked = fps === 60 && Boolean(activeSharingSource) && !isSixtyFpsAllowed(activeSharingSource)
+                                              return (
+                                                <button
+                                                  key={fps}
+                                                  className={`dropdown-option ${screenFps === fps ? 'selected' : ''}`}
+                                                  disabled={isLocked}
+                                                  title={isLocked ? '60 FPS é restrito a jogos e telas inteiras' : undefined}
+                                                  style={isLocked ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
+                                                  onClick={() => handleFpsChange(fps)}
+                                                >
+                                                  <span>{fps} FPS{isLocked ? ' 🔒' : ''}</span>
+                                                </button>
+                                              )
+                                            })}
                                           </div>
                                         </div>
                                       )}

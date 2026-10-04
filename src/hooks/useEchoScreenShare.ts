@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { User } from '@supabase/supabase-js'
+import { effectiveShareFps } from '../lib/screenShareQuality'
 
 export interface UseEchoScreenShareOptions {
   user: User
@@ -108,13 +109,16 @@ export function useEchoScreenShare({
     }
   }, [localScreenStream, changeScreenShareSettings, screenFps])
 
-  const handleFpsChange = useCallback(async (newFps: 15 | 30 | 60) => {
+  const handleFpsChange = useCallback(async (requestedFps: 15 | 30 | 60) => {
+    // Com uma transmissão em andamento, o bloqueio de 60 FPS vale também aqui: antes, o menu de qualidade
+    // dentro da chamada deixava passar uma janela de navegador para 60 FPS depois de começar a transmitir.
+    const newFps = localScreenStream && activeSharingSource ? effectiveShareFps(requestedFps, activeSharingSource) : requestedFps
     setScreenFps(newFps)
     if (localScreenStream) {
       const { w, h } = getQualityDimensions(screenQuality)
       await changeScreenShareSettings(w, h, newFps)
     }
-  }, [localScreenStream, screenQuality, changeScreenShareSettings])
+  }, [localScreenStream, activeSharingSource, screenQuality, changeScreenShareSettings])
 
   const forceOpenScreenPicker = useCallback(async () => {
     setShowScreenMenu(false)
@@ -146,12 +150,10 @@ export function useEchoScreenShare({
     setScreenShareViewMode('focus')
     const { w, h } = getQualityDimensions(screenQuality)
     const targetSource = screenSources.find(s => s.id === sourceId)
-    const isGame = Boolean(targetSource?.isGame || (targetSource?.name || '').toLowerCase().includes('(jogo)'))
-    const isScreen = targetSource?.type === 'screen' || Boolean(sourceId.startsWith('screen:'))
-    const is60Allowed = isGame || isScreen
-    const effectiveFps = is60Allowed ? screenFps : (Math.min(screenFps, 30) as 15 | 30)
-    if (!is60Allowed && screenFps === 60) {
-      setScreenFps(30)
+    // 60 FPS só para jogos e telas inteiras (regra em lib/screenShareQuality.ts)
+    const effectiveFps = effectiveShareFps(screenFps, targetSource, sourceId)
+    if (effectiveFps !== screenFps) {
+      setScreenFps(effectiveFps)
     }
     setActiveSharingSource(targetSource || null)
     await startScreenShare(sourceId, w, h, effectiveFps)
