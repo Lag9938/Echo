@@ -18,11 +18,31 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.53.1',
+    title: 'Echo v0.53.1 - Menu da Chamada e Transmissões Sem Desperdício',
+    date: '4 de Outubro de 2026',
+    tagline: 'O menu de quem está na chamada abre inteiro, e a transmissão de tela só é entregue a quem está assistindo.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎚️',
+        badge: 'CORREÇÃO',
+        title: 'Menu do Usuário da Chamada Abre Inteiro',
+        description: 'Ao clicar no nome de alguém na chamada pela barra lateral, o menu de volume, perfil e moderação aparecia cortado na borda da barra. Agora ele abre por cima da tela, completo, e fecha ao trocar de tela.'
+      },
+      {
+        icon: '📡',
+        badge: 'DESEMPENHO',
+        title: 'Transmissão Só para Quem Assiste',
+        description: 'Quem estava na chamada sem assistir recebia a transmissão inteira quando alguém começava a transmitir, ou ao entrar numa chamada com transmissão em andamento. Agora a tela e o áudio dela só chegam depois que você abre a transmissão, o que poupa a sua internet e o servidor de voz.'
+      }
+    ]
+  },
+  {
     version: '0.53.0',
     title: 'Echo v0.53.0 - Tempo Real Mais Leve e Privado',
     date: '4 de Outubro de 2026',
     tagline: 'As novidades em tempo real passam a vir por canais privados e mais leves, o Echo reabre sozinho depois de atualizar e a barra de conversas volta a aparecer.',
-    isLatest: true,
     highlights: [
       {
         icon: '🔒',
