@@ -931,6 +931,110 @@ console.log('\n[Migração 13: tempo real privado, avisos do banco, cobrança e 
   check('rollback 13 devolve os IDs do Asaas para profiles', (await admin('select asaas_customer_id from public.profiles where id = $1', [U.A])).rows[0]?.asaas_customer_id === 'cus_A')
   const re13 = await applyScript(sql13)
   check('migração 13 reaplica depois do rollback', !re13.error, re13.error)
+
+  // =========================================================================
+  console.log('\n[Migração 14: respostas em tópico]')
+  // =========================================================================
+  const sql14 = fs.readFileSync(`${REPO}/migration_14_topicos.sql`, 'utf8')
+  const m14 = await applyScript(sql14)
+  check('migração 14 aplica sem erros', !m14.error, m14.error)
+  const m14again = await applyScript(sql14)
+  check('migração 14 pode ser reaplicada', !m14again.error, m14again.error)
+
+  // C entra no espaço para ser um terceiro participante; D continua de fora
+  await admin("insert into public.space_members(space_id, user_id, role) values ($1, $2, 'member')", [S7, U.C])
+  const post = async (u, channel, body, root = null) =>
+    asUser(u, 'insert into public.messages(channel_id, author_id, body, thread_root_id) values ($1, $2, $3, $4) returning id', [channel, U[u], body, root])
+
+  await clearSent()
+  const ROOT = (await post('A', PUB7, 'vamos marcar o jogo?')).rows[0]?.id
+  let t = await sent()
+  check('mensagem comum continua saindo como "new-message" (apps antigos não mudam)',
+    !!ROOT && t.length === 1 && t[0].event === 'new-message' && t[0].payload.thread_root_id === null, JSON.stringify(t))
+
+  await clearSent()
+  const R1 = (await post('B', PUB7, 'sexta às 21h', ROOT)).rows[0]?.id
+  t = await sent()
+  const room14 = t.filter(x => x.topic === `room-messages-${PUB7}`)
+  const inbox14 = t.filter(x => x.topic.startsWith('user:'))
+  check('membro responde no tópico', !!R1)
+  check('a resposta sai como "thread-message" no canal privado (não entra no chat principal)',
+    room14.length === 1 && room14[0].event === 'thread-message' && room14[0].payload.thread_root_id === ROOT
+      && room14[0].payload.profile?.display_name === 'nome B', JSON.stringify(room14))
+  check('o aviso leva o resumo do tópico: 1 resposta e os participantes (autor da raiz + quem respondeu)',
+    room14[0]?.payload.thread?.root_id === ROOT && room14[0]?.payload.thread?.reply_count === 1
+      && [...(room14[0]?.payload.thread?.participant_ids ?? [])].sort().join() === [U.A, U.B].sort().join(), JSON.stringify(room14[0]?.payload.thread))
+  check('o autor da raiz é avisado na própria caixa de entrada; quem respondeu não avisa a si mesmo',
+    inbox14.length === 1 && inbox14[0].topic === `user:${U.A}` && inbox14[0].event === 'thread-reply'
+      && inbox14[0].payload.rootId === ROOT && inbox14[0].payload.senderId === U.B && inbox14[0].payload.senderName === 'nome B', JSON.stringify(inbox14))
+  check('o aviso da caixa de entrada NÃO leva o texto da resposta',
+    !JSON.stringify(inbox14[0]?.payload ?? {}).includes('sexta'))
+
+  await clearSent()
+  const R2 = (await post('C', PUB7, 'eu topo', ROOT)).rows[0]?.id
+  t = await sent()
+  const inboxR2 = t.filter(x => x.topic.startsWith('user:')).map(x => x.topic).sort()
+  check('segunda resposta avisa o autor da raiz e quem já respondeu, menos quem escreveu',
+    !!R2 && inboxR2.join() === [`user:${U.A}`, `user:${U.B}`].sort().join(), JSON.stringify(inboxR2))
+  check('…e o resumo passa a contar 2 respostas',
+    t.find(x => x.event === 'thread-message')?.payload.thread?.reply_count === 2)
+
+  // ---- Regras do vínculo ----
+  const err = async (promise) => (await promise).error || ''
+  check('NÃO existe tópico dentro de tópico (resposta de resposta)', (await err(post('A', PUB7, 'x', R1))).includes('thread_root_is_reply'))
+  check('raiz de OUTRO canal é recusada', (await err(post('A', PRIV7, 'x', ROOT))).includes('thread_root_other_channel'))
+  check('raiz que não existe é recusada', !!(await err(post('A', PUB7, 'x', '99999999-0000-4000-8000-000000000009'))))
+  check('quem não é do espaço NÃO responde no tópico', !!(await err(post('D', PUB7, 'intruso', ROOT))))
+  check('ninguém responde em nome de outro', !!(await asUser('B', 'insert into public.messages(channel_id, author_id, body, thread_root_id) values ($1, $2, $3, $4)', [PUB7, U.A, 'falso', ROOT])).error)
+  check('o vínculo não muda depois: resposta não troca de tópico nem vira mensagem comum',
+    (await asUser('B', 'update public.messages set thread_root_id = null where id = $1 returning id', [R1])).rows.length === 0
+      && (await admin('select thread_root_id from public.messages where id = $1', [R1])).rows[0]?.thread_root_id === ROOT)
+  const PLAIN = (await post('B', PUB7, 'mensagem comum')).rows[0]?.id
+  check('mensagem comum não é puxada para dentro de um tópico depois (nem por quem administra o banco)',
+    (await err(admin('update public.messages set thread_root_id = $1 where id = $2', [ROOT, PLAIN]))).includes('thread_root_immutable'))
+  check('editar o texto de uma resposta de tópico continua permitido',
+    (await asUser('B', "update public.messages set body = 'sexta às 22h' where id = $1 returning id", [R1])).rows.length === 1)
+
+  // ---- Leitura e resumo ----
+  const PRIVROOT = (await post('A', PRIV7, 'assunto da staff')).rows[0]?.id
+  await post('A', PRIV7, 'resposta da staff', PRIVROOT)
+  const summaries = async (u, channel) => (await asUser(u, 'select * from public.get_thread_summaries($1)', [channel])).rows
+  let sum = await summaries('B', PUB7)
+  check('resumo do canal: um tópico com 2 respostas e 2 participantes',
+    sum.length === 1 && sum[0].root_id === ROOT && sum[0].reply_count === 2 && sum[0].participant_ids.length === 2, JSON.stringify(sum))
+  check('quem não é do espaço não recebe resumo nenhum', (await summaries('D', PUB7)).length === 0)
+  check('membro sem acesso ao canal privado não vê o tópico de lá; o dono vê',
+    (await summaries('B', PRIV7)).length === 0 && (await summaries('A', PRIV7)).length === 1)
+  check('membro sem acesso NÃO lê as respostas do tópico privado',
+    (await asUser('B', 'select id from public.messages where thread_root_id = $1', [PRIVROOT])).rows.length === 0)
+  check('anônimo NÃO chama o resumo', !!(await asAnon('select * from public.get_thread_summaries($1)', [PUB7])).error)
+
+  // ---- Exclusão ----
+  await clearSent()
+  check('quem respondeu apaga a própria resposta', (await asUser('B', 'delete from public.messages where id = $1 returning id', [R1])).rows.length === 1)
+  t = await sent()
+  check('a exclusão avisa o canal dizendo de qual tópico era',
+    t.length === 1 && t[0].event === 'delete-message' && t[0].payload.id === R1 && t[0].payload.thread_root_id === ROOT, JSON.stringify(t))
+  check('outro membro NÃO apaga a resposta de alguém', (await asUser('B', 'delete from public.messages where id = $1 returning id', [R2])).rows.length === 0)
+  await clearSent()
+  check('apagar a mensagem-raiz apaga o tópico inteiro',
+    (await asUser('A', 'delete from public.messages where id = $1 returning id', [ROOT])).rows.length === 1
+      && (await admin('select count(*)::int as n from public.messages where thread_root_id = $1', [ROOT])).rows[0].n === 0)
+  check('…e cada resposta apagada junto também é avisada', (await sent()).filter(x => x.event === 'delete-message').length === 2)
+
+  // ---- Reversão ----
+  const KEEP = (await post('A', PUB7, 'raiz que fica')).rows[0]?.id
+  const KEEPR = (await post('B', PUB7, 'resposta que fica', KEEP)).rows[0]?.id
+  const rb14 = await applyScript(fs.readFileSync(`${REPO}/rollback_14_topicos.sql`, 'utf8'))
+  check('rollback 14 aplica sem erros', !rb14.error, rb14.error)
+  check('rollback 14 não apaga as respostas: viram mensagens comuns',
+    (await admin('select count(*)::int as n from public.messages where id = any($1)', [[KEEP, KEEPR]])).rows[0].n === 2
+      && (await admin("select count(*)::int as n from information_schema.columns where table_name = 'messages' and column_name = 'thread_root_id'")).rows[0].n === 0)
+  await clearSent()
+  await asUser('B', "insert into public.messages(channel_id, author_id, body) values ($1, $2, 'depois do rollback')", [PUB7, U.B])
+  check('depois do rollback, mensagem comum segue sendo avisada', (await sent()).some(x => x.event === 'new-message'))
+  const re14 = await applyScript(sql14)
+  check('migração 14 reaplica depois do rollback', !re14.error, re14.error)
 }
 
 console.log(`\n${passed} passaram, ${failed} falharam`)
