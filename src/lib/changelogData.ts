@@ -18,11 +18,49 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.52.0',
+    title: 'Echo v0.52.0 - Tópicos e Transmissões Mais Fluidas',
+    date: '4 de Outubro de 2026',
+    tagline: 'Responda em tópico sem encher o canal, veja os números reais da transmissão e assista com a imagem mais estável e mais nítida. O Echo também pesa menos enquanto você joga.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🧵',
+        badge: 'NOVIDADE',
+        title: 'Respostas em Tópico',
+        description: 'Passe o mouse numa mensagem e clique em "Responder em tópico": a conversa segue num painel ao lado, e o canal mostra só "3 respostas". Quem participa do tópico é avisado das respostas novas; o resto do canal não é incomodado.'
+      },
+      {
+        icon: '📊',
+        badge: 'TRANSMISSÃO',
+        title: 'Estatísticas Reais',
+        description: 'O painel de estatísticas agora mostra o que está de fato acontecendo: quadros capturados, enviados e recebidos, bitrate, codec, o que está limitando a qualidade e, para quem assiste, quadros descartados e travadas.'
+      },
+      {
+        icon: '🎬',
+        badge: 'TRANSMISSÃO',
+        title: 'Imagem Mais Estável e Mais Nítida',
+        description: 'Quem assiste escolhe a fluidez no painel da transmissão (Rápida, Equilibrada ou Suave) para a imagem não travar quando a internet oscila. O bitrate subiu para até 8 Mbps em 1080p a 60 FPS, e os 60 FPS continuam reservados a jogos e telas inteiras.'
+      },
+      {
+        icon: '🎮',
+        badge: 'DESEMPENHO',
+        title: 'Mais Leve Enquanto Você Joga',
+        description: 'Com o Echo minimizado ou sem foco, brilhos e equalizadores decorativos param de usar a placa de vídeo. O indicador de quem está falando e as transmissões continuam normais.'
+      },
+      {
+        icon: '🪟',
+        badge: 'CORREÇÃO',
+        title: 'Controles da Transmissão em Janela Pequena',
+        description: 'Com o app em meia tela, o botão de fechar a transmissão saía para fora da barra. Agora a barra encolhe junto com a janela e os botões ficam sempre à vista.'
+      }
+    ]
+  },
+  {
     version: '0.51.3',
     title: 'Echo v0.51.3 - Presença Mais Fiel e Casa Arrumada por Dentro',
     date: '4 de Outubro de 2026',
     tagline: 'Sua foto não some mais da presença, o modo invisível esconde de verdade o status e o jogo, e os avisos do login estão em português. Por dentro, o app foi reorganizado e ganhou muito mais testes.',
-    isLatest: true,
     highlights: [
       {
         icon: '🟢',
