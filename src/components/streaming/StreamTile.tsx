@@ -418,7 +418,9 @@ export function StreamTile({
             {streamResolution ? `${streamFps} FPS • ${streamResolution}` : `${streamFps} FPS`}
           </span>
 
-          <AudioLevelMeter stream={participant.screenStream || null} />
+          <div className="stream-audio-meter">
+            <AudioLevelMeter stream={participant.screenStream || null} />
+          </div>
         </div>
 
         {/* Ações e Controles da Transmissão (Squircles Uniformes) */}

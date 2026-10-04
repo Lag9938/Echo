@@ -949,11 +949,36 @@ body.light-theme .stream-unified-glass-bar {
 }
 
 /* Telemetry (Esquerda Integrada) */
+/* É este lado que cede espaço quando a janela fica estreita (os botões da direita nunca encolhem): antes
+   os dois lados tinham largura fixa e, em meia tela, o botão de fechar ficava para fora da barra. */
 .stream-glass-telemetry {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.stream-glass-telemetry > * {
   flex-shrink: 0;
+}
+
+/* O nome de quem transmite encolhe com reticências em vez de ser cortado no meio */
+.stream-glass-telemetry > .stream-streamer-unit {
+  flex-shrink: 1;
+  min-width: 28px;
+}
+
+.stream-streamer-unit .stream-author-name {
+  min-width: 0;
+}
+
+/* O medidor de áudio é o primeiro a encolher */
+.stream-glass-telemetry > .stream-audio-meter {
+  display: flex;
+  flex: 0 1 200px;
+  min-width: 0;
 }
 
 .stream-live-pill {
@@ -1214,6 +1239,37 @@ body.light-theme .stream-volume-pct {
 
 body.light-theme .stream-glass-sep {
   background: rgba(15, 23, 42, 0.1);
+}
+
+/* Barra estreita (janela em meia tela, grade com várias transmissões): os itens saem por ordem de
+   importância, e os botões de ação (tela cheia, fechar) ficam sempre dentro da barra. As medidas são da
+   própria barra, não da janela, porque a largura dela depende de painéis abertos ao lado. */
+.stream-unified-glass-bar {
+  container-type: inline-size;
+  container-name: stream-bar;
+  min-width: 0;
+}
+
+@container stream-bar (max-width: 860px) {
+  .stream-audio-meter { display: none !important; }
+}
+
+@container stream-bar (max-width: 640px) {
+  .stream-quality-pill { display: none; }
+  .stream-glass-volume-capsule input[type="range"] { width: 48px; }
+  .stream-volume-pct { display: none; }
+}
+
+@container stream-bar (max-width: 520px) {
+  .stream-author-name { display: none; }
+  .stream-live-pill span:not(.stream-live-pulse-dot) { display: none; }
+  .stream-glass-actions { gap: 5px; }
+  .stream-glass-sep { display: none; }
+}
+
+@container stream-bar (max-width: 420px) {
+  .stream-glass-volume-capsule { display: none; }
+  .stream-glass-telemetry > .stream-streamer-unit { display: none; }
 }
 
 /* Grid Mode Scaling */
