@@ -18,7 +18,7 @@ versão do app que depende delas (veja o aviso ⚠️ no topo de cada arquivo). 
 | `migration_11_discord_roles` + `migration_11_discord_roles_security_fixes` | `migration_11_discord_roles.sql` (o arquivo tem correções de segurança testadas; não foi possível confirmar que é idêntico ao que está em produção) |
 | `migration_12_fix_group_chat_rls` | `migration_12_fix_group_chat_rls.sql` |
 | `migration_13_privacidade_tempo_real` | `migration_13_privacidade_tempo_real.sql` (aplicada em 01/10/2026; desfazer com `rollback_13_privacidade_tempo_real.sql`) |
-| — | `migration_14_topicos.sql` (**ainda não aplicada**; respostas em tópico; desfazer com `rollback_14_topicos.sql`) |
+| `migration_14_topicos` | `migration_14_topicos.sql` (aplicada em 04/10/2026; respostas em tópico; desfazer com `rollback_14_topicos.sql`) |
 
 As migrações 01–03, 05 e 06 e os arquivos avulsos (`schema.sql`, `update_rls.sql`, `fix_chat_and_rls.sql`,
 `server_roles_and_settings.sql`) não aparecem no registro de migrações de produção (provavelmente foram aplicados pelo editor SQL, sem registro).
