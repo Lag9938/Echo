@@ -1,4 +1,5 @@
 import React, { memo } from 'react'
+import { createPortal } from 'react-dom'
 import type { FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { VoiceParticipant } from '../../lib/useVoiceChannel'
@@ -1257,8 +1258,10 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                 myGamePresence={myGamePresence}
                 avatarDecoration={avatarDecoration}
               />
+              {/* Em document.body: a barra lateral (overflow hidden + backdrop-filter no layout de vidro) vira o
+                  bloco de referência de position: fixed e cortava o menu na borda dela. */}
               {/* Voice User Action Context Popover */}
-              {voiceUserMenu && (
+              {voiceUserMenu && createPortal(
                 <>
                   <div
                     className="voice-user-menu-backdrop"
@@ -1459,7 +1462,7 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                     </div>
                   </div>
                 </>
-              )}
+              , document.body)}
 
               <div
                 className={`channels-sidebar-resizer ${isResizing ? 'active' : ''}`}
