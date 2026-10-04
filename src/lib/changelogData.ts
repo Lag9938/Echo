@@ -18,11 +18,49 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.53.0',
+    title: 'Echo v0.53.0 - Tempo Real Mais Leve e Privado',
+    date: '4 de Outubro de 2026',
+    tagline: 'As novidades em tempo real passam a vir por canais privados e mais leves, o Echo reabre sozinho depois de atualizar e a barra de conversas volta a aparecer.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🔒',
+        badge: 'SEGURANÇA',
+        title: 'Tempo Real Só por Canais Privados',
+        description: 'Não lidas, menções, reações, mensagens fixadas, edições e mudanças de membros e cargos agora chegam por avisos enviados pelo próprio servidor em canais privados. Em canais restritos, o texto da mensagem só vai para quem enxerga o canal.'
+      },
+      {
+        icon: '⚡',
+        badge: 'DESEMPENHO',
+        title: 'Menos Trabalho para o Servidor',
+        description: 'O app deixou de pedir ao servidor que conferisse cada mudança de tabela para cada pessoa conectada. O efeito completo aparece quando todos estiverem nesta versão.'
+      },
+      {
+        icon: '🔄',
+        badge: 'CORREÇÃO',
+        title: 'Echo Reabre Depois de Atualizar',
+        description: 'A proteção que reabre o Echo quando o instalador não reabre sozinho não estava funcionando. Agora funciona de verdade. Vale a partir da próxima atualização depois desta.'
+      },
+      {
+        icon: '💬',
+        badge: 'CORREÇÃO',
+        title: 'Barra de Conversas Volta a Aparecer',
+        description: 'Ao ocultar a barra de conversas com uma conversa aberta, o botão para trazê-la de volta sumia em janela de tamanho normal. Agora ele aparece sempre, em conversas diretas e em grupos.'
+      },
+      {
+        icon: '🔔',
+        badge: 'AJUSTE',
+        title: 'Aviso de Mensagem Direta sem Repetição',
+        description: 'A notificação de uma mensagem direta chegava por dois caminhos e podia aparecer em dobro. Agora chega por um só.'
+      }
+    ]
+  },
+  {
     version: '0.52.1',
     title: 'Echo v0.52.1 - Chat da Chamada de Volta',
     date: '4 de Outubro de 2026',
     tagline: 'O chat de texto das chamadas voltou a funcionar de verdade: mostra as mensagens da chamada, recebe as dos outros na hora e não some ao reabrir.',
-    isLatest: true,
     highlights: [
       {
         icon: '💬',
