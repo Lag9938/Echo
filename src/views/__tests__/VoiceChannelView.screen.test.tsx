@@ -201,6 +201,36 @@ describe('Tela da chamada de voz', () => {
     expect(button(container, '.control-btn.deafen-btn').title).not.toBe('Ensurdecer (Silenciar chamada)')
   })
 
+  describe('chat de texto da chamada', () => {
+    const chatMessage = (id: string, author: string, body: string) => ({
+      id, channel_id: 'c1', author_id: author, body, created_at: new Date().toISOString(), profile: { display_name: author === ME ? 'Eu' : 'Ana' }, status: 'sent'
+    })
+
+    it('mostra as mensagens do canal da chamada e rola até a mais nova', () => {
+      const end = document.createElement('div')
+      const props = inCall({
+        showVoiceChat: true,
+        messages: [chatMessage('m1', ANA, 'bora jogar?'), chatMessage('m2', ME, 'bora')]
+      })
+      const { container } = render(<VoiceChannelView {...props} messagesEndRef={{ current: end }} />)
+
+      const pane = container.querySelector('.voice-chat-pane') as HTMLElement
+      expect(pane.style.display).not.toBe('none')
+      expect(pane.textContent).toContain('bora jogar?')
+      expect(pane.textContent).toContain('bora')
+      expect(container.querySelector('.voice-chat-messages .no-messages')).toBeNull()
+    })
+
+    it('sem mensagens, mostra o início do chat; com o chat fechado, o painel fica escondido', () => {
+      const open = render(<VoiceChannelView {...inCall({ showVoiceChat: true })} />)
+      expect(open.container.querySelector('.voice-chat-messages .no-messages')?.textContent).toContain('Início do chat por texto da chamada')
+      open.unmount()
+
+      const closed = render(<VoiceChannelView {...inCall({ showVoiceChat: false })} />)
+      expect((closed.container.querySelector('.voice-chat-pane') as HTMLElement).style.display).toBe('none')
+    })
+  })
+
   describe('menu de qualidade com a transmissão em andamento', () => {
     const sharing = (activeSharingSource: Record<string, unknown>) => {
       const props = inCall({ localScreenStream: new MediaStream(), showScreenMenu: true, activeSharingSource })

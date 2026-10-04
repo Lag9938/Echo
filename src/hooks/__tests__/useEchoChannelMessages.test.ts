@@ -116,6 +116,49 @@ describe('useEchoChannelMessages', () => {
     )
   }
 
+  describe('chat de texto da chamada (canal de voz)', () => {
+    const voiceChannel: Channel = { id: 'voice-1', space_id: 'space-1', name: 'Callzinha', type: 'voice', position: 1 }
+    const row = (id: string, body: string) => ({
+      id, channel_id: 'voice-1', body, created_at: new Date().toISOString(), author_id: 'ana', profiles: { display_name: 'Ana' }
+    })
+
+    it('carrega as mensagens do canal de voz e ouve as novas em tempo real, como num canal de texto', async () => {
+      // Bug real: canal de voz não carregava nem ouvia nada; o chat da chamada mostrava as mensagens do
+      // último canal de texto aberto e ficava vazio ao reabrir.
+      const limit = vi.fn().mockResolvedValue({ data: [row('m2', 'segunda'), row('m1', 'primeira')], error: null })
+      const eq = vi.fn().mockReturnThis()
+      mockSupabase.from = vi.fn().mockImplementation(() => ({
+        select: vi.fn().mockReturnValue({ eq, is: vi.fn().mockReturnThis(), lt: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), limit, in: vi.fn().mockResolvedValue({ data: [], error: null }) })
+      }))
+
+      const { result } = setupHook({ selectedChannel: voiceChannel })
+
+      await vi.waitFor(() => expect(result.current.messages.map((m) => m.body)).toEqual(['primeira', 'segunda']))
+      expect(eq).toHaveBeenCalledWith('channel_id', 'voice-1')
+      expect(mockSupabase.channel).toHaveBeenCalledWith('room-messages-voice-1', expect.objectContaining({ config: expect.objectContaining({ private: true }) }))
+    })
+
+    it('mensagem nova que chega pelo tempo real aparece no chat da chamada', async () => {
+      const handlers: Record<string, (event: { payload: any }) => void> = {}
+      const realtime = {
+        on: vi.fn((_kind: string, filter: { event?: string }, handler: (event: { payload: any }) => void) => {
+          if (filter?.event) handlers[filter.event] = handler
+          return realtime
+        }),
+        subscribe: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }),
+        send: vi.fn().mockResolvedValue(undefined)
+      }
+      mockSupabase.channel = vi.fn().mockReturnValue(realtime)
+
+      const { result } = setupHook({ selectedChannel: voiceChannel })
+      await vi.waitFor(() => expect(handlers['new-message']).toBeTypeOf('function'))
+
+      act(() => handlers['new-message']({ payload: { ...row('m9', '🎵 Tocando agora'), profile: { display_name: 'Echo Music Bot' } } }))
+
+      expect(result.current.messages.map((m) => m.body)).toContain('🎵 Tocando agora')
+    })
+  })
+
   it('inicializa com estado padrão e lista de mensagens vazia', () => {
     const { result } = setupHook()
     expect(result.current.draft).toBe('')

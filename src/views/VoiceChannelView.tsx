@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, memo } from 'react'
+import React, { useState, useCallback, useEffect, useRef, memo } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { VoiceParticipant } from '../lib/useVoiceChannel'
 import type { Space, Channel, Message, PinnedMessage, ServerEmoji, RolePermissions, ServerRole } from '../types'
@@ -332,6 +332,22 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
       }
     }
   }, [])
+
+  // Chat de texto da chamada: abre no fim e acompanha as mensagens novas. Só rola sozinho se a pessoa já
+  // estava perto do fim (quem subiu para ler o histórico não é puxado de volta).
+  const lastVoiceChatMessageId = messages[messages.length - 1]?.id
+  const voiceChatAtBottomRef = useRef(true)
+  useEffect(() => { voiceChatAtBottomRef.current = true }, [selectedChannel.id, showVoiceChat])
+  useEffect(() => {
+    const container = messagesEndRef.current?.parentElement
+    if (!showVoiceChat || !container) return
+    if (voiceChatAtBottomRef.current) container.scrollTop = container.scrollHeight
+    const onScroll = () => {
+      voiceChatAtBottomRef.current = container.scrollHeight - container.scrollTop - container.clientHeight < 160
+    }
+    container.addEventListener('scroll', onScroll, { passive: true })
+    return () => container.removeEventListener('scroll', onScroll)
+  }, [lastVoiceChatMessageId, showVoiceChat, selectedChannel.id, messagesEndRef])
 
   // Window paste listener when voice chat drawer is visible
   useEffect(() => {

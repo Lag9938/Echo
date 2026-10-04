@@ -609,7 +609,10 @@ export function useEchoChannelMessages({
   // Realtime subscription for selectedChannel messages (Broadcast + Postgres changes)
   useEffect(() => {
     const client = supabase
-    if (!selectedChannel || !client || selectedChannel.type !== 'text') {
+    // Vale para canais de texto E de voz: o chat de texto da chamada é o mesmo mecanismo. Antes só os de
+    // texto carregavam e ouviam mensagens, então o chat da chamada mostrava as mensagens do último canal de
+    // texto aberto, não recebia nada dos outros (nem as respostas do bot de música) e ficava vazio ao reabrir.
+    if (!selectedChannel || !client) {
       channelBroadcastRef.current = null
       return
     }
