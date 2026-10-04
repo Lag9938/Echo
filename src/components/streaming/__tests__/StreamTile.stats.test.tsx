@@ -46,7 +46,7 @@ describe('Estatísticas reais da transmissão', () => {
 
   it('quem transmite vê o que está de fato enviando: quadros, captura, resolução, bitrate, codec e limitação', () => {
     act(() => useScreenShareStatsStore.getState().setStats(
-      { fps: 41.5, width: 1920, height: 1080, kbps: 5230, codec: 'H264', hardware: true, captureFps: 60, limitation: 'cpu' },
+      { fps: 41.5, width: 1920, height: 1080, kbps: 5230, codec: 'H264', hardware: true, transport: null, captureFps: 60, limitation: 'cpu' },
       {}
     ))
     const { container } = renderTile({ userId: ME, displayName: 'Eu', screenStream: fakeStream('local') })
@@ -65,7 +65,7 @@ describe('Estatísticas reais da transmissão', () => {
 
   it('tela parada (captura baixa) mostra poucos quadros sem alerta', () => {
     act(() => useScreenShareStatsStore.getState().setStats(
-      { fps: 4, width: 1920, height: 1080, kbps: 120, codec: 'H264', hardware: true, captureFps: 4, limitation: 'none' },
+      { fps: 4, width: 1920, height: 1080, kbps: 120, codec: 'H264', hardware: true, transport: null, captureFps: 4, limitation: 'none' },
       {}
     ))
     const { container } = renderTile({ userId: ME, displayName: 'Eu', screenStream: fakeStream('local') })
@@ -75,8 +75,8 @@ describe('Estatísticas reais da transmissão', () => {
 
   it('quem assiste vê o que está recebendo daquela transmissão, com perdas e travadas', () => {
     act(() => useScreenShareStatsStore.getState().setStats(null, {
-      'faixa-da-ana': { fps: 58.2, width: 1280, height: 720, kbps: 2400, codec: 'VP8', hardware: false, droppedPct: 7.5, freezes: 1, packetLossPct: 3, jitterMs: 12 },
-      'outra-faixa': { fps: 15, width: 640, height: 360, kbps: 300, codec: 'VP8', hardware: false, droppedPct: 0, freezes: 0, packetLossPct: 0, jitterMs: 2 }
+      'faixa-da-ana': { fps: 58.2, width: 1280, height: 720, kbps: 2400, codec: 'VP8', hardware: false, transport: null, droppedPct: 7.5, freezes: 1, packetLossPct: 3, jitterMs: 12 },
+      'outra-faixa': { fps: 15, width: 640, height: 360, kbps: 300, codec: 'VP8', hardware: false, transport: null, droppedPct: 0, freezes: 0, packetLossPct: 0, jitterMs: 2 }
     }))
     const { container } = renderTile({ userId: ANA, displayName: 'Ana', screenFps: 60, screenStream: fakeStream('faixa-da-ana') })
     const text = hudText(container)
@@ -94,7 +94,7 @@ describe('Estatísticas reais da transmissão', () => {
 
   it('recepção limpa não alerta, mesmo com poucos quadros (a tela de quem transmite pode estar parada)', () => {
     act(() => useScreenShareStatsStore.getState().setStats(null, {
-      'faixa-da-ana': { fps: 3, width: 1280, height: 720, kbps: 90, codec: 'VP8', hardware: false, droppedPct: 0, freezes: 0, packetLossPct: 0, jitterMs: 4 }
+      'faixa-da-ana': { fps: 3, width: 1280, height: 720, kbps: 90, codec: 'VP8', hardware: false, transport: null, droppedPct: 0, freezes: 0, packetLossPct: 0, jitterMs: 4 }
     }))
     const { container } = renderTile({ userId: ANA, displayName: 'Ana', screenFps: 60, screenStream: fakeStream('faixa-da-ana') })
     expect(pill(container).textContent).toContain('3 FPS')

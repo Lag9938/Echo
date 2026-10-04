@@ -66,6 +66,7 @@ describe('summarizeScreenShareStats: envio', () => {
       kbps: 0,
       codec: 'H264',
       hardware: true,
+      transport: null,
       captureFps: 60,
       limitation: 'none'
     })

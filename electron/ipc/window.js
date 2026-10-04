@@ -1,4 +1,5 @@
 import { app, shell, desktopCapturer, Notification } from 'electron'
+import { applyStreamingPriority } from '../services/processPriority.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { promisify } from 'node:util'
@@ -162,7 +163,12 @@ export function setupWindowIpc(safeHandle, getMainWindow, setIsQuitting, rootDir
     }
   })
 
-  safeHandle('show-notification', (_event, { title, body, data } = {}) => {
+  // Transmissão de tela: prioridade acima do normal enquanto transmite (services/processPriority.js)
+  safeHandle('set-streaming-priority', (_event, boost) => {
+    return applyStreamingPriority(Boolean(boost), { getAppMetrics: () => app.getAppMetrics() })
+  })
+
+  safeHandle('show-notification',(_event, { title, body, data } = {}) => {
     try {
       if (Notification.isSupported()) {
         const appIconPath = path.join(rootDir, 'assets', 'echo-icon.png')

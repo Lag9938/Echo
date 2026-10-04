@@ -37,6 +37,7 @@ import { useStreamSettingsStore } from '../stores/useStreamSettingsStore'
 import { screenPlayoutDelays, setTrackPlayoutDelay } from './playoutDelay'
 import { screenShareBitrate } from './screenShareQuality'
 import { syncTrackSubscription } from './trackSubscription'
+import { createStreamSession, describeStreamSummary, type StreamSession } from './streamSessionReport'
 import { parseModerationNotice } from './voiceModeration'
 
 export type VoiceParticipant = {
@@ -350,6 +351,8 @@ export function useVoiceChannel(options?: {
   // Analytics timing refs
   const voiceJoinTimeRef = useRef<number | null>(null)
   const screenShareStartTimeRef = useRef<number | null>(null)
+  // Medições da transmissão em andamento, para o resumo de fluidez ao encerrar
+  const streamSessionRef = useRef<StreamSession | null>(null)
   
   // Audio playback elements & volume/pan
   const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map())
@@ -482,6 +485,7 @@ export function useVoiceChannel(options?: {
         const share = summarizeScreenShareStats(publisherStats, subscriberStats, previousShare, screenTrackIds)
         previousShare = share.counters
         useScreenShareStatsStore.getState().setStats(share.outbound, share.inbound)
+        if (share.outbound) streamSessionRef.current?.add(share.outbound)
       } catch {
         // Sem medição por enquanto: a estimativa pela nota de qualidade continua valendo
       }
@@ -869,9 +873,27 @@ export function useVoiceChannel(options?: {
     localScreenStreamRef.current = null
     setLocalScreenStream(null)
 
+    // Com a transmissão encerrada, o Echo volta à prioridade normal
+    ;(window as any).electronAPI?.setStreamingPriority?.(false)?.catch?.(() => {})
+
     if (screenShareStartTimeRef.current) {
       const dur = (Date.now() - screenShareStartTimeRef.current) / 1000
-      trackScreenShareStopped(dur)
+      // Resumo da fluidez: vai para a análise de uso e, se algo segurou a transmissão, quem transmitiu é avisado
+      const summary = streamSessionRef.current?.summary()
+      streamSessionRef.current = null
+      trackScreenShareStopped(dur, summary ? {
+        target_fps: summary.targetFps,
+        avg_fps: summary.avgFps,
+        avg_capture_fps: summary.avgCaptureFps,
+        low_capture_pct: summary.lowCapturePct,
+        encoder_limited_pct: summary.encoderLimitedPct,
+        bandwidth_limited_pct: summary.bandwidthLimitedPct,
+        hardware_encoder: summary.hardware,
+        transport: summary.transport,
+        bottleneck: summary.bottleneck
+      } : undefined)
+      const notice = summary ? describeStreamSummary(summary) : null
+      if (notice) onReconnectMediaNoticeRef.current?.(notice.title, notice.message)
       screenShareStartTimeRef.current = null
     }
 
@@ -2180,7 +2202,11 @@ export function useVoiceChannel(options?: {
           })
 
           screenShareStartTimeRef.current = Date.now()
+          streamSessionRef.current = createStreamSession(targetFps)
           trackScreenShareStarted(`${targetHeight}p`, targetFps)
+          // Enquanto transmite, o Echo roda com prioridade acima do normal: com o jogo usando o processador
+          // inteiro, a captura e a codificação ficavam esperando a vez e a transmissão engasgava.
+          ;(window as any).electronAPI?.setStreamingPriority?.(true)?.catch?.(() => {})
 
           if (audioTrack) {
             try {
@@ -2364,6 +2390,8 @@ export function useVoiceChannel(options?: {
           if (params && params.encodings && params.encodings.length > 0) {
             if (fps) {
               params.encodings[0].maxFramerate = fps
+              // Meta nova: o resumo de fluidez recomeça a contar com ela
+              if (streamSessionRef.current) streamSessionRef.current = createStreamSession(fps)
             }
             if (fps) {
               // Sem largura = resolução nativa da fonte (tratada como alta)

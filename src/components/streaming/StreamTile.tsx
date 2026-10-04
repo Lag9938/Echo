@@ -4,7 +4,7 @@ import type { VoiceParticipant } from '../../lib/useVoiceChannel'
 import { AudioLevelMeter } from '../voice/AudioLevelMeter'
 import { useScreenShareStatsStore } from '../../stores/useScreenShareStatsStore'
 import { STREAM_SMOOTHING_PRESETS, useStreamSettingsStore } from '../../stores/useStreamSettingsStore'
-import { describeLimitation, formatBitrate, isBelowTarget } from '../../lib/screenShareStats'
+import { describeLimitation, describeTransport, formatBitrate, isBelowTarget } from '../../lib/screenShareStats'
 import {
   BarChartIcon,
   EyeIcon,
@@ -329,6 +329,10 @@ export function StreamTile({
                     {realStats.codec || 'medindo…'}
                     {realStats.hardware === true ? ' (placa de vídeo)' : realStats.hardware === false ? ' (processador)' : ''}
                   </strong>
+                </div>
+                <div className="stats-row">
+                  <span>Conexão:</span>
+                  <strong style={{ color: realStats.transport === 'tcp' || realStats.transport === 'relay-tcp' ? '#f59e0b' : undefined }}>{describeTransport(realStats.transport)}</strong>
                 </div>
                 {outboundStats && (
                   <div className="stats-row">

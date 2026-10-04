@@ -112,9 +112,11 @@ export function trackScreenShareStarted(resolution?: string, fps?: number) {
   })
 }
 
-export function trackScreenShareStopped(durationSeconds?: number) {
+/** `quality`: resumo técnico da fluidez da transmissão (só números da medição do WebRTC, nada do conteúdo) */
+export function trackScreenShareStopped(durationSeconds?: number, quality?: Record<string, string | number | boolean | null>) {
   trackEvent('screenshare_stopped', {
-    duration_seconds: durationSeconds ? Math.round(durationSeconds) : undefined
+    duration_seconds: durationSeconds ? Math.round(durationSeconds) : undefined,
+    ...quality
   })
 }
 

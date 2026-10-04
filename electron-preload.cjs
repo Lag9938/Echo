@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   restoreWindow: (sourceId) => ipcRenderer.invoke('restore-window', sourceId),
   startProcessAudioCapture: (sourceId) => ipcRenderer.invoke('start-process-audio-capture', sourceId),
   stopProcessAudioCapture: () => ipcRenderer.invoke('stop-process-audio-capture'),
+  setStreamingPriority: (boost) => ipcRenderer.invoke('set-streaming-priority', boost),
   onScreenshareAudioChunk: (callback) => {
     // Remove all existing listeners first to prevent duplicates
     ipcRenderer.removeAllListeners('screenshare-audio-chunk')

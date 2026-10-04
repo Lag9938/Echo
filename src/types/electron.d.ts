@@ -23,6 +23,7 @@ export interface ElectronAPI {
   restoreWindow: (sourceId: string | number) => Promise<any>
   startProcessAudioCapture: (sourceId: string | number) => Promise<any>
   stopProcessAudioCapture: () => Promise<any>
+  setStreamingPriority?: (boost: boolean) => Promise<number>
   onScreenshareAudioChunk: (callback: (chunk: any) => void) => void
 
   // Auto-updater

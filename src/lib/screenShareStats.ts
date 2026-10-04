@@ -8,6 +8,32 @@ type StatsLike = { forEach: (callback: (stat: any) => void) => void }
 
 export type QualityLimitation = 'none' | 'cpu' | 'bandwidth' | 'other'
 
+/** Por onde a mídia vai até o servidor de voz. TCP (direto ou por relay) trava o vídeo a cada pacote perdido. */
+export type StreamTransport = 'udp' | 'tcp' | 'relay-udp' | 'relay-tcp'
+
+/** Lê o caminho em uso (par de candidatos selecionado) de um relatório do WebRTC; null se ainda não há */
+export function transportOf(report: StatsLike | null | undefined): StreamTransport | null {
+  const stats = collect(report)
+  const byId = new Map<string, any>(stats.map((stat) => [stat.id, stat]))
+  const transport = stats.find((stat) => stat.type === 'transport' && typeof stat.selectedCandidatePairId === 'string')
+  const pair = transport
+    ? byId.get(transport.selectedCandidatePairId)
+    : stats.find((stat) => stat.type === 'candidate-pair' && stat.nominated && stat.state === 'succeeded')
+  const local = pair && typeof pair.localCandidateId === 'string' ? byId.get(pair.localCandidateId) : null
+  if (!local) return null
+  if (local.candidateType === 'relay') return local.relayProtocol === 'udp' ? 'relay-udp' : 'relay-tcp'
+  return local.protocol === 'tcp' ? 'tcp' : 'udp'
+}
+
+/** "UDP", "TCP (pior para vídeo)"… */
+export function describeTransport(transport: StreamTransport | null): string {
+  if (transport === 'udp') return 'UDP (direta)'
+  if (transport === 'relay-udp') return 'UDP (por relay)'
+  if (transport === 'tcp') return 'TCP (pior para vídeo)'
+  if (transport === 'relay-tcp') return 'TCP por relay (pior para vídeo)'
+  return 'medindo…'
+}
+
 export interface VideoFlowStats {
   /** Quadros por segundo de verdade no último intervalo */
   fps: number
@@ -19,6 +45,8 @@ export interface VideoFlowStats {
   codec: string
   /** true = placa de vídeo, false = processador, null = o navegador não informou */
   hardware: boolean | null
+  /** Caminho até o servidor de voz (null = ainda não deu para saber) */
+  transport: StreamTransport | null
 }
 
 /** O que ESTE app está enviando (quem transmite) */
@@ -142,6 +170,7 @@ export function summarizeScreenShareStats(
         kbps: Math.round(totalKbps),
         codec: codecName(publishedById, best.stat.codecId),
         hardware: typeof best.stat.powerEfficientEncoder === 'boolean' ? best.stat.powerEfficientEncoder : null,
+        transport: transportOf(publisherReport),
         captureFps: typeof source?.framesPerSecond === 'number' ? Math.round(source.framesPerSecond * 10) / 10 : null,
         limitation: limited ?? 'none'
       }
@@ -152,6 +181,7 @@ export function summarizeScreenShareStats(
   const received = collect(subscriberReport)
   const receivedById = new Map<string, any>(received.map((stat) => [stat.id, stat]))
   const inbound: Record<string, InboundVideoStats> = {}
+  const inboundTransport = transportOf(subscriberReport)
   for (const stat of received) {
     if (stat.type !== 'inbound-rtp' || stat.kind !== 'video' || typeof stat.trackIdentifier !== 'string') continue
     const key = stat.trackIdentifier
@@ -181,6 +211,7 @@ export function summarizeScreenShareStats(
       kbps: Math.round(((rate(now.bytes, before?.bytes, elapsed) ?? 0) * 8) / 1000),
       codec: codecName(receivedById, stat.codecId),
       hardware: typeof stat.powerEfficientDecoder === 'boolean' ? stat.powerEfficientDecoder : null,
+      transport: inboundTransport,
       droppedPct: decoded + dropped > 0 ? Math.round((dropped / (decoded + dropped)) * 1000) / 10 : 0,
       freezes: usable ? Math.max(0, now.freezes - before!.freezes) : 0,
       packetLossPct: packets + lost > 0 ? Math.round((lost / (packets + lost)) * 1000) / 10 : 0,
