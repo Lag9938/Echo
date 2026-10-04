@@ -53,6 +53,21 @@ export function appendUpdateLog(logFile, message) {
 }
 
 /**
+ * Como o vigia é iniciado. O PowerShell precisa de um console PRÓPRIO: iniciado direto pelo app com
+ * `detached: true` ele nasce sem console, sai na hora com código 0 e NÃO executa o script — foi assim que o
+ * vigia passou versões inteiras sem nunca rodar (o update.log só tinha a linha do app, nenhuma do vigia).
+ * `cmd /c start` cria esse console (minimizado) e solta o processo: ele continua vivo depois que o app fecha.
+ */
+export function buildWatchdogSpawn(scriptFile) {
+  return {
+    command: 'cmd.exe',
+    args: ['/d', '/c', 'start', '""', '/min', 'powershell.exe',
+      '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', scriptFile],
+    options: { stdio: 'ignore', windowsHide: true }
+  }
+}
+
+/**
  * Inicia o vigia em segundo plano. Só no Windows, onde o instalador NSIS é quem reabre o app.
  * O script vai para um arquivo .ps1 (em vez de -EncodedCommand, que antivírus costumam bloquear).
  */
@@ -60,11 +75,8 @@ export function startRelaunchWatchdog({ execPath, updaterDirName, logFile, scrip
   if (process.platform !== 'win32') return false
   try {
     fs.writeFileSync(scriptFile, '\ufeff' + buildRelaunchScript(execPath, updaterDirName, logFile), 'utf8')
-    const child = spawn(
-      'powershell.exe',
-      ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', scriptFile],
-      { detached: true, stdio: 'ignore', windowsHide: true }
-    )
+    const { command, args, options } = buildWatchdogSpawn(scriptFile)
+    const child = spawn(command, args, options)
     child.on('error', (err) => appendUpdateLog(logFile, `vigia de reabertura falhou ao iniciar: ${err.message}`))
     child.unref()
     appendUpdateLog(logFile, 'vigia de reabertura iniciado')

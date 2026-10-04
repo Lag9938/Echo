@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { buildRelaunchScript, appendUpdateLog } from '../services/updateRelaunch.js'
+import { buildRelaunchScript, appendUpdateLog, buildWatchdogSpawn, startRelaunchWatchdog } from '../services/updateRelaunch.js'
 
 describe('buildRelaunchScript', () => {
   it('aponta para o executável e para a pasta do atualizador', () => {
@@ -39,6 +39,41 @@ describe('buildRelaunchScript', () => {
     expect(lastLine).toContain('Start-Process -FilePath $exe')
   })
 
+})
+
+// Bug real: o vigia era iniciado de um jeito em que o PowerShell saía na hora sem executar o script, e nenhum
+// teste percebia porque todos só conferiam o TEXTO do script. Este roda o vigia de verdade.
+describe.runIf(process.platform === 'win32')('startRelaunchWatchdog (execução real no Windows)', () => {
+  it('o vigia roda de fato e anota no log, mesmo com espaço, acento e & no caminho do usuário', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'echo vigia é & cia '))
+    const logFile = path.join(dir, 'update.log')
+
+    const started = startRelaunchWatchdog({
+      execPath: path.join(dir, 'EchoQueNaoExiste.exe'),
+      updaterDirName: 'echo-updater-de-teste',
+      logFile,
+      scriptFile: path.join(dir, 'update-relaunch.ps1')
+    })
+    expect(started).toBe(true)
+
+    const read = () => (fs.existsSync(logFile) ? fs.readFileSync(logFile, 'utf8') : '')
+    // "app iniciado pelo vigia" só aparece depois de o script esperar o app fechar, ver que o instalador
+    // acabou e mandar abrir o executável: é o caminho inteiro de quando o instalador não reabre o Echo
+    await vi.waitFor(() => expect(read()).toContain('vigia: app iniciado pelo vigia'), { timeout: 25000, interval: 500 })
+    expect(read()).toContain('vigia: iniciado')
+    expect(read()).toContain('vigia: o app antigo fechou')
+  }, 30000)
+})
+
+describe('buildWatchdogSpawn', () => {
+  it('dá ao PowerShell um console próprio (cmd /c start) e não usa "detached", que o fazia sair sem rodar', () => {
+    const { command, args, options } = buildWatchdogSpawn('C:\\Users\\a\\update-relaunch.ps1')
+    expect(command).toBe('cmd.exe')
+    expect(args.slice(0, 6)).toEqual(['/d', '/c', 'start', '""', '/min', 'powershell.exe'])
+    expect(args.at(-2)).toBe('-File')
+    expect(args.at(-1)).toBe('C:\\Users\\a\\update-relaunch.ps1')
+    expect(options.detached).toBeUndefined()
+  })
 })
 
 describe('appendUpdateLog', () => {
