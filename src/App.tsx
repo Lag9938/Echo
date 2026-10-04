@@ -1796,6 +1796,7 @@ function Echo({ user }: { user: User }) {
         {/* 2. CHANNELS SIDEBAR FOR ACTIVE SERVER (240px) */}
         <ErrorBoundary name="Canais">
           <ChannelsSidebar
+            isActive={page === 'Servidores'}
             spaces={spaces}
             expandedSpace={expandedSpace}
             sidebarLayout={sidebarLayout}

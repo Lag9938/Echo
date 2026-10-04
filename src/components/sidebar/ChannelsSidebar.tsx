@@ -51,6 +51,8 @@ export interface ChannelsSidebarProps {
   theme: string
   toggleTheme: () => void
   setPage: (page: Page) => void
+  /** A tela dos espaços está à mostra? Em outra tela (Configurações, Amigos…) a barra fica oculta, mas montada. */
+  isActive?: boolean
   setShowWhatsNewModal: (val: boolean) => void
   onSignOut: () => void
   myGamePresence?: { name: string; icon: string; startedAt: number } | null
@@ -160,6 +162,7 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
     theme,
     toggleTheme,
     setPage,
+    isActive = true,
     setShowWhatsNewModal,
     onSignOut,
     myGamePresence,
@@ -242,6 +245,11 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
   React.useEffect(() => {
     setIsMoveSubmenuOpen(false)
   }, [voiceUserMenu])
+
+  // O menu é desenhado em document.body: ao sair da tela dos espaços a barra some, mas ele ficaria na tela
+  React.useEffect(() => {
+    if (!isActive) setVoiceUserMenu(null)
+  }, [isActive])
 
   React.useEffect(() => {
     if (!voiceUserMenu) return
@@ -1261,7 +1269,7 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
               {/* Em document.body: a barra lateral (overflow hidden + backdrop-filter no layout de vidro) vira o
                   bloco de referência de position: fixed e cortava o menu na borda dela. */}
               {/* Voice User Action Context Popover */}
-              {voiceUserMenu && createPortal(
+              {voiceUserMenu && isActive && createPortal(
                 <>
                   <div
                     className="voice-user-menu-backdrop"
