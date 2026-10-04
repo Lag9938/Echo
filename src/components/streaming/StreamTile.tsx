@@ -4,7 +4,7 @@ import type { VoiceParticipant } from '../../lib/useVoiceChannel'
 import { AudioLevelMeter } from '../voice/AudioLevelMeter'
 import { useScreenShareStatsStore } from '../../stores/useScreenShareStatsStore'
 import { STREAM_SMOOTHING_PRESETS, useStreamSettingsStore } from '../../stores/useStreamSettingsStore'
-import { describeLimitation, describeTransport, formatBitrate, isBelowTarget } from '../../lib/screenShareStats'
+import { describeLimitation, describeTransport, formatBitrate, isBelowTarget, pickInboundStats } from '../../lib/screenShareStats'
 import { describeWatchProblem, diagnoseInbound } from '../../lib/streamWatchReport'
 import {
   BarChartIcon,
@@ -66,7 +66,9 @@ export function StreamTile({
   // Medição real do WebRTC (a cada 2 s): o que este app envia, ou o que recebe desta transmissão
   const screenTrackId = participant.screenStream?.getVideoTracks?.()[0]?.id
   const outboundStats = useScreenShareStatsStore((s) => (isLocalSharer ? s.outbound : null))
-  const inboundStats = useScreenShareStatsStore((s) => (!isLocalSharer && screenTrackId ? s.inbound[screenTrackId] : undefined))
+  const inboundAll = useScreenShareStatsStore((s) => s.inbound)
+  // Pelo id da faixa; se o navegador informar outro id nas estatísticas, vale a faixa com a mesma resolução do vídeo
+  const inboundStats = isLocalSharer ? undefined : pickInboundStats(inboundAll, screenTrackId, streamResolution)
   const realStats = isLocalSharer ? outboundStats : (inboundStats ?? null)
   // Reserva de vídeo de quem assiste (vale para todas as transmissões que este app recebe)
   const smoothingMs = useStreamSettingsStore((s) => s.smoothingMs)
@@ -368,6 +370,12 @@ export function StreamTile({
             ) : (
               <>
                 <div className="stats-row"><span>Medição:</span> <strong>medindo…</strong></div>
+                {!isLocalSharer && (
+                  <div className="stats-row">
+                    <span>Faixas de vídeo medidas:</span>
+                    <strong>{Object.keys(inboundAll).length}</strong>
+                  </div>
+                )}
                 <div className="stats-row"><span>Meta de quadros:</span> <strong>{targetFps} FPS</strong></div>
                 {streamResolution && <div className="stats-row"><span>Resolução:</span> <strong>{streamResolution}</strong></div>}
               </>

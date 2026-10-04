@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { createWatchSession, describeWatchProblem, diagnoseInbound, targetFpsFromTrackName } from '../streamWatchReport'
-import type { InboundVideoStats } from '../screenShareStats'
+import { pickInboundStats, type InboundVideoStats } from '../screenShareStats'
 
 const stats = (over: Partial<InboundVideoStats> = {}): InboundVideoStats => ({
   fps: 60, width: 1920, height: 1080, kbps: 6000, codec: 'H264', hardware: true, transport: 'udp',
@@ -41,6 +41,26 @@ describe('diagnóstico de quem assiste', () => {
     expect(targetFpsFromTrackName('screen_video_30fps')).toBe(30)
     expect(targetFpsFromTrackName('camera')).toBe(0)
     expect(targetFpsFromTrackName(undefined)).toBe(0)
+  })
+})
+
+describe('qual medição o painel mostra', () => {
+  const a = stats({ width: 1280, height: 720 })
+  const b = stats({ width: 640, height: 360 })
+
+  it('pelo id da faixa quando ele está entre as medidas', () => {
+    expect(pickInboundStats({ t1: a, t2: b }, 't2', '1280x720')).toBe(b)
+  })
+
+  it('id desconhecido: vale a única faixa com a resolução do vídeo', () => {
+    expect(pickInboundStats({ x1: a, x2: b }, 'outro-id', '1280x720')).toBe(a)
+    expect(pickInboundStats({ x1: a }, undefined, '1280x720')).toBe(a)
+  })
+
+  it('não chuta: duas faixas com a mesma resolução, ou nenhuma, ficam sem medição', () => {
+    expect(pickInboundStats({ x1: a, x2: stats({ width: 1280, height: 720 }) }, 'outro-id', '1280x720')).toBeUndefined()
+    expect(pickInboundStats({ x1: b }, 'outro-id', '1280x720')).toBeUndefined()
+    expect(pickInboundStats({}, 'outro-id', '')).toBeUndefined()
   })
 })
 

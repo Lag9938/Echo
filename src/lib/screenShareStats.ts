@@ -228,6 +228,21 @@ export function summarizeScreenShareStats(
   return { outbound, inbound, counters }
 }
 
+/**
+ * A medição da transmissão que um painel está mostrando. Normalmente pelo id da faixa de vídeo; se esse id não
+ * estiver entre as faixas medidas, vale a única faixa com a mesma resolução do vídeo ("1280x720").
+ */
+export function pickInboundStats(
+  inbound: Record<string, InboundVideoStats>,
+  trackId: string | undefined,
+  resolution: string | undefined | null
+): InboundVideoStats | undefined {
+  if (trackId && inbound[trackId]) return inbound[trackId]
+  if (!resolution) return undefined
+  const sameSize = Object.values(inbound).filter((stats) => `${stats.width}x${stats.height}` === resolution)
+  return sameSize.length === 1 ? sameSize[0] : undefined
+}
+
 /** Texto curto do que está limitando a transmissão, para o painel de estatísticas */
 export function describeLimitation(limitation: QualityLimitation): string {
   if (limitation === 'cpu') return 'Processador ou placa de vídeo no limite'
