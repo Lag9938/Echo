@@ -33,6 +33,8 @@ import { useCallStatsStore } from '../stores/useCallStatsStore'
 import { summarizeRtcStats, type InboundCounters } from './rtcStats'
 import { summarizeScreenShareStats, type ScreenShareCounters } from './screenShareStats'
 import { useScreenShareStatsStore } from '../stores/useScreenShareStatsStore'
+import { useStreamSettingsStore } from '../stores/useStreamSettingsStore'
+import { screenPlayoutDelays, setTrackPlayoutDelay } from './playoutDelay'
 import { parseModerationNotice } from './voiceModeration'
 
 export type VoiceParticipant = {
@@ -519,26 +521,25 @@ export function useVoiceChannel(options?: {
   const toggleMuteRef = useRef<() => void>(() => {})
 
   const applyScreenAudioDelayToTrack = useCallback((track: any, delayMs: number) => {
-    if (!track) return
-    const delaySec = delayMs / 1000
-    try {
-      if (typeof track.setPlayoutDelay === 'function') {
-        track.setPlayoutDelay(delaySec)
-      }
-    } catch (e) {}
-
-    const receiver = track.receiver
-    if (receiver) {
-      try {
-        if ('playoutDelayHint' in receiver) {
-          receiver.playoutDelayHint = delaySec
-        }
-        if ('jitterBufferTarget' in receiver) {
-          receiver.jitterBufferTarget = delayMs
-        }
-      } catch (e) {}
-    }
+    setTrackPlayoutDelay(track, delayMs)
   }, [])
+
+  /**
+   * Reserva de reprodução das transmissões que este app está assistindo. O vídeo ganha a "fluidez"
+   * escolhida (sem reserva, cada oscilação da rede vira uma travadinha). O áudio da transmissão ganha a
+   * mesma reserva MAIS o ajuste manual de sincronia labial, para o som não chegar antes da imagem.
+   */
+  const applyScreenPlayoutDelays = useCallback(() => {
+    const room = roomRef.current
+    if (!room) return
+    const delays = screenPlayoutDelays(useStreamSettingsStore.getState().smoothingMs, screenAudioSyncDelayMsRef.current)
+    room.remoteParticipants.forEach((rp) => {
+      const video = rp.getTrackPublication(Track.Source.ScreenShare)?.track
+      if (video) applyScreenAudioDelayToTrack(video, delays.videoMs)
+      const audio = rp.getTrackPublication(Track.Source.ScreenShareAudio)?.track
+      if (audio) applyScreenAudioDelayToTrack(audio, delays.audioMs)
+    })
+  }, [applyScreenAudioDelayToTrack])
 
   const changeScreenAudioSyncDelay = useCallback((delayMs: number) => {
     const clamped = Math.max(0, Math.min(1000, delayMs))
@@ -548,15 +549,11 @@ export function useVoiceChannel(options?: {
       localStorage.setItem('echo-screen-audio-delay-ms', clamped.toString())
     } catch (e) {}
 
-    if (roomRef.current) {
-      roomRef.current.remoteParticipants.forEach((rp) => {
-        const audioPub = rp.getTrackPublication(Track.Source.ScreenShareAudio)
-        if (audioPub && audioPub.track) {
-          applyScreenAudioDelayToTrack(audioPub.track, clamped)
-        }
-      })
-    }
-  }, [applyScreenAudioDelayToTrack])
+    applyScreenPlayoutDelays()
+  }, [applyScreenPlayoutDelays])
+
+  // A pessoa trocou a fluidez (Rápida / Equilibrada / Suave) no painel da transmissão: vale na hora
+  useEffect(() => useStreamSettingsStore.subscribe(() => applyScreenPlayoutDelays()), [applyScreenPlayoutDelays])
 
   // Sync all participants into React state
   const syncParticipants = useCallback(() => {
@@ -1412,7 +1409,7 @@ export function useVoiceChannel(options?: {
           audio.muted = isDeafenedRef.current || savedVol === 0 || (isScreen && (!isWatching || activeStreamTilesRef.current.has(participant.identity)))
 
           if (isScreen) {
-            applyScreenAudioDelayToTrack(track, screenAudioSyncDelayMsRef.current)
+            applyScreenAudioDelayToTrack(track, screenPlayoutDelays(useStreamSettingsStore.getState().smoothingMs, screenAudioSyncDelayMsRef.current).audioMs)
           }
 
           track.attach(audio)
@@ -1426,6 +1423,10 @@ export function useVoiceChannel(options?: {
           audio.play().catch(e => console.warn('[LiveKit] Audio play:', e))
           syncParticipants()
         } else if (track.kind === Track.Kind.Video) {
+          // Transmissão de tela: reserva de reprodução para a imagem sair em ritmo constante
+          if (track.source === Track.Source.ScreenShare) {
+            applyScreenAudioDelayToTrack(track, useStreamSettingsStore.getState().smoothingMs)
+          }
           syncParticipants()
         }
       })

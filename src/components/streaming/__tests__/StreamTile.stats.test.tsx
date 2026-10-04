@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, fireEvent, act } from '@testing-library/react'
 import { StreamTile } from '../StreamTile'
 import { useScreenShareStatsStore } from '../../../stores/useScreenShareStatsStore'
+import { useStreamSettingsStore } from '../../../stores/useStreamSettingsStore'
 
 const ME = 'me'
 const ANA = 'ana'
@@ -98,5 +99,21 @@ describe('Estatísticas reais da transmissão', () => {
     const { container } = renderTile({ userId: ANA, displayName: 'Ana', screenFps: 60, screenStream: fakeStream('faixa-da-ana') })
     expect(pill(container).textContent).toContain('3 FPS')
     expect(pill(container).style.color).toBe('')
+  })
+
+  it('quem assiste escolhe a fluidez no painel; quem transmite não vê essa opção', () => {
+    act(() => useStreamSettingsStore.getState().setSmoothingMs(150))
+    const viewer = renderTile({ userId: ANA, displayName: 'Ana', screenFps: 60, screenStream: fakeStream('faixa-da-ana') })
+    const buttons = [...viewer.container.querySelectorAll('.stream-smoothing-btn')] as HTMLButtonElement[]
+    expect(buttons.map((b) => b.textContent)).toEqual(['Rápida', 'Equilibrada', 'Suave'])
+    expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false'])
+
+    fireEvent.click(buttons[2])
+    expect(useStreamSettingsStore.getState().smoothingMs).toBe(400)
+    expect(viewer.container.querySelector('.stream-smoothing-btn.active')?.textContent).toBe('Suave')
+    viewer.unmount()
+
+    const sharer = renderTile({ userId: ME, displayName: 'Eu', screenStream: fakeStream('local') })
+    expect(sharer.container.querySelector('.stream-smoothing-btn')).toBeNull()
   })
 })

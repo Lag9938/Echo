@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js'
 import type { VoiceParticipant } from '../../lib/useVoiceChannel'
 import { AudioLevelMeter } from '../voice/AudioLevelMeter'
 import { useScreenShareStatsStore } from '../../stores/useScreenShareStatsStore'
+import { STREAM_SMOOTHING_PRESETS, useStreamSettingsStore } from '../../stores/useStreamSettingsStore'
 import { describeLimitation, formatBitrate, isBelowTarget } from '../../lib/screenShareStats'
 import {
   BarChartIcon,
@@ -66,6 +67,9 @@ export function StreamTile({
   const outboundStats = useScreenShareStatsStore((s) => (isLocalSharer ? s.outbound : null))
   const inboundStats = useScreenShareStatsStore((s) => (!isLocalSharer && screenTrackId ? s.inbound[screenTrackId] : undefined))
   const realStats = isLocalSharer ? outboundStats : (inboundStats ?? null)
+  // Reserva de vídeo de quem assiste (vale para todas as transmissões que este app recebe)
+  const smoothingMs = useStreamSettingsStore((s) => s.smoothingMs)
+  const setSmoothingMs = useStreamSettingsStore((s) => s.setSmoothingMs)
   // Enquanto ainda não mediu, mostra a meta (marcada como tal no painel)
   const streamFps = realStats ? Math.round(realStats.fps) : targetFps
   // Alerta (em âmbar): quem transmite, quando a tela gera os quadros e o envio não acompanha; quem assiste,
@@ -355,6 +359,25 @@ export function StreamTile({
                 <div className="stats-row"><span>Meta de quadros:</span> <strong>{targetFps} FPS</strong></div>
                 {streamResolution && <div className="stats-row"><span>Resolução:</span> <strong>{streamResolution}</strong></div>}
               </>
+            )}
+            {!isLocalSharer && (
+              <div className="stats-row stats-row-smoothing">
+                <span>Fluidez:</span>
+                <span className="stream-smoothing-options" role="group" aria-label="Fluidez da transmissão">
+                  {STREAM_SMOOTHING_PRESETS.map((preset) => (
+                    <button
+                      key={preset.ms}
+                      type="button"
+                      className={`stream-smoothing-btn ${smoothingMs === preset.ms ? 'active' : ''}`}
+                      aria-pressed={smoothingMs === preset.ms}
+                      title={preset.hint}
+                      onClick={() => setSmoothingMs(preset.ms)}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </span>
+              </div>
             )}
             {!isLocalSharer && (
               <div className="stats-row"><span>Sincronia labial:</span> <strong>{screenAudioSyncDelayMs !== undefined && screenAudioSyncDelayMs > 0 ? `+${screenAudioSyncDelayMs} ms (manual, teclas [ e ])` : 'Automática'}</strong></div>
