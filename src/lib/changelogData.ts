@@ -18,11 +18,31 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.52.1',
+    title: 'Echo v0.52.1 - Chat da Chamada de Volta',
+    date: '4 de Outubro de 2026',
+    tagline: 'O chat de texto das chamadas voltou a funcionar de verdade: mostra as mensagens da chamada, recebe as dos outros na hora e não some ao reabrir.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '💬',
+        badge: 'CORREÇÃO',
+        title: 'Chat de Texto da Chamada',
+        description: 'O chat da chamada mostrava as mensagens do último canal de texto aberto, não recebia o que os outros escreviam e ficava vazio ao reabrir. Agora ele carrega as mensagens da chamada e recebe as novas em tempo real, incluindo as respostas do bot de música. Para abrir, use o ícone de balão no topo da tela da chamada.'
+      },
+      {
+        icon: '⬇️',
+        badge: 'AJUSTE',
+        title: 'Chat Abre na Mensagem Mais Nova',
+        description: 'O chat da chamada abre rolado até o fim e acompanha as mensagens que chegam, sem puxar de volta quem subiu para ler o histórico.'
+      }
+    ]
+  },
+  {
     version: '0.52.0',
     title: 'Echo v0.52.0 - Tópicos e Transmissões Mais Fluidas',
     date: '4 de Outubro de 2026',
     tagline: 'Responda em tópico sem encher o canal, veja os números reais da transmissão e assista com a imagem mais estável e mais nítida. O Echo também pesa menos enquanto você joga.',
-    isLatest: true,
     highlights: [
       {
         icon: '🧵',
