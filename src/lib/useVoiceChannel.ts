@@ -36,6 +36,7 @@ import { useScreenShareStatsStore } from '../stores/useScreenShareStatsStore'
 import { useStreamSettingsStore } from '../stores/useStreamSettingsStore'
 import { screenPlayoutDelays, setTrackPlayoutDelay } from './playoutDelay'
 import { screenShareBitrate } from './screenShareQuality'
+import { syncTrackSubscription } from './trackSubscription'
 import { parseModerationNotice } from './voiceModeration'
 
 export type VoiceParticipant = {
@@ -740,23 +741,14 @@ export function useVoiceChannel(options?: {
 
       const screenPub = rp.getTrackPublication(Track.Source.ScreenShare)
       const shouldSubscribe = isWatching && (viewMode === 'grid' || !activeSharerId || activeSharerId === rp.identity)
-      if (screenPub) {
-        // Se o espectador não estiver visualizando a tela, corta a transmissão de vídeo (0 Kbps)
-        // No modo foco, assina apenas a tela selecionada. No modo grade, assina todas.
-        // A tela é publicada sem simulcast (uma única camada), então não existe qualidade menor para
-        // o modo grade: cada tela assinada consome o bitrate completo, mesmo em miniatura.
-        if (screenPub.isSubscribed !== shouldSubscribe) {
-          screenPub.setSubscribed(shouldSubscribe)
-        }
-      }
+      // Se o espectador não estiver visualizando a tela, corta a transmissão de vídeo (0 Kbps)
+      // No modo foco, assina apenas a tela selecionada. No modo grade, assina todas.
+      // A tela é publicada sem simulcast (uma única camada), então não existe qualidade menor para
+      // o modo grade: cada tela assinada consome o bitrate completo, mesmo em miniatura.
+      syncTrackSubscription(screenPub, shouldSubscribe)
 
       // Se o usuário não estiver assistindo à transmissão (fechou/ocultou o vídeo), corta o áudio da tela (0 Kbps)
-      const screenAudioPub = rp.getTrackPublication(Track.Source.ScreenShareAudio)
-      if (screenAudioPub) {
-        if (screenAudioPub.isSubscribed !== shouldSubscribe) {
-          screenAudioPub.setSubscribed(shouldSubscribe)
-        }
-      }
+      syncTrackSubscription(rp.getTrackPublication(Track.Source.ScreenShareAudio), shouldSubscribe)
 
       const screenAudio = audioElementsRef.current.get(`${rp.identity}-screen`)
       if (screenAudio) {
@@ -1360,7 +1352,8 @@ export function useVoiceChannel(options?: {
 
       room.on(RoomEvent.TrackPublished, (pub: RemoteTrackPublication) => {
         syncParticipants()
-        if (pub && (pub.source === Track.Source.ScreenShare || pub.source === Track.Source.Camera)) {
+        // O áudio da tela é publicado à parte do vídeo: sem ele aqui, continuava assinado para quem não assiste
+        if (pub && (pub.source === Track.Source.ScreenShare || pub.source === Track.Source.ScreenShareAudio || pub.source === Track.Source.Camera)) {
           updateScreenSubscriptions()
         }
       })
@@ -1542,6 +1535,8 @@ export function useVoiceChannel(options?: {
           trackVoiceJoined(channelId)
           setIsConnected(true)
           syncParticipants()
+          // Quem entra numa chamada com transmissão já em andamento não recebe a tela até pedir para assistir
+          updateScreenSubscriptions()
         } catch (connErr) {
           console.error('[LiveKit] Erro ao conectar ao SFU:', connErr)
           throw connErr
