@@ -11,6 +11,9 @@ import { useVoiceActivity } from '../hooks/useVoiceActivity'
 import { PaperclipIcon } from '../components/icons'
 import { useUIStore } from '../stores/useUIStore'
 import { useSpacesStore } from '../stores/useSpacesStore'
+import { useThreadsStore } from '../stores/useThreadsStore'
+import { useEchoThreads } from '../hooks/useEchoThreads'
+import { ThreadPanel } from '../components/chat/ThreadPanel'
 
 export interface TextChannelViewProps {
   currentSpace: Space | null
@@ -195,6 +198,15 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
   }, [currentSpaceChannels, onJoinVoice])
 
   const openLightbox = useUIStore((s) => s.openLightbox)
+
+  // Respostas em tópico do canal aberto (resumos para a lista, tópico aberto no painel lateral)
+  const threads = useEchoThreads({ supabase, user, channel: selectedChannel, profileDisplayName, profileAvatarUrl })
+  const unreadThreadRoots = useThreadsStore((s) => s.unreadRoots)
+  const canSendInChannel = !currentSpace || (
+    canUserDo(currentSpace.id, user.id, 'sendMessages') &&
+    (!selectedChannel.is_announcement || canUserDo(currentSpace.id, user.id, 'sendInAnnouncementChannels'))
+  )
+
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [emojiPickerTab, setEmojiPickerTab] = useState<'default' | 'server'>('default')
   const [showGifPicker, setShowGifPicker] = useState(false)
@@ -605,6 +617,9 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
             voiceNoteAudioRef={voiceNoteAudioRef}
             retrySendMessage={retrySendMessage}
             messageReactions={messageReactions}
+            threadSummaries={threads.enabled ? threads.summaries : undefined}
+            onOpenThread={threads.enabled ? threads.openThread : undefined}
+            unreadThreadRoots={unreadThreadRoots}
           />
 
           <MessageComposer
@@ -662,6 +677,49 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
             postChannelMessage={postChannelMessage}
           />
         </div>
+
+        {/* Tópico aberto: painel lateral com a mensagem de origem e as respostas */}
+        {threads.openRoot && (
+          <ThreadPanel
+            key={threads.openRoot.id}
+            root={threads.openRoot}
+            replies={threads.replies}
+            isLoading={threads.isLoadingReplies}
+            notice={threads.notice}
+            canSend={canSendInChannel}
+            onClose={threads.closeThread}
+            onSend={threads.sendReply}
+            onRetry={threads.retryReply}
+            onDelete={threads.deleteReply}
+            listProps={{
+              selectedChannel,
+              currentSpace,
+              user,
+              profileDisplayName,
+              profileAvatarUrl,
+              avatarDecoration,
+              nameEffect,
+              presenceData,
+              serverRoles,
+              memberRoleMap,
+              serverEmojis,
+              spaceMembers,
+              canUserDo,
+              getUserHighestRole,
+              setInspectedMember,
+              toggleReaction,
+              isMessageSaved,
+              toggleSaveMessage,
+              openLightbox,
+              activePlayingVoiceNote,
+              handleToggleVoicePlay,
+              voiceNotePlaySpeed,
+              handleChangeVoiceSpeed,
+              voiceNoteAudioRef,
+              messageReactions
+            }}
+          />
+        )}
 
         {/* Pinned Messages Drawer */}
         <PinnedMessagesDrawer

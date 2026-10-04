@@ -43,6 +43,8 @@ describe('useEchoChannelMessages', () => {
 
     const mockSelectChain: any = {
       eq: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      lt: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
       limit: vi.fn().mockResolvedValue({ data: [], error: null }),
       single: vi.fn().mockResolvedValue({

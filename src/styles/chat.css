@@ -2496,3 +2496,208 @@ body.theme-performance-opaque.echo-layout-glass .emoji-picker-popover {
   -webkit-backdrop-filter: none !important;
   background: var(--bg-secondary) !important;
 }
+
+/* ==========================================================================
+   RESPOSTAS EM TÓPICO
+   O selo "N respostas" embaixo da mensagem e o painel lateral do tópico.
+   ========================================================================== */
+.thread-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--accent-color) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 22%, transparent);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease;
+}
+.thread-chip:hover {
+  background: color-mix(in srgb, var(--accent-color) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color) 45%, transparent);
+}
+.thread-chip strong { color: var(--accent-color); font-weight: 700; }
+.thread-chip-time { color: var(--text-muted); }
+.thread-chip.has-unread { border-color: var(--accent-color); }
+.thread-chip-unread {
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: #04121a;
+  background: var(--accent-color);
+  border-radius: 6px;
+}
+
+.thread-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 380px;
+  width: 380px;
+  max-width: 45%;
+  min-width: 0;
+  height: 100%;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-color);
+}
+.thread-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+.thread-panel-heading { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.thread-panel-heading strong { font-size: 14px; color: var(--text-primary); }
+.thread-panel-heading span {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.thread-panel-close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.thread-panel-close:hover { color: var(--text-primary); background: color-mix(in srgb, var(--text-primary) 8%, transparent); }
+
+.thread-panel-root {
+  margin: 12px 14px 0;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--accent-color);
+  border-radius: 10px;
+}
+.thread-panel-root-meta { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.thread-panel-root-meta strong { font-size: 13px; color: var(--text-primary); }
+.thread-panel-root-meta time { font-size: 11px; color: var(--text-muted); }
+.thread-panel-root-body {
+  margin: 0;
+  max-height: 120px;
+  overflow-y: auto;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+.thread-panel-root-image {
+  display: block;
+  max-width: 100%;
+  max-height: 140px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.thread-panel-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 14px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+}
+.thread-panel-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+/* A lista de respostas ocupa o espaço que sobra; o campo de resposta fica sempre à vista embaixo */
+.thread-panel .messages-area { flex: 1; min-height: 0; padding: 8px 8px 4px; }
+.thread-panel-empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--text-muted);
+}
+.thread-panel-notice {
+  margin: 0 14px 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #ff8b7e;
+  background: rgba(255, 139, 126, 0.08);
+  border: 1px solid rgba(255, 139, 126, 0.25);
+  border-radius: 8px;
+}
+.thread-panel-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 0 14px 14px;
+  padding: 6px 6px 6px 12px;
+  background: color-mix(in srgb, var(--bg-secondary) 92%, var(--accent-color));
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+}
+.thread-panel-composer:focus-within { border-color: color-mix(in srgb, var(--accent-color) 55%, var(--border-color)); }
+.thread-panel-composer textarea {
+  flex: 1;
+  min-width: 0;
+  max-height: 120px;
+  padding: 7px 0;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: transparent;
+  border: 0;
+  outline: none;
+  resize: none;
+  field-sizing: content;
+}
+.thread-panel-composer textarea::placeholder { color: var(--text-muted); }
+.thread-panel-send {
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent-color);
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.thread-panel-send:disabled { opacity: 0.45; cursor: default; }
+.thread-panel-readonly {
+  margin: 0 14px 14px;
+  font-size: 12px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* Layout glass: o painel do tópico acompanha o vidro fosco da barra de membros */
+body.echo-layout-glass .thread-panel {
+  background: color-mix(in srgb, var(--bg-primary, #0a0d14) 72%, transparent);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border-left-color: color-mix(in srgb, var(--border-color, rgba(255, 255, 255, 0.12)) 50%, rgba(255, 255, 255, 0.14));
+}
+body.light-theme.echo-layout-glass .thread-panel {
+  background: color-mix(in srgb, var(--bg-secondary, #ffffff) 85%, transparent);
+  border-left-color: rgba(0, 0, 0, 0.08);
+}
+body.theme-performance-opaque .thread-panel {
+  background: var(--bg-secondary);
+}

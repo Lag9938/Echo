@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, type FormEvent } from 'react'
 import type { User, RealtimeChannel } from '@supabase/supabase-js'
 import type { Message, Channel, Space, RolePermissions } from '../types'
 import { trackMessageSent } from '../lib/analytics'
+import { MESSAGE_DELETED_EVENT, THREAD_MESSAGE_EVENT, isMissingThreadColumn, threadSupport } from '../lib/threads'
 import {
   generateTempMessageId,
   createAntiSpamState,
@@ -11,7 +12,10 @@ import {
 } from './useEchoMessagesCore'
 
 const PAGE_SIZE = 50
-const MESSAGE_SELECT = 'id,channel_id,body,created_at,updated_at,author_id,attachment_url,attachment_type,reply_to_message_id,is_edited,message_type,profiles(display_name,avatar_url,avatar_decoration,profile_effect)'
+const MESSAGE_SELECT_LEGACY = 'id,channel_id,body,created_at,updated_at,author_id,attachment_url,attachment_type,reply_to_message_id,is_edited,message_type,profiles(display_name,avatar_url,avatar_decoration,profile_effect)'
+const MESSAGE_SELECT_THREADS = 'id,channel_id,body,created_at,updated_at,author_id,attachment_url,attachment_type,reply_to_message_id,thread_root_id,is_edited,message_type,profiles(display_name,avatar_url,avatar_decoration,profile_effect)'
+/** Colunas de uma mensagem; sem a de tópico enquanto o banco ainda não tiver a migração 14 */
+const messageSelect = () => (threadSupport.columnMissing ? MESSAGE_SELECT_LEGACY : MESSAGE_SELECT_THREADS)
 /** Depois disso, uma busca antecipada de um canal é considerada velha e pode ser refeita. */
 const PREFETCH_FRESH_MS = 5 * 60_000
 /** Quantos canais aquecer de uma vez, para não disputar a rede com o canal aberto. */
@@ -149,13 +153,32 @@ export function useEchoChannelMessages({
   }, [profileDisplayName, profileAvatarUrl, user?.id])
 
   /** Busca as últimas mensagens de um canal já na ordem cronológica (mais antigas primeiro). */
+  /**
+   * Uma página do chat principal do canal, da mais nova para a mais antiga. As respostas de tópico ficam de
+   * fora (elas aparecem no painel do tópico). Se o banco ainda não tem a coluna de tópicos, busca do jeito
+   * antigo e lembra disso para as próximas.
+   */
+  async function queryChannelPage(channelId: string, before?: string): Promise<{ data: any[] | null; error: any }> {
+    const run = (withThreads: boolean) => {
+      let query = supabase
+        .from('messages')
+        .select(withThreads ? MESSAGE_SELECT_THREADS : MESSAGE_SELECT_LEGACY)
+        .eq('channel_id', channelId)
+      if (withThreads) query = query.is('thread_root_id', null)
+      if (before) query = query.lt('created_at', before)
+      return query.order('created_at', { ascending: false }).limit(PAGE_SIZE)
+    }
+    if (threadSupport.columnMissing) return run(false)
+    const result = await run(true)
+    if (result.error && isMissingThreadColumn(result.error)) {
+      threadSupport.columnMissing = true
+      return run(false)
+    }
+    return result
+  }
+
   async function fetchLatestMessages(channelId: string): Promise<{ messages: Message[]; hasMore: boolean } | { error: string }> {
-    const { data, error: queryError } = await supabase
-      .from('messages')
-      .select(MESSAGE_SELECT)
-      .eq('channel_id', channelId)
-      .order('created_at', { ascending: false })
-      .limit(PAGE_SIZE)
+    const { data, error: queryError } = await queryChannelPage(channelId)
 
     if (queryError) return { error: queryError.message }
 
@@ -254,8 +277,12 @@ export function useEchoChannelMessages({
 
     setMessages(prev => {
       if (activeChannelIdRef.current !== channelId) return prev
-      const pendingLocal = prev.filter(m => 
-        (m.status === 'sending' || m.status === 'failed') &&
+      // Além das que ainda estão enviando, fica a que EU acabei de enviar e o banco já confirmou: a busca
+      // pode ter saído antes de ela ser gravada e voltaria sem ela, tirando a mensagem da tela.
+      const justSentByMe = (m: Message) =>
+        m.status === 'sent' && Boolean(m.tempId) && Date.now() - new Date(m.created_at).getTime() < 10_000
+      const pendingLocal = prev.filter(m =>
+        (m.status === 'sending' || m.status === 'failed' || justSentByMe(m)) &&
         (!m.channel_id || m.channel_id === channelId) &&
         !loaded.some(dbM => dbM.id === m.id || (m.tempId && dbM.id === m.tempId))
       )
@@ -317,13 +344,7 @@ export function useEchoChannelMessages({
     isPrependingRef.current = true
 
     try {
-      const { data, error: queryError } = await supabase
-        .from('messages')
-        .select('id,channel_id,body,created_at,updated_at,author_id,attachment_url,attachment_type,reply_to_message_id,is_edited,message_type,profiles(display_name,avatar_url,avatar_decoration,profile_effect)')
-        .eq('channel_id', channelId)
-        .lt('created_at', oldest.created_at)
-        .order('created_at', { ascending: false })
-        .limit(50)
+      const { data, error: queryError } = await queryChannelPage(channelId, oldest.created_at)
 
       if (queryError) {
         console.error('Error loading older messages:', queryError)
@@ -469,7 +490,7 @@ export function useEchoChannelMessages({
           attachment_type: attachmentType,
           reply_to_message_id: replyToMessageId || null
         })
-        .select('id,channel_id,body,created_at,updated_at,author_id,attachment_url,attachment_type,reply_to_message_id,is_edited,message_type,profiles(display_name,avatar_url,avatar_decoration,profile_effect)')
+        .select(messageSelect())
         .single()
 
       const { data: inserted, error: insertError } = (await Promise.race([insertPromise, timeoutPromise])) as any
@@ -666,8 +687,16 @@ export function useEchoChannelMessages({
       }
     })
 
+    // Resposta de tópico: não entra no chat principal; quem cuida dos tópicos (useEchoThreads) é avisado
+    live.on('broadcast', { event: 'thread-message' }, ({ payload }: { payload: any }) => {
+      if (!payload || !payload.id) return
+      if (payload.channel_id && payload.channel_id !== selectedChannel.id) return
+      window.dispatchEvent(new CustomEvent(THREAD_MESSAGE_EVENT, { detail: payload }))
+    })
+
     live.on('broadcast', { event: 'delete-message' }, ({ payload }: { payload: any }) => {
       if (!payload || !payload.id) return
+      window.dispatchEvent(new CustomEvent(MESSAGE_DELETED_EVENT, { detail: payload }))
       setMessages(prev => {
         const updated = prev.filter(m => m.id !== payload.id)
         if (selectedChannel) {
@@ -708,6 +737,8 @@ export function useEchoChannelMessages({
           messagesRef.current.some(m => m.id === payload.new.id && m.status === 'sent')) {
         return
       }
+      // Resposta de tópico não muda o chat principal
+      if (payload?.eventType === 'INSERT' && payload.new?.thread_root_id) return
       loadMessages(selectedChannel.id, isDeleteOrUpdate)
     })
 

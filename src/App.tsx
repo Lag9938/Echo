@@ -68,6 +68,8 @@ import { useEchoInviteLinks } from './hooks/useEchoInviteLinks'
 import { useEchoNotificationNavigation } from './hooks/useEchoNotificationNavigation'
 import { useEchoDMActions } from './hooks/useEchoDMActions'
 import { buildPresencePayload } from './lib/presencePayload'
+import { planThreadReplyNotice, type ThreadReplyNotice } from './lib/threads'
+import { useThreadsStore } from './stores/useThreadsStore'
 import { useEchoAudioPreferences, useEchoAudioSettingsActions } from './hooks/useEchoAudioPreferences'
 
 import type { Space, Channel, Message, DirectMessage, FriendshipRequest, SavedMessageItem, Page, Toast, RolePermissions, ServerRole, ServerAuditLog, ServerEmoji, PinnedMessage, GroupChat, GroupMessage } from './types'
@@ -1365,8 +1367,11 @@ function Echo({ user }: { user: User }) {
 
         const isCurrentChannel = newMsg.channel_id === selectedChannelRef.current?.id
         const isAppFocused = typeof document !== 'undefined' && document.hasFocus()
+        // Resposta de tópico não marca o canal como não lido nem notifica todo mundo: quem participa do
+        // tópico é avisado pela caixa de entrada ("thread-reply"). Menção continua valendo.
+        const isThreadReply = Boolean(newMsg.thread_root_id)
 
-        if (!isCurrentChannel) {
+        if (!isCurrentChannel && !isThreadReply) {
           setUnreadChannels(prev => {
             if (prev.has(newMsg.channel_id)) return prev
             const next = new Set(prev)
@@ -1390,7 +1395,7 @@ function Echo({ user }: { user: User }) {
           bodyLower.includes('@here')
 
         // Se o app não estiver em foco e (for mencionado OU for mensagem em outro canal não mutado)
-        if (!isAppFocused && (isMentioned || (!isSpaceMuted && !isCurrentChannel))) {
+        if (!isAppFocused && (isMentioned || (!isSpaceMuted && !isCurrentChannel && !isThreadReply))) {
           const chObj = Object.values(spaceChannelsRef.current).flat().find(c => c.id === newMsg.channel_id)
           const chName = chObj?.name ? `#${chObj.name}` : 'canal'
           const title = isMentioned ? `Mencionado em ${chName}` : `Nova mensagem em ${chName}`
@@ -1460,6 +1465,34 @@ function Echo({ user }: { user: User }) {
     }
   }, [handleNewDMPostgresChanges, supabase, user])
 
+  // Alguém respondeu num tópico de que participo (aviso do banco na caixa de entrada, sem o texto)
+  const handleThreadReplyNotice = useCallback((notice: ThreadReplyNotice | null | undefined) => {
+    const action = planThreadReplyNotice(notice, {
+      myUserId: userRef.current?.id,
+      knownChannels: Object.values(spaceChannelsRef.current).flat(),
+      currentChannelId: selectedChannelRef.current?.id,
+      openThreadRootId: useThreadsStore.getState().openRootId,
+      mutedSpaceIds: mutedSpacesRef.current,
+      appFocused: typeof document !== 'undefined' && document.hasFocus()
+    })
+    if (!action) return
+    useThreadsStore.getState().markUnread(action.rootId, action.channelId)
+    if (action.markChannelUnread) {
+      setUnreadChannels(prev => {
+        if (prev.has(action.channelId)) return prev
+        const next = new Set(prev)
+        next.add(action.channelId)
+        return next
+      })
+    }
+    if (action.notification) {
+      triggerDesktopNotification(action.notification.title, action.notification.body, { type: 'channel', channelId: action.channelId })
+      if (typeof (window as any).electronAPI?.flashFrame === 'function') {
+        ;(window as any).electronAPI.flashFrame(true)
+      }
+    }
+  }, [triggerDesktopNotification])
+
   // Global Social Broadcast Channel for 0ms instant friend and DM delivery
   useEffect(() => {
     if (!supabase || !user) return
@@ -1521,13 +1554,16 @@ function Echo({ user }: { user: User }) {
       .on('broadcast', { event: 'group-typing' }, (payload: any) => {
         handleGroupTypingBroadcast(payload?.payload)
       })
+      .on('broadcast', { event: 'thread-reply' }, (payload: any) => {
+        handleThreadReplyNotice(payload?.payload)
+      })
       .subscribe()
 
     return () => {
       supabase?.removeChannel(liveFriendships)
       supabase?.removeChannel(socialChannel)
     }
-  }, [handleFriendshipPostgresChanges, handleFriendEvent, handleDMBroadcast, handleDMDeleteBroadcast, handleCallEvent, handleDMTypingBroadcast, handleGroupMessageBroadcast, handleGroupTypingBroadcast, supabase, user])
+  }, [handleFriendshipPostgresChanges, handleFriendEvent, handleDMBroadcast, handleDMDeleteBroadcast, handleCallEvent, handleDMTypingBroadcast, handleGroupMessageBroadcast, handleGroupTypingBroadcast, handleThreadReplyNotice, supabase, user])
 
   // Sincronização de redundância (o normal já chega em tempo real): a cada 5 min com a janela visível e ao voltar para ela
   useEffect(() => {

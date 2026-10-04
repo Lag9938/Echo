@@ -110,6 +110,8 @@ export interface Message {
   attachment_type?: string;
   status?: 'sending' | 'sent' | 'failed';
   reply_to_message_id?: string | null;
+  /** Resposta de tópico: id da mensagem-raiz. null/ausente = mensagem comum do canal */
+  thread_root_id?: string | null;
   is_edited?: boolean;
   message_type?: string;
   updated_at?: string;

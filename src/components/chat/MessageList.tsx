@@ -20,6 +20,7 @@ import {
 import { openExternalUrl } from '../../lib/openExternal'
 import { isAutoImageCaption } from '../../lib/attachmentCaption'
 import type { VoiceFeedEvent } from '../../lib/voiceActivity'
+import { formatReplyCount, type ThreadSummaries } from '../../lib/threads'
 
 const EMPTY_EVENTS: VoiceFeedEvent[] = []
 
@@ -82,6 +83,14 @@ export interface MessageListProps {
   messageReactions: Record<string, Record<string, string[]>>
   /** Eventos da chamada (entrou, saiu, o bot tocou) para intercalar com as mensagens pelo horário */
   voiceEvents?: VoiceFeedEvent[]
+  /** Resumo dos tópicos do canal, por mensagem-raiz: mostra "3 respostas" embaixo da mensagem */
+  threadSummaries?: ThreadSummaries
+  /** Abre o tópico de uma mensagem. Sem isso, a lista não mostra nada de tópico */
+  onOpenThread?: (message: Message) => void
+  /** Tópicos com resposta nova ainda não vista (mensagem-raiz → canal) */
+  unreadThreadRoots?: Record<string, string>
+  /** 'thread' = lista de respostas dentro do painel do tópico: sem boas-vindas e só com reagir e excluir */
+  variant?: 'channel' | 'thread'
 }
 
 export const MessageList = memo(function MessageList({
@@ -123,8 +132,13 @@ export const MessageList = memo(function MessageList({
   voiceNoteAudioRef,
   retrySendMessage,
   messageReactions,
-  voiceEvents = EMPTY_EVENTS
+  voiceEvents = EMPTY_EVENTS,
+  threadSummaries,
+  onOpenThread,
+  unreadThreadRoots,
+  variant = 'channel'
 }: MessageListProps) {
+  const isThreadList = variant === 'thread'
   // Cada evento entra antes da primeira mensagem mais nova que ele; os mais recentes que tudo vão no fim.
   // Durante uma busca, ficam de fora (só resultados).
   const { eventsBefore, trailingEvents } = useMemo(() => {
@@ -160,7 +174,7 @@ export const MessageList = memo(function MessageList({
       )}
 
       {/* Channel Welcome Hero (visível apenas ao alcançar o início histórico do canal) */}
-      {!searchQuery.trim() && !hasMoreMessages && (
+      {!isThreadList && !searchQuery.trim() && !hasMoreMessages && (
         <div className="channel-welcome-hero">
           <div className="channel-welcome-icon-box">
             {selectedChannel.is_announcement ? <MegaphoneIcon /> : <HashtagIcon />}
@@ -287,6 +301,7 @@ export const MessageList = memo(function MessageList({
                           {emoji}
                         </button>
                       ))}
+                      {!isThreadList && (
                       <button 
                         type="button" 
                         className="hover-action-btn"
@@ -295,6 +310,18 @@ export const MessageList = memo(function MessageList({
                       >
                         ↩️
                       </button>
+                      )}
+                      {!isThreadList && onOpenThread && message.status !== 'sending' && message.status !== 'failed' && (
+                        <button
+                          type="button"
+                          className="hover-action-btn thread-btn"
+                          onClick={() => onOpenThread(message)}
+                          title="Responder em tópico"
+                        >
+                          🧵
+                        </button>
+                      )}
+                      {!isThreadList && (
                       <button 
                         type="button" 
                         className={`hover-action-btn star-btn ${isMessageSaved(message.id) ? 'active' : ''}`}
@@ -307,7 +334,8 @@ export const MessageList = memo(function MessageList({
                       >
                         <StarIcon style={{ width: '13px', height: '13px', color: isMessageSaved(message.id) ? '#ffc107' : 'inherit', fill: isMessageSaved(message.id) ? '#ffc107' : 'none' }} />
                       </button>
-                      {canManagePins && (
+                      )}
+                      {!isThreadList && canManagePins && (
                         <button 
                           type="button" 
                           className="hover-action-btn"
@@ -574,6 +602,25 @@ export const MessageList = memo(function MessageList({
                             )
                           })}
                         </div>
+                      )}
+
+                      {/* Tópico desta mensagem: quantas respostas e quando foi a última */}
+                      {!isThreadList && onOpenThread && threadSummaries?.[message.id] && (
+                        <button
+                          type="button"
+                          className={`thread-chip ${unreadThreadRoots?.[message.id] ? 'has-unread' : ''}`}
+                          onClick={() => onOpenThread(message)}
+                          title="Abrir o tópico"
+                        >
+                          <span className="thread-chip-icon" aria-hidden="true">🧵</span>
+                          <strong>{formatReplyCount(threadSummaries[message.id].replyCount)}</strong>
+                          {threadSummaries[message.id].lastReplyAt && (
+                            <span className="thread-chip-time">
+                              última às {new Date(threadSummaries[message.id].lastReplyAt as string).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                          {unreadThreadRoots?.[message.id] && <span className="thread-chip-unread">nova resposta</span>}
+                        </button>
                       )}
 
                       {/* Status do envio em tempo real */}
