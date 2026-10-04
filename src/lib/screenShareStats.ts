@@ -178,44 +178,50 @@ export function summarizeScreenShareStats(
   }
 
   // ── Recebimento ──────────────────────────────────────────────────────────
-  const received = collect(subscriberReport)
-  const receivedById = new Map<string, any>(received.map((stat) => [stat.id, stat]))
+  // O LiveKit pode usar duas conexões (uma para enviar, outra para receber) ou UMA só para tudo, conforme o
+  // servidor. Com uma só, o que este app recebe está no relatório de "envio": procurar apenas no de
+  // recebimento deixava o painel de quem assiste parado em "medindo…".
   const inbound: Record<string, InboundVideoStats> = {}
-  const inboundTransport = transportOf(subscriberReport)
-  for (const stat of received) {
-    if (stat.type !== 'inbound-rtp' || stat.kind !== 'video' || typeof stat.trackIdentifier !== 'string') continue
-    const key = stat.trackIdentifier
-    const now: InboundCountersEntry = {
-      at: num(stat.timestamp),
-      frames: num(stat.framesDecoded),
-      bytes: num(stat.bytesReceived),
-      dropped: num(stat.framesDropped),
-      freezes: num(stat.freezeCount),
-      received: num(stat.packetsReceived),
-      lost: Math.max(0, num(stat.packetsLost))
-    }
-    counters.inbound[key] = now
-    const before = previous?.inbound[key]
-    const elapsed = before ? now.at - before.at : 0
-    const usable = Boolean(before && elapsed > 0 && now.frames >= before.frames)
+  for (const report of [subscriberReport, publisherReport]) {
+    const received = collect(report)
+    const receivedById = new Map<string, any>(received.map((stat) => [stat.id, stat]))
+    const inboundTransport = transportOf(report)
+    for (const stat of received) {
+      if (stat.type !== 'inbound-rtp' || stat.kind !== 'video' || typeof stat.trackIdentifier !== 'string') continue
+      const key = stat.trackIdentifier
+      if (inbound[key]) continue
+      const now: InboundCountersEntry = {
+        at: num(stat.timestamp),
+        frames: num(stat.framesDecoded),
+        bytes: num(stat.bytesReceived),
+        dropped: num(stat.framesDropped),
+        freezes: num(stat.freezeCount),
+        received: num(stat.packetsReceived),
+        lost: Math.max(0, num(stat.packetsLost))
+      }
+      counters.inbound[key] = now
+      const before = previous?.inbound[key]
+      const elapsed = before ? now.at - before.at : 0
+      const usable = Boolean(before && elapsed > 0 && now.frames >= before.frames)
 
-    const decoded = usable ? now.frames - before!.frames : 0
-    const dropped = usable ? Math.max(0, now.dropped - before!.dropped) : 0
-    const packets = usable ? Math.max(0, now.received - before!.received) : 0
-    const lost = usable ? Math.max(0, now.lost - before!.lost) : 0
+      const decoded = usable ? now.frames - before!.frames : 0
+      const dropped = usable ? Math.max(0, now.dropped - before!.dropped) : 0
+      const packets = usable ? Math.max(0, now.received - before!.received) : 0
+      const lost = usable ? Math.max(0, now.lost - before!.lost) : 0
 
-    inbound[key] = {
-      fps: Math.round((rate(now.frames, before?.frames, elapsed) ?? num(stat.framesPerSecond)) * 10) / 10,
-      width: num(stat.frameWidth),
-      height: num(stat.frameHeight),
-      kbps: Math.round(((rate(now.bytes, before?.bytes, elapsed) ?? 0) * 8) / 1000),
-      codec: codecName(receivedById, stat.codecId),
-      hardware: typeof stat.powerEfficientDecoder === 'boolean' ? stat.powerEfficientDecoder : null,
-      transport: inboundTransport,
-      droppedPct: decoded + dropped > 0 ? Math.round((dropped / (decoded + dropped)) * 1000) / 10 : 0,
-      freezes: usable ? Math.max(0, now.freezes - before!.freezes) : 0,
-      packetLossPct: packets + lost > 0 ? Math.round((lost / (packets + lost)) * 1000) / 10 : 0,
-      jitterMs: Math.round(num(stat.jitter) * 1000)
+      inbound[key] = {
+        fps: Math.round((rate(now.frames, before?.frames, elapsed) ?? num(stat.framesPerSecond)) * 10) / 10,
+        width: num(stat.frameWidth),
+        height: num(stat.frameHeight),
+        kbps: Math.round(((rate(now.bytes, before?.bytes, elapsed) ?? 0) * 8) / 1000),
+        codec: codecName(receivedById, stat.codecId),
+        hardware: typeof stat.powerEfficientDecoder === 'boolean' ? stat.powerEfficientDecoder : null,
+        transport: inboundTransport,
+        droppedPct: decoded + dropped > 0 ? Math.round((dropped / (decoded + dropped)) * 1000) / 10 : 0,
+        freezes: usable ? Math.max(0, now.freezes - before!.freezes) : 0,
+        packetLossPct: packets + lost > 0 ? Math.round((lost / (packets + lost)) * 1000) / 10 : 0,
+        jitterMs: Math.round(num(stat.jitter) * 1000)
+      }
     }
   }
 

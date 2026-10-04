@@ -143,6 +143,24 @@ describe('summarizeScreenShareStats: recebimento', () => {
     expect(result.inbound['remote-track']).toMatchObject({ fps: 29, width: 1280, height: 720, codec: 'VP8', hardware: false, jitterMs: 12 })
   })
 
+  it('conexão única (o servidor usa uma só para enviar e receber): acha o que é recebido no relatório de envio', () => {
+    // Bug real: sem relatório de recebimento, quem assiste ficava em "medindo…" para sempre
+    const single = report([
+      inbound(), codec('c-vp8', 'video/VP8'),
+      { id: 'T1', type: 'transport', selectedCandidatePairId: 'CP1' },
+      { id: 'CP1', type: 'candidate-pair', localCandidateId: 'L1', nominated: true, state: 'succeeded' },
+      { id: 'L1', type: 'local-candidate', protocol: 'udp', candidateType: 'srflx' }
+    ])
+    const result = summarizeScreenShareStats(single, undefined, null)
+    expect(result.inbound['remote-track']).toMatchObject({ fps: 29, codec: 'VP8', transport: 'udp' })
+  })
+
+  it('com duas conexões, a mesma faixa não é contada duas vezes', () => {
+    const result = summarizeScreenShareStats(report([inbound({ framesPerSecond: 5 })]), report([inbound()]), null)
+    expect(Object.keys(result.inbound)).toEqual(['remote-track'])
+    expect(result.inbound['remote-track'].fps).toBe(29)
+  })
+
   it('calcula FPS, bitrate, quadros descartados, perda de pacotes e travadas do último intervalo', () => {
     const first = summarizeScreenShareStats(null, report([inbound()]), null)
     const second = summarizeScreenShareStats(
