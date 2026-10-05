@@ -24,6 +24,8 @@ export interface ElectronAPI {
   startProcessAudioCapture: (sourceId: string | number) => Promise<any>
   stopProcessAudioCapture: () => Promise<any>
   setStreamingPriority?: (boost: boolean) => Promise<number>
+  getCaptureMode?: () => Promise<{ mode: 'fast' | 'compat'; active: 'fast' | 'compat' }>
+  setCaptureMode?: (mode: 'fast' | 'compat') => Promise<{ mode: 'fast' | 'compat'; active: 'fast' | 'compat' }>
   onScreenshareAudioChunk: (callback: (chunk: any) => void) => void
 
   // Auto-updater

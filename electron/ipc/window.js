@@ -1,5 +1,6 @@
 import { app, shell, desktopCapturer, Notification } from 'electron'
 import { applyStreamingPriority } from '../services/processPriority.js'
+import { getActiveCaptureMode, readCaptureMode, writeCaptureMode } from '../services/captureMode.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { promisify } from 'node:util'
@@ -168,7 +169,20 @@ export function setupWindowIpc(safeHandle, getMainWindow, setIsQuitting, rootDir
     return applyStreamingPriority(Boolean(boost), { getAppMetrics: () => app.getAppMetrics() })
   })
 
-  safeHandle('show-notification',(_event, { title, body, data } = {}) => {
+  // Modo de captura de tela: a troca é gravada e vale na próxima abertura do app (services/captureMode.js)
+  const captureModeFile = () => path.join(app.getPath('userData'), 'capture-mode.json')
+  const captureModeState = () => ({ mode: readCaptureMode(captureModeFile()), active: getActiveCaptureMode() })
+  safeHandle('get-capture-mode', () => captureModeState())
+  safeHandle('set-capture-mode', (_event, mode) => {
+    try {
+      writeCaptureMode(captureModeFile(), mode)
+    } catch (err) {
+      console.warn('[Echo] Falha ao salvar o modo de captura:', err)
+    }
+    return captureModeState()
+  })
+
+  safeHandle('show-notification', (_event,{ title, body, data } = {}) => {
     try {
       if (Notification.isSupported()) {
         const appIconPath = path.join(rootDir, 'assets', 'echo-icon.png')

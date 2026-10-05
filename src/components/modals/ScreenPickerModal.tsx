@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ColoredRocketIcon,
   ColoredRefreshIcon,
@@ -62,6 +62,18 @@ export function ScreenPickerModal({
       setScreenFps(30)
     }
   }, [isOpen, is60Allowed, screenFps, setScreenFps])
+
+  // Modo de captura (só no app de desktop): gravado pelo Electron e aplicado na próxima abertura
+  const [captureMode, setCaptureMode] = useState<{ mode: 'fast' | 'compat'; active: 'fast' | 'compat' } | null>(null)
+  useEffect(() => {
+    if (!isOpen) return
+    let cancelled = false
+    window.electronAPI?.getCaptureMode?.().then((state) => { if (!cancelled && state) setCaptureMode(state) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [isOpen])
+  const changeCaptureMode = (mode: 'fast' | 'compat') => {
+    window.electronAPI?.setCaptureMode?.(mode).then((state) => { if (state) setCaptureMode(state) }).catch(() => {})
+  }
 
   if (!isOpen) return null
 
@@ -300,6 +312,20 @@ export function ScreenPickerModal({
             </div>
           </div>
         </div>
+
+        {captureMode && (
+          <label className="screen-picker-capture-mode" title="Mantém os quadros capturados na placa de vídeo. Desligue só se a transmissão sair preta ou com defeito.">
+            <input
+              type="checkbox"
+              checked={captureMode.mode === 'fast'}
+              onChange={(e) => changeCaptureMode(e.target.checked ? 'fast' : 'compat')}
+            />
+            <span>Captura acelerada (mais quadros com jogo aberto)</span>
+            {captureMode.mode !== captureMode.active && (
+              <em>Vale depois de fechar e abrir o Echo</em>
+            )}
+          </label>
+        )}
 
         <div className="screen-picker-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <button type="button" className="picker-close-btn" onClick={onClose}>

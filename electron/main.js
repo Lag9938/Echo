@@ -14,6 +14,7 @@ import { setupUpdatesIpc } from './ipc/updates.js'
 import { setupAudioIpc, stopAudioCapture } from './ipc/audio.js'
 import { setupWindowIpc } from './ipc/window.js'
 import { appendUpdateLog } from './services/updateRelaunch.js'
+import { captureFeatures, readCaptureMode, setActiveCaptureMode } from './services/captureMode.js'
 
 process.on('uncaughtException', (err) => console.error('[Echo Main] Uncaught Exception:', err))
 process.on('unhandledRejection', (reason) => console.warn('[Echo Main] Unhandled Rejection:', reason))
@@ -37,7 +38,10 @@ if (isDevelopment) {
 }
 
 // Flags de aceleração por hardware e captura otimizada
-app.commandLine.appendSwitch('enable-features', 'WindowsGraphicsCapture,MediaFoundationD3D11VideoCapture,PlatformHEVCDecoderSupport,CanvasOopRasterization,ZeroCopyVideoCapture')
+// O modo de captura de tela vem do arquivo salvo pela tela de transmissão (services/captureMode.js)
+const startupCaptureMode = readCaptureMode(path.join(app.getPath('userData'), 'capture-mode.json'))
+setActiveCaptureMode(startupCaptureMode)
+app.commandLine.appendSwitch('enable-features', captureFeatures(startupCaptureMode))
 app.commandLine.appendSwitch('enable-webrtc-hw-encoding')
 app.commandLine.appendSwitch('enable-webrtc-hw-decoding')
 app.commandLine.appendSwitch('enable-gpu-rasterization')
