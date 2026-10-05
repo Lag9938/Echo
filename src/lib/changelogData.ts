@@ -18,11 +18,31 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.53.3',
+    title: 'Echo v0.53.3 - Mais Quadros ao Transmitir Jogos',
+    date: '5 de Outubro de 2026',
+    tagline: 'A transmissão de tela inteira perde bem menos quadros quando um jogo está ocupando a placa de vídeo.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎮',
+        badge: 'DESEMPENHO',
+        title: 'Captura Acelerada da Tela',
+        description: 'Com um jogo aberto, a captura de tela inteira ficava esperando a placa de vídeo e a transmissão saía com poucos quadros. Agora os quadros ficam na própria placa, sem essa espera. Nos nossos testes, com a placa ocupada, a captura passou de cerca de 30 a 39 para 44 a 57 quadros por segundo. O ganho varia conforme o computador.'
+      },
+      {
+        icon: '🔧',
+        badge: 'NOVO',
+        title: 'Chave para Voltar ao Modo Antigo',
+        description: 'Na tela de escolher o que transmitir há a opção "Captura acelerada", que vem ligada. Se a sua transmissão sair preta ou com defeito, desmarque, feche e abra o Echo.'
+      }
+    ]
+  },
+  {
     version: '0.53.2',
     title: 'Echo v0.53.2 - Diagnóstico das Transmissões',
     date: '4 de Outubro de 2026',
     tagline: 'O Echo passa a dizer por que uma transmissão engasga, para quem assiste e para quem transmite, e ganha prioridade no computador enquanto você transmite.',
-    isLatest: true,
     highlights: [
       {
         icon: '🩺',
