@@ -28,17 +28,38 @@ export function buildRelaunchScript(execPath, updaterDirName, logFile) {
     '$name = [IO.Path]::GetFileNameWithoutExtension($exe)',
     '$deadline = (Get-Date).AddSeconds(300)',
     'Log "iniciado"',
-    'while ((Get-Date) -lt $deadline -and (Get-Process -Name $name)) { Start-Sleep -Seconds 1 }',
+    // Aviso na tela enquanto o instalador (silencioso) trabalha: sem ele eram 20 a 70 segundos sem nada
+    // aparecendo, e parecia que o Echo tinha fechado de vez. Se a janela não puder ser criada, o vigia segue igual.
+    '$form = $null',
+    'try {',
+    '  Add-Type -AssemblyName System.Windows.Forms, System.Drawing',
+    '  $form = New-Object System.Windows.Forms.Form',
+    "  $form.Text = 'Atualizando o Echo'; $form.FormBorderStyle = 'None'; $form.StartPosition = 'CenterScreen'",
+    '  $form.Size = New-Object System.Drawing.Size(380, 104); $form.TopMost = $true; $form.ShowInTaskbar = $false',
+    '  $form.BackColor = [System.Drawing.Color]::FromArgb(14, 17, 24)',
+    '  $label = New-Object System.Windows.Forms.Label',
+    '  $label.Text = "Atualizando o Echo…`r`nEle reabre sozinho em instantes."',
+    "  $label.ForeColor = [System.Drawing.Color]::White; $label.Dock = 'Fill'; $label.TextAlign = 'MiddleCenter'",
+    "  $label.Font = New-Object System.Drawing.Font('Segoe UI', 11)",
+    '  $form.Controls.Add($label); $form.Show(); [System.Windows.Forms.Application]::DoEvents()',
+    '  Log "aviso de atualização na tela"',
+    '} catch { $form = $null; Log ("aviso de atualização não pôde ser mostrado: " + $_.Exception.Message) }',
+    // Espera 1 s mantendo o aviso vivo (uma janela que não processa eventos aparece como "não respondendo")
+    'function Wait1 { for ($i = 0; $i -lt 10; $i++) { if ($form) { [System.Windows.Forms.Application]::DoEvents() }; Start-Sleep -Milliseconds 100 } }',
+    // O processo do app aparece um pouco antes da janela dele: o aviso fica mais 2 s para não haver um vão
+    'function Finish { Wait1; Wait1; if ($form) { $form.Close() }; exit }',
+    'while ((Get-Date) -lt $deadline -and (Get-Process -Name $name)) { Wait1 }',
     'Log "o app antigo fechou"',
     '$idle = 0; $sawInstaller = $false',
     'while ((Get-Date) -lt $deadline) {',
-    '  if (Get-Process -Name $name) { Log "o app abriu sozinho (o instalador reabriu); nada a fazer"; exit }',
+    '  if (Get-Process -Name $name) { Log "o app abriu sozinho (o instalador reabriu); nada a fazer"; Finish }',
     `  if (Get-Process | Where-Object { $_.Path -and $_.Path -like '${updaterPattern}' }) { $idle = 0; $sawInstaller = $true } else { $idle++ }`,
-    '  if ($idle -ge 5) { Log ("instalador terminou (visto: " + $sawInstaller + ") e o app não abriu; abrindo agora"); Start-Process -FilePath $exe; Log "app iniciado pelo vigia"; exit }',
-    '  Start-Sleep -Seconds 1',
+    '  if ($idle -ge 5) { Log ("instalador terminou (visto: " + $sawInstaller + ") e o app não abriu; abrindo agora"); Start-Process -FilePath $exe; Log "app iniciado pelo vigia"; Finish }',
+    '  Wait1',
     '}',
     // Prazo esgotado (instalador travado num aviso, por exemplo): abre mesmo assim em vez de deixar o usuário sem o app
-    'if (-not (Get-Process -Name $name)) { Log "tempo esgotado sem o app abrir; abrindo agora"; Start-Process -FilePath $exe; Log "app iniciado pelo vigia" }'
+    'if (-not (Get-Process -Name $name)) { Log "tempo esgotado sem o app abrir; abrindo agora"; Start-Process -FilePath $exe; Log "app iniciado pelo vigia" }',
+    'Finish'
   ].join('\n')
 }
 

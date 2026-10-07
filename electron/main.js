@@ -15,6 +15,7 @@ import { setupAudioIpc, stopAudioCapture } from './ipc/audio.js'
 import { setupWindowIpc } from './ipc/window.js'
 import { appendUpdateLog } from './services/updateRelaunch.js'
 import { captureFeatures, readCaptureMode, setActiveCaptureMode } from './services/captureMode.js'
+import { bringWindowToFront, detectVersionChange } from './services/postUpdate.js'
 
 process.on('uncaughtException', (err) => console.error('[Echo Main] Uncaught Exception:', err))
 process.on('unhandledRejection', (reason) => console.warn('[Echo Main] Unhandled Rejection:', reason))
@@ -38,6 +39,11 @@ if (isDevelopment) {
 }
 
 // Flags de aceleração por hardware e captura otimizada
+// A versão mudou desde a última abertura? (primeira abertura depois de atualizar — services/postUpdate.js)
+const updatedFromVersion = isDevelopment
+  ? null
+  : detectVersionChange(path.join(app.getPath('userData'), 'last-version.txt'), app.getVersion())
+
 // O modo de captura de tela vem do arquivo salvo pela tela de transmissão (services/captureMode.js)
 const startupCaptureMode = readCaptureMode(path.join(app.getPath('userData'), 'capture-mode.json'))
 setActiveCaptureMode(startupCaptureMode)
@@ -65,7 +71,8 @@ export function setIsQuitting(val) { isQuitting = val }
 export function createWindow() {
   createTray(rootDir, getMainWindow, setIsQuitting)
 
-  const shouldStartHidden = process.argv.includes('--hidden') || process.argv.includes('--minimized')
+  // Logo depois de atualizar a janela sempre aparece, mesmo para quem inicia o Echo escondido com o Windows
+  const shouldStartHidden = !updatedFromVersion && (process.argv.includes('--hidden') || process.argv.includes('--minimized'))
   const appIconPath = path.join(rootDir, 'assets', 'echo-icon.png')
 
   mainWindow = new BrowserWindow({
@@ -161,6 +168,11 @@ export function createWindow() {
   mainWindow.once('ready-to-show', () => {
     if (shouldStartHidden) {
       mainWindow.minimize()
+    } else if (updatedFromVersion) {
+      // Reaberto pelo instalador depois de atualizar: sem isto a janela voltava atrás das outras
+      const shown = bringWindowToFront(mainWindow)
+      appendUpdateLog(path.join(app.getPath('userData'), 'update.log'),
+        `primeira abertura depois de atualizar (${updatedFromVersion} -> ${app.getVersion()}): janela trazida para a frente (${shown ? 'ok' : 'falhou'})`)
     } else {
       mainWindow.show()
       mainWindow.focus()

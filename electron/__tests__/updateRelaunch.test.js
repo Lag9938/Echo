@@ -34,9 +34,22 @@ describe('buildRelaunchScript', () => {
 
   it('se o prazo acabar sem o Echo aberto, abre mesmo assim em vez de desistir', () => {
     const script = buildRelaunchScript('C:\\Echo\\Echo.exe', 'echo-updater')
-    const lastLine = script.trim().split('\n').at(-1)
-    expect(lastLine).toContain('if (-not (Get-Process -Name $name))')
-    expect(lastLine).toContain('Start-Process -FilePath $exe')
+    const lines = script.trim().split('\n')
+    expect(lines.at(-2)).toContain('if (-not (Get-Process -Name $name))')
+    expect(lines.at(-2)).toContain('Start-Process -FilePath $exe')
+    expect(lines.at(-1)).toBe('Finish')
+  })
+
+  it('mostra um aviso na tela durante a instalação, e a falha do aviso não impede a reabertura', () => {
+    const script = buildRelaunchScript('C:\\Echo\\Echo.exe', 'echo-updater')
+    expect(script).toContain('Atualizando o Echo')
+    expect(script).toContain('Ele reabre sozinho em instantes.')
+    // O aviso é criado dentro de try/catch e antes de qualquer espera
+    const tryAt = script.indexOf('try {')
+    expect(tryAt).toBeGreaterThan(-1)
+    expect(script.indexOf('$form.Show()')).toBeGreaterThan(tryAt)
+    expect(script.indexOf('} catch { $form = $null')).toBeGreaterThan(script.indexOf('$form.Show()'))
+    expect(script.indexOf('} catch { $form = $null')).toBeLessThan(script.indexOf('while ((Get-Date) -lt $deadline'))
   })
 
 })
@@ -62,6 +75,9 @@ describe.runIf(process.platform === 'win32')('startRelaunchWatchdog (execução 
     await vi.waitFor(() => expect(read()).toContain('vigia: app iniciado pelo vigia'), { timeout: 25000, interval: 500 })
     expect(read()).toContain('vigia: iniciado')
     expect(read()).toContain('vigia: o app antigo fechou')
+    // A janelinha "Atualizando o Echo…" foi criada de verdade neste Windows
+    expect(read()).toContain('vigia: aviso de atualização na tela')
+    expect(read()).not.toContain('não pôde ser mostrado')
   }, 30000)
 })
 
