@@ -6,6 +6,7 @@ import { useScreenShareStatsStore } from '../../stores/useScreenShareStatsStore'
 import { STREAM_SMOOTHING_PRESETS, useStreamSettingsStore } from '../../stores/useStreamSettingsStore'
 import { describeLimitation, describeTransport, formatBitrate, isBelowTarget, pickInboundStats } from '../../lib/screenShareStats'
 import { describeWatchProblem, diagnoseInbound } from '../../lib/streamWatchReport'
+import { ORIGIN_STATS_MAX_AGE_MS, describeOrigin } from '../../lib/originStats'
 import {
   BarChartIcon,
   EyeIcon,
@@ -83,6 +84,10 @@ export function StreamTile({
 
   // Para quem assiste: o que está atrapalhando agora (rede, este computador ou a origem)
   const watchProblem = inboundStats ? diagnoseInbound(inboundStats, targetFps) : 'ok'
+  // Medição feita no computador de quem transmite; some se parar de chegar (a cada medição o painel reavalia)
+  const originEntry = useScreenShareStatsStore((s) => (isLocalSharer ? undefined : s.origin[participant.userId]))
+  const originStats = originEntry && inboundStats && Date.now() - originEntry.receivedAt < ORIGIN_STATS_MAX_AGE_MS ? originEntry : null
+  const originCause = originStats ? describeOrigin(originStats, targetFps) : ''
 
   const handleMouseMove = () => {
     setIsControlsVisible(true)
@@ -364,6 +369,35 @@ export function StreamTile({
                       <span>Diagnóstico:</span>
                       <strong style={{ color: watchProblem === 'ok' ? '#10b981' : '#f59e0b' }}>{describeWatchProblem(watchProblem)}</strong>
                     </div>
+                    {/* O que o computador de quem transmite mediu (enviado pela chamada) */}
+                    {originStats ? (
+                      <>
+                        <div className="stats-row">
+                          <span>Na origem, capturados:</span>
+                          <strong>{originStats.captureFps !== null ? `${originStats.captureFps.toFixed(1)} FPS` : 'não informado'}</strong>
+                        </div>
+                        <div className="stats-row">
+                          <span>Na origem, enviados:</span>
+                          <strong>{originStats.fps.toFixed(1)} FPS • {formatBitrate(originStats.kbps)}</strong>
+                        </div>
+                        <div className="stats-row">
+                          <span>Codificador da origem:</span>
+                          <strong>
+                            {originStats.codec || '?'}
+                            {originStats.hardware === true ? ' (placa de vídeo)' : originStats.hardware === false ? ' (processador)' : ''}
+                          </strong>
+                        </div>
+                        <div className="stats-row">
+                          <span>Causa na origem:</span>
+                          <strong style={{ color: originCause === 'Nenhum problema na origem' ? '#10b981' : '#f59e0b' }}>{originCause}</strong>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="stats-row">
+                        <span>Na origem:</span>
+                        <strong>sem dados (quem transmite precisa do Echo atualizado)</strong>
+                      </div>
+                    )}
                   </>
                 )}
               </>

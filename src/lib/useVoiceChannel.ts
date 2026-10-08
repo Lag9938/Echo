@@ -37,6 +37,7 @@ import { useStreamSettingsStore } from '../stores/useStreamSettingsStore'
 import { screenPlayoutDelays, setTrackPlayoutDelay } from './playoutDelay'
 import { screenShareBitrate } from './screenShareQuality'
 import { syncTrackSubscription } from './trackSubscription'
+import { ORIGIN_STATS_TYPE, encodeOriginStats, parseOriginStats } from './originStats'
 import { createStreamSession, describeStreamSummary, type StreamSession } from './streamSessionReport'
 import { createWatchSession, targetFpsFromTrackName, type WatchSession } from './streamWatchReport'
 import { parseModerationNotice } from './voiceModeration'
@@ -488,7 +489,13 @@ export function useVoiceChannel(options?: {
         const share = summarizeScreenShareStats(publisherStats, subscriberStats, previousShare, screenTrackIds)
         previousShare = share.counters
         useScreenShareStatsStore.getState().setStats(share.outbound, share.inbound)
-        if (share.outbound) streamSessionRef.current?.add(share.outbound)
+        if (share.outbound) {
+          streamSessionRef.current?.add(share.outbound)
+          // Manda os números da origem para quem assiste (poucos bytes; sem garantia de entrega, o próximo cobre)
+          roomRef.current?.localParticipant
+            ?.publishData(encodeOriginStats(share.outbound), { reliable: false })
+            .catch(() => {})
+        }
 
         // Quem assiste: um resumo por transmissão recebida, fechado (e enviado à análise de uso) quando ela
         // deixa de chegar — é o que diz se o engasgo foi da rede, deste computador ou da origem.
@@ -1554,6 +1561,10 @@ export function useVoiceChannel(options?: {
               displayName: data.displayName || participant?.name || 'Alguém',
               timestamp: Date.now()
             })
+          } else if (data.type === ORIGIN_STATS_TYPE) {
+            // Só vale como medição de quem de fato enviou a mensagem (não dá para falar em nome de outro)
+            const origin = participant?.identity ? parseOriginStats(data) : null
+            if (origin && participant) useScreenShareStatsStore.getState().setOrigin(participant.identity, origin)
           } else if (data.type === 'profile_update') {
             const targetUserId = data.userId || participant?.identity
             if (targetUserId) {
