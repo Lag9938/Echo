@@ -35,7 +35,7 @@ import { summarizeScreenShareStats, type ScreenShareCounters } from './screenSha
 import { useScreenShareStatsStore } from '../stores/useScreenShareStatsStore'
 import { useStreamSettingsStore } from '../stores/useStreamSettingsStore'
 import { screenPlayoutDelays, setTrackPlayoutDelay } from './playoutDelay'
-import { screenShareBitrate } from './screenShareQuality'
+import { screenShareBitrate, screenSharePublishEncoding } from './screenShareQuality'
 import { syncTrackSubscription } from './trackSubscription'
 import { ORIGIN_STATS_TYPE, encodeOriginStats, parseOriginStats } from './originStats'
 import { createStreamSession, describeStreamSummary, type StreamSession } from './streamSessionReport'
@@ -2236,10 +2236,10 @@ export function useVoiceChannel(options?: {
             name: `screen_video_${targetFps}fps`,
             simulcast: false,
             videoCodec: 'h264',
-            videoEncoding: {
-              maxBitrate: calculatedBitrate,
-              maxFramerate: targetFps
-            },
+            // Para transmissão de tela o LiveKit IGNORA `videoEncoding` e usa `screenShareEncoding`, cujo padrão é
+            // 15 FPS a 2,5 Mbps. Sem esta opção toda transmissão saía travada em 15 quadros por segundo, qualquer
+            // que fosse o FPS escolhido (medido num servidor LiveKit: 15 FPS/720p sem ela, 55,6 FPS/1080p com ela).
+            ...screenSharePublishEncoding(calculatedBitrate, targetFps),
             degradationPreference: 'maintain-framerate'
           })
 

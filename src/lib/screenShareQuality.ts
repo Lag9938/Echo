@@ -27,6 +27,17 @@ export function screenShareBitrate(width: number | undefined, fps: number): numb
 }
 
 /**
+ * Limites de taxa e de quadros para PUBLICAR a tela no LiveKit.
+ * Vão nas duas opções de propósito: para uma faixa de tela o LiveKit lê só `screenShareEncoding` (e, se ela
+ * faltar, aplica o padrão dele, de 15 FPS a 2,5 Mbps); `videoEncoding` fica para o caso de a faixa ser tratada
+ * como vídeo comum.
+ */
+export function screenSharePublishEncoding(maxBitrate: number, maxFramerate: number) {
+  const encoding = { maxBitrate, maxFramerate }
+  return { videoEncoding: encoding, screenShareEncoding: encoding }
+}
+
+/**
  * 60 FPS só para jogos e telas inteiras. Janela de navegador, editor ou qualquer outro aplicativo fica em
  * no máximo 30 FPS: não ganha nada com 60 e gastaria o dobro de processamento e de rede.
  */
