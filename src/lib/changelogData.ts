@@ -18,11 +18,31 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.53.5',
+    title: 'Echo v0.53.5 - Transmissão Sem a Trava de 15 FPS',
+    date: '9 de Outubro de 2026',
+    tagline: 'As transmissões de tela saíam limitadas a 15 quadros por segundo, qualquer que fosse o FPS escolhido. Agora respeitam o FPS e a qualidade que você escolhe.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎬',
+        badge: 'CORREÇÃO',
+        title: 'Fim da Trava de 15 FPS',
+        description: 'Um limite interno de 15 quadros por segundo e 2,5 Mbps estava sendo aplicado a toda transmissão de tela, mesmo com 60 FPS selecionado. Agora a transmissão usa o FPS e a taxa escolhidos. No nosso teste, quem assiste passou de 15 FPS em 720p para cerca de 55 FPS em 1080p.'
+      },
+      {
+        icon: '📶',
+        badge: 'AVISO',
+        title: 'Transmissões Mais Pesadas na Rede',
+        description: 'Com a trava removida, uma transmissão em 1080p a 60 FPS pode usar até 8 Mbps de envio, em vez dos 2,5 Mbps de antes. Se a sua internet de envio for limitada, escolha 720p ou 30 FPS ao transmitir.'
+      }
+    ]
+  },
+  {
     version: '0.53.4',
     title: 'Echo v0.53.4 - Números da Origem e Atualização Visível',
     date: '9 de Outubro de 2026',
     tagline: 'O painel de quem assiste passa a mostrar o que acontece no computador de quem transmite, e a atualização do Echo deixa de parecer que o app fechou.',
-    isLatest: true,
     highlights: [
       {
         icon: '🔎',
