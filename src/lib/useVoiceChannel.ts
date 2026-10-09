@@ -1317,6 +1317,10 @@ export function useVoiceChannel(options?: {
           simulcast: false,
           videoCodec: 'vp8',
           dtx: true,
+          screenShareEncoding: {
+            maxBitrate: 8_000_000,
+            maxFramerate: 60
+          }
         }
       })
       roomRef.current = room
