@@ -1,0 +1,5 @@
+*.exe
+*.obj
+*.bin
+results.txt
+load.txt

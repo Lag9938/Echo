@@ -85,13 +85,53 @@ Três coisas foram necessárias para ficar limpo (cada uma, sem ela, travava ou 
 Pedido de quadro-chave do receptor chega como quadro-chave na fachada; o worker avisa e o codificador próprio
 gera o dele.
 
-### O que falta
+## Codificador nativo: `encoder/encode.cpp` e caminho completo: `pipeline/`
 
-- O codificador nativo de verdade (Media Foundation, H.264 pela placa de vídeo, recebendo a textura do
-  capturador sem cópia) e a saída dele por um canal até o app.
-- Testar a troca **através do servidor de voz (LiveKit)**, não só em conexão local: o cliente do LiveKit cria
-  a faixa e negocia as extensões por conta própria.
-- Medir tudo de novo com a placa ocupada — é o único número que importa, e ainda não existe para este plano.
+`encode.cpp` captura o monitor, reduz e converte para NV12 na placa de vídeo e codifica em H.264 com o
+codificador de hardware do Windows (Media Foundation; aqui, "NVIDIA H.264 Encoder MFT"). Entrega os quadros
+prontos pela saída padrão, aceita "gerar quadro-chave" e "mudar a taxa" pela entrada. Sozinho: 59,8 FPS em
+1080p, um único quadro-chave (mais os pedidos), taxa obedecendo ao comando.
+
+```
+cl /nologo /EHsc /O2 /W3 /DUNICODE /D_UNICODE encode.cpp /Fe:encode.exe /link d3d11.lib dxgi.lib mfplat.lib mfuuid.lib mf.lib ole32.lib oleaut32.lib strmiids.lib wmcodecdspuuid.lib
+```
+
+`pipeline/` liga tudo: programa nativo -> app -> troca de quadro -> receptor, em conexão local.
+
+### Medição de ponta a ponta (09/10/2026, mesma máquina, envio em 1080p)
+
+Quadros por segundo **recebidos e decodificados**:
+
+| Situação | Captura antiga do Echo (até a 0.53.2) | Captura acelerada (0.53.3+) | Capturador + codificador próprio |
+|---|---|---|---|
+| Sem carga | ~53 | ~51–55 | 60 |
+| "Jogo" a ~150 FPS | 45 | 58 | 53 |
+| "Jogo" a ~76 FPS | 37 | 57 | 47 |
+| "Jogo" a ~44 FPS | 28 | 45 | 42 |
+
+O protótipo próprio: nenhuma travada em duas das três cargas (uma na mais pesada), nenhum quadro descartado
+no receptor, 64–90 ms de atraso, imagem correta.
+
+### Leitura honesta
+
+- O caminho próprio funciona de ponta a ponta e é bem melhor que a captura antiga.
+- **Nesta máquina ele NÃO supera a captura acelerada que já está publicada desde a 0.53.3**; fica um pouco
+  atrás com carga. A diferença provável: a duplicação de tela (DXGI) recebe menos quadros do Windows sob
+  carga do que a captura por WGC que o Chromium usa no modo acelerado.
+- Portanto o capturador próprio só se justifica se, nos computadores dos usuários, o modo acelerado do
+  Chromium não entra ou cai para o método antigo. Isso ainda não foi observado: os relatos de 11–15 FPS que
+  temos são de antes da 0.53.3. A v0.53.4 mostra no painel de quem assiste os quadros capturados e enviados
+  na origem — é esse número que decide se vale levar isto para o app.
+
+### O que falta se for para o app
+
+- Testar a troca **através do servidor de voz (LiveKit)**: o cliente do LiveKit cria a faixa e negocia as
+  extensões por conta própria.
+- Captura por WGC em vez de DXGI (mais quadros sob carga e já inclui o cursor).
+- Placas AMD e Intel (o codificador muda de fabricante para fabricante), mais de um monitor, HDR, troca de
+  resolução durante a transmissão, queda e retomada do programa nativo.
+- Compilar e empacotar o programa nativo junto do instalador.
+- Valorant com o anti-cheat, numa conta secundária.
 
 Outras pendências antes de virar recurso do app: desenhar o cursor (esta captura não o inclui), mais de um
 monitor, HDR, troca de resolução durante a transmissão, devolver as texturas só depois de o app terminar de

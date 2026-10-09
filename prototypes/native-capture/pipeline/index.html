@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+<body style="margin:0;background:#000;overflow:hidden">
+<canvas id="c" style="width:100vw;height:100vh;display:block"></canvas>
+<script>
+// Recebe do programa nativo o H.264 já pronto e o envia por uma conexão WebRTC trocando o conteúdo de uma
+// faixa de fachada (ver inject/worker.js). O codificador do Chromium não toca no vídeo da tela.
+const { ipcRenderer } = require('electron')
+const canvas = document.getElementById('c'); canvas.width = 900; canvas.height = 600
+const ctx = canvas.getContext('2d')
+function paint(t) {
+  ctx.fillStyle = `hsl(${(t / 10) % 360} 80% 40%)`; ctx.fillRect(0, 0, 900, 600)
+  ctx.fillStyle = '#fff'
+  for (let i = 0; i < 12; i++) ctx.fillRect((t / 2 + i * 80) % 900, i * 50, 60, 40)
+  requestAnimationFrame(paint)
+}
+requestAnimationFrame(paint)
+
+;(async () => {
+  try {
+    const facade = new MediaStreamTrackGenerator({ kind: 'video' })
+    const facadeWriter = facade.writable.getWriter()
+    const tiny = new OffscreenCanvas(64, 64); const tinyCtx = tiny.getContext('2d'); tinyCtx.fillStyle = '#181818'; tinyCtx.fillRect(0, 0, 64, 64)
+    const tick = () => { const f = new VideoFrame(tiny, { timestamp: Math.round(performance.now() * 1000) }); facadeWriter.write(f).finally(() => f.close()) }
+
+    const worker = new Worker('../inject/worker.js')
+    let workerStats = null, arrived = 0
+    worker.onmessage = (e) => {
+      if (e.data.type === 'need-key') ipcRenderer.send('need-key')
+      if (e.data.type === 'stats') workerStats = e.data
+    }
+    ipcRenderer.on('au', (_e, au) => {
+      arrived++
+      const data = au.data.buffer.slice(au.data.byteOffset, au.data.byteOffset + au.data.byteLength)
+      worker.postMessage({ type: 'au', data, key: au.key }, [data])
+      tick()
+    })
+    setInterval(tick, 50) // relógio de folga
+
+    const a = new RTCPeerConnection(), b = new RTCPeerConnection()
+    a.onicecandidate = (e) => e.candidate && b.addIceCandidate(e.candidate)
+    b.onicecandidate = (e) => e.candidate && a.addIceCandidate(e.candidate)
+    const remote = new Promise((resolve) => { b.ontrack = (e) => resolve(e.track) })
+    const tr = a.addTransceiver(facade, { direction: 'sendonly', sendEncodings: [{ maxBitrate: 8000000, maxFramerate: 60 }] })
+    tr.setCodecPreferences(RTCRtpSender.getCapabilities('video').codecs.filter((c) => c.mimeType === 'video/H264'))
+    const extensions = tr.getHeaderExtensionsToNegotiate()
+    tr.setHeaderExtensionsToNegotiate(extensions.map((e) => (/dependency-descriptor|generic-frame-descriptor/.test(e.uri) ? { ...e, direction: 'stopped' } : e)))
+    tr.sender.transform = new RTCRtpScriptTransform(worker, {})
+    await a.setLocalDescription(await a.createOffer())
+    await b.setRemoteDescription(a.localDescription)
+    await b.setLocalDescription(await b.createAnswer())
+    await a.setRemoteDescription(b.localDescription)
+    const remoteTrack = await remote
+    const video = document.createElement('video'); video.muted = true; video.srcObject = new MediaStream([remoteTrack]); video.play().catch(() => {})
+    // A conexão acabou de nascer: o receptor precisa de um quadro-chave para começar
+    ipcRenderer.send('need-key')
+
+    // O codificador nativo segue a taxa que a conexão autoriza
+    let currentBitrate = 1_000_000, reconfigs = 0, lastTarget = 0
+    setInterval(async () => {
+      let target = 0
+      ;(await a.getStats()).forEach((s) => { if (s.type === 'outbound-rtp' && s.kind === 'video' && s.targetBitrate) target = s.targetBitrate })
+      const wanted = Math.max(500_000, Math.min(8_000_000, Math.round(target * 0.9)))
+      if (target && Math.abs(wanted - currentBitrate) / currentBitrate > 0.15) { currentBitrate = wanted; reconfigs++; lastTarget = target; ipcRenderer.send('bitrate', wanted) }
+    }, 250)
+
+    await new Promise((r) => setTimeout(r, 8000))
+    const read = async () => { let inn = null; (await b.getStats()).forEach((s) => { if (s.type === 'inbound-rtp' && s.kind === 'video') inn = s }); return inn }
+    const sample = () => {
+      const c = document.createElement('canvas'); c.width = 64; c.height = 36
+      const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(video, 0, 0, 64, 36)
+      const d = x.getImageData(0, 0, 64, 36).data; let min = 255, max = 0
+      for (let i = 0; i < d.length; i += 4) { const v = (d[i] + d[i + 1] + d[i + 2]) / 3; if (v < min) min = v; if (v > max) max = v }
+      return Math.round(max - min)
+    }
+    const s1 = await read(); const a1 = arrived
+    await new Promise((r) => setTimeout(r, 8000))
+    const s2 = await read(); const a2 = arrived
+    worker.postMessage({ type: 'stats' }); await new Promise((r) => setTimeout(r, 200))
+    const dt = (s2.timestamp - s1.timestamp) / 1000
+    ipcRenderer.send('result', {
+      nativeEncodedFps: Math.round(((a2 - a1) / dt) * 10) / 10,
+      receivedDecodedFps: Math.round(((s2.framesDecoded - s1.framesDecoded) / dt) * 10) / 10,
+      receivedSize: `${s2.frameWidth}x${s2.frameHeight}`,
+      receivedMbps: Math.round((((s2.bytesReceived - s1.bytesReceived) * 8) / dt) / 100000) / 10,
+      connectionTargetMbps: Math.round(lastTarget / 100000) / 10, reconfigs,
+      keyFramesDecoded: s2.keyFramesDecoded, freezes: s2.freezeCount, framesDropped: s2.framesDropped,
+      jitterBufferMs: s2.jitterBufferEmittedCount ? Math.round((s2.jitterBufferDelay / s2.jitterBufferEmittedCount) * 1000) : null,
+      decoder: s2.decoderImplementation, imageContrast: sample(), workerStats
+    })
+  } catch (err) {
+    ipcRenderer.send('result', { error: String(err && err.stack || err) })
+  }
+})()
+</script>
+</body>
+</html>
