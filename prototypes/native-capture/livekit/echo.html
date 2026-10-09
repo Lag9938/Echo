@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<body style="margin:0;background:#000;overflow:hidden">
+<canvas id="c" style="width:100vw;height:100vh;display:block"></canvas>
+<script src="../../../node_modules/livekit-client/dist/livekit-client.umd.js"></script>
+<script>
+// Reproduz a publicação de tela do Echo (mesmas opções de src/lib/useVoiceChannel.ts) num servidor LiveKit de
+// verdade, e mede o que chega a um espectador. FIX=0: como o Echo publica hoje. FIX=1: com a correção.
+const { ipcRenderer } = require('electron')
+const LK = window.LivekitClient
+const canvas = document.getElementById('c'); canvas.width = 900; canvas.height = 600
+const ctx = canvas.getContext('2d')
+function paint(t) {
+  ctx.fillStyle = `hsl(${(t / 10) % 360} 80% 40%)`; ctx.fillRect(0, 0, 900, 600)
+  ctx.fillStyle = '#fff'
+  for (let i = 0; i < 12; i++) ctx.fillRect((t / 2 + i * 80) % 900, i * 50, 60, 40)
+  requestAnimationFrame(paint)
+}
+requestAnimationFrame(paint)
+
+;(async () => {
+  try {
+    const config = await ipcRenderer.invoke('config')
+    const fix = process.env.FIX === '1'
+    const targetFps = 60, calculatedBitrate = 8_000_000
+
+    const viewer = new LK.Room({ adaptiveStream: false, dynacast: true })
+    await viewer.connect(config.url, config.tokens.viewer)
+    const publisher = new LK.Room({ adaptiveStream: false, dynacast: true, publishDefaults: { simulcast: false, videoCodec: 'vp8', dtx: true } })
+    await publisher.connect(config.url, config.tokens.publisher)
+
+    const sources = await ipcRenderer.invoke('sources')
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: sources[0].id, maxWidth: 1920, maxHeight: 1080, minFrameRate: 30, maxFrameRate: targetFps } } })
+    const localVideoTrack = new LK.LocalVideoTrack(stream.getVideoTracks()[0])
+    localVideoTrack.mediaStreamTrack.contentHint = 'motion'
+    const encoding = { maxBitrate: calculatedBitrate, maxFramerate: targetFps }
+    await publisher.localParticipant.publishTrack(localVideoTrack, {
+      source: LK.Track.Source.ScreenShare,
+      name: `screen_video_${targetFps}fps`,
+      simulcast: false,
+      videoCodec: 'h264',
+      videoEncoding: encoding,
+      ...(fix ? { screenShareEncoding: encoding } : {}),
+      degradationPreference: 'maintain-framerate'
+    })
+    const applied = localVideoTrack.sender.getParameters().encodings[0]
+
+    const read = async () => {
+      let inn = null, out = null
+      const manager = viewer.engine.pcManager
+      for (const pc of [manager.subscriber, manager.publisher]) {
+        const report = pc && await pc.getStats()
+        if (report) report.forEach((s) => { if (s.type === 'inbound-rtp' && s.kind === 'video') inn = s })
+      }
+      ;(await localVideoTrack.sender.getStats()).forEach((s) => { if (s.type === 'outbound-rtp' && s.kind === 'video') out = s })
+      return { inn, out }
+    }
+    await new Promise((r) => setTimeout(r, 10000))
+    const s1 = await read()
+    if (!s1.inn) throw new Error('o espectador não recebeu a faixa')
+    await new Promise((r) => setTimeout(r, 8000))
+    const s2 = await read()
+    const dt = (s2.inn.timestamp - s1.inn.timestamp) / 1000
+    ipcRenderer.send('result', {
+      mode: fix ? 'com a correcao (screenShareEncoding)' : 'como o Echo publica hoje (so videoEncoding)',
+      appliedMaxFramerate: applied.maxFramerate, appliedMaxBitrateMbps: Math.round((applied.maxBitrate || 0) / 100000) / 10,
+      senderEncodedFps: Math.round(((s2.out.framesEncoded - s1.out.framesEncoded) / dt) * 10) / 10,
+      viewerDecodedFps: Math.round(((s2.inn.framesDecoded - s1.inn.framesDecoded) / dt) * 10) / 10,
+      viewerSize: `${s2.inn.frameWidth}x${s2.inn.frameHeight}`,
+      viewerMbps: Math.round((((s2.inn.bytesReceived - s1.inn.bytesReceived) * 8) / dt) / 100000) / 10
+    })
+  } catch (err) {
+    ipcRenderer.send('result', { error: String(err && err.stack || err) })
+  }
+})()
+</script>
+</body>
+</html>

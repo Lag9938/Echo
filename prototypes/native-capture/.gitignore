@@ -3,3 +3,6 @@
 *.bin
 results.txt
 load.txt
+console.txt
+server-out.txt
+server-err.txt

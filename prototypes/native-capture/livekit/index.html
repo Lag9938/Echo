@@ -1,0 +1,146 @@
+<!doctype html>
+<html>
+<body style="margin:0;background:#000;overflow:hidden">
+<canvas id="c" style="width:100vw;height:100vh;display:block"></canvas>
+<script src="../../../node_modules/livekit-client/dist/livekit-client.umd.js"></script>
+<script>
+// Transmissor e espectador na mesma página, cada um com a própria conexão ao servidor LiveKit.
+const { ipcRenderer } = require('electron')
+const LK = window.LivekitClient
+if (process.env.LK_DEBUG) LK.setLogLevel('debug')
+const canvas = document.getElementById('c'); canvas.width = 900; canvas.height = 600
+const ctx = canvas.getContext('2d')
+function paint(t) {
+  ctx.fillStyle = `hsl(${(t / 10) % 360} 80% 40%)`; ctx.fillRect(0, 0, 900, 600)
+  ctx.fillStyle = '#fff'
+  for (let i = 0; i < 12; i++) ctx.fillRect((t / 2 + i * 80) % 900, i * 50, 60, 40)
+  requestAnimationFrame(paint)
+}
+requestAnimationFrame(paint)
+
+;(async () => {
+  const notes = []
+  try {
+    const config = await ipcRenderer.invoke('config')
+
+    // ── Espectador ──
+    const viewer = new LK.Room({ adaptiveStream: false, dynacast: true, singlePeerConnection: process.env.SINGLE_PC === '1' })
+    const video = document.createElement('video'); video.muted = true
+    viewer.on(LK.RoomEvent.TrackSubscribed, (track) => { if (track.kind === 'video') { video.srcObject = new MediaStream([track.mediaStreamTrack]); video.play().catch(() => {}) } })
+    await viewer.connect(config.url, config.tokens.viewer)
+
+    // ── Transmissor: mesmas opções de sala e de publicação que o Echo usa ──
+    const publisher = new LK.Room({ adaptiveStream: false, dynacast: true, singlePeerConnection: process.env.SINGLE_PC === '1', publishDefaults: { simulcast: false, videoCodec: 'vp8', dtx: true } })
+    await publisher.connect(config.url, config.tokens.publisher)
+
+    const facade = new MediaStreamTrackGenerator({ kind: 'video' })
+    const facadeWriter = facade.writable.getWriter()
+    const tiny = new OffscreenCanvas(64, 64); const tinyCtx = tiny.getContext('2d'); tinyCtx.fillStyle = '#181818'; tinyCtx.fillRect(0, 0, 64, 64)
+    let ticking = false
+    const tick = () => { if (!ticking) return; const f = new VideoFrame(tiny, { timestamp: Math.round(performance.now() * 1000) }); facadeWriter.write(f).finally(() => f.close()) }
+
+    const worker = new Worker('../inject/worker.js')
+    let workerStats = null, arrived = 0
+    worker.onmessage = (e) => {
+      if (e.data.type === 'need-key') ipcRenderer.send('need-key')
+      if (e.data.type === 'stats') workerStats = e.data
+    }
+    ipcRenderer.on('au', (_e, au) => {
+      arrived++
+      const data = au.data.buffer.slice(au.data.byteOffset, au.data.byteOffset + au.data.byteLength)
+      worker.postMessage({ type: 'au', data, key: au.key }, [data])
+      tick()
+    })
+
+    const localTrack = new LK.LocalVideoTrack(facade)
+    // O LiveKit avisa quando cria o sender, ANTES de negociar: e o momento de ligar a troca de quadro e de
+    // desligar as extensoes de dependencia (depois de publicada a faixa, a troca nao entra em vigor)
+    publisher.localParticipant.on(LK.ParticipantEvent.LocalSenderCreated, (createdSender, track) => {
+      if (track !== localTrack) return
+      createdSender.transform = new RTCRtpScriptTransform(worker, {})
+      notes.push('troca ligada na criacao do sender')
+      if (config.stopExtensions) {
+        const early = publisher.engine.pcManager.publisher.getTransceivers().find((t) => t.sender === createdSender)
+        if (early) {
+          const list = early.getHeaderExtensionsToNegotiate()
+          early.setHeaderExtensionsToNegotiate(list.map((e) => (/dependency-descriptor|generic-frame-descriptor/.test(e.uri) ? { ...e, direction: 'stopped' } : e)))
+          notes.push('extensoes desligadas antes da negociacao')
+        } else notes.push('transceiver ainda nao existia')
+      }
+    })
+    // Um quadro de fachada para a publicação ter o que negociar
+    ticking = true; tick(); ticking = false
+    await publisher.localParticipant.publishTrack(localTrack, {
+      source: LK.Track.Source.ScreenShare, name: 'screen_video_60fps', simulcast: false, videoCodec: 'h264',
+      videoEncoding: { maxBitrate: 8_000_000, maxFramerate: 60 }, degradationPreference: 'maintain-framerate'
+    })
+    const sender = localTrack.sender
+    if (!sender) throw new Error('a faixa publicada não tem sender')
+
+    const transport = publisher.engine.pcManager.publisher
+    const transceiver = transport.getTransceivers().find((t) => t.sender === sender)
+    if (false) {
+      const extensions = transceiver.getHeaderExtensionsToNegotiate()
+      const stopped = extensions.filter((e) => /dependency-descriptor|generic-frame-descriptor/.test(e.uri) && e.direction !== 'stopped')
+      transceiver.setHeaderExtensionsToNegotiate(extensions.map((e) => (/dependency-descriptor|generic-frame-descriptor/.test(e.uri) ? { ...e, direction: 'stopped' } : e)))
+      notes.push('extensoes desligadas: ' + (stopped.map((e) => e.uri.split('/').pop()).join(',') || 'nenhuma estava ativa'))
+      await publisher.engine.negotiate()
+      notes.push('renegociado')
+    } else notes.push('extensoes mantidas')
+
+    ticking = true
+    setInterval(tick, 50)
+    ipcRenderer.send('start-capture')
+
+    // O codificador nativo segue a taxa que a conexão autoriza; quadro-chave também quando o envio registra pedido
+    let currentBitrate = 1_000_000, lastTarget = 0, lastKeyAsk = 0
+    setInterval(async () => {
+      let target = 0, asks = 0
+      ;(await sender.getStats()).forEach((s) => { if (s.type === 'outbound-rtp' && s.kind === 'video') { target = s.targetBitrate || 0; asks = (s.pliCount || 0) + (s.firCount || 0) } })
+      if (asks > lastKeyAsk) { lastKeyAsk = asks; ipcRenderer.send('need-key') }
+      const wanted = Math.max(500_000, Math.min(8_000_000, Math.round(target * 0.9)))
+      if (target && Math.abs(wanted - currentBitrate) / currentBitrate > 0.15) { currentBitrate = wanted; lastTarget = target; ipcRenderer.send('bitrate', wanted) }
+    }, 250)
+
+    const viewerStats = async () => {
+      let inn = null
+      const manager = viewer.engine.pcManager
+      for (const pc of [manager.subscriber, manager.publisher]) {
+        const report = pc && await pc.getStats()
+        if (report) report.forEach((s) => { if (s.type === 'inbound-rtp' && s.kind === 'video') inn = s })
+      }
+      return inn
+    }
+    const sample = () => {
+      const c = document.createElement('canvas'); c.width = 64; c.height = 36
+      const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(video, 0, 0, 64, 36)
+      const d = x.getImageData(0, 0, 64, 36).data; let min = 255, max = 0
+      for (let i = 0; i < d.length; i += 4) { const v = (d[i] + d[i + 1] + d[i + 2]) / 3; if (v < min) min = v; if (v > max) max = v }
+      return Math.round(max - min)
+    }
+    await new Promise((r) => setTimeout(r, 10000))
+    const s1 = await viewerStats(); const a1 = arrived
+    if (!s1) throw new Error('o espectador não recebeu nenhuma faixa de vídeo')
+    await new Promise((r) => setTimeout(r, 8000))
+    const s2 = await viewerStats(); const a2 = arrived
+    worker.postMessage({ type: 'stats' }); await new Promise((r) => setTimeout(r, 200))
+    const dt = (s2.timestamp - s1.timestamp) / 1000
+    ipcRenderer.send('result', {
+      notes,
+      nativeEncodedFps: Math.round(((a2 - a1) / dt) * 10) / 10,
+      viewerDecodedFps: Math.round(((s2.framesDecoded - s1.framesDecoded) / dt) * 10) / 10,
+      viewerSize: `${s2.frameWidth}x${s2.frameHeight}`,
+      viewerMbps: Math.round((((s2.bytesReceived - s1.bytesReceived) * 8) / dt) / 100000) / 10,
+      connectionTargetMbps: Math.round(lastTarget / 100000) / 10,
+      keyFramesDecoded: s2.keyFramesDecoded, freezes: s2.freezeCount, framesDropped: s2.framesDropped,
+      packetsLost: s2.packetsLost, pliSentByViewer: s2.pliCount, nackSentByViewer: s2.nackCount,
+      jitterBufferMs: s2.jitterBufferEmittedCount ? Math.round((s2.jitterBufferDelay / s2.jitterBufferEmittedCount) * 1000) : null,
+      decoder: s2.decoderImplementation, imageContrast: sample(), workerStats
+    })
+  } catch (err) {
+    ipcRenderer.send('result', { notes, error: String(err && err.stack || err) })
+  }
+})()
+</script>
+</body>
+</html>
