@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+<body style="margin:0;background:#000;overflow:hidden">
+<canvas id="c" style="width:100vw;height:100vh;display:block"></canvas>
+<script>
+const { ipcRenderer, sharedTexture } = require('electron')
+// Conteúdo que muda a cada quadro (como um jogo)
+const canvas = document.getElementById('c'); canvas.width = 900; canvas.height = 600
+const ctx = canvas.getContext('2d')
+function paint(t) {
+  ctx.fillStyle = `hsl(${(t / 10) % 360} 80% 40%)`; ctx.fillRect(0, 0, 900, 600)
+  ctx.fillStyle = '#fff'
+  for (let i = 0; i < 12; i++) ctx.fillRect((t / 2 + i * 80) % 900, i * 50, 60, 40)
+  requestAnimationFrame(paint)
+}
+requestAnimationFrame(paint)
+
+// Os quadros do capturador próprio viram uma faixa de vídeo comum, igual à que o Echo publica na chamada
+const generator = new MediaStreamTrackGenerator({ kind: 'video' })
+const writer = generator.writable.getWriter()
+let received = 0, writeErrors = 0, firstError = null, frameSize = ''
+sharedTexture.setSharedTextureReceiver(async (data, micros) => {
+  const imported = data.importedSharedTexture
+  let frame = null
+  try {
+    frame = imported.getVideoFrame()
+    frameSize = `${frame.displayWidth}x${frame.displayHeight}`
+    const stamped = new VideoFrame(frame, { timestamp: micros })
+    received++
+    await writer.write(stamped)
+  } catch (err) {
+    writeErrors++; firstError = firstError || String(err && err.message || err)
+  } finally {
+    if (frame) frame.close()
+    imported.release()
+  }
+})
+
+async function endToEnd(track) {
+  track.contentHint = 'motion'
+  const a = new RTCPeerConnection(), b = new RTCPeerConnection()
+  a.onicecandidate = (e) => e.candidate && b.addIceCandidate(e.candidate)
+  b.onicecandidate = (e) => e.candidate && a.addIceCandidate(e.candidate)
+  const remote = new Promise((resolve) => { b.ontrack = (e) => resolve(e.track) })
+  // O monitor aqui é 2560x1440; o Echo envia no máximo 1920x1080
+  const tr = a.addTransceiver(track, { direction: 'sendonly', sendEncodings: [{ maxBitrate: 8000000, maxFramerate: 60 }] })
+  const h264 = RTCRtpSender.getCapabilities('video').codecs.filter((c) => c.mimeType === 'video/H264')
+  if (h264.length) tr.setCodecPreferences(h264)
+  const params = tr.sender.getParameters(); params.degradationPreference = 'maintain-framerate'; await tr.sender.setParameters(params)
+  await a.setLocalDescription(await a.createOffer())
+  await b.setRemoteDescription(a.localDescription)
+  await b.setLocalDescription(await b.createAnswer())
+  await a.setRemoteDescription(b.localDescription)
+  const remoteTrack = await remote
+  const video = document.createElement('video'); video.muted = true; video.srcObject = new MediaStream([remoteTrack]); await video.play()
+  await new Promise((r) => setTimeout(r, 6000))
+  const read = async () => {
+    let out = null, inn = null
+    ;(await a.getStats()).forEach((s) => { if (s.type === 'outbound-rtp' && s.kind === 'video') out = s })
+    ;(await b.getStats()).forEach((s) => { if (s.type === 'inbound-rtp' && s.kind === 'video') inn = s })
+    return { out, inn }
+  }
+  const sample = () => {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 36
+    const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(video, 0, 0, 64, 36)
+    const d = x.getImageData(0, 0, 64, 36).data; let sum = 0, min = 255, max = 0
+    for (let i = 0; i < d.length; i += 4) { const v = (d[i] + d[i + 1] + d[i + 2]) / 3; sum += v; if (v < min) min = v; if (v > max) max = v }
+    return { avg: Math.round(sum / (d.length / 4)), contrast: Math.round(max - min) }
+  }
+  const s1 = await read(); const r1 = received; const img1 = sample()
+  await new Promise((r) => setTimeout(r, 6000))
+  const s2 = await read(); const r2 = received; const img2 = sample()
+  const dt = (s2.out.timestamp - s1.out.timestamp) / 1000
+  return {
+    arrivedInAppFps: Math.round(((r2 - r1) / dt) * 10) / 10,
+    encodedFps: Math.round(((s2.out.framesEncoded - s1.out.framesEncoded) / dt) * 10) / 10,
+    decodedFps: Math.round(((s2.inn.framesDecoded - s1.inn.framesDecoded) / dt) * 10) / 10,
+    mbps: Math.round((((s2.out.bytesSent - s1.out.bytesSent) * 8) / dt) / 100000) / 10,
+    sentSize: `${s2.out.frameWidth}x${s2.out.frameHeight}`,
+    encoder: s2.out.encoderImplementation, hardware: s2.out.powerEfficientEncoder,
+    limitation: s2.out.qualityLimitationReason,
+    image: { first: img1, second: img2 }
+  }
+}
+
+;(async () => {
+  try {
+    await new Promise((r) => setTimeout(r, 3000))
+    if (received === 0) throw new Error('nenhum quadro chegou ao app em 3 s: ' + (firstError || JSON.stringify(await ipcRenderer.invoke('counters'))))
+    const e2e = await endToEnd(generator)
+    ipcRenderer.send('result', { frameSize, writeErrors, firstError, e2e })
+  } catch (err) {
+    ipcRenderer.send('result', { error: String(err && err.message || err), frameSize, writeErrors, firstError })
+  }
+})()
+</script>
+</body>
+</html>
