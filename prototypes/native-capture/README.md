@@ -49,11 +49,49 @@ quadros capturados e ~49 recebidos com o "jogo" a ~105 FPS.
 - O número de 12 FPS é parecido com o que os usuários relatam. Vale conferir, com os números da origem que a
   v0.53.4 mostra, se no computador deles a captura entrega os quadros e é o envio que não acompanha.
 
-## Próximo passo (não resolvido)
+## Mudança de plano: o capturador também codifica
 
-Entregar as texturas já em NV12, para o codificador da placa usar direto. Duas tentativas falharam: a
-transferência para a página estoura o tempo de 1 s (`transfer shared texture timed out`), com e sem
-"keyed mutex". Falta descobrir o que o Chromium exige de uma textura NV12 importada.
+A tentativa de entregar as texturas já em NV12 falhou duas vezes (a transferência para a página estoura o
+tempo de 1 s, com e sem "keyed mutex"), e mesmo que passasse o quadro continuaria dependendo do codificador
+do Chromium, que é quem fica para trás com a placa ocupada.
+
+Plano novo: o programa nativo captura **e codifica** em H.264 na placa de vídeo, e manda ao app só o vídeo
+pronto (cerca de 1 MB por segundo, trivial de transportar). O app envia esse vídeo pela chamada.
+
+### Prova de conceito da parte mais incerta: `inject/`
+
+O WebRTC do Chromium não aceita vídeo já codificado. O contorno: publicar uma faixa "de fachada" de 64x64
+e, dentro da conexão (`RTCRtpScriptTransform`), trocar o conteúdo de cada quadro codificado pelo nosso H.264.
+Em `inject/` o "codificador próprio" é o `VideoEncoder` do navegador, só para testar o mecanismo.
+
+Resultado em conexão de teste local (09/10/2026, sem carga), três execuções seguidas:
+
+| Codificador próprio | Recebido e decodificado | Tamanho recebido | Quadros-chave | Travadas | Atraso do receptor |
+|---|---|---|---|---|---|
+| 57,6 FPS | 57,1 FPS | 1920x1080 | 1 | 1 | 24 ms |
+| 57,7 FPS | 57,7 FPS | 1920x1080 | 1 | 0 | 31 ms |
+| 57,7 FPS | 58,0 FPS | 1920x1080 | 1 | 0 | 67 ms |
+
+Três coisas foram necessárias para ficar limpo (cada uma, sem ela, travava ou atrasava):
+
+1. **Desligar as extensões "dependency descriptor" e "generic frame descriptor" nessa faixa**
+   (`setHeaderExtensionsToNegotiate`). Com elas o receptor confia na marcação da fachada sobre quais quadros
+   são chave e de quais cada um depende; sem elas, lê tudo do H.264 trocado.
+2. **Um relógio de folga** (20 quadros de fachada extras por segundo) para escoar a fila quando um quadro de
+   fachada se perde, e o mesmo relógio para todos os carimbos de tempo.
+3. **O codificador próprio seguir a taxa que a conexão autoriza** (`targetBitrate` das estatísticas de envio).
+   Mandar 8 Mbps desde o primeiro quadro enfileira no envio e gera travadas.
+
+Pedido de quadro-chave do receptor chega como quadro-chave na fachada; o worker avisa e o codificador próprio
+gera o dele.
+
+### O que falta
+
+- O codificador nativo de verdade (Media Foundation, H.264 pela placa de vídeo, recebendo a textura do
+  capturador sem cópia) e a saída dele por um canal até o app.
+- Testar a troca **através do servidor de voz (LiveKit)**, não só em conexão local: o cliente do LiveKit cria
+  a faixa e negocia as extensões por conta própria.
+- Medir tudo de novo com a placa ocupada — é o único número que importa, e ainda não existe para este plano.
 
 Outras pendências antes de virar recurso do app: desenhar o cursor (esta captura não o inclui), mais de um
 monitor, HDR, troca de resolução durante a transmissão, devolver as texturas só depois de o app terminar de
