@@ -18,11 +18,37 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.53.4',
+    title: 'Echo v0.53.4 - Números da Origem e Atualização Visível',
+    date: '9 de Outubro de 2026',
+    tagline: 'O painel de quem assiste passa a mostrar o que acontece no computador de quem transmite, e a atualização do Echo deixa de parecer que o app fechou.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🔎',
+        badge: 'NOVO',
+        title: 'Números de Quem Transmite no Seu Painel',
+        description: 'Ao assistir a uma transmissão, o painel de estatísticas mostra também quantos quadros o computador de quem transmite captura e envia, qual codificador ele usa e o que está segurando a transmissão lá. Os dois lados precisam estar nesta versão.'
+      },
+      {
+        icon: '🪟',
+        badge: 'CORREÇÃO',
+        title: 'Echo Volta na Frente Depois de Atualizar',
+        description: 'Depois de atualizar, o Echo reabria atrás das outras janelas e parecia que não tinha voltado. Agora ele traz a própria janela para a frente.'
+      },
+      {
+        icon: '⏳',
+        badge: 'NOVO',
+        title: 'Aviso Durante a Atualização',
+        description: 'Enquanto o Echo instala uma atualização aparece um aviso na tela dizendo que ele reabre sozinho. Antes eram vários segundos sem nada aparecendo. Vale a partir da próxima atualização depois desta.'
+      }
+    ]
+  },
+  {
     version: '0.53.3',
     title: 'Echo v0.53.3 - Mais Quadros ao Transmitir Jogos',
     date: '5 de Outubro de 2026',
     tagline: 'A transmissão de tela inteira perde bem menos quadros quando um jogo está ocupando a placa de vídeo.',
-    isLatest: true,
     highlights: [
       {
         icon: '🎮',
