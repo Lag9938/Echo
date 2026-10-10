@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { createImageFreezer, isFreezeCandidate } from '../backgroundImages'
+import { backgroundUrls, createImageFreezer, isFreezeCandidate } from '../backgroundImages'
 
 function image(src: string) {
   const img = document.createElement('img')
@@ -70,6 +70,45 @@ describe('imagens animadas em segundo plano', () => {
 
     await freezer.freeze([img])
     expect(img.style.content).toBe('')
+  })
+
+  it('lê os endereços de um fundo de CSS', () => {
+    expect(backgroundUrls('url("https://a.test/x.gif"), linear-gradient(red, blue)')).toEqual(['https://a.test/x.gif'])
+    expect(backgroundUrls("url('a.gif'), url(b.webp)")).toEqual(['a.gif', 'b.webp'])
+    expect(backgroundUrls('none')).toEqual([])
+    expect(backgroundUrls(null)).toEqual([])
+  })
+
+  it('fundo animado (cartão da chamada, banner): congela e devolve como estava', async () => {
+    const freezer = createImageFreezer(async () => 'blob:parado', () => true)
+    const fromCss = document.createElement('span')
+    const inline = document.createElement('div')
+    inline.style.backgroundImage = `url("${GIF}")`
+    const plain = document.createElement('div')
+    document.body.append(fromCss, inline, plain)
+    const computed = new Map<HTMLElement, string>([[fromCss, `url("${GIF}")`], [inline, `url("${GIF}")`], [plain, 'none']])
+
+    await freezer.freezeBackgrounds([fromCss, inline, plain], (el) => computed.get(el) || 'none')
+    expect(fromCss.style.backgroundImage).toContain('blob:parado')
+    expect(fromCss.style.getPropertyPriority('background-image')).toBe('important')
+    expect(inline.style.backgroundImage).toContain('blob:parado')
+    expect(plain.style.backgroundImage).toBe('')
+
+    freezer.restore()
+    expect(fromCss.style.backgroundImage).toBe('')
+    expect(inline.style.backgroundImage).toContain('a.gif')
+    expect(inline.style.getPropertyPriority('background-image')).toBe('')
+  })
+
+  it('trocaram o fundo enquanto estava congelado: ao voltar vale o novo', async () => {
+    const freezer = createImageFreezer(async () => 'blob:parado', () => true)
+    const el = document.createElement('div')
+    document.body.append(el)
+    await freezer.freezeBackgrounds([el], () => `url("${GIF}")`)
+
+    el.style.backgroundImage = 'url("https://exemplo.test/novo.png")'
+    freezer.restore()
+    expect(el.style.backgroundImage).toContain('novo.png')
   })
 
   it('trocaram a imagem enquanto estava congelada: o quadro velho sai', async () => {
