@@ -3926,3 +3926,227 @@ body.light-theme.echo-layout-glass .hover-popover-btn.secondary:hover {
 
 
 
+
+/* ── Rodapé do perfil com a chamada em andamento ─────────────────────────────
+   A chamada deixou de ter um cartão próprio acima do perfil: o rodapé mostra "Na chamada · sala" e, ao passar
+   o mouse (ou focar com o teclado), sobe um painel de vidro com mutar, silenciar e sair. As cores vêm das
+   variáveis do tema, então acompanham o tema e a cor de destaque escolhidos nas configurações. */
+.sidebar-profile-footer .profile-footer-sub-status.in-call {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: color-mix(in srgb, #22c55e 78%, var(--text-primary));
+  font-weight: 600;
+}
+
+.profile-call-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55);
+  animation: voiceStatusDotPulse 1.8s infinite;
+}
+.profile-call-dot.reconnecting {
+  background: #f0b232;
+  animation: none;
+}
+
+.sidebar-profile-footer.has-call .profile-call-popover {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 100%;
+  /* O respiro de baixo faz parte do painel: o mouse atravessa sem soltar o :hover do rodapé */
+  padding-bottom: 8px;
+  z-index: 60;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(12px) scale(0.96);
+  transform-origin: bottom center;
+  transition: opacity 0.2s ease,
+              transform 0.3s var(--ease-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+              visibility 0s linear 0.3s;
+}
+.sidebar-profile-footer.has-call:hover .profile-call-popover,
+.sidebar-profile-footer.has-call:focus-within .profile-call-popover {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+  transition-delay: 0s;
+}
+/* O menu de status (clique no nome) usa o mesmo lugar: enquanto ele está aberto, o painel da chamada espera */
+.sidebar-profile-footer.has-call.status-open .profile-call-popover {
+  display: none;
+}
+
+.profile-call-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--bg-secondary) 80%, transparent);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid color-mix(in srgb, var(--border-color) 55%, rgba(255, 255, 255, 0.22));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 18px 44px rgba(0, 0, 0, 0.32);
+}
+
+.profile-call-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+.profile-call-head.clickable {
+  cursor: pointer;
+}
+.profile-call-head.clickable:hover .profile-call-title small {
+  color: var(--accent-color);
+}
+.profile-call-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  line-height: 1.2;
+}
+.profile-call-title strong {
+  font-size: 13px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.profile-call-title small {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  transition: color 0.15s ease;
+}
+.profile-call-elapsed {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-call-toggles {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+.profile-call-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 62px;
+  padding: 8px 4px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.16s ease, transform 0.16s ease, border-color 0.16s ease;
+}
+.profile-call-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+.profile-call-toggle:hover {
+  background: color-mix(in srgb, var(--text-primary) 13%, transparent);
+  transform: translateY(-1px);
+}
+.profile-call-toggle.is-off {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+.profile-call-toggle.is-active {
+  background: color-mix(in srgb, var(--accent-color) 20%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color) 55%, transparent);
+  color: var(--accent-color);
+}
+
+.profile-call-ptt {
+  padding: 4px 8px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+.profile-call-ptt.active {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.18);
+  color: #10b981;
+}
+
+.profile-call-quality {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-call-leave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  border: 0;
+  border-radius: 15px;
+  background: #ef4444;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: box-shadow 0.16s ease, transform 0.16s ease;
+}
+.profile-call-leave svg {
+  width: 17px;
+  height: 17px;
+}
+.profile-call-leave:hover {
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.45);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-profile-footer.has-call .profile-call-popover,
+  .profile-call-toggle,
+  .profile-call-leave {
+    transition: opacity 0.01s linear, visibility 0s;
+    transform: none;
+  }
+  .profile-call-dot {
+    animation: none;
+  }
+}
