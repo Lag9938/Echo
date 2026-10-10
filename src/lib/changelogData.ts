@@ -18,11 +18,43 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.53.6',
+    title: 'Echo v0.53.6 - Atualizações Mais Seguras',
+    date: '10 de Outubro de 2026',
+    tagline: 'Três proteções novas para que uma atualização com defeito não deixe ninguém sem o Echo.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🧪',
+        badge: 'SEGURANÇA',
+        title: 'Toda Versão é Aberta Antes de Ser Publicada',
+        description: 'Antes de uma versão chegar até você, o instalador dela é instalado e aberto automaticamente. Se o Echo não abrir ou a tela não carregar, a versão não é publicada.'
+      },
+      {
+        icon: '↩️',
+        badge: 'NOVO',
+        title: 'Volta Automática para a Versão Anterior',
+        description: 'Se uma versão nova não abrir no seu computador, o Echo reinstala a anterior sozinho, avisa o que aconteceu e não tenta instalar a versão com defeito de novo. Passa a valer a partir da próxima atualização depois desta.'
+      },
+      {
+        icon: '🛟',
+        badge: 'NOVO',
+        title: 'Correção Chega Mesmo com a Tela Quebrada',
+        description: 'Instalar uma atualização não depende mais da tela do Echo. Se a tela não carregar, a correção é instalada sozinha; se o aviso de versão nova não aparecer, o Echo pergunta por uma janela do Windows.'
+      },
+      {
+        icon: '🔎',
+        badge: 'NOVO',
+        title: 'Buscar Atualizações pela Bandeja',
+        description: 'O menu do ícone do Echo perto do relógio ganhou "Buscar atualizações". Funciona mesmo que a janela do Echo não abra.'
+      }
+    ]
+  },
+  {
     version: '0.53.5',
     title: 'Echo v0.53.5 - Transmissão Sem a Trava de 15 FPS',
     date: '9 de Outubro de 2026',
     tagline: 'As transmissões de tela saíam limitadas a 15 quadros por segundo, qualquer que fosse o FPS escolhido. Agora respeitam o FPS e a qualidade que você escolhe.',
-    isLatest: true,
     highlights: [
       {
         icon: '🎬',
