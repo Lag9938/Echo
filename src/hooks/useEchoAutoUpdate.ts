@@ -14,6 +14,13 @@ export function useEchoAutoUpdate() {
   useEffect(() => {
     const api = (window as any).electronAPI
     if (!api?.onUpdateAvailable) return
+    // Confirma ao processo principal que o aviso está na tela. Sem essa confirmação ele assume e pergunta por
+    // uma janela do sistema (ou instala sozinho, se a tela nem carregou).
+    const showReady = (version: string) => {
+      setUpdateStatus('ready')
+      setUpdateVersion(version)
+      api.ackUpdateReady?.(version)
+    }
     api.onUpdateAvailable((info: { version: string }) => {
       setUpdateStatus('downloading')
       setUpdateVersion(info.version)
@@ -21,10 +28,15 @@ export function useEchoAutoUpdate() {
     api.onUpdateProgress((progress: { percent: number }) => {
       setUpdateProgress(progress.percent)
     })
-    api.onUpdateReady((info: { version: string }) => {
-      setUpdateStatus('ready')
-      setUpdateVersion(info.version)
-    })
+    api.onUpdateReady((info: { version: string }) => showReady(info.version))
+    // A atualização pode ter ficado pronta antes de esta tela carregar (o aviso chegou sem ninguém ouvindo)
+    api.getUpdateState?.().then((state: { status: UpdateStatus; version: string; percent: number } | undefined) => {
+      if (!state || state.status === 'idle') return
+      if (state.status === 'ready') { showReady(state.version); return }
+      setUpdateStatus((current) => (current === 'ready' ? current : 'downloading'))
+      setUpdateVersion((current) => current || state.version)
+      setUpdateProgress((current) => Math.max(current, state.percent || 0))
+    }).catch(() => {})
   }, [])
 
   return { updateStatus, updateVersion, updateProgress }

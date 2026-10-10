@@ -16,7 +16,7 @@ export function getHasShownTrayBalloon() {
   return hasShownTrayBalloon
 }
 
-export function createTray(rootDir, getMainWindow, setIsQuitting) {
+export function createTray(rootDir, getMainWindow, setIsQuitting, onCheckForUpdates) {
   if (tray) return
   try {
     const trayIconPath = path.join(rootDir, 'assets', 'echo-tray.png')
@@ -43,6 +43,8 @@ export function createTray(rootDir, getMainWindow, setIsQuitting) {
           }
         }
       },
+      // Funciona pelo processo principal: é a saída quando a tela do app não abre ou está com defeito
+      ...(onCheckForUpdates ? [{ label: 'Buscar atualizações', click: () => onCheckForUpdates() }] : []),
       { type: 'separator' },
       {
         label: 'Sair do Echo',

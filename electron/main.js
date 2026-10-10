@@ -10,7 +10,7 @@ import { setupOverlayIpc } from './services/overlay.js'
 import { setupShortcutsIpc } from './services/shortcuts.js'
 import { scanRunningGames, setupGameDetectionIpc, getActiveGame, getActiveGameStartTime, setGameScanInterval, getGameScanInterval } from './ipc/gameDetection.js'
 import { setupLivekitIpc, ensureLocalLivekitServer, getLivekitProcess } from './ipc/livekit.js'
-import { setupUpdatesIpc } from './ipc/updates.js'
+import { setupUpdatesIpc, checkForUpdatesFromTray } from './ipc/updates.js'
 import { setupAudioIpc, stopAudioCapture } from './ipc/audio.js'
 import { setupWindowIpc } from './ipc/window.js'
 import { appendUpdateLog } from './services/updateRelaunch.js'
@@ -18,6 +18,7 @@ import { captureFeatures, readCaptureMode, setActiveCaptureMode } from './servic
 import { bringWindowToFront, detectVersionChange } from './services/postUpdate.js'
 import { SMOKE_PROBE, armSmokeDeadline, noteSmokeMainError, smokeTarget, startSmokeTest } from './services/smokeTest.js'
 import { markHealthy, takeRollbackNotice } from './services/rollback.js'
+import { setRendererHealthy } from './services/updateFallback.js'
 // Teste de fumaça do app empacotado, antes de publicar (services/smokeTest.js). Fora dele, null.
 const smokeFile = smokeTarget()
 // Este arquivo é carregado pelo guarda de inicialização (electron-main.js). Ele precisa rodar ANTES de o
@@ -80,8 +81,27 @@ let isQuitting = false
 export function getMainWindow() { return mainWindow }
 export function setIsQuitting(val) { isQuitting = val }
 
+// Antes de instalar uma atualização: fecha o que seguraria o app aberto
+function onInstallUpdate() {
+  isQuitting = true
+  const interval = getGameScanInterval()
+  if (interval) clearInterval(interval)
+  const tray = getTray()
+  if (tray) {
+    try { tray.destroy() } catch (e) {}
+  }
+  try { stopAudioCapture() } catch (e) {}
+  const livekitProc = getLivekitProcess()
+  if (livekitProc) {
+    try { livekitProc.kill() } catch (e) {}
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    try { mainWindow.destroy() } catch (e) {}
+  }
+}
+
 export function createWindow() {
-  createTray(rootDir, getMainWindow, setIsQuitting)
+  createTray(rootDir, getMainWindow, setIsQuitting, () => { checkForUpdatesFromTray() })
 
   // Logo depois de atualizar a janela sempre aparece, mesmo para quem inicia o Echo escondido com o Windows
   const shouldStartHidden = !updatedFromVersion && (process.argv.includes('--hidden') || process.argv.includes('--minimized'))
@@ -226,26 +246,6 @@ export function createWindow() {
   setupLivekitIpc(safeHandle)
   setupDeeplinkIpc(safeHandle)
 
-  const onInstallUpdate = () => {
-    isQuitting = true
-    const interval = getGameScanInterval()
-    if (interval) clearInterval(interval)
-    const tray = getTray()
-    if (tray) {
-      try { tray.destroy() } catch (e) {}
-    }
-    stopAudioCapture()
-    const livekitProc = getLivekitProcess()
-    if (livekitProc) {
-      try { livekitProc.kill() } catch (e) {}
-    }
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      try { mainWindow.destroy() } catch (e) {}
-    }
-  }
-  // No teste de fumaça o app não busca nem instala atualização
-  setupUpdatesIpc(safeHandle, isDevelopment || Boolean(smokeFile), onInstallUpdate, getMainWindow)
-
   let interval = getGameScanInterval()
   if (interval) clearInterval(interval)
   setGameScanInterval(setInterval(() => scanRunningGames(getMainWindow, rootDir), 5000))
@@ -301,12 +301,19 @@ export function createWindow() {
 function watchStartupHealth(win) {
   let goodReads = 0
   let checks = 0
+  // Se o processo da tela cair depois, ela deixa de contar como saudável e a conferência recomeça
+  win.webContents.once('render-process-gone', () => {
+    setRendererHealthy(false)
+    if (!win.isDestroyed()) watchStartupHealth(win)
+  })
   const timer = setInterval(() => {
     if (++checks > 300 || !win || win.isDestroyed()) { clearInterval(timer); return }
     win.webContents.executeJavaScript(SMOKE_PROBE, true).then((probe) => {
       goodReads = probe && probe.rootChildren > 0 && probe.hasBridge ? goodReads + 1 : 0
       if (goodReads < 3) return
       clearInterval(timer)
+      // O atualizador usa isto para saber se pode contar com a tela (services/updateFallback.js)
+      setRendererHealthy(true)
       if (markHealthy(app.getPath('userData'), app.getVersion())) {
         appendUpdateLog(path.join(app.getPath('userData'), 'update.log'), `versão ${app.getVersion()} aprovada: a tela carregou`)
       }
@@ -367,7 +374,23 @@ if (setupDeeplink(getMainWindow, createWindow)) {
 
     Menu.setApplicationMenu(null)
     ensureLocalLivekitServer(rootDir)
-    createWindow()
+    // O atualizador é ligado ANTES da janela e não depende dela: se a janela falhar ao ser criada, o app ainda
+    // busca, baixa e instala a correção (ipc/updates.js). No teste de fumaça o app não busca atualização.
+    try {
+      setupUpdatesIpc(safeHandle, isDevelopment || Boolean(smokeFile), onInstallUpdate, getMainWindow)
+    } catch (err) {
+      console.error('[Echo Main] Falha ao ligar o atualizador:', err)
+      if (smokeFile) noteSmokeMainError(err)
+    }
+    try {
+      createWindow()
+    } catch (err) {
+      console.error('[Echo Main] Falha ao criar a janela:', err)
+      if (smokeFile) noteSmokeMainError(err)
+      if (!isDevelopment) {
+        appendUpdateLog(path.join(app.getPath('userData'), 'update.log'), `a janela não pôde ser criada: ${String((err && err.stack) || err).slice(0, 400)}`)
+      }
+    }
     if (!isDevelopment) {
       appendUpdateLog(path.join(app.getPath('userData'), 'update.log'), `Echo iniciado (versão ${app.getVersion()})`)
     }

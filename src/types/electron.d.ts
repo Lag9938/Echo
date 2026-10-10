@@ -33,6 +33,8 @@ export interface ElectronAPI {
   onUpdateProgress: (callback: (progress: { percent: number; transferred: number; total: number }) => void) => void
   onUpdateReady: (callback: (info: { version: string }) => void) => void
   installUpdate: () => void
+  getUpdateState?: () => Promise<{ status: 'idle' | 'downloading' | 'ready'; version: string; percent: number }>
+  ackUpdateReady?: (version: string) => void
   checkForUpdates: () => Promise<{ success: boolean; updateInfo?: any; error?: string }>
 
   // Rich Presence Game Detection
