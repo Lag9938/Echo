@@ -1,0 +1,80 @@
+name: Liberação gradual
+
+# Troca para quantas instalações a versão publicada aparece, sem compilar nada: só o latest.yml do release é
+# reenviado com outra porcentagem (regras em electron/services/rollout.js).
+#
+#  - Manual (aba Actions > Run workflow): escolha a porcentagem. 0 pausa a versão (ninguém mais a recebe),
+#    100 libera para todo mundo.
+#  - Automático: a cada 6 horas, a versão mais recente que está em liberação parcial há 24 horas ou mais vai
+#    para 100%. Uma versão pausada (0%) nunca é liberada sozinha.
+
+on:
+  workflow_dispatch:
+    inputs:
+      percentage:
+        description: 'Porcentagem das instalações (0 = pausar, 100 = todo mundo)'
+        required: true
+      tag:
+        description: 'Tag do release (vazio = o mais recente)'
+        required: false
+  schedule:
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rollout
+  cancel-in-progress: false
+
+jobs:
+  rollout:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      INPUT_TAG: ${{ inputs.tag }}
+      INPUT_PERCENTAGE: ${{ inputs.percentage }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Baixar o latest.yml do release
+        id: release
+        shell: bash
+        run: |
+          tag="$INPUT_TAG"
+          if [ -z "$tag" ]; then tag="$(gh release view --json tagName --jq .tagName)"; fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "published=$(gh release view "$tag" --json publishedAt --jq .publishedAt)" >> "$GITHUB_OUTPUT"
+          mkdir -p rollout
+          gh release download "$tag" --pattern latest.yml --dir rollout --clobber
+          echo "Release $tag, liberação atual: $(node scripts/set-rollout.mjs --read rollout/latest.yml)%"
+
+      - name: Decidir a porcentagem
+        id: decide
+        shell: bash
+        env:
+          PUBLISHED: ${{ steps.release.outputs.published }}
+        run: |
+          if [ -n "$INPUT_PERCENTAGE" ]; then
+            echo "value=$INPUT_PERCENTAGE" >> "$GITHUB_OUTPUT"
+          elif node scripts/set-rollout.mjs --due rollout/latest.yml "$PUBLISHED"; then
+            echo "value=100" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Reenviar o latest.yml
+        if: steps.decide.outputs.value != ''
+        shell: bash
+        env:
+          VALUE: ${{ steps.decide.outputs.value }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          node scripts/set-rollout.mjs rollout/latest.yml "$VALUE"
+          gh release upload "$TAG" rollout/latest.yml --clobber
+          echo "Release $TAG agora em $(node scripts/set-rollout.mjs --read rollout/latest.yml)%" >> "$GITHUB_STEP_SUMMARY"

@@ -11,6 +11,10 @@ on:
       tag:
         description: 'Tag do release (ex.: v0.40.2)'
         required: true
+      rollout:
+        description: 'Liberação inicial em % das instalações (100 = todo mundo de uma vez)'
+        required: false
+        default: 'inicial'
 
 permissions:
   contents: write
@@ -26,6 +30,8 @@ jobs:
     runs-on: windows-latest
     env:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      # Toda versão nasce em liberação gradual (electron/services/rollout.js); rollout.yml sobe ou pausa depois
+      ROLLOUT: ${{ inputs.rollout || 'inicial' }}
     # O disparo manual cria a tag, e isso dispara este workflow de novo (evento de tag).
     # As execuções da mesma tag rodam uma de cada vez, e a segunda não reconstrói o que já foi publicado.
     concurrency:
@@ -107,5 +113,6 @@ jobs:
             exit 1
           fi
           gh release upload "$RELEASE_TAG" "dist-desktop/$installer" "dist-desktop/$installer.blockmap" --clobber
+          node scripts/set-rollout.mjs dist-desktop/latest.yml "$ROLLOUT"
           gh release upload "$RELEASE_TAG" dist-desktop/latest.yml --clobber
 

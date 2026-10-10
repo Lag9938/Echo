@@ -5,6 +5,7 @@ import path from 'node:path'
 import { appendUpdateLog, startRelaunchWatchdog } from '../services/updateRelaunch.js'
 import { isVersionBlocked, keepInstallerCopy, recordPendingUpdate } from '../services/rollback.js'
 import { createUpdateState, isRendererHealthy, runReadyFallback } from '../services/updateFallback.js'
+import { isWithinRollout, rolloutOf } from '../services/rollout.js'
 
 /** Tempo para a tela mostrar (e confirmar) o aviso antes de o processo principal assumir */
 const FALLBACK_DELAY_MS = 30000
@@ -16,6 +17,9 @@ let initialized = false
 let installing = false
 let developmentMode = true
 let beforeInstall = () => {}
+// A busca em andamento foi pedida pela pessoa (menu da bandeja)? Quem pede na mão recebe a versão mesmo
+// fora do grupo da liberação gradual (services/rollout.js)
+let manualCheck = false
 
 /** Instala a atualização já baixada e reabre o app. Usado pela tela, pela bandeja e pela conferência automática. */
 export function installDownloadedUpdate(reason = 'pedido pela tela') {
@@ -54,11 +58,14 @@ export async function checkForUpdatesFromTray() {
     return
   }
   try {
-    const result = await autoUpdater.checkForUpdates()
+    manualCheck = true
+    const result = await autoUpdater.checkForUpdates().finally(() => { manualCheck = false })
     const found = result?.updateInfo?.version
     const current = app.getVersion()
     const message = !found || found === current
       ? `Você já está na versão mais recente (${current}).`
+      : rolloutOf(result.updateInfo) === 0
+        ? `A versão ${found} está pausada no momento. O Echo continua na ${current}.`
       : isVersionBlocked(app.getPath('userData'), found)
         ? `A versão ${found} não abriu neste computador e foi desfeita. O Echo continua na ${current} até sair uma correção.`
         : `Baixando a versão ${found}. O Echo avisa quando ela estiver pronta para instalar.`
@@ -112,6 +119,21 @@ export function setupUpdatesIpc(safeHandle, isDevelopment, onInstallUpdate, getM
   autoUpdater.autoDownload = false
   autoUpdater.autoInstallOnAppQuit = true
   autoUpdater.allowDowngrade = true
+
+  // Liberação gradual: a conta padrão (número fixo desta instalação contra a porcentagem da versão) decide
+  // nas buscas automáticas; o pedido manual fura a fila e a pausa (0%) vale para todos
+  const inDefaultGroup = autoUpdater.isUserWithinRollout
+  let lastHeldBack = ''
+  autoUpdater.isUserWithinRollout = async (info) => {
+    const percentage = rolloutOf(info)
+    const within = isWithinRollout({ percentage, manual: manualCheck, inDefaultGroup: await inDefaultGroup(info) })
+    const note = `${info.version}@${percentage}`
+    if (!within && lastHeldBack !== note) {
+      lastHeldBack = note
+      log(`versão ${info.version} em liberação gradual (${percentage}%): esta instalação ainda não recebe`)
+    }
+    return within
+  }
 
   autoUpdater.on('update-available', (info) => {
     if (isVersionBlocked(dataDir, info.version)) {
