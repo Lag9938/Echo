@@ -44,6 +44,9 @@ export interface ProfileTabProps {
   onOpenShop?: (targetTab?: 'decorations' | 'profile_effects' | 'auras' | 'finishes' | 'name_effects') => void
   onProfileUpdate: (name: string, avatar: string, bannerUrl?: string, bannerPreset?: string) => void
   onCustomStatusUpdate: (status: string) => void
+  /** Status de presença de verdade do app (o mesmo do rodapé) e a função que o troca para todo mundo */
+  presenceStatus?: 'online' | 'idle' | 'dnd' | 'invisible'
+  updatePresenceStatus?: (status: 'online' | 'idle' | 'dnd' | 'invisible') => void
 }
 
 export const ProfileTab = memo(function ProfileTab({
@@ -66,8 +69,12 @@ export const ProfileTab = memo(function ProfileTab({
   onEquipNameEffect: _onEquipNameEffect,
   onOpenShop: _onOpenShop,
   onProfileUpdate,
-  onCustomStatusUpdate
+  onCustomStatusUpdate,
+  presenceStatus = 'online',
+  updatePresenceStatus
 }: ProfileTabProps) {
+  // Nesta tela 'invisible' se chama 'offline'
+  const appPresence: 'online' | 'idle' | 'dnd' | 'offline' = presenceStatus === 'invisible' ? 'offline' : presenceStatus
   // Profile settings state & Echo Player Identity
   const [profileSubTab, setProfileSubTab] = useState<'identity' | 'appearance' | 'badges'>('identity')
   const [localDisplayName, setLocalDisplayName] = useState(currentDisplayName)
@@ -79,7 +86,7 @@ export const ProfileTab = memo(function ProfileTab({
   const [localBannerCustom, setLocalBannerCustom] = useState(() => localStorage.getItem(`echo-banner-custom-${userId}`) || '')
   const [localAvatarFrame, setLocalAvatarFrame] = useState(() => localStorage.getItem(`echo-avatar-frame-${userId}`) || 'aura-cyan')
   const [localBadge, setLocalBadge] = useState(() => localStorage.getItem(`echo-badge-${userId}`) || 'owner')
-  const [localPresenceStatus, setLocalPresenceStatus] = useState<'online' | 'idle' | 'dnd' | 'offline'>(() => (localStorage.getItem(`echo-presence-status-${userId}`) as any) || 'online')
+  const [localPresenceStatus, setLocalPresenceStatus] = useState<'online' | 'idle' | 'dnd' | 'offline'>(appPresence)
   const [localShowBadge, setLocalShowBadge] = useState<boolean>(() => localStorage.getItem(`echo-show-badge-${userId}`) !== 'false')
   
   // Advanced Profile Appearance states
@@ -207,7 +214,7 @@ export const ProfileTab = memo(function ProfileTab({
     bannerCustom: localStorage.getItem(`echo-banner-custom-${userId}`) || '',
     avatarFrame: localStorage.getItem(`echo-avatar-frame-${userId}`) || 'aura-cyan',
     badge: localStorage.getItem(`echo-badge-${userId}`) || 'owner',
-    presenceStatus: (localStorage.getItem(`echo-presence-status-${userId}`) as any) || 'online',
+    presenceStatus: appPresence,
     showBadge: localStorage.getItem(`echo-show-badge-${userId}`) !== 'false',
     cardFinish: (localStorage.getItem(`echo-card-finish-${userId}`) as any) || 'none',
     clanTag: localStorage.getItem(`echo-clan-tag-${userId}`) || '',
@@ -217,6 +224,12 @@ export const ProfileTab = memo(function ProfileTab({
     socialYoutube: localStorage.getItem(`echo-social-youtube-${userId}`) || '',
     socialKick: localStorage.getItem(`echo-social-kick-${userId}`) || '',
   }))
+
+  // O status mudou por fora (menu do rodapé): esta tela acompanha, sem virar "alteração não salva"
+  useEffect(() => {
+    setLocalPresenceStatus(appPresence)
+    setSavedValues(prev => (prev.presenceStatus === appPresence ? prev : { ...prev, presenceStatus: appPresence }))
+  }, [appPresence])
 
   const hasChanges = (
     localDisplayName !== savedValues.displayName ||
@@ -409,6 +422,8 @@ export const ProfileTab = memo(function ProfileTab({
 
       onProfileUpdate(localDisplayName, localAvatarUrl, localBannerCustom, localBannerPreset)
       onCustomStatusUpdate(localCustomStatus)
+      // Antes o status escolhido aqui só era gravado num lugar que o app nunca lia: não mudava nada
+      if (localPresenceStatus !== appPresence) updatePresenceStatus?.(localPresenceStatus === 'offline' ? 'invisible' : localPresenceStatus)
       window.dispatchEvent(new Event('echo-profile-updated'))
       setProfileSavedToast(true)
       setTimeout(() => setProfileSavedToast(false), 3000)

@@ -229,6 +229,8 @@ export function SettingsView({
             onOpenShop={onOpenShop}
             onProfileUpdate={onProfileUpdate}
             onCustomStatusUpdate={onCustomStatusUpdate}
+            presenceStatus={presenceStatus}
+            updatePresenceStatus={updatePresenceStatus}
           />
         )}
 
