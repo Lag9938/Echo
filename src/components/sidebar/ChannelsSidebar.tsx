@@ -866,44 +866,9 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
               {/* Scrollable Channels Area */}
               <div className="sidebar-scrollable custom-scrollbar">
                 <div className="channels-tree">
-                  {uncategorizedText.length > 0 && (
-                    <div className="channel-group">
-                      <div className="channel-category-header-wrap">
-                        <button
-                          type="button"
-                          className="channel-category-header"
-                          onClick={() => toggleCategoryCollapse(activeSpace.id, '__text__')}
-                        >
-                          <span className="category-chevron">
-                            {collapsedCategories.has(`${activeSpace.id}::__text__`) ? (
-                              <ChevronRightIcon style={{ width: '10px', height: '10px' }} />
-                            ) : (
-                              <ChevronDownIcon style={{ width: '10px', height: '10px' }} />
-                            )}
-                          </span>
-                          <span className="category-name">CANAIS DE TEXTO</span>
-                        </button>
-                        {(canUserDo(activeSpace.id, user.id, 'manageChannels') || activeSpace.creator_id === user.id) && (
-                          <button 
-                            type="button" 
-                            onClick={() => { setShowNewChannel(activeSpace.id); setNewChannelCategory(''); setNewChannelType('text'); }} 
-                            title="Criar canal de texto" 
-                            className="category-add-channel-btn"
-                          >
-                            <PlusIcon style={{ width: '12px', height: '12px' }} />
-                          </button>
-                        )}
-                      </div>
-                      {!collapsedCategories.has(`${activeSpace.id}::__text__`) && (
-                        <div className="category-channels-list">
-                          {uncategorizedText.map(renderChannelNode)}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
+                  {/* Canais de voz primeiro: são o que as pessoas procuram para entrar numa conversa ao vivo */}
                   {uncategorizedVoice.length > 0 && (
-                    <div className="channel-group">
+                    <div className="channel-group channel-group-voice">
                       <div className="channel-category-header-wrap">
                         <button
                           type="button"
@@ -933,6 +898,42 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                       {!collapsedCategories.has(`${activeSpace.id}::__voice__`) && (
                         <div className="category-channels-list">
                           {uncategorizedVoice.map(renderChannelNode)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {uncategorizedText.length > 0 && (
+                    <div className="channel-group channel-group-text">
+                      <div className="channel-category-header-wrap">
+                        <button
+                          type="button"
+                          className="channel-category-header"
+                          onClick={() => toggleCategoryCollapse(activeSpace.id, '__text__')}
+                        >
+                          <span className="category-chevron">
+                            {collapsedCategories.has(`${activeSpace.id}::__text__`) ? (
+                              <ChevronRightIcon style={{ width: '10px', height: '10px' }} />
+                            ) : (
+                              <ChevronDownIcon style={{ width: '10px', height: '10px' }} />
+                            )}
+                          </span>
+                          <span className="category-name">CANAIS DE TEXTO</span>
+                        </button>
+                        {(canUserDo(activeSpace.id, user.id, 'manageChannels') || activeSpace.creator_id === user.id) && (
+                          <button 
+                            type="button" 
+                            onClick={() => { setShowNewChannel(activeSpace.id); setNewChannelCategory(''); setNewChannelType('text'); }} 
+                            title="Criar canal de texto" 
+                            className="category-add-channel-btn"
+                          >
+                            <PlusIcon style={{ width: '12px', height: '12px' }} />
+                          </button>
+                        )}
+                      </div>
+                      {!collapsedCategories.has(`${activeSpace.id}::__text__`) && (
+                        <div className="category-channels-list">
+                          {uncategorizedText.map(renderChannelNode)}
                         </div>
                       )}
                     </div>

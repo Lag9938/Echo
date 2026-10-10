@@ -4059,7 +4059,7 @@ body.light-theme.echo-layout-glass .hover-popover-btn.secondary:hover {
   min-height: 62px;
   padding: 8px 4px;
   border: 1px solid transparent;
-  border-radius: 16px;
+  border-radius: 22px;
   background: color-mix(in srgb, var(--text-primary) 7%, transparent);
   color: var(--text-primary);
   font: inherit;
@@ -4121,7 +4121,7 @@ body.light-theme.echo-layout-glass .hover-popover-btn.secondary:hover {
   gap: 8px;
   height: 42px;
   border: 0;
-  border-radius: 15px;
+  border-radius: 999px;
   background: #ef4444;
   color: #fff;
   font: inherit;
@@ -4149,4 +4149,66 @@ body.light-theme.echo-layout-glass .hover-popover-btn.secondary:hover {
   .profile-call-dot {
     animation: none;
   }
+}
+
+/* ── Barra lateral: voz primeiro, texto em cartões de duas colunas ──────────────
+   O cabeçalho do espaço (capa, ícone, nome) não muda. Os canais de voz vêm antes dos de texto; os de texto
+   viram cartões arredondados em duas colunas; a sala em que a pessoa está fica verde, e os botões do rodapé
+   são redondos. */
+.channels-sidebar.echo-layout-glass .channel-group-text .category-channels-list {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  padding-top: 4px;
+}
+.channels-sidebar.echo-layout-glass .channel-group-text .channel-item {
+  margin: 0 !important;
+  min-width: 0;
+  min-height: 54px;
+  padding: 10px 12px !important;
+  border-radius: 18px !important;
+  align-items: center;
+  gap: 6px;
+}
+.channels-sidebar.echo-layout-glass .channel-group-text .channel-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+/* O megafone do ícone já diz que é canal de avisos; a etiqueta não cabe no cartão */
+.channels-sidebar.echo-layout-glass .channel-group-text .channel-badge-pill {
+  display: none;
+}
+.channels-sidebar.echo-layout-glass .channel-group-text .channel-action-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+}
+
+/* Sala de voz em que a pessoa está: cartão verde */
+.channels-sidebar.echo-layout-glass .voice-channel-node.is-active-call.has-users {
+  border: 1px solid rgba(34, 197, 94, 0.5) !important;
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.2) 0%, rgba(34, 197, 94, 0.07) 100%),
+              color-mix(in srgb, var(--bg-secondary) 80%, transparent) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 6px 20px rgba(34, 197, 94, 0.16) !important;
+}
+.channels-sidebar.echo-layout-glass .voice-channel-node.is-active-call.has-users .channel-item-name,
+.channels-sidebar.echo-layout-glass .voice-channel-node.is-active-call.has-users .ch-icon {
+  color: color-mix(in srgb, #22c55e 78%, #ffffff) !important;
+}
+body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-node.is-active-call.has-users .channel-item-name,
+body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-node.is-active-call.has-users .ch-icon {
+  color: #15803d !important;
+}
+
+/* Botões do rodapé (novidades e configurações) redondos */
+body.echo-layout-glass .profile-footer-btn,
+.channels-sidebar.echo-layout-glass .profile-footer-btn {
+  border-radius: 50% !important;
 }
