@@ -66,6 +66,7 @@ export function startSmokeTest({
   exit,
   timeoutMs = 60000,
   pollMs = 500,
+  earlyReady = false,
   write = (target, text) => fs.writeFileSync(target, text),
   now = () => Date.now(),
   setTimer = setTimeout,
@@ -107,6 +108,9 @@ export function startSmokeTest({
 
   timer = setRepeat(() => {
     if (finished) return
+    // O código principal é carregado pelo guarda de inicialização; se o Electron já estava pronto quando ele
+    // rodou, as opções de inicialização (captura acelerada, pasta de dados) não valeram.
+    if (earlyReady) { finish(false, 'o Electron ficou pronto antes de o código principal rodar: as opções de inicialização não valem'); return }
     if (mainErrors.length > 0) { finish(false, 'erro não tratado no processo principal'); return }
     if (win.isDestroyed()) { finish(false, 'a janela foi fechada antes de carregar'); return }
     contents.executeJavaScript(SMOKE_PROBE, true).then((probe) => {

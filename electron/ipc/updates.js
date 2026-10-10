@@ -3,6 +3,7 @@ const { autoUpdater } = pkg
 import { app, ipcMain } from 'electron'
 import path from 'node:path'
 import { appendUpdateLog, startRelaunchWatchdog } from '../services/updateRelaunch.js'
+import { isVersionBlocked, keepInstallerCopy, recordPendingUpdate } from '../services/rollback.js'
 
 export function setupUpdatesIpc(safeHandle, isDevelopment, onInstallUpdate, getMainWindow) {
   const logFile = () => path.join(app.getPath('userData'), 'update.log')
@@ -38,15 +39,25 @@ export function setupUpdatesIpc(safeHandle, isDevelopment, onInstallUpdate, getM
   })
 
   if (!isDevelopment) {
-    autoUpdater.autoDownload = true
+    const dataDir = app.getPath('userData')
+    // O download é pedido aqui, e não automático, para dar tempo de recusar uma versão que já foi desfeita
+    // neste computador (services/rollback.js): senão ela seria baixada e instalada de novo ao fechar o app.
+    autoUpdater.autoDownload = false
     autoUpdater.autoInstallOnAppQuit = true
     autoUpdater.allowDowngrade = true
 
     autoUpdater.on('update-available', (info) => {
+      if (isVersionBlocked(dataDir, info.version)) {
+        appendUpdateLog(logFile(), `atualização ${info.version} ignorada: foi desfeita neste computador`)
+        return
+      }
       console.log('Atualização disponível:', info.version)
       const mainWindow = getMainWindow()
       mainWindow?.webContents.send('update-available', {
         version: info.version
+      })
+      autoUpdater.downloadUpdate().catch((err) => {
+        appendUpdateLog(logFile(), `erro ao baixar a atualização ${info.version}: ${err?.message || err}`)
       })
     })
 
@@ -62,6 +73,16 @@ export function setupUpdatesIpc(safeHandle, isDevelopment, onInstallUpdate, getM
     autoUpdater.on('update-downloaded', (info) => {
       console.log('Atualização baixada:', info.version)
       appendUpdateLog(logFile(), `atualização ${info.version} baixada`)
+      // Anota como voltar para a versão atual se a nova não abrir, e guarda o instalador da nova para a
+      // atualização seguinte poder voltar para ela sem depender da internet
+      const current = app.getVersion()
+      if (recordPendingUpdate(dataDir, { fromVersion: current, toVersion: info.version })) {
+        appendUpdateLog(logFile(), `volta automática preparada: ${info.version} -> ${current} se a nova não abrir`)
+      }
+      if (info.downloadedFile) {
+        keepInstallerCopy(dataDir, { version: info.version, downloadedFile: info.downloadedFile, currentVersion: current })
+          .catch(() => {})
+      }
       const mainWindow = getMainWindow()
       mainWindow?.webContents.send('update-ready', {
         version: info.version

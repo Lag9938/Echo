@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, shell, globalShortcut } from 'electron'
+import { app, BrowserWindow, Menu, shell, globalShortcut, dialog } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs'
@@ -16,9 +16,13 @@ import { setupWindowIpc } from './ipc/window.js'
 import { appendUpdateLog } from './services/updateRelaunch.js'
 import { captureFeatures, readCaptureMode, setActiveCaptureMode } from './services/captureMode.js'
 import { bringWindowToFront, detectVersionChange } from './services/postUpdate.js'
-import { armSmokeDeadline, noteSmokeMainError, smokeTarget, startSmokeTest } from './services/smokeTest.js'
+import { SMOKE_PROBE, armSmokeDeadline, noteSmokeMainError, smokeTarget, startSmokeTest } from './services/smokeTest.js'
+import { markHealthy, takeRollbackNotice } from './services/rollback.js'
 // Teste de fumaça do app empacotado, antes de publicar (services/smokeTest.js). Fora dele, null.
 const smokeFile = smokeTarget()
+// Este arquivo é carregado pelo guarda de inicialização (electron-main.js). Ele precisa rodar ANTES de o
+// Electron ficar pronto: as opções de linha de comando e a pasta de dados definidas abaixo só valem assim.
+const readyBeforeMain = app.isReady()
 
 process.on('uncaughtException', (err) => { console.error('[Echo Main] Uncaught Exception:', err); if (smokeFile) noteSmokeMainError(err) })
 process.on('unhandledRejection', (reason) => { console.warn('[Echo Main] Unhandled Rejection:', reason); if (smokeFile) noteSmokeMainError(reason) })
@@ -286,8 +290,28 @@ export function createWindow() {
   }
 
   if (smokeFile) {
-    startSmokeTest({ win: mainWindow, file: smokeFile, version: app.getVersion(), exit: (code) => app.exit(code) })
+    startSmokeTest({ win: mainWindow, file: smokeFile, version: app.getVersion(), exit: (code) => app.exit(code), earlyReady: readyBeforeMain })
+  } else if (!isDevelopment) {
+    watchStartupHealth(mainWindow)
   }
+}
+
+// Depois de uma atualização, o guarda de inicialização conta cada abertura como falha até a tela carregar.
+// Aqui a tela é conferida (3 leituras boas seguidas) e a versão é aprovada (services/rollback.js).
+function watchStartupHealth(win) {
+  let goodReads = 0
+  let checks = 0
+  const timer = setInterval(() => {
+    if (++checks > 300 || !win || win.isDestroyed()) { clearInterval(timer); return }
+    win.webContents.executeJavaScript(SMOKE_PROBE, true).then((probe) => {
+      goodReads = probe && probe.rootChildren > 0 && probe.hasBridge ? goodReads + 1 : 0
+      if (goodReads < 3) return
+      clearInterval(timer)
+      if (markHealthy(app.getPath('userData'), app.getVersion())) {
+        appendUpdateLog(path.join(app.getPath('userData'), 'update.log'), `versão ${app.getVersion()} aprovada: a tela carregou`)
+      }
+    }).catch(() => { goodReads = 0 })
+  }, 1000)
 }
 
 if (setupDeeplink(getMainWindow, createWindow)) {
@@ -346,6 +370,20 @@ if (setupDeeplink(getMainWindow, createWindow)) {
     createWindow()
     if (!isDevelopment) {
       appendUpdateLog(path.join(app.getPath('userData'), 'update.log'), `Echo iniciado (versão ${app.getVersion()})`)
+    }
+    if (!isDevelopment && !smokeFile) {
+      // Uma atualização foi desfeita neste computador: avisa uma vez (não depende da tela do app)
+      const notice = takeRollbackNotice(app.getPath('userData'), app.getVersion())
+      if (notice) {
+        appendUpdateLog(path.join(app.getPath('userData'), 'update.log'), `aviso mostrado: a ${notice.badVersion} foi desfeita e o app voltou para a ${notice.currentVersion}`)
+        dialog.showMessageBox({
+          type: 'info',
+          title: 'Echo',
+          message: `O Echo voltou para a versão ${notice.currentVersion}`,
+          detail: `A atualização ${notice.badVersion} não abriu direito neste computador e foi desfeita automaticamente.\n\nVocê não precisa fazer nada: quando sair uma versão corrigida, ela será instalada normalmente.`,
+          buttons: ['Entendi']
+        }).catch(() => {})
+      }
     }
 
     try {
