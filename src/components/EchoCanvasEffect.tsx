@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { isAppInBackground } from '../lib/backgroundAnimations'
 
 export type CanvasProfileEffectId =
   | 'echo_resonance'
@@ -149,6 +150,8 @@ export function EchoCanvasEffect({ effectId, className = '' }: EchoCanvasEffectP
     // Render loop
     const render = (now: number) => {
       if (!isRunning || !isVisible) return
+      // Nasceu (ou entrou na tela) com o app em segundo plano: não desenha; o evento de foco religa o laço
+      if (isAppInBackground()) return
 
       // FPS Capping: Target 30 FPS (~33.3ms interval) for silky-smooth animations with 80% lower CPU
       const isPerfMode = document.body.classList.contains('theme-performance-opaque')

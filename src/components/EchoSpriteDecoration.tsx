@@ -144,6 +144,8 @@ export const EchoSpriteDecoration = memo(function EchoSpriteDecoration({
 
     const render = (now: number) => {
       if (!isVisible) return
+      // Nasceu (ou entrou na tela) com o app em segundo plano: não desenha; o evento de foco religa o laço
+      if (isAppInBackground()) return
 
       const elapsed = now - lastFrameTime
       if (elapsed >= frameInterval) {
