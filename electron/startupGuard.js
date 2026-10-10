@@ -26,6 +26,7 @@ export async function guardedStart(loadMain, {
   appVersion = app.getVersion(),
   exePath = process.execPath,
   exit = (code) => app.exit(code),
+  schedule = (fn, ms) => setTimeout(fn, ms),
   rollback = startRollback
 } = {}) {
   // Em desenvolvimento e no teste de fumaça não há atualização a desfazer
@@ -36,7 +37,9 @@ export async function guardedStart(loadMain, {
     log(dir, `versão ${appVersion} reprovada (${reason}); voltando para a ${record.fromVersion}`)
     const started = rollback({ dir, exePath, record, logFile: path.join(dir, 'update.log'), reason })
     if (!started) { log(dir, 'não foi possível iniciar a volta automática'); return false }
-    exit(0)
+    // O script de volta é iniciado por "cmd /c start". Encerrar o app no mesmo instante mata esse cmd antes
+    // de ele soltar o PowerShell (visto no ensaio: o script era gravado e nunca rodava). Dois segundos bastam.
+    schedule(() => exit(0), 2000)
     return true
   }
 

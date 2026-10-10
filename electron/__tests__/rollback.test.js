@@ -118,8 +118,10 @@ describe('guarda de inicialização', () => {
     if (state) saveStartupState(dir, state)
     const exit = vi.fn()
     const rollback = vi.fn(() => true)
-    const options = { isPackaged: true, smoke: false, dir, appVersion: '1.1.0', exePath: 'C:\\Echo\\Echo.exe', exit, rollback }
-    return { dir, exit, rollback, options }
+    const delays = []
+    const schedule = (fn, ms) => { delays.push(ms); fn() }
+    const options = { isPackaged: true, smoke: false, dir, appVersion: '1.1.0', exePath: 'C:\\Echo\\Echo.exe', exit, rollback, schedule }
+    return { dir, exit, rollback, options, delays }
   }
 
   it('abertura normal: carrega o app e não mexe em nada', async () => {
@@ -145,6 +147,9 @@ describe('guarda de inicialização', () => {
     expect(t.rollback).toHaveBeenCalledTimes(1)
     expect(t.rollback.mock.calls[0][0]).toMatchObject({ dir: t.dir, exePath: 'C:\\Echo\\Echo.exe', record: { fromVersion: '1.0.0', toVersion: '1.1.0' } })
     expect(t.exit).toHaveBeenCalledWith(0)
+    // Bug real (visto no ensaio com o app empacotado): encerrando no mesmo instante, o script de volta era
+    // gravado mas nunca rodava. O app espera um pouco antes de sair.
+    expect(t.delays).toEqual([2000])
     expect(fs.readFileSync(path.join(t.dir, 'update.log'), 'utf8')).toContain("Cannot find package 'electron-updater'")
   })
 
