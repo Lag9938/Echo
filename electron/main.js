@@ -8,7 +8,7 @@ import { setupDeeplink, setupDeeplinkIpc, setPendingInviteUrl } from './services
 import { createTray, getTray, getHasShownTrayBalloon, setHasShownTrayBalloon } from './services/tray.js'
 import { setupOverlayIpc } from './services/overlay.js'
 import { setupShortcutsIpc } from './services/shortcuts.js'
-import { scanRunningGames, setupGameDetectionIpc, getActiveGame, getActiveGameStartTime, setGameScanInterval, getGameScanInterval } from './ipc/gameDetection.js'
+import { scanRunningGames, setupGameDetectionIpc, getActiveGame, getActiveGameStartTime, setGameScanInterval, getGameScanInterval, GAME_SCAN_INTERVAL_MS } from './ipc/gameDetection.js'
 import { setupLivekitIpc, ensureLocalLivekitServer, getLivekitProcess } from './ipc/livekit.js'
 import { setupUpdatesIpc, checkForUpdatesFromTray } from './ipc/updates.js'
 import { setupAudioIpc, stopAudioCapture } from './ipc/audio.js'
@@ -248,7 +248,7 @@ export function createWindow() {
 
   let interval = getGameScanInterval()
   if (interval) clearInterval(interval)
-  setGameScanInterval(setInterval(() => scanRunningGames(getMainWindow, rootDir), 5000))
+  setGameScanInterval(setInterval(() => scanRunningGames(getMainWindow, rootDir), GAME_SCAN_INTERVAL_MS))
   setTimeout(() => scanRunningGames(getMainWindow, rootDir), 1500)
 
   const devUrl = 'http://127.0.0.1:5173'

@@ -73,6 +73,7 @@ import { emitNotice, onNotice } from './lib/realtimeNotices'
 import { useEchoSpaceEvents } from './hooks/useEchoSpaceEvents'
 import { useThreadsStore } from './stores/useThreadsStore'
 import { startBackgroundAnimationSaver } from './lib/backgroundAnimations'
+import { startBackgroundImageFreezer } from './lib/backgroundImages'
 import { useEchoAudioPreferences, useEchoAudioSettingsActions } from './hooks/useEchoAudioPreferences'
 
 import type { Space, Channel, Message, DirectMessage, FriendshipRequest, SavedMessageItem, Page, Toast, RolePermissions, ServerRole, ServerAuditLog, ServerEmoji, PinnedMessage, GroupChat, GroupMessage } from './types'
@@ -509,6 +510,7 @@ function Echo({ user }: { user: User }) {
 
   // Com o Echo em segundo plano (minimizado ou sem foco), as animações decorativas param de gastar placa de vídeo
   useEffect(() => startBackgroundAnimationSaver(), [])
+  useEffect(() => startBackgroundImageFreezer(), [])
 
   // Atualização automática (baixando / pronta), vinda do Electron
   const { updateStatus, updateVersion, updateProgress } = useEchoAutoUpdate()

@@ -199,13 +199,52 @@ export function setGameScanInterval(interval) {
   gameScanInterval = interval
 }
 
+// De quanto em quanto tempo o Echo confere se há um jogo aberto. Cada conferência abre dois programas do
+// Windows (medido: ~0,6 s de processador por vez); a cada 5 s, e em dobro porque a tela também pedia, isso
+// tirava desempenho justamente de quem estava jogando. O status "jogando" aparecer alguns segundos depois
+// não faz diferença para ninguém.
+export const GAME_SCAN_INTERVAL_MS = 15000
+
+/**
+ * Precisa listar todos os processos (tasklist, a parte cara)? Só quando a janela em primeiro plano não
+ * resolveu: se ela já é um jogo, a resposta está dada.
+ */
+export function needsProcessList(foregroundGame) {
+  return !foregroundGame
+}
+
+async function findForegroundGame(rootDir) {
+  const helperPath = resolveHelperPath(rootDir)
+  if (!helperPath) return { foreground: null, windowed: null }
+  try {
+    const { stdout } = await execFileAsync(helperPath, ['--get-active-game'], { timeout: 4000 })
+    if (!stdout || !stdout.trim().startsWith('{')) return { foreground: null, windowed: null }
+    const data = JSON.parse(stdout.trim())
+    const foreground = matchGameProcess(data.foreground?.processName, data.foreground?.title)
+    let windowed = null
+    if (!foreground && Array.isArray(data.windows)) {
+      for (const win of data.windows) {
+        windowed = matchGameProcess(win.processName, win.title)
+        if (windowed) break
+      }
+    }
+    return { foreground, windowed }
+  } catch (error) {
+    console.warn('[Jogos] Falha ao consultar a janela em primeiro plano:', error)
+    return { foreground: null, windowed: null }
+  }
+}
+
+let hasScannedGames = false
+
 export async function scanRunningGames(getMainWindow, rootDir) {
   if (isScanningGames) return
   isScanningGames = true
   try {
-    let foundGame = null
+    const { foreground, windowed } = await findForegroundGame(rootDir)
+    let foundGame = foreground
 
-    if (process.platform === 'win32') {
+    if (needsProcessList(foreground) && process.platform === 'win32') {
       try {
         const tasklistCmd = process.env.SystemRoot 
           ? path.join(process.env.SystemRoot, 'System32', 'tasklist.exe')
@@ -228,29 +267,7 @@ export async function scanRunningGames(getMainWindow, rootDir) {
         }
       } catch (error) { console.warn('[Jogos] Falha ao listar os processos (tasklist):', error) }
     }
-
-    const helperPath = resolveHelperPath(rootDir)
-
-    if (helperPath) {
-      try {
-        const { stdout } = await execFileAsync(helperPath, ['--get-active-game'], { timeout: 4000 })
-        if (stdout && stdout.trim().startsWith('{')) {
-          const data = JSON.parse(stdout.trim())
-          const fgMatched = matchGameProcess(data.foreground?.processName, data.foreground?.title)
-          if (fgMatched) {
-            foundGame = fgMatched
-          } else if (!foundGame && Array.isArray(data.windows)) {
-            for (const win of data.windows) {
-              const matched = matchGameProcess(win.processName, win.title)
-              if (matched) {
-                foundGame = matched
-                break
-              }
-            }
-          }
-        }
-      } catch (error) { console.warn('[Jogos] Falha ao consultar a janela em primeiro plano:', error) }
-    }
+    if (!foundGame) foundGame = windowed
 
     const mainWindow = getMainWindow()
     if (foundGame) {
@@ -277,13 +294,16 @@ export async function scanRunningGames(getMainWindow, rootDir) {
     }
   } catch (err) {
   } finally {
+    hasScannedGames = true
     isScanningGames = false
   }
 }
 
 export function setupGameDetectionIpc(safeHandle, getMainWindow, rootDir) {
+  // Devolve o que a última conferência achou. Só confere na hora se ainda não houve nenhuma: a tela chama
+  // isto ao abrir, e a conferência periódica (que avisa a tela quando muda) fica por conta deste processo.
   safeHandle('check-active-game', async () => {
-    await scanRunningGames(getMainWindow, rootDir)
+    if (!hasScannedGames) await scanRunningGames(getMainWindow, rootDir)
     return activeGame ? { name: activeGame.name, icon: activeGame.icon, startedAt: activeGameStartTime } : null
   })
 }

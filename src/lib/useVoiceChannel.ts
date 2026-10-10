@@ -94,6 +94,9 @@ async function getRnnoiseWasmBinary(): Promise<ArrayBuffer> {
   return rnnoiseWasmBinaryCache
 }
 
+/** De quanto em quanto tempo o app confere se a própria pessoa está falando (50 ms = 20x por segundo) */
+const LOCAL_VAD_INTERVAL_MS = 50
+
 async function createStudioMicrophoneDSP(
   stream: MediaStream,
   enableAi = false,
@@ -321,7 +324,7 @@ export function useVoiceChannel(options?: {
   // Local Voice Activity Detection (0ms latency speaking ring)
   const isLocalSpeakingRef = useRef(false)
   const vadContextRef = useRef<AudioContext | null>(null)
-  const vadAnimFrameRef = useRef<number | null>(null)
+  const vadTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // LiveKit Room instance & tracks
   const roomRef = useRef<Room | null>(null)
@@ -802,9 +805,9 @@ export function useVoiceChannel(options?: {
   // Start local VAD for 0ms speaking detection
   const startLocalVad = useCallback((stream: MediaStream) => {
     try {
-      if (vadAnimFrameRef.current) {
-        cancelAnimationFrame(vadAnimFrameRef.current)
-        vadAnimFrameRef.current = null
+      if (vadTimerRef.current) {
+        clearInterval(vadTimerRef.current)
+        vadTimerRef.current = null
       }
       if (vadContextRef.current) {
         try { vadContextRef.current.close() } catch (e) {}
@@ -824,14 +827,20 @@ export function useVoiceChannel(options?: {
 
       const dataArr = new Uint8Array(analyser.frequencyBinCount)
 
-      const loop = () => {
-        if (!localRawStreamRef.current) return
+      // Confere por timer (20x por segundo), não por quadro da tela: com requestAnimationFrame o laço rodava
+      // na taxa do monitor (medido: 174x por segundo num monitor de 175 Hz) e obrigava o app a redesenhar a
+      // tela inteira nesse ritmo durante toda a chamada, mesmo em segundo plano com a pessoa jogando.
+      const check = () => {
+        if (!localRawStreamRef.current) {
+          if (vadTimerRef.current) clearInterval(vadTimerRef.current)
+          vadTimerRef.current = null
+          return
+        }
         if (isMutedRef.current || isDeafenedRef.current) {
           if (isLocalSpeakingRef.current) {
             isLocalSpeakingRef.current = false
             syncParticipants()
           }
-          vadAnimFrameRef.current = requestAnimationFrame(loop)
           return
         }
 
@@ -849,10 +858,9 @@ export function useVoiceChannel(options?: {
           isLocalSpeakingRef.current = speaking
           syncParticipants()
         }
-        vadAnimFrameRef.current = requestAnimationFrame(loop)
       }
 
-      vadAnimFrameRef.current = requestAnimationFrame(loop)
+      vadTimerRef.current = setInterval(check, LOCAL_VAD_INTERVAL_MS)
     } catch (e) {
       console.warn('[VAD] Local VAD error:', e)
     }
@@ -860,9 +868,9 @@ export function useVoiceChannel(options?: {
 
   // Stop local VAD
   const stopLocalVad = useCallback(() => {
-    if (vadAnimFrameRef.current) {
-      cancelAnimationFrame(vadAnimFrameRef.current)
-      vadAnimFrameRef.current = null
+    if (vadTimerRef.current) {
+      clearInterval(vadTimerRef.current)
+      vadTimerRef.current = null
     }
     if (vadContextRef.current) {
       try { vadContextRef.current.close() } catch (e) {}

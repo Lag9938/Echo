@@ -72,16 +72,13 @@ export function useEchoGamePresence({
     if ((window as any).electronAPI?.onGameDetected) {
       unsubGame = (window as any).electronAPI.onGameDetected(handleGame)
     }
-    let pollTimer: any
+    // Só pergunta uma vez, ao abrir. Dali em diante o processo principal avisa (onGameDetected) quando o jogo
+    // abre ou fecha; perguntar de novo a cada 5s fazia o Windows listar todos os programas em dobro.
     if ((window as any).electronAPI?.checkActiveGame) {
       (window as any).electronAPI.checkActiveGame().then(handleGame).catch(() => handleGame(null))
-      pollTimer = setInterval(() => {
-        (window as any).electronAPI.checkActiveGame().then(handleGame).catch(() => handleGame(null))
-      }, 5000)
     }
     return () => {
       if (unsubGame) unsubGame()
-      if (pollTimer) clearInterval(pollTimer)
     }
   }, [])
 
