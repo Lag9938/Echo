@@ -2097,6 +2097,7 @@ function Echo({ user }: { user: User }) {
         <ErrorBoundary name="Amigos">
           <Suspense fallback={<div className="loading-screen"><div className="loader" /><span>Carregando amigos…</span></div>}>
             <FriendsView
+            setPage={setPage}
             friendTab={friendTab}
             setFriendTab={setFriendTab}
             friendSearchQuery={friendSearchQuery}

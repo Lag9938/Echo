@@ -78,6 +78,13 @@
   width: 100%;
   max-width: 880px;
   margin: 0 auto;
+  /* Altura do próprio conteúdo: esticada até a altura da janela, a página deixava de rolar */
+  align-self: flex-start;
+}
+
+/* Em janela baixa os blocos encolhiam para caber (e cortavam o conteúdo) em vez de a página rolar */
+.settings-container > * {
+  flex-shrink: 0;
 }
 
 .settings-container h2 {
