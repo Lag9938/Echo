@@ -16,9 +16,13 @@ import { setupWindowIpc } from './ipc/window.js'
 import { appendUpdateLog } from './services/updateRelaunch.js'
 import { captureFeatures, readCaptureMode, setActiveCaptureMode } from './services/captureMode.js'
 import { bringWindowToFront, detectVersionChange } from './services/postUpdate.js'
+import { armSmokeDeadline, noteSmokeMainError, smokeTarget, startSmokeTest } from './services/smokeTest.js'
+// Teste de fumaça do app empacotado, antes de publicar (services/smokeTest.js). Fora dele, null.
+const smokeFile = smokeTarget()
 
-process.on('uncaughtException', (err) => console.error('[Echo Main] Uncaught Exception:', err))
-process.on('unhandledRejection', (reason) => console.warn('[Echo Main] Unhandled Rejection:', reason))
+process.on('uncaughtException', (err) => { console.error('[Echo Main] Uncaught Exception:', err); if (smokeFile) noteSmokeMainError(err) })
+process.on('unhandledRejection', (reason) => { console.warn('[Echo Main] Unhandled Rejection:', reason); if (smokeFile) noteSmokeMainError(reason) })
+if (smokeFile) armSmokeDeadline({ file: smokeFile, version: app.getVersion(), exit: (code) => app.exit(code) })
 
 const isDevelopment = !app.isPackaged
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -30,7 +34,11 @@ if (process.platform === 'win32') {
   app.setAppUserModelId('com.echo.app')
 }
 
-if (isDevelopment) {
+if (smokeFile) {
+  // Pasta de dados própria e descartável: o teste não lê nem altera nada de uma instalação de verdade, e não
+  // esbarra na trava de "só uma janela do Echo" se houver um Echo aberto na máquina
+  app.setPath('userData', path.join(app.getPath('temp'), `echo-smoke-${process.pid}`))
+} else if (isDevelopment) {
   try {
     app.setPath('userData', path.join(app.getPath('appData'), 'Echo-Dev'))
   } catch (e) {
@@ -40,7 +48,7 @@ if (isDevelopment) {
 
 // Flags de aceleração por hardware e captura otimizada
 // A versão mudou desde a última abertura? (primeira abertura depois de atualizar — services/postUpdate.js)
-const updatedFromVersion = isDevelopment
+const updatedFromVersion = isDevelopment || smokeFile
   ? null
   : detectVersionChange(path.join(app.getPath('userData'), 'last-version.txt'), app.getVersion())
 
@@ -231,7 +239,8 @@ export function createWindow() {
       try { mainWindow.destroy() } catch (e) {}
     }
   }
-  setupUpdatesIpc(safeHandle, isDevelopment, onInstallUpdate, getMainWindow)
+  // No teste de fumaça o app não busca nem instala atualização
+  setupUpdatesIpc(safeHandle, isDevelopment || Boolean(smokeFile), onInstallUpdate, getMainWindow)
 
   let interval = getGameScanInterval()
   if (interval) clearInterval(interval)
@@ -274,6 +283,10 @@ export function createWindow() {
 
   if (!shouldStartHidden) {
     mainWindow.show()
+  }
+
+  if (smokeFile) {
+    startSmokeTest({ win: mainWindow, file: smokeFile, version: app.getVersion(), exit: (code) => app.exit(code) })
   }
 }
 
@@ -337,7 +350,7 @@ if (setupDeeplink(getMainWindow, createWindow)) {
 
     try {
       const autostartConfigFile = path.join(app.getPath('userData'), 'autostart_preference.json')
-      if (!fs.existsSync(autostartConfigFile)) {
+      if (!fs.existsSync(autostartConfigFile) && !smokeFile) {
         if (app.isPackaged) {
           app.setLoginItemSettings({
             openAtLogin: true,
