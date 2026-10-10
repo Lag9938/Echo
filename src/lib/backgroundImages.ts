@@ -155,9 +155,9 @@ export function createImageFreezer(makeStill: StillMaker, isActive: () => boolea
       for (const [el, entry] of frozenBackgrounds) {
         try {
           // Só desfaz o que ainda é nosso: se trocaram o fundo enquanto estava congelado, vale o novo
-          const stillOurs = el.style.getPropertyPriority('background-image') === 'important'
-            && backgroundUrls(el.style.getPropertyValue('background-image')).join() === backgroundUrls(entry.appliedValue).join()
-          if (!stillOurs) continue
+          const ours = backgroundUrls(entry.appliedValue).filter((url) => url.startsWith('blob:'))
+          const now = el.style.getPropertyValue('background-image')
+          if (!ours.some((url) => now.includes(url))) continue
           if (entry.previousValue) el.style.setProperty('background-image', entry.previousValue, entry.previousPriority)
           else el.style.removeProperty('background-image')
         } catch { /* o elemento saiu da tela */ }
