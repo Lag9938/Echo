@@ -1,7 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
 import { EventEmitter } from 'node:events'
+import fs from 'node:fs'
+import path from 'node:path'
 import { judgeSmokeProbe, smokeTarget, startSmokeTest } from '../services/smokeTest.js'
-import { verdict } from '../../scripts/smoke-test.mjs'
+import { findInstaller, verdict } from '../../scripts/smoke-test.mjs'
 
 const goodProbe = { rootChildren: 1, textLength: 240, hasBridge: true, interactive: 6, stylesheets: 3 }
 
@@ -103,6 +105,36 @@ describe('startSmokeTest', () => {
     t.expire()
     expect(t.exit).toHaveBeenCalledTimes(1)
     expect(t.written).toHaveLength(1)
+  })
+})
+
+describe('achar o instalador recém-compilado', () => {
+  it('pega o instalador da versão do package.json e recusa outro', () => {
+    const list = () => ['builder-debug.yml', 'Echo Setup 1.2.3.exe', 'Echo Setup 1.2.3.exe.blockmap', 'latest.yml']
+    expect(findInstaller('C:\\saida', '1.2.3', list)).toMatch(/Echo Setup 1\.2\.3\.exe$/)
+    expect(() => findInstaller('C:\\saida', '1.2.4', list)).toThrow(/Echo Setup 1\.2\.4\.exe/)
+  })
+})
+
+describe('o fluxo de publicação só publica depois do teste', () => {
+  const workflow = fs.readFileSync(path.resolve(__dirname, '../../.github/workflows/build-and-sign.yml'), 'utf8')
+
+  it('compila sem publicar, testa o instalador e só então envia os arquivos', () => {
+    const build = workflow.indexOf('electron-builder --win --publish never')
+    const smoke = workflow.indexOf('node scripts/smoke-test.mjs --installer-from dist-desktop')
+    const upload = workflow.indexOf('gh release upload')
+    expect(build).toBeGreaterThan(-1)
+    expect(smoke).toBeGreaterThan(build)
+    expect(upload).toBeGreaterThan(smoke)
+    // Nada no fluxo publica direto do empacotador, pulando o teste
+    expect(workflow).not.toContain('--publish always')
+  })
+
+  it('o latest.yml (que faz os apps enxergarem a versão) sobe depois do instalador', () => {
+    const installerUpload = workflow.indexOf('gh release upload "$RELEASE_TAG" "dist-desktop/$installer"')
+    const manifestUpload = workflow.indexOf('gh release upload "$RELEASE_TAG" dist-desktop/latest.yml')
+    expect(installerUpload).toBeGreaterThan(-1)
+    expect(manifestUpload).toBeGreaterThan(installerUpload)
   })
 })
 

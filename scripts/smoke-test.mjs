@@ -45,7 +45,9 @@ export function runApp(exePath, { timeoutMs = 120000 } = {}) {
     }
     const timer = setTimeout(() => {
       try { child.kill() } catch { /* já saiu */ }
-      done({ exitCode: null, problem: `o app não respondeu em ${Math.round(timeoutMs / 1000)} s` })
+      // O próprio app desiste e relata em 45–60 s. Passar disso sem resposta é o processo principal nem ter
+      // chegado a rodar — o caso típico é biblioteca faltando dentro do pacote.
+      done({ exitCode: null, problem: `o app não respondeu em ${Math.round(timeoutMs / 1000)} s: o processo principal não chegou a rodar (biblioteca faltando no pacote?)` })
     }, timeoutMs)
     child.on('error', (error) => done({ exitCode: null, problem: `não foi possível abrir o app: ${error.message}` }))
     child.on('exit', (code) => done({ exitCode: code, problem: null }))
@@ -77,10 +79,22 @@ function installSilently(installerPath) {
   return exe
 }
 
+/** O instalador dentro da pasta de saída do electron-builder ("Echo Setup 1.2.3.exe") */
+export function findInstaller(directory, version, list = fs.readdirSync) {
+  const wanted = `Echo Setup ${version}.exe`
+  const names = list(directory)
+  if (names.includes(wanted)) return path.join(directory, wanted)
+  throw new Error(`"${wanted}" não está em ${directory} (há: ${names.filter((name) => name.endsWith('.exe')).join(', ') || 'nenhum .exe'})`)
+}
+
 async function main() {
-  const installer = argument('--installer')
+  const installerDirectory = argument('--installer-from')
+  let installer = argument('--installer')
+  if (installerDirectory) {
+    try { installer = findInstaller(path.resolve(installerDirectory), expectedVersion) } catch (error) { fail(error.message) }
+  }
   const app = argument('--app')
-  if (!installer && !app) fail('informe --app <Echo.exe> ou --installer <instalador.exe>')
+  if (!installer && !app) fail('informe --app <Echo.exe>, --installer <instalador.exe> ou --installer-from <pasta>')
   const source = path.resolve(installer || app)
   if (!fs.existsSync(source)) fail(`arquivo não encontrado: ${source}`)
 

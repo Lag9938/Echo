@@ -19,6 +19,7 @@ jobs:
   # Typecheck, lint e todos os testes. Se algo falhar, nada é publicado.
   ci:
     uses: ./.github/workflows/ci.yml
+    secrets: inherit
 
   build-and-release:
     needs: ci
@@ -71,13 +72,40 @@ jobs:
             echo "done=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build and publish
+      # Compila o instalador SEM publicar. Antes, compilar e publicar eram um passo só: a versão chegava aos
+      # usuários sem que ninguém (nem nada) tivesse aberto o app instalado.
+      - name: Build (sem publicar)
         if: steps.published.outputs.done != 'true'
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
-        run: npm run build && npx electron-builder --win --publish always
+        run: npm run build && npx electron-builder --win --publish never
+
+      # Instala o instalador recém-compilado, abre o Echo e confere que a tela carregou. Se o app não abrir,
+      # a versão NÃO é publicada (scripts/smoke-test.mjs).
+      - name: Teste de fumaça do app instalado
+        if: steps.published.outputs.done != 'true'
+        run: node scripts/smoke-test.mjs --installer-from dist-desktop
+
+      # Publica exatamente os arquivos que foram testados. O latest.yml vai por último: é ele que faz os apps
+      # instalados enxergarem a versão nova, então só sobe com o instalador já disponível.
+      - name: Publicar
+        if: steps.published.outputs.done != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          installer="Echo-Setup-$version.exe"
+          cp "dist-desktop/Echo Setup $version.exe" "dist-desktop/$installer"
+          cp "dist-desktop/Echo Setup $version.exe.blockmap" "dist-desktop/$installer.blockmap"
+          if ! grep -q "url: $installer" dist-desktop/latest.yml; then
+            echo "latest.yml não aponta para $installer:" >&2
+            cat dist-desktop/latest.yml >&2
+            exit 1
+          fi
+          gh release upload "$RELEASE_TAG" "dist-desktop/$installer" "dist-desktop/$installer.blockmap" --clobber
+          gh release upload "$RELEASE_TAG" dist-desktop/latest.yml --clobber
 

@@ -35,6 +35,33 @@ jobs:
       - name: Testes (vitest)
         run: npm test
 
+  # Empacota o app como ele vai para os usuários e ABRE o resultado. Typecheck e testes rodam sobre o código;
+  # só isto pega o que quebra no pacote (biblioteca faltando, preload quebrado, tela em branco).
+  package:
+    name: App empacotado (abre e carrega a tela)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Empacotar (sem instalador, sem publicar)
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+          VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
+        run: npm run build && npx electron-builder --win dir --publish never
+
+      - name: Teste de fumaça
+        run: node scripts/smoke-test.mjs --app dist-desktop/win-unpacked/Echo.exe
+
   music-bot:
     name: Bot de música (testes)
     runs-on: ubuntu-latest
