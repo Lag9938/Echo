@@ -18,11 +18,55 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.53.7',
+    title: 'Echo v0.53.7 - Mais Leve em Chamada',
+    date: '10 de Outubro de 2026',
+    tagline: 'O Echo usa muito menos processador durante as chamadas, principalmente enquanto você joga.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '⚡',
+        badge: 'DESEMPENHO',
+        title: 'Muito Menos Processador em Chamada',
+        description: 'Em chamada, com o Echo atrás de outra janela, o uso de processador caiu de cerca de 80% para cerca de 12% de um núcleo (medido em um computador de teste). A detecção de "estou falando" deixou de forçar o redesenho contínuo da tela.'
+      },
+      {
+        icon: '🖼️',
+        badge: 'DESEMPENHO',
+        title: 'Imagens Animadas Descansam em Segundo Plano',
+        description: 'Avatares, banners e fundos animados (GIF) ficam parados enquanto o Echo está minimizado ou atrás de outra janela, e voltam a animar quando você volta para o app.'
+      },
+      {
+        icon: '🎮',
+        badge: 'DESEMPENHO',
+        title: 'Detecção de Jogos Mais Leve',
+        description: 'O Echo confere se há um jogo aberto a cada 15 segundos, em vez de 5, e sem repetir a consulta. O status "jogando" pode levar alguns segundos a mais para aparecer.'
+      },
+      {
+        icon: '⚙️',
+        badge: 'CORREÇÃO',
+        title: 'Configurações pela Tela de Amigos',
+        description: 'O botão de configurações ao lado do seu nome não funcionava na tela de amigos e conversas. Agora abre normalmente.'
+      },
+      {
+        icon: '📐',
+        badge: 'CORREÇÃO',
+        title: 'Páginas de Configuração sem Cortes',
+        description: 'Em janelas menores, partes das configurações (como a personalização do perfil) apareciam cortadas. Agora a página rola e mostra tudo.'
+      },
+      {
+        icon: '🟢',
+        badge: 'CORREÇÃO',
+        title: 'Status de Presença pelo Perfil',
+        description: 'Escolher o status de presença na tela "Meu Perfil" não mudava nada. Agora ele passa a valer ao salvar, igual ao menu ao lado do seu nome.'
+      }
+    ]
+  },
+  {
     version: '0.53.6',
     title: 'Echo v0.53.6 - Atualizações Mais Seguras',
     date: '10 de Outubro de 2026',
     tagline: 'Três proteções novas para que uma atualização com defeito não deixe ninguém sem o Echo.',
-    isLatest: true,
     highlights: [
       {
         icon: '🧪',
