@@ -18,11 +18,55 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.60.0',
+    title: 'Echo v0.60.0 - Aurora',
+    date: '11 de Outubro de 2026',
+    tagline: 'O Echo de cara nova: visual Aurora, barra lateral redesenhada e envio de arquivos completo.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🌅',
+        badge: 'NOVO VISUAL',
+        title: 'Aurora',
+        description: 'O Echo ganhou um visual novo, com painéis de vidro, cantos maiores e cores mais acolhedoras, nas versões clara e escura. Topo, conversas, amigos, loja, configurações e chamadas foram redesenhados.'
+      },
+      {
+        icon: '🧭',
+        badge: 'NOVO',
+        title: 'Barra Lateral Redesenhada',
+        description: 'Os canais de voz vêm primeiro e os de texto viraram cartões lado a lado. Passe o mouse sobre o seu nome, no rodapé, para mutar, silenciar ou sair da chamada sem trocar de tela. A barra de canais também pode ser recolhida.'
+      },
+      {
+        icon: '📎',
+        badge: 'NOVO',
+        title: 'Envio de Arquivos Completo',
+        description: 'Envie PDF, documentos, vídeos, ZIP, RAR e outros arquivos de até 25 MB em canais, conversas e grupos. O arquivo aparece em um cartão com nome e tamanho, e você baixa escolhendo onde salvar. Dá para enviar vários de uma vez e arrastar para dentro da conversa.'
+      },
+      {
+        icon: '📅',
+        badge: 'MELHORIA',
+        title: 'Data nas Conversas',
+        description: 'As conversas com amigos e os grupos agora mostram o dia entre as mensagens ("Hoje", "Ontem" ou a data), como já acontecia nos canais.'
+      },
+      {
+        icon: '📌',
+        badge: 'MELHORIA',
+        title: 'Lista de Conversas em Ordem Fixa',
+        description: 'A lista de conversas com amigos fica em ordem alfabética e não muda mais de lugar quando você abre uma conversa.'
+      },
+      {
+        icon: '🚦',
+        badge: 'SEGURANÇA',
+        title: 'Atualizações Chegam aos Poucos',
+        description: 'Cada versão nova chega primeiro a uma parte dos computadores e, se estiver tudo bem, a todos no dia seguinte. Quem quiser antes pode usar "Buscar atualizações" no ícone do Echo ao lado do relógio.'
+      }
+    ]
+  },
+  {
     version: '0.53.7',
     title: 'Echo v0.53.7 - Mais Leve em Chamada',
     date: '10 de Outubro de 2026',
     tagline: 'O Echo usa muito menos processador durante as chamadas, principalmente enquanto você joga.',
-    isLatest: true,
     highlights: [
       {
         icon: '⚡',
