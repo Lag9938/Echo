@@ -1,0 +1,766 @@
+/* ==========================================================================
+   ECHO AURORA LIGHT — SALA DE VOZ, TRANSMISSÃO E PARTICIPANTES
+   Redesign visual acolhedor para a experiência de voz e streaming do Echo.
+   Vidro fosco quente, cantos de 20-28px, acento coral #df6d5d e tipografia nítida.
+   ========================================================================== */
+
+/* ── 1. MODAL DE TRANSMISSÃO DE TELA (SCREEN PICKER) ───────────────────────
+   Janela onde o usuário escolhe qual jogo, aplicativo ou monitor transmitir.
+   Em Electron, precisa de -webkit-app-region: no-drag para não ser arrastada. */
+
+body.light-theme .screen-picker-overlay {
+  background: rgba(74, 53, 49, 0.35);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  -webkit-app-region: no-drag;
+}
+
+body.light-theme .screen-picker-modal {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 248, 243, 0.88) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  border-radius: 28px !important;
+  box-shadow: inset 0 1.5px 1px 0 #fff, 0 32px 80px rgba(74, 53, 49, 0.18) !important;
+  backdrop-filter: blur(28px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(160%) !important;
+  -webkit-app-region: no-drag;
+}
+
+body.light-theme .screen-picker-header-info h2 {
+  color: var(--text-primary, #2d2424) !important;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+body.light-theme .screen-picker-header-info p {
+  color: var(--text-secondary, #756260);
+  font-size: 13px;
+}
+
+body.light-theme.echo-layout-glass .screen-picker-badge,
+body.light-theme .screen-picker-badge {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #fff !important;
+  border-radius: 999px !important;
+  border: 0 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 14px rgba(223, 109, 93, 0.4) !important;
+  text-shadow: none !important;
+}
+
+body.light-theme.echo-layout-glass .screen-picker-refresh-btn,
+body.light-theme .screen-picker-refresh-btn {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(74, 53, 49, 0.12) !important;
+  color: var(--text-secondary, #756260) !important;
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(74, 53, 49, 0.05) !important;
+}
+
+body.light-theme .screen-picker-refresh-btn:hover {
+  background: #fff;
+  color: var(--text-primary, #2d2424);
+  border-color: var(--aurora-accent, #df6d5d);
+  transform: translateY(-1px);
+}
+
+body.light-theme .screen-picker-close-x {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(74, 53, 49, 0.08);
+  color: var(--text-secondary, #756260);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s ease;
+}
+
+body.light-theme .screen-picker-close-x:hover {
+  background: #fff;
+  color: var(--aurora-accent, #df6d5d);
+  border-color: var(--aurora-accent, #df6d5d);
+  transform: scale(1.05);
+}
+
+/* Trilho de abas em pílula segmentada */
+body.light-theme .screen-picker-tabs {
+  background: rgba(74, 53, 49, 0.06) !important;
+  border: 1px solid rgba(74, 53, 49, 0.08) !important;
+  border-radius: 16px;
+  padding: 4px;
+}
+
+body.light-theme .screen-picker-tab-btn {
+  border-radius: 12px;
+  color: var(--text-secondary, #756260);
+  font-weight: 700;
+  transition: all 0.18s ease;
+}
+
+body.light-theme .screen-picker-tab-btn:hover {
+  color: var(--text-primary, #2d2424);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+body.light-theme .screen-picker-tab-btn.active {
+  background: #fff !important;
+  color: var(--text-primary, #2d2424) !important;
+  box-shadow: 0 4px 14px rgba(74, 53, 49, 0.08), inset 0 1px 0 #fff !important;
+}
+
+body.light-theme .picker-tab-count {
+  background: rgba(74, 53, 49, 0.08);
+  color: var(--text-secondary, #756260);
+  border-radius: 999px;
+}
+
+body.light-theme .screen-picker-tab-btn.active .picker-tab-count {
+  background: rgba(223, 109, 93, 0.14);
+  color: var(--aurora-accent, #df6d5d);
+}
+
+/* Dica de jogo em tela cheia */
+.picker-game-fullscreen-hint {
+  margin: 0 0 12px 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.45;
+}
+
+body.light-theme.echo-layout-glass .picker-game-fullscreen-hint,
+body.light-theme .picker-game-fullscreen-hint {
+  background: rgba(223, 109, 93, 0.08) !important;
+  border: 1px solid rgba(223, 109, 93, 0.22) !important;
+  color: var(--text-secondary, #756260) !important;
+  border-radius: 16px !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}
+
+body.light-theme .picker-game-fullscreen-hint strong {
+  color: var(--text-primary, #2d2424) !important;
+}
+
+.picker-hint-emoji {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+/* Lista com espaçamento para a barra de rolagem */
+.sources-list {
+  padding-right: 6px !important;
+}
+
+/* Cards das janelas e telas disponíveis */
+body.light-theme.echo-layout-glass .source-card,
+body.light-theme .source-card {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1.5px solid rgba(74, 53, 49, 0.08) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 6px 18px rgba(74, 53, 49, 0.04) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.light-theme.echo-layout-glass .source-card:hover,
+body.light-theme .source-card:hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(223, 109, 93, 0.4) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(74, 53, 49, 0.1) !important;
+}
+
+body.light-theme.echo-layout-glass .source-card.selected,
+body.light-theme .source-card.selected {
+  border-color: #df6d5d !important;
+  background: rgba(255, 248, 244, 0.95) !important;
+  box-shadow: 0 0 0 2px #df6d5d, 0 10px 26px rgba(223, 109, 93, 0.25) !important;
+}
+
+body.light-theme .source-card-thumb-wrap {
+  border-radius: 12px;
+  background: rgba(74, 53, 49, 0.04);
+  border: 1px solid rgba(74, 53, 49, 0.08);
+}
+
+body.light-theme .source-thumb-icon-placeholder {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, rgba(245, 235, 230, 0.6) 100%);
+}
+
+body.light-theme.echo-layout-glass .source-selected-badge,
+body.light-theme .source-selected-badge {
+  background: #df6d5d !important;
+  color: #fff !important;
+  border-radius: 999px !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 12px rgba(223, 109, 93, 0.45) !important;
+}
+
+body.light-theme .source-game-badge {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%);
+  color: #fff;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+body.light-theme .source-minimized-badge {
+  background: rgba(74, 53, 49, 0.7);
+  color: #fff;
+  border-radius: 8px;
+}
+
+body.light-theme .source-card-info span {
+  color: var(--text-primary, #2d2424);
+  font-weight: 700;
+}
+
+/* Painel de qualidade, resolução e FPS */
+body.light-theme .screen-picker-quality-box {
+  background: rgba(255, 255, 255, 0.65) !important;
+  border: 1px solid rgba(74, 53, 49, 0.08) !important;
+  border-radius: 20px;
+  box-shadow: inset 0 1px 0 #fff;
+}
+
+.picker-quality-col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.picker-quality-warning {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+body.light-theme .picker-quality-warning {
+  color: #dc2626;
+}
+
+.picker-chip-badge-locked {
+  margin-left: 5px;
+  font-size: 9px;
+  opacity: 0.8;
+  text-transform: uppercase;
+}
+
+body.light-theme .picker-section-label {
+  color: var(--text-muted, #9c8a88);
+  font-weight: 800;
+  letter-spacing: 0.6px;
+}
+
+body.light-theme.echo-layout-glass .picker-config-chip,
+body.light-theme .picker-config-chip {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(74, 53, 49, 0.1) !important;
+  border-radius: 999px !important;
+  color: var(--text-secondary, #756260) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 6px rgba(74, 53, 49, 0.04);
+}
+
+body.light-theme.echo-layout-glass .picker-config-chip:hover:not(:disabled),
+body.light-theme .picker-config-chip:hover:not(:disabled) {
+  background: #fff !important;
+  border-color: rgba(223, 109, 93, 0.4) !important;
+  color: var(--text-primary, #2d2424) !important;
+}
+
+body.light-theme.echo-layout-glass .picker-config-chip.active,
+body.light-theme .picker-config-chip.active {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 14px rgba(223, 109, 93, 0.45) !important;
+}
+
+body.light-theme.echo-layout-glass .picker-config-chip.active.fps-60,
+body.light-theme .picker-config-chip.active.fps-60 {
+  background: linear-gradient(135deg, #e67e22 0%, #d35400 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 16px rgba(230, 126, 34, 0.4) !important;
+}
+
+body.light-theme .screen-picker-capture-mode {
+  color: var(--text-secondary, #756260);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+body.light-theme .screen-picker-capture-mode em {
+  color: var(--text-muted, #9c8a88);
+}
+
+/* Rodapé e botões de ação do Screen Picker */
+.screen-picker-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+body.light-theme.echo-layout-glass .picker-close-btn,
+body.light-theme .picker-close-btn {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid rgba(74, 53, 49, 0.12) !important;
+  color: var(--text-secondary, #756260) !important;
+  border-radius: 999px !important;
+  padding: 10px 22px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 6px rgba(74, 53, 49, 0.04);
+}
+
+body.light-theme.echo-layout-glass .picker-close-btn:hover,
+body.light-theme .picker-close-btn:hover {
+  background: #fff !important;
+  color: var(--text-primary, #2d2424) !important;
+  border-color: rgba(74, 53, 49, 0.25) !important;
+}
+
+body.light-theme.echo-layout-glass .picker-go-live-btn,
+body.light-theme .picker-go-live-btn {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 11px 26px !important;
+  font-weight: 800 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 24px rgba(223, 109, 93, 0.45) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+body.light-theme.echo-layout-glass .picker-go-live-btn:hover:not(:disabled),
+body.light-theme .picker-go-live-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #e67768 0%, #ce503e 100%) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 12px 30px rgba(223, 109, 93, 0.55) !important;
+}
+
+
+/* ── 2. SALA DE VOZ E PALCO DE PARTICIPANTES ──────────────────────────────
+   Área central da chamada com os cartões dos participantes falando e mutados. */
+
+body.light-theme .voice-room {
+  background: transparent !important;
+}
+
+body.light-theme .voice-header-info h1 {
+  color: var(--text-primary, #2d2424);
+  font-weight: 800;
+}
+
+body.light-theme .conn-pill {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(74, 53, 49, 0.1);
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(74, 53, 49, 0.04);
+}
+
+body.light-theme .conn-pill.good {
+  color: #059669;
+}
+
+body.light-theme .conn-pill.mid {
+  color: #d97706;
+}
+
+body.light-theme .conn-pill.poor {
+  color: #dc2626;
+}
+
+/* Painel acolhedor antes de entrar na chamada de voz */
+body.light-theme .voice-join-panel {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  border-radius: 28px;
+  padding: 36px 32px;
+  box-shadow: inset 0 1px 0 #fff, 0 16px 40px rgba(74, 53, 49, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+body.light-theme .voice-join-icon {
+  background: rgba(255, 248, 244, 0.95);
+  border: 1.5px solid rgba(223, 109, 93, 0.25);
+  color: var(--aurora-accent, #df6d5d);
+  border-radius: 22px;
+  box-shadow: 0 8px 24px rgba(223, 109, 93, 0.2);
+}
+
+body.light-theme .voice-join-panel h2 {
+  color: var(--text-primary, #2d2424);
+  font-weight: 800;
+}
+
+body.light-theme .voice-join-panel p {
+  color: var(--text-secondary, #756260);
+}
+
+body.light-theme .voice-join-submit-btn {
+  background: linear-gradient(135deg, var(--aurora-accent, #df6d5d) 0%, #d85c4b 100%);
+  color: #fff;
+  border-radius: 999px;
+  padding: 12px 32px;
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 24px rgba(223, 109, 93, 0.38);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.light-theme .voice-join-submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 12px 30px rgba(223, 109, 93, 0.5);
+}
+
+/* Cartões dos participantes em vidro fosco */
+body.light-theme .participant-card {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.9) !important;
+  border-radius: 28px !important;
+  box-shadow: inset 0 1px 0 #fff, 0 14px 36px rgba(74, 53, 49, 0.08) !important;
+  backdrop-filter: blur(20px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.2s ease,
+              border-color 0.2s ease,
+              box-shadow 0.2s ease;
+}
+
+body.light-theme .participant-card:hover {
+  background: rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(223, 109, 93, 0.35) !important;
+  transform: translateY(-3px) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 20px 48px rgba(74, 53, 49, 0.14) !important;
+}
+
+/* Avatar grande com cantos suaves e sombra macia */
+body.light-theme .participant-avatar-large {
+  border-radius: 26px !important;
+  border: 3px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 24px rgba(74, 53, 49, 0.15);
+  transition: all 0.2s ease;
+}
+
+/* Anel de fala pulsante em verde esmeralda acolhedor */
+body.light-theme .participant-card.speaking {
+  border-color: rgba(34, 197, 94, 0.5) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 0 0 2px rgba(34, 197, 94, 0.4), 0 18px 44px rgba(34, 197, 94, 0.18) !important;
+}
+
+body.light-theme .participant-card.speaking .participant-avatar-large {
+  border-color: #22c55e !important;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25), 0 12px 28px rgba(34, 197, 94, 0.3) !important;
+}
+
+/* Nome do participante e estados de mutado */
+body.light-theme .participant-name {
+  color: var(--text-primary, #2d2424);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(74, 53, 49, 0.08);
+  box-shadow: 0 2px 8px rgba(74, 53, 49, 0.04);
+}
+
+body.light-theme .participant-name-text {
+  color: var(--text-primary, #2d2424);
+}
+
+body.light-theme .participant-name-state {
+  color: #dc2626;
+}
+
+/* Card com câmera ligada */
+body.light-theme .participant-card.has-camera {
+  background: #000 !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+body.light-theme .participant-card.has-camera .participant-name {
+  background: rgba(15, 23, 42, 0.7);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+}
+
+body.light-theme .participant-card.has-camera .participant-name-text {
+  color: #fff;
+}
+
+
+/* ── 3. CÁPSULA DE CONTROLES DA CHAMADA ─────────────────────────────────────
+   Barra inferior centralizada com botões de áudio, IA, vídeo e desconectar. */
+
+body.light-theme .voice-controls-bar {
+  border-top: 1px solid rgba(74, 53, 49, 0.08);
+}
+
+body.light-theme .voice-controls-capsule {
+  background: rgba(255, 255, 255, 0.84) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  border-radius: 24px !important;
+  box-shadow: inset 0 1px 0 #fff, 0 18px 44px rgba(74, 53, 49, 0.14) !important;
+  backdrop-filter: blur(24px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+}
+
+body.light-theme .voice-dock-cluster {
+  background: rgba(74, 53, 49, 0.04) !important;
+  border: 1px solid rgba(74, 53, 49, 0.06) !important;
+  border-radius: 16px !important;
+  padding: 4px !important;
+}
+
+body.light-theme .voice-controls-bar .control-btn {
+  color: var(--text-secondary, #756260);
+  border-radius: 12px;
+  background: transparent;
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.light-theme .voice-controls-bar .control-btn:hover {
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--text-primary, #2d2424);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(74, 53, 49, 0.08);
+}
+
+body.light-theme .voice-controls-bar .control-btn:active {
+  transform: translateY(1px) scale(0.95);
+}
+
+/* Microfone ou som mutado */
+body.light-theme .voice-controls-bar .control-btn.muted {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #dc2626 !important;
+  border: 1px solid rgba(239, 68, 68, 0.28) !important;
+}
+
+body.light-theme .voice-controls-bar .control-btn.muted:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #b91c1c !important;
+}
+
+/* Botão Echo AI Studio (Denoise) */
+body.light-theme .voice-controls-bar .control-btn.ai-btn.active {
+  background: linear-gradient(135deg, var(--aurora-accent, #df6d5d) 0%, #9061f9 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(223, 109, 93, 0.35) !important;
+}
+
+body.light-theme .voice-controls-bar .control-btn.ai-btn.active .control-btn-active-dot {
+  background: #fff;
+  box-shadow: 0 0 6px #fff;
+}
+
+/* Transmissão de tela ou câmera ativa */
+body.light-theme .voice-controls-bar .control-btn.camera-btn.sharing,
+body.light-theme .voice-controls-bar .control-btn.screen-btn.sharing {
+  background: rgba(16, 185, 129, 0.14) !important;
+  color: #059669 !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* Botão desconectar da chamada */
+body.light-theme .voice-controls-bar .control-btn.leave-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: #fff !important;
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35) !important;
+}
+
+body.light-theme .voice-controls-bar .control-btn.leave-btn:hover {
+  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.45) !important;
+}
+
+/* Menu suspenso de transmissão de tela */
+body.light-theme .screen-share-dropdown {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  box-shadow: inset 0 1px 0 #fff, 0 16px 40px rgba(74, 53, 49, 0.16);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 10px;
+}
+
+body.light-theme .screen-share-dropdown .dropdown-option {
+  color: var(--text-secondary, #756260);
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+body.light-theme .screen-share-dropdown .dropdown-option:hover {
+  background: rgba(74, 53, 49, 0.06);
+  color: var(--text-primary, #2d2424);
+}
+
+body.light-theme .screen-share-dropdown .dropdown-option.selected {
+  background: var(--aurora-accent, #df6d5d);
+  color: #fff;
+}
+
+
+/* ── 4. VISUALIZAÇÃO DE TRANSMISSÃO DE TELA (STREAM TILE) ──────────────────
+   Área onde o vídeo da transmissão ou prévia local é exibido. */
+
+body.light-theme .screen-share-view {
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 16px 44px rgba(74, 53, 49, 0.12);
+}
+
+/* Placeholder acolhedor quando você está transmitindo */
+body.light-theme .local-stream-placeholder {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 248, 243, 0.75) 100%) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.95) !important;
+  border-radius: 24px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+body.light-theme .local-stream-beacon {
+  background: rgba(223, 109, 93, 0.1) !important;
+  border: 1px solid rgba(223, 109, 93, 0.25) !important;
+  box-shadow: 0 8px 24px rgba(223, 109, 93, 0.2) !important;
+}
+
+body.light-theme .local-stream-placeholder .local-stream-title {
+  color: var(--text-primary, #2d2424);
+  font-weight: 800;
+}
+
+body.light-theme .local-stream-placeholder .local-stream-desc {
+  color: var(--text-secondary, #756260);
+}
+
+body.light-theme .local-stream-preview-toggle-btn {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1.5px solid rgba(223, 109, 93, 0.3) !important;
+  color: var(--aurora-accent, #df6d5d) !important;
+  border-radius: 999px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(223, 109, 93, 0.15) !important;
+}
+
+body.light-theme .local-stream-preview-toggle-btn:hover {
+  background: var(--aurora-accent, #df6d5d) !important;
+  color: #fff !important;
+  transform: translateY(-1px);
+}
+
+/* Barra unificada cinema e telemetria */
+body.light-theme .stream-unified-glass-bar {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  border-radius: 20px !important;
+  box-shadow: inset 0 1px 0 #fff, 0 14px 36px rgba(74, 53, 49, 0.15) !important;
+}
+
+body.light-theme .stream-squircle-btn {
+  background: rgba(74, 53, 49, 0.05) !important;
+  color: var(--text-secondary, #756260) !important;
+}
+
+body.light-theme .stream-squircle-btn:hover {
+  background: #fff !important;
+  color: var(--text-primary, #2d2424) !important;
+}
+
+/* Painel de telemetria e estatísticas WebRTC */
+body.light-theme .stream-stats-hud-overlay {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid rgba(255, 255, 255, 0.98) !important;
+  border-radius: 22px !important;
+  box-shadow: inset 0 1px 0 #fff, 0 20px 48px rgba(74, 53, 49, 0.18) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+}
+
+body.light-theme .stream-stats-hud-header {
+  color: var(--text-primary, #2d2424) !important;
+  border-bottom-color: rgba(74, 53, 49, 0.08) !important;
+}
+
+body.light-theme .stats-row {
+  color: var(--text-secondary, #756260) !important;
+}
+
+body.light-theme .stats-row strong {
+  color: var(--text-primary, #2d2424) !important;
+}
+
+body.light-theme .stream-smoothing-btn {
+  background: rgba(74, 53, 49, 0.06);
+  border-color: rgba(74, 53, 49, 0.1);
+  color: var(--text-secondary, #756260);
+  border-radius: 8px;
+}
+
+body.light-theme .stream-smoothing-btn:hover {
+  background: #fff;
+  color: var(--text-primary, #2d2424);
+}
+
+body.light-theme .stream-smoothing-btn.active {
+  background: var(--aurora-accent, #df6d5d);
+  color: #fff;
+  border-color: var(--aurora-accent, #df6d5d);
+}
+
+/* Dock de participantes durante transmissão */
+body.light-theme .stream-participants-strip.glass-dock {
+  background: rgba(255, 255, 255, 0.82) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  border-radius: 22px !important;
+  box-shadow: inset 0 1px 0 #fff, 0 14px 36px rgba(74, 53, 49, 0.12) !important;
+}
+
+body.light-theme .stream-strip-card {
+  border-radius: 14px;
+}
+
+body.light-theme .stream-strip-card:hover {
+  background: rgba(74, 53, 49, 0.06);
+}
+
+body.light-theme .stream-strip-name {
+  color: var(--text-primary, #2d2424);
+}
+
+/* ── 5. MODO DESEMPENHO E ACESSIBILIDADE ───────────────────────────────────
+   Desativa transparências pesadas no modo opaco e suaviza transições. */
+
+body.theme-performance-opaque.light-theme .screen-picker-modal,
+body.theme-performance-opaque.light-theme .participant-card,
+body.theme-performance-opaque.light-theme .voice-controls-capsule,
+body.theme-performance-opaque.light-theme .stream-stats-hud-overlay,
+body.theme-performance-opaque.light-theme .voice-join-panel {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: #fff !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.light-theme .screen-picker-modal,
+  body.light-theme .participant-card,
+  body.light-theme .source-card,
+  body.light-theme .voice-controls-bar .control-btn {
+    transition: none !important;
+    animation: none !important;
+  }
+}

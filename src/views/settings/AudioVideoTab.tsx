@@ -1,12 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import {
-  ColoredRefreshIcon,
-  ColoredBrainAiIcon,
-  ColoredHeadphonesIcon,
-  ColoredMicActiveIcon,
-  ColoredPushToTalkIcon,
-  ColoredVolumeSpeakerIcon
-} from '../../components/ColoredIcons'
 
 export interface AudioVideoTabProps {
   audioInputs: MediaDeviceInfo[]
@@ -42,6 +34,99 @@ export interface AudioVideoTabProps {
   onNavigateToKeybinds?: () => void
 }
 
+/* ── Minimalist Clean SVG Icons (Zero cartoon emojis) ── */
+function MicIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <line x1="12" y1="19" x2="12" y2="23" />
+      <line x1="8" y1="23" x2="16" y2="23" />
+    </svg>
+  )
+}
+
+function HeadphonesIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+      <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+    </svg>
+  )
+}
+
+function RefreshIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+      <path d="M16 21h5v-5" />
+    </svg>
+  )
+}
+
+function SparklesAiIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+    </svg>
+  )
+}
+
+function ShieldCheckIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <polyline points="9 12 11 14 15 10" />
+    </svg>
+  )
+}
+
+function SpatialAudioIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M3.05 11a9 9 0 0 1 .5-2m16.9 2a9 9 0 0 0-.5-2M6.16 6.16a9 9 0 0 1 11.68 0M12 3a9 9 0 0 1 9 9m-9 9a9 9 0 0 1-9-9" />
+    </svg>
+  )
+}
+
+function VolumeSpeakerIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+    </svg>
+  )
+}
+
+function CheckmarkIcon({ size = 11 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  )
+}
+
+function KeyboardIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <line x1="6" y1="8" x2="6" y2="8" />
+      <line x1="10" y1="8" x2="10" y2="8" />
+      <line x1="14" y1="8" x2="14" y2="8" />
+      <line x1="18" y1="8" x2="18" y2="8" />
+      <line x1="6" y1="12" x2="6" y2="12" />
+      <line x1="10" y1="12" x2="10" y2="12" />
+      <line x1="14" y1="12" x2="14" y2="12" />
+      <line x1="18" y1="12" x2="18" y2="12" />
+      <line x1="7" y1="16" x2="17" y2="16" />
+    </svg>
+  )
+}
+
 export function AudioVideoTab({
   audioInputs,
   audioOutputs,
@@ -51,9 +136,7 @@ export function AudioVideoTab({
   onOutputDeviceChange,
   audioError,
   onRefreshDevices,
-  noiseSuppressionEnabled,
   echoCancellationEnabled,
-  onNoiseSuppressionChange,
   onEchoCancellationChange,
   sfxVolume,
   onSfxVolumeChange,
@@ -73,9 +156,9 @@ export function AudioVideoTab({
   muteShortcut,
   deafenShortcut,
   aiDenoiseShortcut,
-  onNavigateToKeybinds
+  onNavigateToKeybinds,
 }: AudioVideoTabProps) {
-  // Push-to-Talk settings
+  // Push-to-Talk state
   const [prevPttModeSetting, setPrevPttModeSetting] = useState(pttModeSetting)
   const [localPttMode, setLocalPttMode] = useState<boolean>(() =>
     pttModeSetting !== undefined ? pttModeSetting : localStorage.getItem('echo-ptt-mode') === 'true'
@@ -96,7 +179,7 @@ export function AudioVideoTab({
     setLocalPttKey(pttKey)
   }
 
-  // Global In-Game Hotkeys state (read-only in audio tab; edited in Keybinds tab)
+  // Hotkeys state
   const [localMuteKey] = useState<string>(() =>
     muteShortcut || localStorage.getItem('echo-shortcut-mute') || 'F8'
   )
@@ -107,7 +190,7 @@ export function AudioVideoTab({
     aiDenoiseShortcut || localStorage.getItem('echo-shortcut-ai-denoise') || 'F7'
   )
 
-  // Mic test state
+  // Real mic test state
   const [testingMic, setTestingMic] = useState(false)
   const [testVolume, setTestVolume] = useState(0)
   const micTestIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -117,62 +200,87 @@ export function AudioVideoTab({
   function toggleMicTest() {
     if (testingMic) {
       if (micTestIntervalRef.current) clearInterval(micTestIntervalRef.current)
-      micTestStreamRef.current?.getTracks().forEach(t => t.stop())
+      micTestStreamRef.current?.getTracks().forEach((t) => t.stop())
       micTestCtxRef.current?.close().catch(() => {})
       setTestVolume(0)
       setTestingMic(false)
     } else {
-      navigator.mediaDevices.getUserMedia({
-        audio: selectedInputId !== 'default' ? { deviceId: { exact: selectedInputId } } : true,
-        video: false
-      }).then(stream => {
-        micTestStreamRef.current = stream
-        const ctx = new AudioContext()
-        micTestCtxRef.current = ctx
-        const source = ctx.createMediaStreamSource(stream)
-        const analyser = ctx.createAnalyser()
-        analyser.fftSize = 512
-        source.connect(analyser)
+      navigator.mediaDevices
+        .getUserMedia({
+          audio: selectedInputId !== 'default' ? { deviceId: { exact: selectedInputId } } : true,
+          video: false,
+        })
+        .then((stream) => {
+          micTestStreamRef.current = stream
+          const ctx = new AudioContext()
+          micTestCtxRef.current = ctx
+          const source = ctx.createMediaStreamSource(stream)
+          const analyser = ctx.createAnalyser()
+          analyser.fftSize = 512
+          source.connect(analyser)
 
-        setTestingMic(true)
-        micTestIntervalRef.current = setInterval(() => {
-          const data = new Uint8Array(analyser.frequencyBinCount)
-          analyser.getByteFrequencyData(data)
-          const avg = data.reduce((sum, v) => sum + v, 0) / data.length
-          const vol = Math.min(100, Math.floor(avg * 2.5))
-          setTestVolume(vol)
-        }, 100)
-      }).catch(err => {
-        alert('Não foi possível acessar o microfone para teste: ' + err)
-      })
+          setTestingMic(true)
+          micTestIntervalRef.current = setInterval(() => {
+            const data = new Uint8Array(analyser.frequencyBinCount)
+            analyser.getByteFrequencyData(data)
+            const avg = data.reduce((sum, v) => sum + v, 0) / data.length
+            const vol = Math.min(100, Math.floor(avg * 2.5))
+            setTestVolume(vol)
+          }, 100)
+        })
+        .catch((err) => {
+          alert('Não foi possível acessar o microfone para teste: ' + err)
+        })
     }
   }
 
   useEffect(() => {
     return () => {
       if (micTestIntervalRef.current) clearInterval(micTestIntervalRef.current)
-      micTestStreamRef.current?.getTracks().forEach(t => t.stop())
+      micTestStreamRef.current?.getTracks().forEach((t) => t.stop())
       micTestCtxRef.current?.close().catch(() => {})
     }
   }, [])
 
   return (
     <div className="settings-container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Configurações de Áudio</h2>
+      {/* ── Cabeçalho Principal ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '8px' }}>
+        <div>
+          <h2 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
+            Voz &bull; Configurações de Áudio
+          </h2>
+          <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', margin: '4px 0 0', lineHeight: 1.5 }}>
+            Configure seus dispositivos de som, teste o microfone e calibre o cancelamento de ruído.
+          </p>
+        </div>
+
         <button
           type="button"
-          className="picker-close-btn"
-          style={{ margin: 0, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
           onClick={onRefreshDevices}
+          style={{
+            padding: '7px 14px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.06)',
+            border: '1px solid var(--border-color)',
+            color: 'var(--text-primary)',
+            fontSize: '12.5px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--accent-color)')}
+          onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border-color)')}
         >
-          <ColoredRefreshIcon size={14} /> Detectar Dispositivos
+          <RefreshIcon size={13} /> Detectar Dispositivos
         </button>
       </div>
-      <p>Configure os dispositivos de entrada e saída de som do seu sistema.</p>
 
       {audioError && (
-        <div className="friend-search-notice error" style={{ margin: '8px 0' }}>
+        <div className="friend-search-notice error" style={{ margin: '14px 0', padding: '12px 16px', borderRadius: '10px' }}>
           <strong>Aviso do Sistema:</strong> {audioError}
           <br />
           <span style={{ fontSize: '11px', opacity: 0.85 }}>
@@ -180,377 +288,263 @@ export function AudioVideoTab({
           </span>
         </div>
       )}
-      
-      <div className="device-selectors-grid">
-        <div className="selector-card">
-          <label>
-            <ColoredMicActiveIcon size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-            Microfone (Entrada)
-          </label>
-          <select value={selectedInputId} onChange={(e) => onInputDeviceChange(e.target.value)}>
-            <option value="default">Microfone padrão do sistema</option>
-            {audioInputs.map(input => (
-              <option key={input.deviceId} value={input.deviceId}>
-                {input.label || `Microfone (${input.deviceId.slice(0, 5)})`}
-              </option>
-            ))}
-          </select>
-        </div>
 
-        <div className="selector-card">
-          <label>
-            <ColoredHeadphonesIcon size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-            Dispositivo de Saída (Fones / Alto-falante)
-          </label>
-          <select value={selectedOutputId} onChange={(e) => onOutputDeviceChange(e.target.value)}>
-            <option value="default">Saída padrão do sistema</option>
-            {audioOutputs.map(output => (
-              <option key={output.deviceId} value={output.deviceId}>
-                {output.label || `Saída (${output.deviceId.slice(0, 5)})`}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Cyber Studio VU Meter Cockpit */}
-      <div className="mic-test-panel audio-cockpit-panel">
-        <div className="cockpit-panel-header">
-          <div>
-            <h3>Testar Microfone & Nível de Entrada</h3>
-            <p>Fale no seu microfone para conferir o espectro de frequências e decibéis em tempo real.</p>
-          </div>
-          <div className="cockpit-live-badge-wrap">
-            {testingMic ? (
-              <span className="audio-studio-live-badge active">
-                <span className="live-dot" />
-                TESTE ATIVO
+      {/* ── 1. Dispositivos de Entrada e Saída (Lado a Lado em Cards Modernos) ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginTop: '20px' }}>
+        {/* Microfone (Entrada) */}
+        <div className="echo-audio-card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ color: 'var(--accent-color)', display: 'flex', alignItems: 'center' }}>
+                <MicIcon size={18} />
               </span>
-            ) : (
-              <span className="audio-studio-live-badge standby">
-                STANDBY
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* 36-Segment Cyber Studio VU Meter */}
-        <div className="audio-vu-meter-cockpit">
-          <div className="vu-meter-scale">
-            <span>-60 dB</span>
-            <span>-40 dB</span>
-            <span>-25 dB</span>
-            <span>-15 dB</span>
-            <span>-6 dB</span>
-            <span style={{ color: '#ef4444' }}>0 dB (CLIP)</span>
-          </div>
-
-          <div className="vu-meter-segments">
-            {Array.from({ length: 36 }).map((_, idx) => {
-              const threshold = ((idx + 1) / 36) * 100
-              const isLit = testVolume >= threshold
-              let segClass = 'seg-low'
-              if (idx >= 22 && idx < 30) segClass = 'seg-mid'
-              if (idx >= 30) segClass = 'seg-high'
-              return (
-                <div
-                  key={idx}
-                  className={`vu-segment ${segClass} ${isLit ? 'lit' : ''}`}
-                />
-              )
-            })}
-          </div>
-
-          <div className="vu-meter-footer">
-            <span className="vu-db-readout">
-              {testingMic && testVolume > 0
-                ? `${Math.round(-60 + (testVolume / 100) * 60)} dB`
-                : '-∞ dB'}
-            </span>
-            <span className={`vu-level-status ${testVolume > 85 ? 'peak' : testVolume > 20 ? 'optimal' : 'idle'}`}>
-              {!testingMic
-                ? 'TESTE DESATIVADO'
-                : testVolume > 85
-                ? '⚠️ PICO ELEVADO (GANHO ALTO)'
-                : testVolume > 15
-                ? '✓ NÍVEL IDEAL DE TRANSMISSÃO'
-                : 'AGUARDANDO VOZ...'}
-            </span>
-          </div>
-        </div>
-
-        <div className="mic-test-row">
-          <button 
-            type="button" 
-            className={`mic-test-btn ${testingMic ? 'testing' : ''}`} 
-            onClick={toggleMicTest}
-          >
-            {testingMic ? '⏹ Parar Teste' : '🎙 Iniciar Teste de Microfone'}
-          </button>
-          <div className="volume-meter-bg">
-            <div className="volume-meter-fill" style={{ width: `${testVolume}%` }} />
-          </div>
-        </div>
-      </div>
-
-      <div className="mic-test-panel" style={{ marginTop: '20px' }}>
-        <h3>Preferências de Voz</h3>
-        <p>Habilite filtros de redução de ruído e eco para melhorar a sua voz.</p>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-          <label className="checkbox-setting-label" style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px', cursor: 'pointer' }}>
-            <input 
-              type="checkbox" 
-              checked={noiseSuppressionEnabled} 
-              onChange={(e) => onNoiseSuppressionChange(e.target.checked)} 
-              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-            />
-            <div>
-              <strong style={{ display: 'block', color: 'var(--text-primary)' }}>Supressão de Ruído</strong>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Filtra ruídos de fundo como ventiladores e digitação</span>
-            </div>
-          </label>
-
-          <label className="checkbox-setting-label" style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px', cursor: 'pointer', marginTop: '4px' }}>
-            <input 
-              type="checkbox" 
-              checked={echoCancellationEnabled} 
-              onChange={(e) => onEchoCancellationChange(e.target.checked)} 
-              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-            />
-            <div>
-              <strong style={{ display: 'block', color: 'var(--text-primary)' }}>Cancelamento de Eco</strong>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Impede que a voz de outras pessoas nos speakers retorne ao seu microfone</span>
-            </div>
-          </label>
-
-          <label className="checkbox-setting-label" style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px', cursor: 'pointer', marginTop: '4px' }}>
-            <input 
-              type="checkbox" 
-              checked={noiseGateEnabled} 
-              onChange={(e) => onNoiseGateEnabledChange(e.target.checked)} 
-              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-            />
-            <div>
-              <strong style={{ display: 'block', color: 'var(--text-primary)' }}>Portão de Ruído (Noise Gate)</strong>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Corta o som do microfone automaticamente quando você está em silêncio</span>
-            </div>
-          </label>
-
-          {noiseGateEnabled && (
-            <div className="noise-gate-interactive-box">
-              <div className="noise-gate-graph-header">
-                <span className="gate-status-text">
-                  {testVolume > Math.max(5, (noiseGateThreshold + 60) * (100 / 35))
-                    ? '🔊 Portão Aberto (Voz Transmitida)'
-                    : '🔇 Portão Fechado (Ruído Silenciado)'}
+              <div>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', display: 'block' }}>
+                  Microfone (Entrada)
                 </span>
-                <span className="gate-threshold-value">
-                  Limiar: <strong>{noiseGateThreshold} dB</strong>
+                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                  Captação da sua voz
                 </span>
               </div>
-
-              {/* Acoustic Waveform Visualizer with Threshold Cutoff Line */}
-              <div className="noise-gate-visualizer-canvas">
-                <svg className="gate-wave-svg" viewBox="0 0 400 64" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="gateWaveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#00f2fe" stopOpacity="0.4" />
-                      <stop offset="100%" stopColor="#00f2fe" stopOpacity="0.03" />
-                    </linearGradient>
-                  </defs>
-                  <path
-                    d="M0,52 Q40,48 80,50 T160,36 T240,14 T300,38 T400,52 L400,64 L0,64 Z"
-                    fill="url(#gateWaveGrad)"
-                  />
-                  <path
-                    d="M0,52 Q40,48 80,50 T160,36 T240,14 T300,38 T400,52"
-                    fill="none"
-                    stroke="#00f2fe"
-                    strokeWidth="1.8"
-                  />
-                </svg>
-
-                {/* Animated / Placed Red Threshold Cutoff Line */}
-                <div
-                  className="noise-gate-threshold-line"
-                  style={{
-                    left: `${Math.max(5, Math.min(95, ((noiseGateThreshold - (-60)) / 35) * 100))}%`
-                  }}
-                >
-                  <span className="threshold-tag">Corte: {noiseGateThreshold} dB</span>
-                </div>
-              </div>
-
-              <div className="gate-zones-legend">
-                <span className="zone-cut">◀ Zona Silenciada (Cortada)</span>
-                <span className="zone-pass">Zona de Voz (Transmitida) ▶</span>
-              </div>
-
-              <div style={{ marginTop: '10px' }}>
-                <input 
-                  type="range" 
-                  min="-60" 
-                  max="-25" 
-                  step="1" 
-                  value={noiseGateThreshold} 
-                  onChange={(e) => onNoiseGateThresholdChange(parseFloat(e.target.value))} 
-                  className="slider-setting"
-                  style={{ cursor: 'pointer' }}
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  <span>-60 dB (Mais Sensível)</span>
-                  <span>-45 dB (Padrão Recomendado)</span>
-                  <span>-25 dB (Menos Sensível)</span>
-                </div>
-              </div>
             </div>
-          )}
-        </div>
-      </div>
-
-      <div className="mic-test-panel" style={{ marginTop: '20px' }}>
-        <h3>Efeitos Sonoros</h3>
-        <p>Ajuste o volume dos avisos sonoros de conexão, mudo e transmissão.</p>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '16px' }}>
-          <span style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }}>
-            <ColoredVolumeSpeakerIcon size={20} level={sfxVolume} />
-          </span>
-          <input 
-            type="range" 
-            min="0" 
-            max="1" 
-            step="0.05" 
-            value={sfxVolume}
-            onChange={(e) => onSfxVolumeChange(parseFloat(e.target.value))}
-            style={{ flex: 1, accentColor: 'var(--accent-color)', cursor: 'pointer', height: '6px', borderRadius: '3px' }}
-          />
-          <span style={{ minWidth: '40px', textAlign: 'right', fontWeight: 'bold', fontSize: '13px' }}>
-            {Math.round(sfxVolume * 100)}%
-          </span>
-        </div>
-      </div>
-
-      {/* AI Noise Suppression (RNNoise) Card */}
-      <div className="mic-test-panel tech-card ai-denoise-card" style={{ marginTop: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-          <div>
-            <h3 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
-                <ColoredBrainAiIcon size={20} />
-                Supressão de Ruído por IA (Rede Neural RNNoise)
-              </span>
-              <span style={{ fontSize: '10.5px', background: 'rgba(168, 85, 247, 0.25)', color: '#c084fc', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                IA LOCAL • 0% CPU
-              </span>
-            </h3>
-            <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-              Rede neural de deep learning local (mesma tecnologia do OBS Studio). Remove cliques de teclado mecânico, barulho de ventilador, respiração e chiado elétrico sem distorcer a voz.
-            </p>
-          </div>
-          <label className="echo-switch">
-            <input 
-              type="checkbox" 
-              checked={isAiDenoiseEnabled} 
-              onChange={(e) => onToggleAiDenoise(e.target.checked)} 
-            />
-            <span className="echo-slider" />
-          </label>
-        </div>
-
-        {isAiDenoiseEnabled && (
-          <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-            <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 700 }}>
-              ✓ Inteligência Artificial Ativa • Voz de estúdio limpa transmitida para seus amigos com máxima nitidez.
+            <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+              Pronto
             </span>
           </div>
-        )}
-      </div>
 
-      {/* Spatial 3D Audio Card */}
-      <div className="mic-test-panel tech-card spatial-audio-card" style={{ marginTop: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
           <div>
-            <h3 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
-                <ColoredHeadphonesIcon size={20} />
-                Áudio Espacial 3D (Posicionamento Estéreo)
-              </span>
-              <span style={{ fontSize: '10.5px', background: 'rgba(0, 242, 254, 0.2)', color: '#00f2fe', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                ÁUDIO 3D
-              </span>
-            </h3>
-            <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-              Permite posicionar a voz de cada amigo no espaço estéreo (esquerda, centro ou direita) para facilitar a comunicação e reconhecimento no squad.
-            </p>
-          </div>
-          <label className="echo-switch">
-            <input 
-              type="checkbox" 
-              checked={spatialAudioEnabled} 
-              onChange={(e) => onToggleSpatialAudio(e.target.checked)} 
-            />
-            <span className="echo-slider" />
-          </label>
-        </div>
-
-        {spatialAudioEnabled && (
-          <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-            <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 700 }}>
-              ✓ Áudio Espacial Ativo • Você pode ajustar a posição de cada amigo no menu de volume dele.
-            </span>
-            <button 
-              type="button" 
-              className="picker-close-btn" 
-              style={{ margin: 0, padding: '5px 12px', fontSize: '11.5px', display: 'flex', alignItems: 'center', gap: '5px' }}
-              onClick={onResetAllPans}
+            <select
+              value={selectedInputId}
+              onChange={(e) => onInputDeviceChange(e.target.value)}
+              className="echo-audio-select"
             >
-              <ColoredRefreshIcon size={13} /> Centralizar Todos os Amigos
-            </button>
+              <option value="default">Microfone padrão do sistema</option>
+              {audioInputs.map((input) => (
+                <option key={input.deviceId} value={input.deviceId}>
+                  {input.label || `Microfone (${input.deviceId.slice(0, 5)})`}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
+        </div>
+
+        {/* Fones / Alto-falantes (Saída) */}
+        <div className="echo-audio-card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ color: '#38bdf8', display: 'flex', alignItems: 'center' }}>
+                <HeadphonesIcon size={18} />
+              </span>
+              <div>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', display: 'block' }}>
+                  Dispositivo de Saída
+                </span>
+                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                  Fones de ouvido e caixas de som
+                </span>
+              </div>
+            </div>
+            <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+              Ativo
+            </span>
+          </div>
+
+          <div>
+            <select
+              value={selectedOutputId}
+              onChange={(e) => onOutputDeviceChange(e.target.value)}
+              className="echo-audio-select"
+            >
+              <option value="default">Saída padrão do sistema</option>
+              {audioOutputs.map((output) => (
+                <option key={output.deviceId} value={output.deviceId}>
+                  {output.label || `Saída (${output.deviceId.slice(0, 5)})`}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
-      {/* Push-to-Talk Gamer Configuration */}
-      <div className="mic-test-panel" style={{ marginTop: '20px' }}>
-        <h3>Modo de Entrada & Push-to-Talk Global</h3>
-        <p>Escolha se sua voz é transmitida continuamente ou apenas quando você segura a tecla de atalho.</p>
+      {/* ── 2. Calibração & Teste de Microfone (Fluido, sem os 36 blocos pesados) ── */}
+      <div className="echo-audio-card" style={{ marginTop: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ color: 'var(--accent-color)', display: 'flex', alignItems: 'center' }}>
+                <MicIcon size={16} />
+              </span>
+              Calibração & Teste de Microfone
+            </h3>
+            <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+              Fale para conferir se o seu microfone está captando com clareza e no nível ideal para o squad.
+            </p>
+          </div>
 
-        <div style={{ display: 'flex', gap: '12px', marginTop: '14px' }}>
           <button
             type="button"
-            className={`mic-test-btn ${!localPttMode ? 'testing' : ''}`}
+            onClick={toggleMicTest}
+            className={`mic-test-btn ${testingMic ? 'testing' : ''}`}
+          >
+            <span className="mic-test-dot" />
+            {testingMic ? 'Parar Teste de Microfone' : 'Iniciar Teste de Microfone'}
+          </button>
+        </div>
+
+        {/* Barra de Nível Studio Fluida */}
+        <div className="echo-clean-vu-box">
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px', color: 'var(--text-muted)', fontWeight: 600 }}>
+            <span>Silêncio (-60 dB)</span>
+            <span style={{ color: '#10b981' }}>Nível Ideal (-20 dB a -6 dB)</span>
+            <span style={{ color: '#ef4444' }}>Pico / Distorção (0 dB)</span>
+          </div>
+
+          <div className="echo-vu-track">
+            <div
+              className="echo-vu-bar-fill"
+              style={{ width: `${testVolume}%` }}
+            />
+            {/* Linha da zona ideal */}
+            <div className="echo-vu-zone-mark" style={{ left: '65%' }} title="Zona recomendada de fala" />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', marginTop: '2px' }}>
+            <span style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--accent-color)' }}>
+              {testingMic && testVolume > 0 ? `${Math.round(-60 + (testVolume / 100) * 60)} dB` : '-∞ dB'}
+            </span>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: testVolume > 85 ? '#ef4444' : testVolume > 15 ? '#10b981' : 'var(--text-muted)' }}>
+              {!testingMic
+                ? 'Teste desativado'
+                : testVolume > 85
+                ? 'Pico elevado (reduza a sensibilidade)'
+                : testVolume > 15
+                ? 'Nível ideal de transmissão'
+                : 'Aguardando voz...'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3. Modo de Transmissão de Voz (Detecção vs Push-to-Talk) ── */}
+      <div className="echo-audio-card" style={{ marginTop: '16px' }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            Modo de Transmissão de Voz
+          </h3>
+          <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+            Defina se o microfone transmite continuamente ao detectar sua fala ou apenas segurando uma tecla.
+          </p>
+        </div>
+
+        <div className="echo-transmit-grid">
+          {/* Detecção por Voz */}
+          <div
+            className={`echo-transmit-card ${!localPttMode ? 'selected' : ''}`}
             onClick={() => {
               localStorage.setItem('echo-ptt-mode', 'false')
               setLocalPttMode(false)
               onPttModeChange?.(false)
             }}
-            style={{ flex: 1, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            <ColoredMicActiveIcon size={17} />
-            <span>Detecção por Voz (Automático)</span>
-          </button>
-          <button
-            type="button"
-            className={`mic-test-btn ${localPttMode ? 'testing' : ''}`}
+            <div>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'block' }}>
+                Detecção por Voz (Automático)
+              </span>
+              <p style={{ margin: '3px 0 0', fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                O microfone abre sozinho quando você fala.
+              </p>
+            </div>
+            {!localPttMode && (
+              <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'var(--accent-color)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CheckmarkIcon size={11} />
+              </span>
+            )}
+          </div>
+
+          {/* Push-to-Talk */}
+          <div
+            className={`echo-transmit-card ${localPttMode ? 'selected' : ''}`}
             onClick={() => {
               localStorage.setItem('echo-ptt-mode', 'true')
               setLocalPttMode(true)
               onPttModeChange?.(true)
             }}
-            style={{ flex: 1, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            <ColoredPushToTalkIcon size={17} />
-            <span>Push-to-Talk (PTT)</span>
-          </button>
+            <div>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'block' }}>
+                Push-to-Talk (Aperte para Falar)
+              </span>
+              <p style={{ margin: '3px 0 0', fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                Transmite som apenas enquanto você segura a tecla.
+              </p>
+            </div>
+            {localPttMode && (
+              <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'var(--accent-color)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CheckmarkIcon size={11} />
+              </span>
+            )}
+          </div>
         </div>
 
-        {localPttMode && (
-          <div style={{ marginTop: '16px', background: 'var(--bg-secondary)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-            <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
-              Tecla de Atalho Global do Push-to-Talk:
-            </label>
+        {/* Sensibilidade do Portão de Ruído (Noise Gate) - Sem gráfico confuso */}
+        {!localPttMode ? (
+          <div style={{ paddingTop: '12px', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>
+                  Sensibilidade do Portão de Ruído (Noise Gate)
+                </span>
+                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                  Sons ambientes abaixo deste volume não abrirão seu microfone.
+                </span>
+              </div>
+              <span style={{ fontSize: '12px', fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-color)' }}>
+                {noiseGateThreshold} dB {noiseGateThreshold === -45 ? '(Padrão)' : ''}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <label className="echo-switch">
+                <input
+                  type="checkbox"
+                  checked={noiseGateEnabled}
+                  onChange={(e) => onNoiseGateEnabledChange(e.target.checked)}
+                />
+                <span className="echo-slider" />
+              </label>
+
+              {noiseGateEnabled && (
+                <div style={{ flex: 1 }}>
+                  <input
+                    type="range"
+                    min="-60"
+                    max="-25"
+                    step="1"
+                    value={noiseGateThreshold}
+                    onChange={(e) => onNoiseGateThresholdChange(parseFloat(e.target.value))}
+                    className="slider-setting"
+                    style={{ width: '100%', cursor: 'pointer' }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    <span>-60 dB (Mais Sensível)</span>
+                    <span>-45 dB (Recomendado)</span>
+                    <span>-25 dB (Menos Sensível)</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* Seletor de Tecla PTT */
+          <div style={{ paddingTop: '12px', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+            <div>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>
+                Tecla de Atalho do Push-to-Talk
+              </span>
+              <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                Funciona em segundo plano durante jogos em tela cheia.
+              </span>
+            </div>
             <select
               value={localPttKey}
               onChange={(e) => {
@@ -559,7 +553,16 @@ export function AudioVideoTab({
                 setLocalPttKey(newKey)
                 onPttKeyChange?.(newKey)
               }}
-              style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontWeight: 700, outline: 'none', width: '100%', maxWidth: '240px' }}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: '1px solid var(--border-color)',
+                background: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+                fontWeight: 700,
+                outline: 'none',
+                width: '180px',
+              }}
             >
               <option value="KeyV">V (Padrão Gamer)</option>
               <option value="KeyC">C</option>
@@ -567,70 +570,198 @@ export function AudioVideoTab({
               <option value="KeyZ">Z</option>
               <option value="KeyT">T</option>
               <option value="KeyB">B</option>
-              <option value="Space">Barra de Espaço (Space)</option>
+              <option value="Space">Espaço</option>
               <option value="CapsLock">Caps Lock</option>
               <option value="Tab">Tab</option>
-              <option value="Backquote">Aspas / Til (~ / `)</option>
               <option value="AltLeft">Alt Esquerdo</option>
               <option value="ControlLeft">Ctrl Esquerdo</option>
               <option value="F1">F1</option>
               <option value="F2">F2</option>
             </select>
-            <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '8px' }}>
-              Funciona globalmente em tela cheia no VALORANT, CS2, Fortnite, etc.
-            </span>
           </div>
         )}
+      </div>
 
-        {/* Link para a Nova Aba Dedicada de Teclas de Atalho */}
-        <div style={{
-          marginTop: '20px',
-          background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.08), rgba(79, 70, 229, 0.08))',
-          padding: '16px 20px',
-          borderRadius: '12px',
-          border: '1px solid rgba(0, 242, 254, 0.25)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '16px',
-          flexWrap: 'wrap'
-        }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                ⌨️ Teclas de Atalho Globais (In-Game)
-              </span>
-              <span style={{ fontSize: '10px', background: 'var(--accent-color, #00f2fe)', color: '#000', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
-                NOVA ABA DEDICADA
-              </span>
+      {/* ── 4. Filtros & Processamento Inteligente em Grid 2x2 ── */}
+      <div className="echo-audio-card" style={{ marginTop: '16px' }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            Filtros & Processamento Inteligente
+          </h3>
+          <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+            Recursos para garantir voz limpa sem sobrecarregar sua CPU ou taxa de quadros (FPS).
+          </p>
+        </div>
+
+        <div className="echo-filters-grid">
+          {/* Supressão de Ruído por IA (RNNoise) */}
+          <div className="echo-filter-item">
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ color: '#c084fc', display: 'flex', alignItems: 'center' }}>
+                  <SparklesAiIcon size={16} />
+                </span>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Supressão por IA (RNNoise)
+                </span>
+                <span style={{ fontSize: '9.5px', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc' }}>
+                  0% CPU
+                </span>
+              </div>
+              <p style={{ margin: 0, fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.35 }}>
+                Remove teclado mecânico, respiração e ruído elétrico com rede neural.
+              </p>
             </div>
-            <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-              Configurações de Push-to-Talk, Mudo ({localMuteKey}), Deafen ({localDeafenKey}), Filtro de Ruído IA ({localAiDenoiseKey}) e atalhos globais agora possuem uma aba própria na barra lateral.
-            </p>
+            <label className="echo-switch">
+              <input
+                type="checkbox"
+                checked={isAiDenoiseEnabled}
+                onChange={(e) => onToggleAiDenoise(e.target.checked)}
+              />
+              <span className="echo-slider" />
+            </label>
           </div>
-          {onNavigateToKeybinds && (
+
+          {/* Cancelamento de Eco */}
+          <div className="echo-filter-item">
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ color: '#10b981', display: 'flex', alignItems: 'center' }}>
+                  <ShieldCheckIcon size={16} />
+                </span>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Cancelamento de Eco
+                </span>
+              </div>
+              <p style={{ margin: 0, fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.35 }}>
+                Impede que o som dos fones ou caixas volte e cause retorno.
+              </p>
+            </div>
+            <label className="echo-switch">
+              <input
+                type="checkbox"
+                checked={echoCancellationEnabled}
+                onChange={(e) => onEchoCancellationChange(e.target.checked)}
+              />
+              <span className="echo-slider" />
+            </label>
+          </div>
+
+          {/* Áudio Espacial 3D */}
+          <div className="echo-filter-item">
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ color: 'var(--accent-color)', display: 'flex', alignItems: 'center' }}>
+                  <SpatialAudioIcon size={16} />
+                </span>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Áudio Espacial 3D
+                </span>
+                <span style={{ fontSize: '9.5px', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', background: 'rgba(0, 242, 254, 0.15)', color: 'var(--accent-color)' }}>
+                  Posicional
+                </span>
+              </div>
+              <p style={{ margin: 0, fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.35 }}>
+                Separa a voz de cada amigo no espaço estéreo (esquerda/direita).
+              </p>
+            </div>
+            <label className="echo-switch">
+              <input
+                type="checkbox"
+                checked={spatialAudioEnabled}
+                onChange={(e) => onToggleSpatialAudio(e.target.checked)}
+              />
+              <span className="echo-slider" />
+            </label>
+          </div>
+
+          {/* Efeitos Sonoros do Aplicativo (SFX Volume) */}
+          <div className="echo-filter-item">
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}>
+                    <VolumeSpeakerIcon size={16} />
+                  </span>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Efeitos Sonoros (SFX)
+                  </span>
+                </div>
+                <span style={{ fontSize: '12px', fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  {Math.round(sfxVolume * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={sfxVolume}
+                onChange={(e) => onSfxVolumeChange(parseFloat(e.target.value))}
+                style={{ width: '100%', accentColor: 'var(--accent-color)', cursor: 'pointer', height: '5px', marginTop: '6px' }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {spatialAudioEnabled && (
+          <div style={{ paddingTop: '10px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 600 }}>
+              Áudio Espacial ativo &bull; Ajuste a posição de cada amigo no menu de volume individual.
+            </span>
             <button
-              onClick={onNavigateToKeybinds}
+              type="button"
+              onClick={onResetAllPans}
               style={{
-                background: 'var(--accent-color, #00f2fe)',
-                color: '#000',
-                border: 'none',
-                padding: '9px 18px',
+                padding: '5px 12px',
                 borderRadius: '8px',
-                fontWeight: 700,
-                fontSize: '13px',
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-secondary)',
+                fontSize: '11.5px',
+                fontWeight: 600,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                transition: 'all 0.2s ease',
-                flexShrink: 0
               }}
             >
-              Abrir Teclas de Atalho →
+              <RefreshIcon size={12} /> Centralizar Todos
             </button>
-          )}
+          </div>
+        )}
+      </div>
+
+      {/* ── 5. Atalhos Globais In-Game ── */}
+      <div className="echo-audio-hotkeys-card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <span style={{ color: 'var(--accent-color)', display: 'flex', alignItems: 'center' }}>
+            <KeyboardIcon size={22} />
+          </span>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="echo-audio-hotkeys-title">
+                Teclas de Atalho Globais (In-Game)
+              </span>
+              <span className="echo-audio-hotkeys-badge">
+                Aba Dedicada
+              </span>
+            </div>
+            <p className="echo-audio-hotkeys-desc">
+              Mudo ({localMuteKey}), Deafen ({localDeafenKey}), Filtro IA ({localAiDenoiseKey}) e atalhos rápidos possuem uma aba própria.
+            </p>
+          </div>
         </div>
+
+        {onNavigateToKeybinds && (
+          <button
+            type="button"
+            onClick={onNavigateToKeybinds}
+            className="echo-audio-hotkeys-btn"
+          >
+            Abrir Teclas de Atalho &rarr;
+          </button>
+        )}
       </div>
     </div>
   )

@@ -33,6 +33,11 @@
   --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.22);
   --shadow-glow: 0 0 16px rgba(223, 109, 93, 0.3);
 
+  /* Apple Materials & Frosted Glass Elevation Tokens */
+  --glass-shadow-ambient: 0 16px 36px -8px rgba(0, 0, 0, 0.45);
+  --glass-shadow-contact: 0 2px 5px rgba(0, 0, 0, 0.2);
+  --glass-highlight-top: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+
   --scrollbar-thumb: rgba(0, 0, 0, 0.14);
   --scrollbar-thumb-hover: rgba(0, 0, 0, 0.24);
 }
@@ -106,23 +111,91 @@ button, input, textarea, select {
 }
 
 .dark-theme {
-  /* Echo Slate Obsidian Dark Palette (Restful, Deep & Elegant) */
-  --bg-primary: #181a1d;
-  --bg-secondary: #212428;
-  --bg-tertiary: #2a2e33;
-  --border-color: rgba(255, 255, 255, 0.08);
-  --text-primary: #e6e9eb;
-  --text-secondary: #9da6aa;
-  --text-muted: #6b7579;
-  --accent-light: rgba(223, 109, 93, 0.16);
+  /* Echo Eclipse Titanium (Signature Cosmic Dark) */
+  --bg-primary: #080a0f;
+  --bg-secondary: #10131b;
+  --bg-tertiary: #161a24;
+  --border-color: rgba(255, 255, 255, 0.09);
+  --text-primary: #f0f3f8;
+  --text-secondary: #94a0b8;
+  --text-muted: #5c677d;
+  --accent-color: #00f2fe;
+  --accent-hover: #38bdf8;
+  --accent-light: rgba(0, 242, 254, 0.16);
+  --accent-glow: 0 0 20px rgba(0, 242, 254, 0.45);
   
-  --speaking-color: #52a3ff; /* Azul mais brilhante para tema escuro */
-  --speaking-glow: 0 0 18px rgba(82, 163, 255, 0.7);
+  --speaking-color: #00f2fe;
+  --speaking-glow: 0 0 18px rgba(0, 242, 254, 0.7);
   
   --scrollbar-thumb: rgba(255, 255, 255, 0.14);
-  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.24);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
 }
 
+/* ── Echo Aurora Light (pêssego, vidro e coral) ────── */
+.light-theme {
+  --amber-text: #92400e;
+  --ok-text: #15803d;
+  --bg-primary: #e4dadd;
+  --bg-secondary: #f1eaeb;
+  --bg-tertiary: #dcd1d5;
+  --border-color: rgba(255, 255, 255, 0.55);
+  --text-primary: #2a1f2d;
+  --text-secondary: #5b505f;
+  --text-muted: #8a7f8e;
+  --accent-color: #df6d5d;
+  --accent-hover: #d4564e;
+  --accent-light: rgba(223, 109, 93, 0.14);
+  --accent-glow: 0 0 16px rgba(223, 109, 93, 0.3);
+
+  --speaking-color: #22c55e;
+  --speaking-glow: 0 0 14px rgba(34, 197, 94, 0.5);
+
+  /* Atmosfera: quatro manchas de cor sobre o papel pêssego (a mesma do design) */
+  --aurora-mesh:
+    radial-gradient(800px 560px at 6% -8%, #e6b8a4 0%, transparent 62%),
+    radial-gradient(760px 560px at 98% 4%, #bdb2dc 0%, transparent 62%),
+    radial-gradient(900px 640px at 60% 108%, #e3c8a4 0%, transparent 62%),
+    radial-gradient(520px 420px at 22% 70%, #e2b4c4 0%, transparent 65%),
+    #e4dadd;
+  --glass-card: rgba(247, 241, 240, 0.74);
+  --glass-card-edge: rgba(255, 255, 255, 0.55);
+
+  --scrollbar-thumb: rgba(42, 31, 45, 0.16);
+  --scrollbar-thumb-hover: rgba(42, 31, 45, 0.28);
+}
+
+/* ── Echo Aurora Dark (ameixa profundo, vidro e coral) ────── */
+.theme-aurora-dark {
+  /* Grafite profundo: quase preto, com um calor discreto de coral e âmbar só nas bordas do fundo */
+  --bg-primary: #0c0b0d;
+  --bg-secondary: #1a191e;
+  --bg-tertiary: #121114;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --text-primary: #f2edef;
+  --text-secondary: #bdb6bb;
+  --text-muted: #8a8489;
+  --accent-color: #df6d5d;
+  --accent-hover: #e88072;
+  --accent-light: rgba(223, 109, 93, 0.18);
+  --accent-glow: 0 0 16px rgba(223, 109, 93, 0.35);
+
+  --speaking-color: #4ade80;
+  --speaking-glow: 0 0 14px rgba(74, 222, 128, 0.5);
+
+  --aurora-glass-rgb: 24, 22, 27;
+  --aurora-surface: #1c1b20;
+  --aurora-mesh:
+    radial-gradient(760px 520px at 6% -8%, #3a2420 0%, transparent 62%),
+    radial-gradient(700px 520px at 98% 4%, #25252c 0%, transparent 62%),
+    radial-gradient(900px 620px at 60% 110%, #3a2f22 0%, transparent 62%),
+    radial-gradient(480px 400px at 20% 72%, #2a2024 0%, transparent 66%),
+    #0c0b0d;
+  --glass-card: rgba(24, 22, 27, 0.74);
+  --glass-card-edge: rgba(255, 255, 255, 0.12);
+
+  --scrollbar-thumb: rgba(242, 237, 239, 0.16);
+  --scrollbar-thumb-hover: rgba(242, 237, 239, 0.28);
+}
 /* ── Dracula Theme ────────────────────────────────── */
 .theme-dracula {
   --bg-primary: #282a36;

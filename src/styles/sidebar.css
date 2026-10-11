@@ -2922,7 +2922,8 @@ body.echo-layout-glass .channels-sidebar {
   box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.18),
               inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.28),
               inset 0 -1px 1px 0 rgba(0, 0, 0, 0.4),
-              0 24px 50px -10px rgba(0, 0, 0, 0.65) !important;
+              0 4px 12px rgba(0, 0, 0, 0.3),
+              0 20px 48px -10px rgba(0, 0, 0, 0.65) !important;
 }
 
 /* Atmospheric Prismatic Glass Shimmer inside sidebar */
@@ -2959,13 +2960,14 @@ body.echo-layout-glass .channels-sidebar {
 /* Light theme glass */
 body.light-theme .channels-sidebar.echo-layout-glass,
 body.light-theme.echo-layout-glass .channels-sidebar {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.80) 100%) !important;
-  backdrop-filter: blur(32px) saturate(200%) brightness(102%) !important;
-  -webkit-backdrop-filter: blur(32px) saturate(200%) brightness(102%) !important;
-  border-right: 1px solid rgba(226, 232, 240, 0.95) !important;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.86) 0%, rgba(255, 255, 255, 0.72) 100%) !important;
+  backdrop-filter: blur(32px) saturate(210%) brightness(102%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(210%) brightness(102%) !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.08) !important;
   box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.95),
               inset 0 1.5px 1px 0 rgba(255, 255, 255, 1),
-              0 20px 45px -10px rgba(15, 23, 42, 0.12) !important;
+              0 4px 12px rgba(15, 23, 42, 0.03),
+              0 20px 45px -10px rgba(15, 23, 42, 0.08) !important;
 }
 body.light-theme .channels-sidebar.echo-layout-glass::before {
   background: radial-gradient(circle at 18% 12%, color-mix(in srgb, var(--accent-color, #0284c7) 10%, transparent) 0%, transparent 52%),
@@ -3120,18 +3122,17 @@ body.light-theme .channels-sidebar.echo-layout-glass .channel-category-header {
   box-sizing: border-box !important;
   padding: 7px 11px !important;
   background: rgba(255, 255, 255, 0.038) !important;
-  border: 1px solid rgba(255, 255, 255, 0.075) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 2px 6px rgba(0, 0, 0, 0.15) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.065) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 1px 3px rgba(0, 0, 0, 0.12) !important;
+  transition: transform 0.16s var(--ease-spring), background 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease !important;
   position: relative !important;
 }
 .channels-sidebar.echo-layout-glass .channel-item:hover {
   background: rgba(255, 255, 255, 0.085) !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 8px rgba(0, 0, 0, 0.18) !important;
   color: #ffffff !important;
+  transform: translateX(1px) !important;
 }
 
 /* Desativa terminantemente a barrinha vertical antiga que quebrava o design */
@@ -3424,15 +3425,15 @@ body.echo-layout-glass .profile-footer-card,
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-radius: 16px !important;
   padding: 7px 10px !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 8px 24px rgba(0, 0, 0, 0.35) !important;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22), 0 10px 24px -4px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.16) !important;
+  transition: transform 0.2s var(--ease-smooth), background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
 }
 
 body.echo-layout-glass .profile-footer-card:hover,
 .channels-sidebar.echo-layout-glass .profile-footer-card:hover {
   background: rgba(20, 26, 42, 0.78) !important;
-  border-color: rgba(0, 242, 254, 0.35) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 28px rgba(0, 0, 0, 0.4), 0 0 18px rgba(0, 242, 254, 0.15) !important;
+  border-color: color-mix(in srgb, var(--accent-color, #00f2fe) 40%, rgba(255, 255, 255, 0.2)) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.28), 0 14px 30px -4px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0 18px color-mix(in srgb, var(--accent-color, #00f2fe) 20%, transparent) !important;
 }
 
 body.echo-layout-glass .profile-footer-info {
@@ -3638,10 +3639,11 @@ body.echo-layout-glass .member-hover-popover {
   border-radius: 22px;
   overflow: hidden;
   position: fixed;
-  box-shadow: inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.32),
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4),
+              0 24px 60px -10px rgba(0, 0, 0, 0.8),
+              inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.32),
               inset 0 -1px 1px 0 rgba(0, 0, 0, 0.45),
-              0 28px 65px -10px rgba(0, 0, 0, 0.82),
-              0 0 40px -8px color-mix(in srgb, var(--accent-color, #00f2fe) 25%, transparent);
+              0 0 35px -8px color-mix(in srgb, var(--accent-color, #00f2fe) 22%, transparent);
   transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -3926,3 +3928,332 @@ body.light-theme.echo-layout-glass .hover-popover-btn.secondary:hover {
 
 
 
+
+/* ── Rodapé do perfil com a chamada em andamento ─────────────────────────────
+   A chamada deixou de ter um cartão próprio acima do perfil: o rodapé mostra "Na chamada · sala" e, ao passar
+   o mouse (ou focar com o teclado), sobe um painel de vidro com mutar, silenciar e sair. As cores vêm das
+   variáveis do tema, então acompanham o tema e a cor de destaque escolhidos nas configurações. */
+.sidebar-profile-footer .profile-footer-sub-status.in-call {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: color-mix(in srgb, #22c55e 78%, var(--text-primary));
+  font-weight: 600;
+}
+
+.profile-call-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55);
+  animation: voiceStatusDotPulse 1.8s infinite;
+}
+.profile-call-dot.reconnecting {
+  background: #f0b232;
+  animation: none;
+}
+
+.sidebar-profile-footer.has-call .profile-call-popover {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 100%;
+  /* O respiro de baixo faz parte do painel: o mouse atravessa sem soltar o :hover do rodapé */
+  padding-bottom: 8px;
+  z-index: 60;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(12px) scale(0.96);
+  transform-origin: bottom center;
+  transition: opacity 0.2s ease,
+              transform 0.3s var(--ease-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+              visibility 0s linear 0.3s;
+}
+.sidebar-profile-footer.has-call:hover .profile-call-popover,
+.sidebar-profile-footer.has-call:focus-within .profile-call-popover {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+  transition-delay: 0s;
+}
+/* O menu de status (clique no nome) usa o mesmo lugar: enquanto ele está aberto, o painel da chamada espera */
+.sidebar-profile-footer.has-call.status-open .profile-call-popover {
+  display: none;
+}
+
+.profile-call-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--bg-secondary) 80%, transparent);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid color-mix(in srgb, var(--border-color) 55%, rgba(255, 255, 255, 0.22));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 18px 44px rgba(0, 0, 0, 0.32);
+}
+
+.profile-call-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+.profile-call-head.clickable {
+  cursor: pointer;
+}
+.profile-call-head.clickable:hover .profile-call-title small {
+  color: var(--accent-color);
+}
+.profile-call-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  line-height: 1.2;
+}
+.profile-call-title strong {
+  font-size: 13px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.profile-call-title small {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  transition: color 0.15s ease;
+}
+.profile-call-elapsed {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-call-toggles {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+.profile-call-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 62px;
+  padding: 8px 4px;
+  border: 1px solid transparent;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.16s ease, transform 0.16s ease, border-color 0.16s ease;
+}
+.profile-call-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+.profile-call-toggle:hover {
+  background: color-mix(in srgb, var(--text-primary) 13%, transparent);
+  transform: translateY(-1px);
+}
+.profile-call-toggle.is-off {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+.profile-call-toggle.is-active {
+  background: color-mix(in srgb, var(--accent-color) 20%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color) 55%, transparent);
+  color: var(--accent-color);
+}
+
+.profile-call-ptt {
+  padding: 4px 8px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+.profile-call-ptt.active {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.18);
+  color: #10b981;
+}
+
+.profile-call-quality {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-call-leave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  border: 0;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: box-shadow 0.16s ease, transform 0.16s ease;
+}
+.profile-call-leave svg {
+  width: 17px;
+  height: 17px;
+}
+.profile-call-leave:hover {
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.45);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-profile-footer.has-call .profile-call-popover,
+  .profile-call-toggle,
+  .profile-call-leave {
+    transition: opacity 0.01s linear, visibility 0s;
+    transform: none;
+  }
+  .profile-call-dot {
+    animation: none;
+  }
+}
+
+/* ── Barra lateral: voz primeiro, texto em cartões de duas colunas ──────────────
+   O cabeçalho do espaço (capa, ícone, nome) não muda. Os canais de voz vêm antes dos de texto; os de texto
+   viram cartões arredondados em duas colunas; a sala em que a pessoa está fica verde, e os botões do rodapé
+   são redondos. */
+.channels-sidebar.echo-layout-glass .channel-group-text .category-channels-list {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  padding-top: 4px;
+}
+.channels-sidebar.echo-layout-glass .channel-group-text .channel-item {
+  margin: 0 !important;
+  min-width: 0;
+  min-height: 54px;
+  padding: 10px 12px !important;
+  border-radius: 18px !important;
+  align-items: center;
+  gap: 6px;
+}
+.channels-sidebar.echo-layout-glass .channel-group-text .channel-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+/* O megafone do ícone já diz que é canal de avisos; a etiqueta não cabe no cartão */
+.channels-sidebar.echo-layout-glass .channel-group-text .channel-badge-pill {
+  display: none;
+}
+.channels-sidebar.echo-layout-glass .channel-group-text .channel-action-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+}
+
+/* Botões do rodapé (novidades e configurações) redondos */
+body.echo-layout-glass .profile-footer-btn,
+.channels-sidebar.echo-layout-glass .profile-footer-btn {
+  border-radius: 50% !important;
+}
+
+/* ── Cartões de canal de texto: menores e com o "vidro do Echo" ─────────────────
+   Menos altura e menos folga: os cartões ocupavam espaço demais para um nome de canal.
+   O vidro é feito só de luz, sem desfoque próprio (o painel atrás já desfoca; um desfoque por cartão custa
+   placa de vídeo à toa): um brilho que entra pelo canto de cima, um filete claro no topo e uma sombra fina
+   embaixo dão a espessura. O canal aberto recebe a mesma luz na cor do tema. */
+.channels-sidebar.echo-layout-glass .channel-group-text .category-channels-list {
+  gap: 6px !important;
+}
+.channels-sidebar.echo-layout-glass .channel-group-text .channel-item {
+  min-height: 34px;
+  padding: 6px 10px !important;
+  border-radius: 12px !important;
+  gap: 6px;
+  background:
+    radial-gradient(120% 100% at 0% 0%, rgba(255, 255, 255, 0.1) 0%, transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.012) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.075) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.26),
+    0 1px 2px rgba(0, 0, 0, 0.18) !important;
+}
+.channels-sidebar.echo-layout-glass .channel-group-text .channel-item-name {
+  font-size: 12.5px;
+}
+.channels-sidebar.echo-layout-glass .channel-group-text .channel-item:hover {
+  background:
+    radial-gradient(120% 100% at 0% 0%, rgba(255, 255, 255, 0.16) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.085) 0%, rgba(255, 255, 255, 0.025) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  transform: none !important;
+}
+.channels-sidebar.echo-layout-glass .channel-group-text .channel-item.active {
+  background:
+    radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--accent-color, #38bdf8) 30%, transparent) 0%, transparent 62%),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-color, #38bdf8) 16%, transparent) 0%, color-mix(in srgb, var(--accent-color, #38bdf8) 5%, transparent) 100%) !important;
+  border: 1px solid color-mix(in srgb, var(--accent-color, #38bdf8) 48%, rgba(255, 255, 255, 0.12)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22),
+    0 3px 12px color-mix(in srgb, var(--accent-color, #38bdf8) 18%, transparent) !important;
+}
+body.light-theme .channels-sidebar.echo-layout-glass .channel-group-text .channel-item {
+  background:
+    radial-gradient(120% 100% at 0% 0%, rgba(255, 255, 255, 0.9) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.28) 100%) !important;
+  border-color: rgba(15, 23, 42, 0.07) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.05),
+    0 1px 2px rgba(15, 23, 42, 0.06) !important;
+}
+body.light-theme .channels-sidebar.echo-layout-glass .channel-group-text .channel-item.active {
+  background:
+    radial-gradient(120% 100% at 0% 0%, rgba(2, 132, 199, 0.2) 0%, transparent 62%),
+    linear-gradient(180deg, rgba(2, 132, 199, 0.13) 0%, rgba(2, 132, 199, 0.05) 100%) !important;
+  border-color: rgba(2, 132, 199, 0.38) !important;
+}

@@ -1,0 +1,163 @@
+﻿/* ==========================================================================
+   SOUNDBOARD — janela de vidro no padrão do app (vale em todos os temas)
+   Antes a janela ficava sem fundo sobre um escuro pesado, com o "Fechar" solto embaixo.
+   Agora: painel de vidro com cabeçalho, grade de cartões tingidos pela cor de cada som e um só fechar.
+   A cor de cada som chega por --sound-color (definida no cartão).
+   ========================================================================== */
+
+.soundboard-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(20, 12, 28, 0.38);
+  backdrop-filter: blur(10px) saturate(130%);
+  -webkit-backdrop-filter: blur(10px) saturate(130%);
+  animation: soundboardFade 0.18s ease both;
+}
+
+.soundboard-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-height: min(640px, calc(100vh - 48px));
+  padding: 20px 20px 22px;
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--bg-secondary) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 24%, transparent);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(26px) saturate(170%);
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  color: var(--text-primary);
+  animation: soundboardPop 0.26s var(--ease-smooth, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+.soundboard-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 2px 16px;
+}
+.soundboard-title {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.25;
+}
+.soundboard-title h3 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.soundboard-title span {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.soundboard-close {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.soundboard-close:hover {
+  background: color-mix(in srgb, var(--text-primary) 14%, transparent);
+  color: var(--text-primary);
+  transform: rotate(90deg);
+}
+
+/* Grade: 3 colunas, rola sozinha quando passa da altura */
+body .soundboard-modal .soundboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  max-height: none;
+  margin: 0;
+  padding: 2px 2px 4px;
+  overflow-y: auto;
+}
+
+body .soundboard-modal .soundboard-card {
+  --sound-color: var(--accent-color);
+  gap: 6px;
+  padding: 18px 10px 14px;
+  border-radius: 22px;
+  border: 1px solid color-mix(in srgb, var(--sound-color) 28%, transparent);
+  background: color-mix(in srgb, var(--sound-color) 9%, var(--bg-secondary));
+  box-shadow: none;
+  transition: transform 0.18s var(--ease-spring, ease), box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+body .soundboard-modal .soundboard-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--sound-color) 60%, transparent);
+  background: color-mix(in srgb, var(--sound-color) 15%, var(--bg-secondary));
+  box-shadow: 0 14px 28px -12px color-mix(in srgb, var(--sound-color) 70%, transparent);
+}
+body .soundboard-modal .soundboard-card:active {
+  transform: scale(0.95);
+}
+body .soundboard-modal .soundboard-card.is-playing {
+  transform: scale(1.04);
+  border-color: var(--sound-color) !important;
+  background: color-mix(in srgb, var(--sound-color) 22%, var(--bg-secondary)) !important;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--sound-color) 22%, transparent), 0 14px 30px -10px color-mix(in srgb, var(--sound-color) 80%, transparent);
+}
+
+.soundboard-icon-box {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  margin-bottom: 4px;
+  background: color-mix(in srgb, var(--sound-color) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sound-color) 34%, transparent);
+}
+body .soundboard-modal .soundboard-name {
+  font-size: 13.5px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.soundboard-category {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+@keyframes soundboardFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes soundboardPop {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 520px) {
+  body .soundboard-modal .soundboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .soundboard-backdrop,
+  .soundboard-modal {
+    animation: none;
+  }
+}
+
+.soundboard-backdrop,
+.soundboard-backdrop * {
+  -webkit-app-region: no-drag;
+}

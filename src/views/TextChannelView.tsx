@@ -8,6 +8,7 @@ import { MessageList } from '../components/chat/MessageList'
 import { MessageComposer } from '../components/chat/MessageComposer'
 import { CallStrip } from '../components/chat/CallStrip'
 import { useVoiceActivity } from '../hooks/useVoiceActivity'
+import { useHoverPeek } from '../hooks/useHoverPeek'
 import { PaperclipIcon } from '../components/icons'
 import { useUIStore } from '../stores/useUIStore'
 import { useSpacesStore } from '../stores/useSpacesStore'
@@ -181,6 +182,9 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
     notifyTyping,
     onJoinVoice
   } = props
+
+  // Passar o mouse no botão de membros espia a lista; o clique a fixa
+  const membersPeek = useHoverPeek(showMembersList, setShowMembersList)
 
   // Chamada em andamento no espaço (faixa no topo) e eventos de voz para o meio da conversa
   const currentSpaceChannels = currentSpace ? spaceChannels[currentSpace.id] : undefined
@@ -528,6 +532,8 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
         setIsWatchingStreams={setIsWatchingStreams}
         showMembersList={showMembersList}
         setShowMembersList={setShowMembersList}
+        membersTriggerProps={membersPeek.triggerProps}
+        membersPeeking={membersPeek.peek}
       />
       <div 
         className="chat-workspace-wrapper" 
@@ -744,7 +750,10 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
         />
 
         <MembersSidebar
-          isVisible={showMembersList}
+          isVisible={membersPeek.visible}
+          isPeek={membersPeek.peek}
+          onPeekEnter={membersPeek.panelProps.onMouseEnter}
+          onPeekLeave={membersPeek.panelProps.onMouseLeave}
           currentSpace={currentSpace}
           spaceMembers={spaceMembers}
           spaceChannels={spaceChannels}

@@ -10,10 +10,17 @@ export interface StatusGlyphProps {
   withGlow?: boolean
 }
 
+const COLORS = {
+  online: '#22c55e',
+  idle: '#f59e0b',
+  dnd: '#ef4444',
+  invisible: '#94a3b8'
+} as const
+
 /**
- * Echo Proprietary Acoustic & Cyber Status Glyphs.
- * Formatos visuais exclusivos da identidade Echo (ressonância e frequências),
- * sem cópias do Discord (sem luas, sem sinais de menos clichês).
+ * Selos de status do Echo ("ondas do eco"): um ponto de cor com anel em volta, como o eco de um som.
+ * Mesma linguagem do seletor de status e dos selos sobre os avatares (status-picker.css):
+ * Online = ponto cheio com anel · Ausente = meia-lua · Não perturbe = ponto com traço · Invisível = só o contorno.
  */
 export const StatusGlyph: React.FC<StatusGlyphProps> = ({
   status,
@@ -23,105 +30,51 @@ export const StatusGlyph: React.FC<StatusGlyphProps> = ({
   withGlow = false
 }) => {
   const normStatus = (status || 'offline').toLowerCase()
+  const kind: keyof typeof COLORS =
+    normStatus === 'online' || normStatus === 'idle' || normStatus === 'dnd' ? normStatus : 'invisible'
+  const color = COLORS[kind]
+  const common = {
+    width: size,
+    height: size,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    className: `status-glyph glyph-${kind} ${className}`,
+    style: {
+      filter: withGlow ? `drop-shadow(0 0 5px ${color})` : undefined,
+      ...style
+    }
+  }
 
-  switch (normStatus) {
+  switch (kind) {
     case 'online':
-      // Pulse Core: Núcleo esmeralda ativo com anel de frequência concêntrico vivo
       return (
-        <svg
-          width={size}
-          height={size}
-          viewBox="0 0 24 24"
-          fill="none"
-          className={`status-glyph glyph-online ${className}`}
-          style={{
-            filter: withGlow ? 'drop-shadow(0 0 6px #10b981)' : undefined,
-            ...style
-          }}
-        >
-          <circle cx="12" cy="12" r="4.5" fill="#10b981" />
-          <circle
-            cx="12"
-            cy="12"
-            r="8.5"
-            stroke="#10b981"
-            strokeWidth="2.5"
-            strokeDasharray="2.5 3"
-            opacity="0.85"
-          />
+        <svg {...common}>
+          <circle cx="12" cy="12" r="11" fill={color} opacity="0.16" />
+          <circle cx="12" cy="12" r="7" fill={color} />
         </svg>
       )
 
     case 'idle':
-      // Standby Bars: Duas barras de equalizador acústico em repouso (|| em âmbar)
+      // Meia-lua: o ponto "recolhido", sem anel
       return (
-        <svg
-          width={size}
-          height={size}
-          viewBox="0 0 24 24"
-          fill="none"
-          className={`status-glyph glyph-idle ${className}`}
-          style={{
-            filter: withGlow ? 'drop-shadow(0 0 6px #f59e0b)' : undefined,
-            ...style
-          }}
-        >
-          <rect x="7" y="6" width="3.5" height="12" rx="1.75" fill="#f59e0b" />
-          <rect x="13.5" y="6" width="3.5" height="12" rx="1.75" fill="#f59e0b" opacity="0.75" />
+        <svg {...common}>
+          <path d="M20.2 14.3A8.4 8.4 0 1 1 9.7 3.8a6.6 6.6 0 0 0 10.5 10.5z" fill={color} />
         </svg>
       )
 
     case 'dnd':
-      // Acoustic Shield: Anel acústico com corte de frequência transversal (Ø em carmesim neon)
       return (
-        <svg
-          width={size}
-          height={size}
-          viewBox="0 0 24 24"
-          fill="none"
-          className={`status-glyph glyph-dnd ${className}`}
-          style={{
-            filter: withGlow ? 'drop-shadow(0 0 6px #ef4444)' : undefined,
-            ...style
-          }}
-        >
-          <circle cx="12" cy="12" r="8" stroke="#ef4444" strokeWidth="2.5" />
-          <line
-            x1="6.5"
-            y1="17.5"
-            x2="17.5"
-            y2="6.5"
-            stroke="#ef4444"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          />
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9" fill={color} />
+          <rect x="7.5" y="10.75" width="9" height="2.5" rx="1.25" fill="#fff" />
         </svg>
       )
 
-    case 'invisible':
-    case 'offline':
     default:
-      // Stealth Radar: Arco pontilhado de radar furtivo com núcleo camuflado em cinza
+      // Invisível / offline: só o contorno, sem preenchimento
       return (
-        <svg
-          width={size}
-          height={size}
-          viewBox="0 0 24 24"
-          fill="none"
-          className={`status-glyph glyph-invisible ${className}`}
-          style={{
-            filter: withGlow ? 'drop-shadow(0 0 4px #94a3b8)' : undefined,
-            ...style
-          }}
-        >
-          <path
-            d="M12 5C8.134 5 5 8.134 5 12C5 15.866 8.134 19 12 19C15.866 19 19 15.866 19 12"
-            stroke="#94a3b8"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeDasharray="2.5 3"
-          />
-          <circle cx="12" cy="12" r="2.5" fill="#94a3b8" />
+        <svg {...common}>
+          <circle cx="12" cy="12" r="8" stroke={color} strokeWidth="3" />
         </svg>
       )
   }

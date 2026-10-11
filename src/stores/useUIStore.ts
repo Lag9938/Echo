@@ -54,7 +54,7 @@ export interface UIState {
 
 export const useUIStore = create<UIState>((set) => ({
   page: 'Amigos',
-  theme: 'dark-theme',
+  theme: 'aurora-dark',
   topbarPinned: typeof window !== 'undefined' ? localStorage.getItem('echo-topbar-pinned') === 'true' : true,
   isTopbarVisible: true,
   presenceStatus: typeof window !== 'undefined' ? ((localStorage.getItem('echo-presence-status') as any) || 'online') : 'online',

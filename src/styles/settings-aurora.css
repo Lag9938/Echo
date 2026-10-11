@@ -1,0 +1,601 @@
+/* ==========================================================================
+   CONFIGURAÇÕES DO USUÁRIO — REDESIGN AURORA LIGHT
+   Aplica a atmosfera do Echo Aurora Light (papel pêssego, vidro fosco e acento coral)
+   nas abas de Perfil, Aparência, Voz/Áudio e na barra lateral de navegação.
+   Sobrescreve os seletores antigos com especificidade de tema (body.light-theme).
+   ========================================================================== */
+
+/* ── 1. NAVEGAÇÃO & PAINEL LATERAL DE CONFIGURAÇÕES ──────────────────────── */
+
+body.light-theme.echo-layout-glass .settings-workspace,
+body.light-theme .settings-workspace {
+  background: var(--aurora-mesh) !important;
+  background-attachment: fixed !important;
+}
+
+body.light-theme.echo-layout-glass .settings-sidebar,
+body.light-theme .settings-sidebar {
+  /* Painel de vidro solto com borda, canto e sombra, como as barras do servidor */
+  background: rgba(255, 255, 255, 0.5) !important;
+  height: auto !important;
+  align-self: stretch;
+  margin: 10px 0 10px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  border-radius: 26px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 #fff, 0 16px 44px rgba(42, 31, 45, 0.14) !important;
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+}
+
+body.light-theme.echo-layout-glass .settings-content,
+body.light-theme .settings-content {
+  /* Painel de vidro próprio, como o chat do servidor */
+  background: rgba(255, 255, 255, 0.38) !important;
+  height: auto !important;
+  align-self: stretch;
+  margin: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 26px;
+  overflow-y: auto;
+  box-shadow: inset 0 1px 0 #fff, 0 16px 44px rgba(42, 31, 45, 0.14);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+}
+
+/* Itens do menu da barra lateral */
+body.light-theme .settings-menu .menu-item {
+  color: var(--text-secondary) !important;
+  border-radius: 14px;
+  transition: all 0.16s ease;
+}
+
+body.light-theme .settings-menu .menu-item:hover {
+  background: rgba(255, 255, 255, 0.65) !important;
+  color: var(--text-primary) !important;
+  transform: translateX(2px);
+}
+
+body.light-theme .settings-menu .menu-item.active {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color)) !important;
+  color: #fff !important;
+  border: 0 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -8px color-mix(in srgb, var(--accent-color) 80%, transparent) !important;
+  text-shadow: none !important;
+}
+
+body.light-theme .settings-menu .menu-item.active svg {
+  color: #fff !important;
+}
+
+body.light-theme .settings-menu-category {
+  color: var(--text-muted) !important;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+body.light-theme .settings-sidebar .sidebar-header span {
+  color: var(--text-primary) !important;
+  font-weight: 800;
+}
+
+body.light-theme .settings-signout-btn {
+  background: rgba(239, 68, 68, 0.08) !important;
+  border: 1px solid rgba(239, 68, 68, 0.22) !important;
+  color: #ef4444 !important;
+  border-radius: 14px;
+}
+
+body.light-theme .settings-signout-btn:hover {
+  background: rgba(239, 68, 68, 0.18) !important;
+  color: #dc2626 !important;
+}
+
+/* ── 2. ABA MEU PERFIL (PROFILE TAB) ─────────────────────────────────────── */
+
+body.light-theme .echo-hero-showcase {
+  background: rgba(255, 255, 255, 0.74) !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 14px 36px -12px rgba(42, 31, 45, 0.18) !important;
+  border-radius: 26px !important;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
+body.light-theme .echo-hero-details .echo-hero-display-name {
+  color: var(--text-primary) !important;
+}
+
+body.light-theme .echo-hero-handle {
+  color: var(--text-muted) !important;
+}
+
+body.light-theme .echo-hero-bio-snippet {
+  color: var(--text-secondary) !important;
+}
+
+/* Cabeçalho do perfil: pronomes e bio legíveis, sem partículas sobre o texto */
+body.light-theme.echo-layout-glass .echo-hero-pronoun-tag {
+  background: rgba(74, 53, 49, 0.08) !important;
+  border: 1px solid rgba(74, 53, 49, 0.14) !important;
+  color: var(--text-secondary) !important;
+}
+body.light-theme.echo-layout-glass .echo-hero-display-name {
+  color: var(--text-primary) !important;
+}
+
+/* Insígnias e cartões de opção: vidro claro no lugar do cartão preto */
+body.light-theme.echo-layout-glass .echo-toggle-card,
+body.light-theme .echo-toggle-card,
+body.light-theme .echo-badge-choice-card {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid rgba(74, 53, 49, 0.1) !important;
+  box-shadow: inset 0 1px 0 #fff !important;
+}
+body.light-theme .echo-badge-choice-card:hover {
+  border-color: rgba(223, 109, 93, 0.4) !important;
+}
+body.light-theme .echo-badge-choice-card.active {
+  background: rgba(223, 109, 93, 0.1) !important;
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 3px rgba(223, 109, 93, 0.15) !important;
+}
+body.light-theme .echo-toggle-card-info strong,
+body.light-theme .echo-badge-choice-meta strong {
+  color: var(--text-primary) !important;
+}
+body.light-theme .echo-toggle-card-info span,
+body.light-theme .echo-badge-choice-meta span {
+  color: var(--text-secondary) !important;
+}
+body.light-theme .echo-badge-choice-meta span[style*="248, 113, 113"],
+body.light-theme .echo-badge-choice-meta span[style*="#f87171"] {
+  color: #b91c1c !important;
+}
+body.light-theme .echo-badge-crest-box {
+  background: rgba(74, 53, 49, 0.06) !important;
+  border-color: rgba(74, 53, 49, 0.14) !important;
+  box-shadow: none !important;
+}
+body.light-theme .echo-badge-crest-box[class*="crest-"] {
+  background: rgba(255, 255, 255, 0.8) !important;
+}
+body.light-theme .echo-badge-status-pill.unlocked {
+  background: rgba(34, 197, 94, 0.14) !important;
+  color: #15803d !important;
+  border-color: rgba(21, 128, 61, 0.35) !important;
+}
+body.light-theme .echo-badge-status-pill.locked {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #b91c1c !important;
+  border-color: rgba(185, 28, 28, 0.3) !important;
+}
+body.light-theme .echo-slider {
+  background: rgba(74, 53, 49, 0.18);
+}
+
+body.light-theme .echo-hero-status-quote {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  color: var(--text-primary) !important;
+  box-shadow: inset 0 1px 0 #fff !important;
+  border-radius: 12px;
+}
+
+body.light-theme .echo-hero-avatar-inner {
+  background: rgba(255, 255, 255, 0.85) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 6px 18px rgba(42, 31, 45, 0.12);
+}
+
+body.light-theme .profile-studio-header h2 {
+  color: var(--text-primary) !important;
+  font-weight: 800;
+}
+
+body.light-theme .profile-studio-header p {
+  color: var(--text-secondary) !important;
+}
+
+/* Cartões de campos e formulários de perfil */
+body.light-theme .profile-card,
+body.light-theme .profile-section-card,
+body.light-theme .profile-preview-card {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 10px 28px -12px rgba(42, 31, 45, 0.16) !important;
+  border-radius: 22px !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+body.light-theme .profile-input-text,
+body.light-theme .profile-input-textarea,
+body.light-theme .settings-container input[type="text"],
+body.light-theme .settings-container textarea {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  color: var(--text-primary) !important;
+  box-shadow: inset 0 1px 0 #fff !important;
+}
+
+body.light-theme .profile-input-text:focus,
+body.light-theme .settings-container input[type="text"]:focus,
+body.light-theme .settings-container textarea:focus {
+  background: #fff !important;
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 18%, transparent) !important;
+}
+
+body.light-theme .profile-saved-toast {
+  background: rgba(34, 197, 94, 0.14) !important;
+  border: 1px solid rgba(34, 197, 94, 0.4) !important;
+  color: #15803d !important;
+}
+
+/* ── 3. ABA APARÊNCIA (APPEARANCE TAB) ───────────────────────────────────── */
+
+body.light-theme .echo-glass-toggle-card,
+body.light-theme .echo-appearance-stage-wrapper,
+body.light-theme .echo-palette-card,
+body.light-theme .echo-density-card,
+body.light-theme .echo-performance-card {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 10px 28px -12px rgba(42, 31, 45, 0.16) !important;
+  border-radius: 24px !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Demonstração em tempo real: respiro dentro do cartão, cabeçalho que quebra linha e palco em vidro claro */
+.echo-appearance-stage-wrapper {
+  padding: 18px 20px 20px;
+  box-sizing: border-box;
+}
+.echo-stage-header-row {
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.echo-stage-title {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.echo-stage-badge {
+  max-width: 100%;
+  white-space: normal;
+}
+body.light-theme .echo-appearance-stage {
+  border: 1px solid rgba(74, 53, 49, 0.12) !important;
+  box-shadow: 0 14px 30px -16px rgba(42, 31, 45, 0.3) !important;
+  border-radius: 18px;
+}
+body.light-theme .echo-stage-window-topbar,
+body.light-theme .echo-stage-sidebar {
+  border-color: rgba(74, 53, 49, 0.08);
+}
+body.light-theme .echo-stage-user-bar,
+body.light-theme .echo-stage-input-bar {
+  background: rgba(74, 53, 49, 0.06);
+  border-color: rgba(74, 53, 49, 0.1);
+}
+body.light-theme .echo-stage-msg {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(74, 53, 49, 0.06);
+}
+body.light-theme .echo-stage-dot:nth-child(n+2) {
+  background: rgba(74, 53, 49, 0.18) !important;
+}
+
+/* Botões secundários do editor (Fazer Upload, Escolher do Computador): texto e borda do tema, não branco fixo */
+body.light-theme.echo-layout-glass .echo-btn-secondary,
+body.light-theme .echo-btn-secondary {
+  background: rgba(255, 255, 255, 0.75) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid rgba(74, 53, 49, 0.16) !important;
+  box-shadow: inset 0 1px 0 #fff !important;
+}
+body.light-theme .echo-btn-secondary:hover:not(:disabled) {
+  background: #fff !important;
+  border-color: rgba(223, 109, 93, 0.5) !important;
+  color: var(--accent-color) !important;
+}
+
+/* Redes sociais do perfil: cada campo é uma única pílula (fundo e borda do tema), com o campo transparente dentro */
+.echo-socials-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+body.echo-layout-glass .echo-social-input-field,
+.echo-social-input-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 9px 14px;
+  border-radius: 14px !important;
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent) !important;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+body.echo-layout-glass .echo-social-input-field:focus-within {
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 18%, transparent);
+}
+body.echo-layout-glass .echo-social-input-field .echo-text-input,
+body.echo-layout-glass .echo-social-input-field .echo-text-input:focus {
+  flex: 1;
+  min-width: 0;
+  padding: 0 !important;
+  font-size: 12.5px;
+  color: var(--text-primary) !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: none;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.echo-social-input-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.echo-social-input-icon.is-steam { color: #607d8b; }
+.echo-social-input-icon.is-twitch { color: #9146ff; }
+.echo-social-input-icon.is-youtube { color: #ef4444; }
+.echo-social-input-icon.is-kick { color: #16a34a; }
+
+/* Dock de Seleção de Temas */
+.echo-themes-dock {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+body.light-theme .echo-theme-btn {
+  background: rgba(255, 255, 255, 0.75) !important;
+  border: 1.5px solid rgba(74, 53, 49, 0.1) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 4px 14px -6px rgba(42, 31, 45, 0.1) !important;
+  border-radius: 18px !important;
+  padding: 10px 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  cursor: pointer !important;
+  transition: all 0.18s ease !important;
+  text-align: left !important;
+}
+
+body.light-theme .echo-theme-btn:hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(223, 109, 93, 0.45) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -8px rgba(42, 31, 45, 0.18) !important;
+}
+
+body.light-theme .echo-theme-btn.selected {
+  background: #fff !important;
+  border-color: #df6d5d !important;
+  box-shadow: 0 0 0 2px rgba(223, 109, 93, 0.35), 0 8px 20px -8px rgba(223, 109, 93, 0.3) !important;
+}
+
+/* Amostra Visual do Tema (Swatch Box) — Cantos suaves e sem blocos pretos duros */
+.echo-theme-swatch-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(74, 53, 49, 0.12);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.echo-theme-accent-pip {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.echo-theme-btn-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+body.light-theme .echo-theme-btn-name {
+  color: var(--text-primary, #2d2424) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.echo-theme-btn-tag {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  width: fit-content;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.echo-theme-btn-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+body.light-theme .echo-switch-btn.active {
+  background: var(--accent-color, #df6d5d) !important;
+}
+
+/* ── 4. ABA VOZ E ÁUDIO (AUDIO & VIDEO TAB) ──────────────────────────────── */
+
+body.light-theme .echo-audio-card,
+body.light-theme .echo-transmit-card,
+body.light-theme .echo-filter-item,
+body.light-theme .echo-clean-vu-box,
+body.light-theme .mic-test-panel {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 10px 28px -12px rgba(42, 31, 45, 0.16) !important;
+  border-radius: 22px !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+body.light-theme .echo-audio-select {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  color: var(--text-primary) !important;
+  box-shadow: inset 0 1px 0 #fff !important;
+  border-radius: 14px !important;
+}
+
+body.light-theme .echo-audio-select:focus {
+  border-color: var(--accent-color) !important;
+  background: #fff !important;
+}
+
+body.light-theme .echo-transmit-card.selected {
+  background: rgba(223, 109, 93, 0.12) !important;
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 1px var(--accent-color), 0 4px 16px rgba(223, 109, 93, 0.2) !important;
+}
+
+body.light-theme .echo-transmit-card:hover {
+  background: rgba(255, 255, 255, 0.88) !important;
+}
+
+/* Botão de Teste de Microfone — Pill Aurora suave e acolhedor */
+.mic-test-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  border: 0;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+
+body.light-theme .mic-test-btn,
+.mic-test-btn {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #fff !important;
+  border-radius: 999px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -8px rgba(223, 109, 93, 0.6) !important;
+}
+
+body.light-theme .mic-test-btn:hover,
+.mic-test-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+}
+
+body.light-theme .mic-test-btn.testing,
+.mic-test-btn.testing {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  box-shadow: 0 8px 20px -8px rgba(239, 68, 68, 0.6) !important;
+}
+
+.mic-test-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+}
+
+body.light-theme .echo-vu-track {
+  background: rgba(42, 31, 45, 0.08) !important;
+  border: 1px solid rgba(42, 31, 45, 0.12) !important;
+}
+
+/* Card de Teclas de Atalho Globais (In-Game) */
+.echo-audio-hotkeys-card {
+  margin-top: 18px;
+  padding: 18px 24px;
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  transition: all 0.2s ease;
+}
+
+body.light-theme .echo-audio-hotkeys-card {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 10px 28px -12px rgba(42, 31, 45, 0.16) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.echo-audio-hotkeys-title {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.echo-audio-hotkeys-desc {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.echo-audio-hotkeys-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(223, 109, 93, 0.14);
+  color: var(--accent-color, #df6d5d);
+  border: 1px solid rgba(223, 109, 93, 0.3);
+}
+
+.echo-audio-hotkeys-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  border: 0;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+
+body.light-theme .echo-audio-hotkeys-btn {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #fff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 18px -6px rgba(223, 109, 93, 0.5) !important;
+}
+
+body.light-theme .echo-audio-hotkeys-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+}
+

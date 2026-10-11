@@ -28,3 +28,49 @@
 @import './styles/modals.css';
 @import './styles/music-bot.css';
 @import './styles/member-audio.css';
+
+/* 6. Seletor de status (depois de voice.css, para ganhar dos estilos antigos) */
+@import './styles/status-picker.css';
+
+/* Seletor de figurinhas redesenhado (depois de chat.css e settings) */
+@import './styles/sticker-picker.css';
+
+/* Configurações do espaço (depois de space-studio.css e calls.css) */
+@import './styles/space-studio-home.css';
+
+/* Janelas de convite e de adicionar amigo */
+@import './styles/invite-modals.css';
+
+/* Soundboard redesenhado */
+@import './styles/soundboard.css';
+
+/* Aba de amigos redesenhada (depois de friends.css) */
+@import './styles/friends-home.css';
+
+/* Recolher a barra de canais */
+@import './styles/channels-collapse.css';
+
+/* Ações da mensagem (responder, reagir, mais) */
+@import './styles/message-actions.css';
+
+/* Janelas que espiam ao passar o mouse (membros e chat da chamada) */
+@import './styles/hover-peek.css';
+
+/* Loja de cosméticos e inventário redesenhados (depois de effects.css e calls.css) */
+@import './styles/shop-inventory.css';
+
+/* Configurações do usuário redesenhadas (depois de settings.css) */
+@import './styles/settings-aurora.css';
+
+/* Perfil de membro redesenhado em vidro Aurora */
+@import './styles/member-profile.css';
+
+/* Sala de voz, transmissão e grade de participantes redesenhadas */
+@import './styles/voice-aurora.css';
+
+/* 7. Temas que sobrescrevem os demais (sempre por último) */
+@import './styles/aurora.css';
+@import './styles/aurora-dark.css';
+@import './styles/aurora-dark-overrides.css';
+
+

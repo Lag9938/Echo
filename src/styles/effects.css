@@ -919,29 +919,39 @@
 .echo-shop-card-badge {
   position: absolute;
   top: 10px;
-  right: 10px;
+  left: 10px;
+  right: auto;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.6px;
   padding: 3px 8px;
-  border-radius: 8px;
+  border-radius: 999px;
   color: #fff;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
   z-index: 3;
+  width: fit-content;
+  max-width: calc(50% - 14px);
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 .echo-shop-owned-badge {
   position: absolute;
   top: 10px;
-  left: 10px;
+  right: 10px;
+  left: auto;
   font-size: 9.5px;
   font-weight: 700;
   background: rgba(34, 197, 94, 0.16);
   color: #4ade80;
   border: 1px solid rgba(34, 197, 94, 0.4);
   padding: 2px 7px;
-  border-radius: 6px;
+  border-radius: 999px;
   z-index: 4;
+  width: fit-content;
+  max-width: calc(50% - 14px);
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 .echo-shop-card-content {
   padding: 16px;
@@ -1451,19 +1461,9 @@ body.echo-layout-glass .echo-shop-card-visualizer {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* Light Theme in Glass Layout */
-body.light-theme.echo-layout-glass .echo-shop-main-tabs,
-body.light-theme.echo-layout-glass .echo-shop-showcase-card,
-body.light-theme.echo-layout-glass .echo-shop-card {
-  background: rgba(255, 255, 255, 0.72) !important;
-  border-color: rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
-  color: #0f172a !important;
-}
-
-body.light-theme.echo-layout-glass .echo-shop-card-visualizer {
-  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.03) 0%, rgba(0, 0, 0, 0.08) 100%);
-  border-bottom-color: rgba(0, 0, 0, 0.06);
+/* Tema claro da loja e inventário são gerenciados com fidelidade no Aurora (shop-inventory.css / aurora.css) */
+body.light-theme.echo-layout-glass .echo-shop-showcase-card::before {
+  display: none !important;
 }
 
 /* Performance Mode (Opaque) */

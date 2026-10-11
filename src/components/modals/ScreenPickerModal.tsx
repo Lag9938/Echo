@@ -160,19 +160,8 @@ export function ScreenPickerModal({
         </div>
 
         {screenPickerTab === 'windows' && (
-          <div className="picker-game-fullscreen-hint" style={{
-            margin: '0 0 12px 0',
-            padding: '8px 12px',
-            background: 'rgba(56, 189, 248, 0.08)',
-            border: '1px solid rgba(56, 189, 248, 0.2)',
-            borderRadius: '8px',
-            fontSize: '12px',
-            color: 'var(--text-secondary)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <span style={{ fontSize: '14px' }}>💡</span>
+          <div className="picker-game-fullscreen-hint">
+            <span className="picker-hint-emoji">💡</span>
             <span>
               <strong>Não encontrou o jogo?</strong> Jogos em Tela Cheia Exclusiva (como PES / eFootball, CS2, etc.) devem ser transmitidos selecionando a aba <strong>Telas Inteiras (Monitores)</strong> ou ativando <em>Modo Janela Sem Bordas</em> nas opções do jogo.
             </span>
@@ -199,7 +188,7 @@ export function ScreenPickerModal({
                   }}
                   onDoubleClick={() => selectScreenSource(source.id)}
                 >
-                  <div className="source-card-thumb-wrap" style={{ position: 'relative' }}>
+                  <div className="source-card-thumb-wrap">
                     {source.thumbnail ? (
                       <img src={source.thumbnail} alt={source.name} className="source-thumb-img" />
                     ) : source.appIcon ? (
@@ -270,10 +259,10 @@ export function ScreenPickerModal({
           </div>
 
           <div className="picker-quality-col">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+            <div className="picker-quality-col-header">
               <span className="picker-section-label">TAXA DE QUADROS</span>
               {!is60Allowed && (
-                <span style={{ fontSize: '10.5px', color: '#fca5a5', fontWeight: 600 }}>
+                <span className="picker-quality-warning">
                   🔒 60 FPS restrito a Jogos e Telas
                 </span>
               )}
@@ -292,13 +281,12 @@ export function ScreenPickerModal({
                       if (!isLocked) setScreenFps(f)
                     }}
                     title={isLocked ? "60 FPS liberado apenas para Jogos e Telas Inteiras (economiza recursos do sistema em navegadores e planilhas)" : undefined}
-                    style={isLocked ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
                   >
                     {is60 ? (
                       <>
                         <ColoredLightningIcon size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} /> 60 FPS
                         {isLocked && (
-                          <span style={{ marginLeft: 5, fontSize: '9px', opacity: 0.8, textTransform: 'uppercase' }}>
+                          <span className="picker-chip-badge-locked">
                             Jogos/Telas
                           </span>
                         )}
@@ -327,7 +315,7 @@ export function ScreenPickerModal({
           </label>
         )}
 
-        <div className="screen-picker-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="screen-picker-footer">
           <button type="button" className="picker-close-btn" onClick={onClose}>
             Cancelar
           </button>

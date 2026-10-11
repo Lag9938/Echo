@@ -16,6 +16,7 @@ import {
 import { useUIStore } from '../stores/useUIStore'
 import { useSpacesStore } from '../stores/useSpacesStore'
 import { CreateGroupChatModal } from '../components/modals/CreateGroupChatModal'
+import { AddFriendModal } from '../components/modals/AddFriendModal'
 import { DMConversation } from './friends/DMConversation'
 import { GroupConversation } from './friends/GroupConversation'
 import { FriendsList } from './friends/FriendsList'
@@ -223,6 +224,15 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
   // Stickers & Groups Modal States
   const [showDMStickerPicker, setShowDMStickerPicker] = useState(false)
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false)
+  // "Adicionar amigo" abre numa janela (como convidar para um espaço). Quem pede a aba 'add' por outro
+  // caminho (botões das telas vazias, atalhos) também cai na janela, e a aba volta para onde estava.
+  const [showAddFriendModal, setShowAddFriendModal] = useState(false)
+  useEffect(() => {
+    if (friendTab === 'add') {
+      setShowAddFriendModal(true)
+      setFriendTab('online')
+    }
+  }, [friendTab, setFriendTab])
 
   const removePendingDMImage = useCallback(() => {
     setPendingDMPastedFile(null)
@@ -569,94 +579,49 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
             className="sidebar-collapse-btn"
             onClick={() => setShowSidebar(false)}
             title="Ocultar barra de conversas"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              padding: '6px',
-              borderRadius: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              flexShrink: 0
-            }}
           >
             <PanelLeftCloseIcon style={{ width: '15px', height: '15px' }} />
           </button>
         </div>
 
         {/* Busca Rápida de Conversas */}
-        <div style={{ padding: '6px 10px 4px 10px' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: 'var(--bg-tertiary)',
-            padding: '5px 8px',
-            borderRadius: '6px',
-            border: '1px solid var(--border-color)'
-          }}>
-            <SearchIcon style={{ width: '13px', height: '13px', color: 'var(--text-muted)', flexShrink: 0 }} />
-            <input
-              type="text"
-              placeholder="Buscar conversa..."
-              value={dmSearchQuery}
-              onChange={e => setDmSearchQuery(e.target.value)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                outline: 'none',
-                color: 'var(--text-primary)',
-                fontSize: '12px',
-                width: '100%'
-              }}
-            />
-            {dmSearchQuery && (
-              <button
-                type="button"
-                onClick={() => setDmSearchQuery('')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  padding: '0 2px'
-                }}
-              >
-                ✕
-              </button>
-            )}
-          </div>
+        <div className="dm-search">
+          <SearchIcon className="dm-search-icon" style={{ width: '14px', height: '14px' }} />
+          <input
+            type="text"
+            className="dm-search-input"
+            placeholder="Buscar conversa..."
+            value={dmSearchQuery}
+            onChange={e => setDmSearchQuery(e.target.value)}
+          />
+          {dmSearchQuery && (
+            <button
+              type="button"
+              className="dm-search-clear"
+              onClick={() => setDmSearchQuery('')}
+              title="Limpar busca"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         {/* Lista de Conversas com Scroll */}
         <div className="friends-sidebar-scrollable" style={{ flex: 1, overflowY: 'auto', padding: '4px 6px 12px 6px' }}>
           {/* Seção: Grupos */}
-          <div className="dm-section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 4px 8px' }}>
+          <div className="dm-section-header">
             <span>Grupos</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
-                {groupChats.length}
-              </span>
+            <div className="dm-section-tools">
+              <span className="dm-section-count">{groupChats.length}</span>
               {onCreateGroupChat && (
                 <button
                   type="button"
+                  className="dm-section-add"
                   onClick={(e) => {
                     e.stopPropagation()
                     setShowCreateGroupModal(true)
                   }}
                   title="Criar novo grupo"
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--accent-color, #00f2fe)',
-                    cursor: 'pointer',
-                    padding: '2px 4px',
-                    borderRadius: '4px',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
                 >
                   <PlusIcon style={{ width: '13px', height: '13px' }} />
                 </button>
@@ -705,7 +670,7 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
                       <span className="dm-item-name">{group.name}</span>
                       <span className="dm-item-sub">
                         {typingUsers.length > 0 ? (
-                          <span style={{ color: '#00f2fe', fontWeight: 600 }}>Digitando...</span>
+                          <span className="dm-typing">Digitando...</span>
                         ) : (
                           `${group.members?.length || 0} membros`
                         )}
@@ -722,11 +687,9 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
           )}
 
           {/* Título da Seção: Mensagens Diretas */}
-          <div className="dm-section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 4px 8px' }}>
+          <div className="dm-section-header">
             <span>Mensagens Diretas</span>
-            <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
-              {filteredDMConversations.length}
-            </span>
+            <span className="dm-section-count">{filteredDMConversations.length}</span>
           </div>
           {filteredDMConversations.length > 0 ? (
             <div className="dm-sidebar-list">
@@ -766,7 +729,7 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
                       </div>
                       <span className="dm-item-sub">
                         {isFriendTyping && isSelected ? (
-                          <span style={{ color: '#00f2fe', fontWeight: 600 }}>Digitando...</span>
+                          <span className="dm-typing">Digitando...</span>
                         ) : conv.activeGame ? (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                             <GameLogo gameName={conv.activeGame} size={13} />
@@ -903,26 +866,30 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
           {/* Top Navigation Bar */}
           <div className="friends-header-toolbar">
             <div className="friends-header-nav-left">
-              <button 
-                type="button" 
-                className={`friends-sidebar-toggle-btn ${showSidebar ? 'active' : 'collapsed'}`} 
-                onClick={() => setShowSidebar(prev => !prev)}
-                title={showSidebar ? "Ocultar barra lateral de atividades" : "Mostrar barra lateral de atividades"}
-              >
-                <PanelLeftIcon style={{ width: '16px', height: '16px' }} />
-                {!showSidebar && activeFeedFriends.length > 0 && (
-                  <span className="toggle-live-dot" title={`${activeFeedFriends.length} amigo(s) com atividade ao vivo`} />
-                )}
-              </button>
+              {/* Com a barra visível, ela mesma tem o botão de recolher; este só aparece para trazê-la de volta
+                  (antes os dois botões ficavam à vista ao mesmo tempo, fazendo a mesma coisa) */}
+              {!showSidebar && (
+                <button
+                  type="button"
+                  className="friends-sidebar-toggle-btn collapsed"
+                  onClick={() => setShowSidebar(true)}
+                  title="Mostrar a barra de conversas"
+                >
+                  <PanelLeftIcon style={{ width: '16px', height: '16px' }} />
+                  {activeFeedFriends.length > 0 && (
+                    <span className="toggle-live-dot" title={`${activeFeedFriends.length} amigo(s) com atividade ao vivo`} />
+                  )}
+                </button>
+              )}
 
               <div className="friends-header-brand-title">
                 <UsersIcon style={{ width: '18px', height: '18px', color: 'var(--accent-color)' }} />
                 <span>Amigos</span>
               </div>
 
-              <div className="friends-header-divider" />
+            </div>
 
-              <div className="friends-header-tabs">
+            <div className="friends-header-tabs" role="tablist" aria-label="Filtrar amigos">
                 <button 
                   type="button" 
                   className={`friends-tab-pill ${friendTab === 'online' ? 'active' : ''}`}
@@ -950,19 +917,11 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
                   {pendingRequests.length > 0 && <span className="tab-pill-badge pending">{pendingRequests.length}</span>}
                 </button>
 
-                <button 
-                  type="button" 
-                  className={`friends-tab-pill add-friend ${friendTab === 'add' ? 'active' : ''}`}
-                  onClick={() => setFriendTab('add')}
-                >
-                  <PlusIcon style={{ width: '13px', height: '13px' }} />
-                  <span>Adicionar Amigo</span>
-                </button>
               </div>
-            </div>
 
+            <div className="friends-header-right">
             <div className="friends-search-row">
-              <SearchIcon style={{ width: '14px', height: '14px', color: '#00f2fe', flexShrink: 0 }} />
+              <SearchIcon className="friends-search-icon" style={{ width: '14px', height: '14px', flexShrink: 0 }} />
               <input 
                 ref={friendsSearchRef}
                 type="text" 
@@ -990,6 +949,16 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
                   Ctrl K
                 </span>
               )}
+            </div>
+
+            <button
+              type="button"
+              className={`friends-add-btn ${showAddFriendModal ? 'active' : ''}`}
+              onClick={() => setShowAddFriendModal(true)}
+            >
+              <PlusIcon style={{ width: '14px', height: '14px' }} />
+              <span>Adicionar amigo</span>
+            </button>
             </div>
           </div>
 
@@ -1028,6 +997,19 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
             />
           )}
         </section>
+      )}
+
+      {showAddFriendModal && (
+        <AddFriendModal
+          onClose={() => setShowAddFriendModal(false)}
+          profileDisplayName={profileDisplayName}
+          copyFriendLink={copyFriendLink}
+          friendSearchQuery={friendSearchQuery}
+          setFriendSearchQuery={setFriendSearchQuery}
+          sendFriendRequest={sendFriendRequest}
+          friendSearchNotice={friendSearchNotice}
+          suggestedMembers={suggestedMembers}
+        />
       )}
 
       {showCreateGroupModal && onCreateGroupChat && (

@@ -54,6 +54,10 @@ export interface MembersSidebarProps {
   setInspectedMember: (val: any) => void
   setHoveredMemberPopover: (val: any) => void
   hoverTimeoutRef: React.MutableRefObject<any>
+  /** Aberta só porque o mouse está no botão de membros (espiada): flutua sobre o chat e não empurra nada */
+  isPeek?: boolean
+  onPeekEnter?: () => void
+  onPeekLeave?: () => void
 }
 
 const MembersSidebarInner = React.memo(function MembersSidebarInner({
@@ -76,7 +80,10 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
   setSpaceForAddMembers,
   setInspectedMember,
   setHoveredMemberPopover,
-  hoverTimeoutRef
+  hoverTimeoutRef,
+  isPeek = false,
+  onPeekEnter,
+  onPeekLeave
 }: Omit<MembersSidebarProps, 'isVisible' | 'spaceMembers' | 'spaceChannels' | 'spaceVoiceUsers'> & {
   currentSpace: NonNullable<MembersSidebarProps['currentSpace']>
   spaceMembers: any[]
@@ -466,7 +473,11 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
   const totalFiltered = filteredCreator.length + filteredBuckets.reduce((acc, b) => acc + b.members.length, 0) + filteredUnassigned.length + filteredOffline.length
 
   return (
-    <aside className="members-sidebar">
+    <aside
+      className={`members-sidebar${isPeek ? ' is-peek' : ''}`}
+      onMouseEnter={onPeekEnter}
+      onMouseLeave={onPeekLeave}
+    >
       {/* Sleek Top Header with Count, Search & Invite */}
       <div className="members-sidebar-top">
         <div className="members-sidebar-top-header">

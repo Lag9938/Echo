@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { EchoAtomLogo } from '../icons'
+import { CheckIcon, DownloadIcon, EchoAtomLogo } from '../icons'
 
 export interface UpdateBannerProps {
   updateStatus: 'idle' | 'downloading' | 'ready' | string
@@ -18,20 +18,41 @@ export function UpdateBanner({ updateStatus, updateVersion, updateProgress, onRe
     onRestart()
   }
 
+  const percent = Math.max(0, Math.min(100, Math.round(updateProgress || 0)))
+
   return (
     <>
       {updateStatus !== 'idle' && !isApplying && (
-        <div className="update-banner">
+        <div className={`update-banner ${updateStatus === 'ready' ? 'is-ready' : 'is-downloading'}`} role="status" aria-live="polite">
+          <div className="update-banner-icon" aria-hidden="true">
+            {updateStatus === 'downloading' ? (
+              <>
+                <span className="update-banner-ring" />
+                <DownloadIcon style={{ width: 16, height: 16 }} />
+              </>
+            ) : (
+              <CheckIcon style={{ width: 16, height: 16 }} />
+            )}
+          </div>
+
           {updateStatus === 'downloading' ? (
-            <>
-              <span>⬇️ Baixando atualização v{updateVersion}... {updateProgress}%</span>
-              <div className="update-progress-bar">
-                <div className="update-progress-fill" style={{ width: `${updateProgress}%` }} />
+            <div className="update-banner-body">
+              <div className="update-banner-line">
+                <strong>Baixando a versão {updateVersion}</strong>
+                <span className="update-banner-percent">{percent}%</span>
               </div>
-            </>
+              <div className="update-progress-bar">
+                <div className="update-progress-fill" style={{ width: `${Math.max(percent, 4)}%` }} />
+              </div>
+            </div>
           ) : (
             <>
-              <span>✅ Nova versão v{updateVersion} pronta!</span>
+              <div className="update-banner-body">
+                <div className="update-banner-line">
+                  <strong>Nova versão {updateVersion} pronta</strong>
+                </div>
+                <span className="update-banner-sub">Reinicie o Echo para usar as novidades.</span>
+              </div>
               <button className="update-restart-btn" onClick={handleRestart}>
                 Reiniciar para atualizar
               </button>
@@ -43,13 +64,17 @@ export function UpdateBanner({ updateStatus, updateVersion, updateProgress, onRe
       {isApplying && (
         <div className="update-applying-overlay">
           <div className="update-applying-modal">
-            <div className="brand-mark-atom" style={{ width: 44, height: 44, margin: '0 auto' }}>
+            <div className="update-applying-orbit" aria-hidden="true">
+              <span className="update-applying-ring" />
+              <span className="update-applying-ring is-outer" />
               <EchoAtomLogo size={34} />
             </div>
             <h3>Atualizando o Echo</h3>
-            <p>Aplicando a versão v{updateVersion} em segundo plano…</p>
-            <div className="loader" />
-            <span>O aplicativo reiniciará automaticamente em instantes.</span>
+            <p>Aplicando a versão {updateVersion} em segundo plano…</p>
+            <div className="update-applying-track" aria-hidden="true">
+              <span className="update-applying-bar" />
+            </div>
+            <span className="update-applying-note">O aplicativo reinicia sozinho em instantes.</span>
           </div>
         </div>
       )}

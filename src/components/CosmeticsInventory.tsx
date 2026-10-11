@@ -13,15 +13,6 @@ import { DecoratedAvatar } from './DecoratedAvatar'
 import { ProfileEffect } from './ProfileEffect'
 import { AvatarDecoration } from './AvatarDecoration'
 import { StatusGlyph } from './StatusGlyph'
-import {
-  ColoredBackpackIcon,
-  ColoredShopBagIcon,
-  ColoredMaskIcon,
-  ColoredSparklesIcon,
-  ColoredLightningIcon,
-  ColoredGemIcon,
-  ColoredSoundwaveIcon
-} from './ColoredIcons'
 
 export interface CosmeticsInventoryProps {
   userId: string
@@ -177,113 +168,134 @@ export function CosmeticsInventory({
       {/* Toast Feedback */}
       {toastMessage && (
         <div className="echo-inventory-toast">
-          <ColoredSparklesIcon size={16} />
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#38bdf8' }}>
+            <path d="m12 3 1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5Z" />
+          </svg>
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Modern Header Bar */}
+      {/* Linear / Apple Glass Header & Segmented Nav */}
       <div className="echo-inventory-header-card">
-        <div className="echo-inventory-header-left">
-          <div className="echo-inventory-icon-bubble">
-            <ColoredBackpackIcon size={28} />
-          </div>
-          <div>
-            <div className="echo-inventory-badge-row">
-              <span className="echo-inventory-badge-tag">INVENTÁRIO DO JOGADOR</span>
-              <span className="echo-inventory-free-pill">COSMÉTICOS DESBLOQUEADOS</span>
-            </div>
+        <div className="echo-inventory-header-top">
+          <div className="echo-inventory-header-text">
             <h1 className="echo-inventory-title">Inventário & Cosméticos</h1>
             <p className="echo-inventory-desc">
-              Personalize seu avatar, auras e reflexos. Clique em qualquer item para testar no provador ao vivo à esquerda.
+              Gerencie o visual do seu perfil pessoal e decorações desbloqueadas.
             </p>
           </div>
-        </div>
-
-        <button
-          type="button"
-          className="echo-inventory-shop-btn"
-          onClick={handleOpenStore}
-          title="Abrir Loja de Cosméticos"
-        >
-          <ColoredShopBagIcon size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-          <span>Explorar Loja Echo</span>
-        </button>
-      </div>
-
-      {/* Tabs Navigation & Filters */}
-      <div className="echo-inventory-nav-bar">
-        <div className="echo-inventory-tabs">
-          <button
-            type="button"
-            className={`echo-inv-tab ${activeTab === 'decorations' ? 'active' : ''}`}
-            onClick={() => setActiveTab('decorations')}
-          >
-            <span className="echo-inv-tab-icon"><ColoredMaskIcon size={16} /></span>
-            <span>Decorações de Avatar</span>
-            <span className="echo-inv-tab-count">
-              {ownedCounts.decorations}/{AVATAR_DECORATIONS.length}
-            </span>
-          </button>
 
           <button
             type="button"
-            className={`echo-inv-tab ${activeTab === 'effects' ? 'active' : ''}`}
-            onClick={() => setActiveTab('effects')}
+            className="echo-inventory-shop-btn"
+            onClick={handleOpenStore}
+            title="Abrir Loja de Cosméticos"
           >
-            <span className="echo-inv-tab-icon"><ColoredSparklesIcon size={16} /></span>
-            <span>Efeitos de Perfil</span>
-            <span className="echo-inv-tab-count">
-              {ownedCounts.effects}/{PROFILE_EFFECTS.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            className={`echo-inv-tab ${activeTab === 'name_effects' ? 'active' : ''}`}
-            onClick={() => setActiveTab('name_effects')}
-          >
-            <span className="echo-inv-tab-icon"><ColoredSoundwaveIcon size={16} /></span>
-            <span>Efeitos de Nome & Auras</span>
-            <span className="echo-inv-tab-count">
-              {ownedCounts.name_effects}/{NAME_EFFECTS.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            className={`echo-inv-tab ${activeTab === 'auras' ? 'active' : ''}`}
-            onClick={() => setActiveTab('auras')}
-          >
-            <span className="echo-inv-tab-icon"><ColoredLightningIcon size={16} /></span>
-            <span>Molduras & Auras Neon</span>
-            <span className="echo-inv-tab-count">
-              {ownedCounts.auras}/{NEON_AURAS.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            className={`echo-inv-tab ${activeTab === 'finishes' ? 'active' : ''}`}
-            onClick={() => setActiveTab('finishes')}
-          >
-            <span className="echo-inv-tab-icon"><ColoredGemIcon size={16} /></span>
-            <span>Acabamentos de Cartão</span>
-            <span className="echo-inv-tab-count">
-              {ownedCounts.finishes}/{CARD_FINISHES.length}
-            </span>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+              <path d="M3 6h18" />
+              <path d="M16 10a4 4 0 0 1-8 0" />
+            </svg>
+            <span>Loja Echo</span>
           </button>
         </div>
 
-        <div className="echo-inventory-filter-toggle">
-          <label className="echo-inv-checkbox-label">
-            <input
-              type="checkbox"
-              checked={filterOnlyAcquired}
-              onChange={(e) => setFilterOnlyAcquired(e.target.checked)}
-            />
-            <span>Apenas Itens Adquiridos</span>
-          </label>
+        {/* Recessed Frosted Segmented Track */}
+        <div className="echo-inventory-nav-bar">
+          <div className="echo-inventory-tabs">
+            <button
+              type="button"
+              className={`echo-inv-tab ${activeTab === 'decorations' ? 'active' : ''}`}
+              onClick={() => setActiveTab('decorations')}
+            >
+              <svg className="echo-inv-tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M9 10h.01" />
+                <path d="M15 10h.01" />
+                <path d="M8 15s1.5 2 4 2 4-2 4-2" />
+              </svg>
+              <span>Avatar</span>
+              <span className="echo-inv-tab-count">
+                {ownedCounts.decorations}/{AVATAR_DECORATIONS.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className={`echo-inv-tab ${activeTab === 'effects' ? 'active' : ''}`}
+              onClick={() => setActiveTab('effects')}
+            >
+              <svg className="echo-inv-tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m12 3 1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5Z" />
+              </svg>
+              <span>Efeitos</span>
+              <span className="echo-inv-tab-count">
+                {ownedCounts.effects}/{PROFILE_EFFECTS.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className={`echo-inv-tab ${activeTab === 'name_effects' ? 'active' : ''}`}
+              onClick={() => setActiveTab('name_effects')}
+            >
+              <svg className="echo-inv-tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 10v4M6 7v10M10 4v16M14 7v10M18 10v4" />
+              </svg>
+              <span>Nome</span>
+              <span className="echo-inv-tab-count">
+                {ownedCounts.name_effects}/{NAME_EFFECTS.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className={`echo-inv-tab ${activeTab === 'auras' ? 'active' : ''}`}
+              onClick={() => setActiveTab('auras')}
+            >
+              <svg className="echo-inv-tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 20 7 20 17 12 22 4 17 4 7 12 2" />
+              </svg>
+              <span>Auras</span>
+              <span className="echo-inv-tab-count">
+                {ownedCounts.auras}/{NEON_AURAS.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className={`echo-inv-tab ${activeTab === 'finishes' ? 'active' : ''}`}
+              onClick={() => setActiveTab('finishes')}
+            >
+              <svg className="echo-inv-tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="18" height="14" x="3" y="5" rx="2" />
+              </svg>
+              <span>Cartão</span>
+              <span className="echo-inv-tab-count">
+                {ownedCounts.finishes}/{CARD_FINISHES.length}
+              </span>
+            </button>
+          </div>
+
+          <div className="echo-inventory-filter-toggle">
+            <button
+              type="button"
+              className="echo-inv-checkbox-btn"
+              onClick={() => setFilterOnlyAcquired(prev => !prev)}
+              title="Filtrar itens adquiridos"
+            >
+              <span className={`echo-custom-checkbox ${filterOnlyAcquired ? 'checked' : ''}`}>
+                {filterOnlyAcquired && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </span>
+              <span className={`echo-inv-checkbox-text ${filterOnlyAcquired ? 'checked' : ''}`}>
+                Apenas Adquiridos
+              </span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -367,12 +379,6 @@ export function CosmeticsInventory({
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* 3D Holographic Pedestal Platform Base */}
-            <div className="echo-stage-pedestal-platform">
-              <span className="pedestal-disc" />
-              <span className="pedestal-glow" />
             </div>
 
             {/* Stage Controls */}

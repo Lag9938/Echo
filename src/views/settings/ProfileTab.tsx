@@ -91,8 +91,6 @@ export const ProfileTab = memo(function ProfileTab({
   
   // Advanced Profile Appearance states
   const [localCardFinish, setLocalCardFinish] = useState<'none' | 'holographic' | 'glass' | 'carbon'>(() => (localStorage.getItem(`echo-card-finish-${userId}`) as any) || 'none')
-  const [localClanTag, setLocalClanTag] = useState(() => localStorage.getItem(`echo-clan-tag-${userId}`) || '')
-  const [localClanTagColor, setLocalClanTagColor] = useState(() => localStorage.getItem(`echo-clan-tag-color-${userId}`) || '#00f2fe')
   const [localSocialSteam, setLocalSocialSteam] = useState(() => localStorage.getItem(`echo-social-steam-${userId}`) || '')
   const [localSocialTwitch, setLocalSocialTwitch] = useState(() => localStorage.getItem(`echo-social-twitch-${userId}`) || '')
   const [localSocialYoutube, setLocalSocialYoutube] = useState(() => localStorage.getItem(`echo-social-youtube-${userId}`) || '')
@@ -217,8 +215,6 @@ export const ProfileTab = memo(function ProfileTab({
     presenceStatus: appPresence,
     showBadge: localStorage.getItem(`echo-show-badge-${userId}`) !== 'false',
     cardFinish: (localStorage.getItem(`echo-card-finish-${userId}`) as any) || 'none',
-    clanTag: localStorage.getItem(`echo-clan-tag-${userId}`) || '',
-    clanTagColor: localStorage.getItem(`echo-clan-tag-color-${userId}`) || '#00f2fe',
     socialSteam: localStorage.getItem(`echo-social-steam-${userId}`) || '',
     socialTwitch: localStorage.getItem(`echo-social-twitch-${userId}`) || '',
     socialYoutube: localStorage.getItem(`echo-social-youtube-${userId}`) || '',
@@ -244,8 +240,6 @@ export const ProfileTab = memo(function ProfileTab({
     localPresenceStatus !== savedValues.presenceStatus ||
     localShowBadge !== savedValues.showBadge ||
     localCardFinish !== savedValues.cardFinish ||
-    localClanTag !== savedValues.clanTag ||
-    localClanTagColor !== savedValues.clanTagColor ||
     localSocialSteam !== savedValues.socialSteam ||
     localSocialTwitch !== savedValues.socialTwitch ||
     localSocialYoutube !== savedValues.socialYoutube ||
@@ -265,8 +259,6 @@ export const ProfileTab = memo(function ProfileTab({
     setLocalPresenceStatus(savedValues.presenceStatus)
     setLocalShowBadge(savedValues.showBadge)
     setLocalCardFinish(savedValues.cardFinish)
-    setLocalClanTag(savedValues.clanTag)
-    setLocalClanTagColor(savedValues.clanTagColor)
     setLocalSocialSteam(savedValues.socialSteam)
     setLocalSocialTwitch(savedValues.socialTwitch)
     setLocalSocialYoutube(savedValues.socialYoutube)
@@ -380,8 +372,6 @@ export const ProfileTab = memo(function ProfileTab({
       localStorage.setItem(`echo-presence-status-${userId}`, localPresenceStatus)
       localStorage.setItem(`echo-show-badge-${userId}`, JSON.stringify(localShowBadge))
       localStorage.setItem(`echo-card-finish-${userId}`, localCardFinish)
-      localStorage.setItem(`echo-clan-tag-${userId}`, localClanTag)
-      localStorage.setItem(`echo-clan-tag-color-${userId}`, localClanTagColor)
       localStorage.setItem(`echo-social-steam-${userId}`, localSocialSteam)
       localStorage.setItem(`echo-social-twitch-${userId}`, localSocialTwitch)
       localStorage.setItem(`echo-social-youtube-${userId}`, localSocialYoutube)
@@ -412,8 +402,6 @@ export const ProfileTab = memo(function ProfileTab({
         presenceStatus: localPresenceStatus,
         showBadge: localShowBadge,
         cardFinish: localCardFinish,
-        clanTag: localClanTag,
-        clanTagColor: localClanTagColor,
         socialSteam: localSocialSteam,
         socialTwitch: localSocialTwitch,
         socialYoutube: localSocialYoutube,
@@ -533,15 +521,6 @@ export const ProfileTab = memo(function ProfileTab({
                   <div className="echo-hero-identity-row">
                     <div className="echo-hero-name-block">
                       <div className="echo-hero-display-name">
-                        {localClanTag && (
-                          <span 
-                            className="echo-clan-tag" 
-                            style={{ borderColor: localClanTagColor, color: localClanTagColor, boxShadow: `0 0 10px ${localClanTagColor}40` }}
-                            title={`Squad Tag: ${localClanTag.toUpperCase()}`}
-                          >
-                            [{localClanTag.toUpperCase()}]
-                          </span>
-                        )}
                         <span>{localDisplayName || 'Jogador'}</span>
                         {localPronouns && <span className="echo-hero-pronoun-tag">{localPronouns}</span>}
                       </div>
@@ -824,25 +803,7 @@ export const ProfileTab = memo(function ProfileTab({
                   <div className="echo-appearance-block">
                     <div className="echo-label-with-counter">
                       <label className="echo-input-label">CAPA DO PERFIL (BANNER PANORÂMICO)</label>
-                      <span className="echo-input-desc">Selecione uma textura ou escolha uma imagem do seu computador</span>
-                    </div>
-                    <div className="echo-banner-grid">
-                      {[
-                        { id: 'synthwave', name: 'Synthwave 🌌' },
-                        { id: 'cybergrid', name: 'Cyber Grid ⚡' },
-                        { id: 'carbon', name: 'Fibra de Carbono 🏎️' },
-                        { id: 'aurora', name: 'Aurora Polar 🪐' },
-                        { id: 'solar', name: 'Solar Flare 🔥' },
-                        { id: 'obsidian', name: 'Stealth Obsidian 🖤' },
-                      ].map(tex => (
-                        <div 
-                          key={tex.id}
-                          className={`echo-banner-option texture-${tex.id} ${localBannerPreset === tex.id && !localBannerCustom ? 'active' : ''}`}
-                          onClick={() => { setLocalBannerPreset(tex.id); setLocalBannerCustom(''); }}
-                        >
-                          <span className="echo-banner-option-title">{tex.name}</span>
-                        </div>
-                      ))}
+                      <span className="echo-input-desc">Escolha uma imagem do seu computador ou cole um link</span>
                     </div>
                     <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
                       <input 
@@ -864,97 +825,51 @@ export const ProfileTab = memo(function ProfileTab({
                     </div>
                   </div>
 
-                  {/* Tag de Squad / Clan */}
-                  <div className="echo-appearance-block">
-                    <div className="echo-label-with-counter">
-                      <label className="echo-input-label">TAG DE SQUAD / CLAN</label>
-                      <span className="echo-input-desc">Sigla de 2 a 4 caracteres exibida ao lado do seu nome</span>
-                    </div>
-                    <div className="echo-clan-tag-editor-row" style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <input 
-                        value={localClanTag} 
-                        onChange={(e) => setLocalClanTag(e.target.value.toUpperCase().slice(0, 4))} 
-                        placeholder="Ex: ECHO"
-                        maxLength={4}
-                        className="echo-text-input"
-                        style={{ maxWidth: '130px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase' }}
-                      />
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Cor da Tag:</span>
-                        {[
-                          { color: '#00f2fe', label: 'Ciano' },
-                          { color: '#ff4655', label: 'Carmesim' },
-                          { color: '#fbbf24', label: 'Ouro' },
-                          { color: '#a855f7', label: 'Ametista' },
-                          { color: '#10b981', label: 'Esmeralda' },
-                          { color: '#ffffff', label: 'Prata' }
-                        ].map(c => (
-                          <button
-                            key={c.color}
-                            type="button"
-                            className={`echo-clan-color-dot ${localClanTagColor === c.color ? 'active' : ''}`}
-                            style={{ background: c.color, width: '22px', height: '22px', borderRadius: '50%', border: localClanTagColor === c.color ? '2px solid #fff' : '2px solid transparent', cursor: 'pointer', boxShadow: localClanTagColor === c.color ? `0 0 8px ${c.color}` : 'none' }}
-                            onClick={() => setLocalClanTagColor(c.color)}
-                            title={c.label}
-                          />
-                        ))}
-                      </div>
-                      {localClanTag && (
-                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Prévia:</span>
-                          <span className="echo-clan-tag" style={{ borderColor: localClanTagColor, color: localClanTagColor, boxShadow: `0 0 8px ${localClanTagColor}40` }}>
-                            [{localClanTag.toUpperCase()}]
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
                   {/* Vitrine de Redes Sociais Conectadas */}
                   <div className="echo-appearance-block">
                     <div className="echo-label-with-counter">
                       <label className="echo-input-label">REDES SOCIAIS & PLATAFORMAS CONECTADAS</label>
                       <span className="echo-input-desc">Links rápidos de exibição no seu cartão do perfil</span>
                     </div>
-                    <div className="echo-socials-inputs-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
-                      <div className="echo-social-input-field" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                        <SteamIcon style={{ width: '16px', height: '16px', color: '#90a4ae', flexShrink: 0 }} />
+                    <div className="echo-socials-inputs-grid">
+                      <div className="echo-social-input-field">
+                        <SteamIcon className="echo-social-input-icon is-steam" />
                         <input 
                           value={localSocialSteam} 
                           onChange={(e) => setLocalSocialSteam(e.target.value)} 
                           placeholder="Steam (username ou url)"
                           className="echo-text-input"
-                          style={{ border: 'none', background: 'transparent', padding: '0', fontSize: '12.5px' }}
+                         
                         />
                       </div>
-                      <div className="echo-social-input-field" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                        <TwitchIcon style={{ width: '16px', height: '16px', color: '#a855f7', flexShrink: 0 }} />
+                      <div className="echo-social-input-field">
+                        <TwitchIcon className="echo-social-input-icon is-twitch" />
                         <input 
                           value={localSocialTwitch} 
                           onChange={(e) => setLocalSocialTwitch(e.target.value)} 
                           placeholder="Twitch (username)"
                           className="echo-text-input"
-                          style={{ border: 'none', background: 'transparent', padding: '0', fontSize: '12.5px' }}
+                         
                         />
                       </div>
-                      <div className="echo-social-input-field" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                        <YoutubeIcon style={{ width: '16px', height: '16px', color: '#ef4444', flexShrink: 0 }} />
+                      <div className="echo-social-input-field">
+                        <YoutubeIcon className="echo-social-input-icon is-youtube" />
                         <input 
                           value={localSocialYoutube} 
                           onChange={(e) => setLocalSocialYoutube(e.target.value)} 
                           placeholder="YouTube (@canal ou url)"
                           className="echo-text-input"
-                          style={{ border: 'none', background: 'transparent', padding: '0', fontSize: '12.5px' }}
+                         
                         />
                       </div>
-                      <div className="echo-social-input-field" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                        <KickIcon style={{ width: '16px', height: '16px', color: '#10b981', flexShrink: 0 }} />
+                      <div className="echo-social-input-field">
+                        <KickIcon className="echo-social-input-icon is-kick" />
                         <input 
                           value={localSocialKick} 
                           onChange={(e) => setLocalSocialKick(e.target.value)} 
                           placeholder="Kick (username)"
                           className="echo-text-input"
-                          style={{ border: 'none', background: 'transparent', padding: '0', fontSize: '12.5px' }}
+                         
                         />
                       </div>
                     </div>
@@ -1024,7 +939,7 @@ export const ProfileTab = memo(function ProfileTab({
                     {/* Local testing toggle for unlocking all badges */}
                     <div style={{ marginTop: '16px', padding: '12px 16px', background: 'rgba(99, 102, 241, 0.08)', border: '1px dashed rgba(99, 102, 241, 0.3)', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <strong style={{ fontSize: '12.5px', color: '#a5b4fc', display: 'block' }}>🛠️ Modo Demonstração (Liberar Todas para Teste Local)</strong>
+                        <strong style={{ fontSize: '12.5px', color: 'var(--text-primary)', display: 'block' }}>🛠️ Modo Demonstração (Liberar Todas para Teste Local)</strong>
                         <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Ative para desbloquear e testar qualquer insígnia sem restrição de requisitos.</span>
                       </div>
                       <label className="echo-switch">

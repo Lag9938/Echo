@@ -11,7 +11,10 @@ import {
   HashtagIcon,
   MegaphoneIcon,
   MusicIcon,
+  MoreHorizontalIcon,
   PinIcon,
+  ReplyIcon,
+  SmileIcon,
   StarIcon,
   TrashIcon,
   VolumeIcon
@@ -288,75 +291,6 @@ export const MessageList = memo(function MessageList({
                 className={`msg-card ${isConsecutive ? 'msg-consecutive' : ''} ${message.attachment_type === 'audio' ? 'has-voice-note' : ''} ${message.author_id === user.id ? 'msg-own' : ''} ${isMentioned ? 'mention-highlight' : ''} ${message.status === 'sending' ? 'msg-sending' : ''} ${message.status === 'failed' ? 'msg-failed' : ''}`} 
                 style={{ position: 'relative' }}
               >
-                    {/* Message Hover Action Bar */}
-                    <div className="message-hover-actions">
-                      {['👍', '❤️', '😂', '🔥', '🎮', '💀'].map(emoji => (
-                        <button 
-                          key={emoji}
-                          type="button" 
-                          className="hover-action-btn"
-                          onClick={() => toggleReaction(message.id, emoji)}
-                          title={`Reagir com ${emoji}`}
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                      {!isThreadList && (
-                      <button 
-                        type="button" 
-                        className="hover-action-btn"
-                        onClick={() => setReplyingToMessage(message)}
-                        title="Responder a esta mensagem"
-                      >
-                        ↩️
-                      </button>
-                      )}
-                      {!isThreadList && onOpenThread && message.status !== 'sending' && message.status !== 'failed' && (
-                        <button
-                          type="button"
-                          className="hover-action-btn thread-btn"
-                          onClick={() => onOpenThread(message)}
-                          title="Responder em tópico"
-                        >
-                          🧵
-                        </button>
-                      )}
-                      {!isThreadList && (
-                      <button 
-                        type="button" 
-                        className={`hover-action-btn star-btn ${isMessageSaved(message.id) ? 'active' : ''}`}
-                        onClick={() => toggleSaveMessage(message, 'channel', {
-                          sourceName: `#${selectedChannel.name} • ${currentSpace?.name || 'Servidor'}`,
-                          spaceId: currentSpace?.id,
-                          channelId: selectedChannel.id
-                        })}
-                        title={isMessageSaved(message.id) ? "Remover dos favoritos" : "Salvar mensagem com estrela (⭐)"}
-                      >
-                        <StarIcon style={{ width: '13px', height: '13px', color: isMessageSaved(message.id) ? '#ffc107' : 'inherit', fill: isMessageSaved(message.id) ? '#ffc107' : 'none' }} />
-                      </button>
-                      )}
-                      {!isThreadList && canManagePins && (
-                        <button 
-                          type="button" 
-                          className="hover-action-btn"
-                          onClick={() => togglePinMessage(message, currentSpace.id, selectedChannel.id)}
-                          title={isPinned ? "Desafixar Mensagem" : "Fixar Mensagem no Canal"}
-                        >
-                          <PinIcon style={{ width: '13px', height: '13px', color: isPinned ? 'var(--accent-color)' : 'inherit' }} />
-                        </button>
-                      )}
-                      {(message.author_id === user.id || canManagePins) && (
-                        <button 
-                          type="button" 
-                          className="hover-action-btn delete-btn"
-                          onClick={() => handleDeleteMessage(message.id)}
-                          title="Excluir mensagem"
-                        >
-                          <TrashIcon style={{ width: '13px', height: '13px' }} />
-                        </button>
-                      )}
-                    </div>
-
                     {isConsecutive ? (
                       <div className="msg-consecutive-gutter">
                         <time className="consecutive-time" title={msgDate.toLocaleTimeString('pt-BR')}>
@@ -400,6 +334,99 @@ export const MessageList = memo(function MessageList({
                     )}
 
                     <div className="msg-body">
+                      {/* Barra de ações ao passar o mouse: responder em destaque, reagir (as 6 reações abrem ao
+                          passar o mouse no sorriso) e um menu "mais" com o resto. Tudo fica no DOM; quem abre e fecha
+                          é o CSS (hover/foco). */}
+                      <div className="message-hover-actions">
+                        {!isThreadList && (
+                          <button
+                            type="button"
+                            className="hover-action-btn reply-btn"
+                            onClick={() => setReplyingToMessage(message)}
+                            title="Responder a esta mensagem"
+                          >
+                            <ReplyIcon style={{ width: '14px', height: '14px' }} />
+                            <span>Responder</span>
+                          </button>
+                        )}
+
+                        <div className="msg-react-wrap">
+                          <button type="button" className="hover-action-btn react-trigger" title="Reagir" aria-haspopup="true">
+                            <SmileIcon style={{ width: '16px', height: '16px' }} />
+                          </button>
+                          <div className="msg-react-pop">
+                            {['👍', '❤️', '😂', '🔥', '🎮', '💀'].map(emoji => (
+                              <button
+                                key={emoji}
+                                type="button"
+                                className="hover-action-btn"
+                                onClick={() => toggleReaction(message.id, emoji)}
+                                title={`Reagir com ${emoji}`}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {(!isThreadList || isSelf || canManagePins) && (
+                          <div className="msg-more-wrap">
+                            <button type="button" className="hover-action-btn more-trigger" title="Mais opções" aria-haspopup="menu">
+                              <MoreHorizontalIcon style={{ width: '16px', height: '16px' }} />
+                            </button>
+                            <div className="msg-more-pop" role="menu">
+                              {!isThreadList && onOpenThread && message.status !== 'sending' && message.status !== 'failed' && (
+                                <button
+                                  type="button"
+                                  className="hover-action-btn thread-btn"
+                                  onClick={() => onOpenThread(message)}
+                                  title="Responder em tópico"
+                                >
+                                  <span className="msg-more-icon">🧵</span>
+                                  <span>Responder em tópico</span>
+                                </button>
+                              )}
+                              {!isThreadList && (
+                                <button
+                                  type="button"
+                                  className={`hover-action-btn star-btn ${isMessageSaved(message.id) ? 'active' : ''}`}
+                                  onClick={() => toggleSaveMessage(message, 'channel', {
+                                    sourceName: `#${selectedChannel.name} • ${currentSpace?.name || 'Servidor'}`,
+                                    spaceId: currentSpace?.id,
+                                    channelId: selectedChannel.id
+                                  })}
+                                  title={isMessageSaved(message.id) ? "Remover dos favoritos" : "Salvar mensagem com estrela (⭐)"}
+                                >
+                                  <StarIcon style={{ width: '14px', height: '14px', color: isMessageSaved(message.id) ? '#ffc107' : 'inherit', fill: isMessageSaved(message.id) ? '#ffc107' : 'none' }} />
+                                  <span>{isMessageSaved(message.id) ? 'Remover dos salvos' : 'Salvar'}</span>
+                                </button>
+                              )}
+                              {!isThreadList && canManagePins && (
+                                <button
+                                  type="button"
+                                  className="hover-action-btn"
+                                  onClick={() => togglePinMessage(message, currentSpace.id, selectedChannel.id)}
+                                  title={isPinned ? "Desafixar Mensagem" : "Fixar Mensagem no Canal"}
+                                >
+                                  <PinIcon style={{ width: '14px', height: '14px', color: isPinned ? 'var(--accent-color)' : 'inherit' }} />
+                                  <span>{isPinned ? 'Desafixar' : 'Fixar'}</span>
+                                </button>
+                              )}
+                              {(message.author_id === user.id || canManagePins) && (
+                                <button
+                                  type="button"
+                                  className="hover-action-btn delete-btn"
+                                  onClick={() => handleDeleteMessage(message.id)}
+                                  title="Excluir mensagem"
+                                >
+                                  <TrashIcon style={{ width: '14px', height: '14px' }} />
+                                  <span>Excluir</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                       {!isConsecutive && (
                         <>
                           {replyQuoteText && (
@@ -468,8 +495,9 @@ export const MessageList = memo(function MessageList({
                               <CommunityBadge badgeId={authorBadge} size={13} />
                             )}
 
-                            {msgRole && (
-                              <span 
+                            {/* Nas suas próprias mensagens o cargo (Dono, Moderador…) e o "você" não aparecem: você já sabe quem é */}
+                            {msgRole && !isSelf && (
+                              <span
                                 style={{ 
                                   fontSize: '10px', 
                                   fontWeight: 700, 
@@ -481,12 +509,6 @@ export const MessageList = memo(function MessageList({
                                 }}
                               >
                                 {msgRole.name}
-                              </span>
-                            )}
-
-                            {isSelf && (
-                              <span className="msg-self-badge">
-                                você
                               </span>
                             )}
 

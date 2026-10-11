@@ -85,11 +85,10 @@ export const SpaceMembersTab = memo(function SpaceMembersTab({
               const isSelected = selectedMemberId === member.user?.id
 
               return (
-                <div key={member.user?.id} style={{ marginBottom: '8px' }}>
+                <div key={member.user?.id} className="settings-member-row-wrapper">
                   <div 
                     className={`settings-member-item-full ${isSelected ? 'selected' : ''}`}
                     onClick={() => setSelectedMemberId(isSelected ? null : member.user?.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 16px', background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px solid var(--border-color)' }}
                   >
                     <div className="settings-member-avatar-full">
                       {member.user?.avatar_url ? (
@@ -99,22 +98,22 @@ export const SpaceMembersTab = memo(function SpaceMembersTab({
                       )}
                     </div>
                     
-                    <div className="settings-member-info-full" style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span className="settings-member-name-full" style={{ color: highestRole?.color || 'var(--text-primary)', fontWeight: 700, fontSize: '14px' }}>
+                    <div className="settings-member-info-full">
+                      <div className="settings-member-name-row">
+                        <span className="settings-member-name-full" style={{ color: highestRole?.color || 'var(--text-primary)' }}>
                           {member.user?.display_name}
                         </span>
                         {isSelf && <span className="self-tag">(Você)</span>}
                       </div>
-                      <span className="settings-member-joined" style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                      <span className="settings-member-joined">
                         {member.joined_at ? `Entrou em ${new Date(member.joined_at).toLocaleDateString('pt-BR')}` : 'Membro'}
                       </span>
                     </div>
 
                     {/* Cargos Badges */}
-                    <div className="settings-member-role-badges" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                    <div className="settings-member-role-badges">
                       {isOwner && (
-                        <span className="role-badge role-owner" style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', border: '1px solid rgba(234, 179, 8, 0.3)', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <span className="role-badge role-owner">
                           <CrownIcon /> Dono
                         </span>
                       )}

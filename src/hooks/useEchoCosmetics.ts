@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
-import { THEMES } from '../lib/themes'
+import { THEMES, DEFAULT_THEME_ID } from '../lib/themes'
 import { buildPresencePayload } from '../lib/presencePayload'
 
 export interface UseEchoCosmeticsOptions {
@@ -42,7 +42,9 @@ export function useEchoCosmetics({
 
   // Theme & Appearance States
   const [theme, setTheme] = useState<string>(() => {
-    return localStorage.getItem('echo-theme') || 'dark'
+    // Quem tinha um dos temas antigos (ou nenhum) passa para o Aurora Escuro; quem escolheu o claro mantém
+    const saved = localStorage.getItem('echo-theme')
+    return THEMES.some(t => t.id === saved) ? (saved as string) : DEFAULT_THEME_ID
   })
   const [isPremiumUser, setIsPremiumUser] = useState<boolean>(() => {
     return localStorage.getItem('echo-premium') === 'true'
@@ -59,12 +61,26 @@ export function useEchoCosmetics({
     THEMES.forEach(t => {
       document.body.classList.remove(t.className)
     })
+    document.body.classList.remove('theme-aurora')
+
     const activeTheme = THEMES.find(t => t.id === theme)
     if (activeTheme) {
       document.body.classList.add(activeTheme.className)
+      // Ambos os temas Aurora (Light e Dark) compartilham a classe base theme-aurora
+      if (activeTheme.id === 'light' || activeTheme.id === 'aurora-dark') {
+        document.body.classList.add('theme-aurora')
+      }
     }
     localStorage.setItem('echo-theme', theme)
   }, [theme])
+
+  // A tag de squad foi removida do app: apaga a que já estava salva para ela não ficar aparecendo sem como editar
+  useEffect(() => {
+    try {
+      localStorage.removeItem(`echo-clan-tag-${user.id}`)
+      localStorage.removeItem(`echo-clan-tag-color-${user.id}`)
+    } catch { /* sem armazenamento: nada a limpar */ }
+  }, [user.id])
 
   // Custom Accent Color
   useEffect(() => {
@@ -242,7 +258,7 @@ export function useEchoCosmetics({
   }
 
   function toggleTheme() {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light')
+    setTheme(prev => prev === 'light' ? 'aurora-dark' : 'light')
   }
 
   // Chamado depois que um pagamento PIX real é confirmado (ver

@@ -1,0 +1,1293 @@
+/* ==========================================================================
+   ECHO AURORA LIGHT — pêssego, vidro fosco e coral
+   Só vale com o tema claro (body.light-theme). Vem por último no índice para
+   trocar o tom frio do "Cristal" pelo calor do design, sem mexer nos outros temas.
+   As cores base vivem em variables.css (.light-theme).
+   ========================================================================== */
+
+/* Atmosfera única atrás de tudo: as manchas atravessam barra lateral, topo e chat */
+body.light-theme,
+body.light-theme .echo-app,
+body.light-theme.echo-layout-glass .workspace {
+  background: var(--aurora-mesh) !important;
+  background-attachment: fixed !important;
+}
+
+body.light-theme.echo-layout-glass .main-content {
+  background: transparent !important;
+}
+
+/* Vidro quente: branco translúcido com borda clara, sem o cinza frio de antes */
+body.light-theme.echo-layout-glass .channels-sidebar,
+body.light-theme .channels-sidebar.echo-layout-glass {
+  background: rgba(255, 255, 255, 0.5) !important;
+  border-right: 1px solid var(--glass-card-edge) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 10px 34px rgba(42, 31, 45, 0.1) !important;
+}
+
+body.light-theme.echo-layout-glass .topbar {
+  background: rgba(255, 255, 255, 0.5) !important;
+  border-bottom: 1px solid var(--glass-card-edge) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 6px 24px rgba(42, 31, 45, 0.08) !important;
+}
+
+body.light-theme.echo-layout-glass .topbar-center-dock,
+body.light-theme.echo-layout-glass .topbar-icon-btn {
+  background: rgba(255, 255, 255, 0.55) !important;
+  border-color: var(--glass-card-edge) !important;
+}
+
+/* Topo: os textos e ícones do tema escuro eram brancos; sobre vidro claro somem */
+body.light-theme .brand-name {
+  background: linear-gradient(135deg, var(--text-primary) 40%, var(--accent-color) 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+body.light-theme .topbar-server-initials {
+  color: var(--text-primary) !important;
+  text-shadow: none !important;
+}
+body.light-theme .topbar-icon-btn,
+body.light-theme .topbar-icon-btn:hover,
+body.light-theme .topbar-win-btn,
+body.light-theme .topbar-win-btn:hover {
+  color: var(--text-primary) !important;
+}
+body.light-theme .topbar-win-btn.win-close:hover {
+  color: #fff !important;
+}
+
+/* Chat: o texto das mensagens era claro (feito para fundo escuro) e sumia nos cartões claros.
+   O nome (strong) não entra aqui: ele leva a cor do cargo ou o efeito de nome do próprio membro. */
+body.light-theme .msg-card.msg-own .msg-body p {
+  color: var(--text-primary) !important;
+}
+body.light-theme .msg-body p,
+body.light-theme .msg-card.msg-consecutive .msg-body p {
+  color: var(--text-primary) !important;
+  font-weight: 450;
+}
+body.light-theme .msg-meta time,
+body.light-theme .msg-meta .msg-time,
+body.light-theme .consecutive-time {
+  color: var(--text-muted) !important;
+}
+body.light-theme .msg-self-badge {
+  color: var(--text-secondary) !important;
+  background: rgba(42, 31, 45, 0.06) !important;
+}
+
+/* ── Mensagens como no design: avatar solto ao lado e o CONTEÚDO num cartão de vidro ──
+   A linha (.msg-card) fica transparente; o cartão branco é o .msg-body. As suas mensagens
+   ficam à direita, num balão coral, com o avatar do outro lado. */
+body.light-theme.echo-layout-glass .msg-card,
+body.light-theme.echo-layout-glass .msg-card:hover,
+body.light-theme.echo-layout-glass .msg-card.msg-own,
+body.light-theme.echo-layout-glass .msg-card.msg-own:hover {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  align-items: flex-start;
+  gap: 12px;
+}
+body.light-theme.echo-layout-glass .msg-card .msg-body {
+  flex: 0 1 auto;
+  max-width: min(78%, 760px);
+  padding: 10px 16px 12px;
+  border-radius: 20px;
+  background: var(--glass-card);
+  border: 1px solid var(--glass-card-edge);
+  box-shadow: inset 0 1px 0 #fff, 0 10px 34px rgba(42, 31, 45, 0.08);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+body.light-theme.echo-layout-glass .msg-card .msg-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  margin-top: 2px;
+}
+
+/* Suas mensagens: à direita, num vidro ameixa escuro */
+body.light-theme.echo-layout-glass .msg-card.msg-own {
+  flex-direction: row-reverse;
+}
+body.light-theme.echo-layout-glass .msg-card.msg-own .msg-body {
+  background: #43304c !important;
+  background-image: linear-gradient(180deg, #4d3a57, #3a2943) !important;
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 8px 22px rgba(42, 31, 45, 0.22);
+  align-items: flex-end;
+}
+body.light-theme.echo-layout-glass .msg-card.msg-own .msg-body p {
+  color: #fff !important;
+}
+body.light-theme.echo-layout-glass .msg-card.msg-own .msg-meta time,
+body.light-theme.echo-layout-glass .msg-card.msg-own .msg-meta .msg-time,
+body.light-theme.echo-layout-glass .msg-card.msg-own .msg-self-badge {
+  color: rgba(255, 255, 255, 0.82) !important;
+  background: transparent !important;
+}
+/* Mensagem em sequência: a hora fica na calha, sem avatar */
+body.light-theme.echo-layout-glass .msg-card.msg-consecutive .msg-consecutive-gutter {
+  width: 40px;
+}
+body.light-theme.echo-layout-glass .msg-card.msg-own.msg-consecutive .msg-consecutive-gutter {
+  justify-content: flex-start;
+}
+
+/* Barra de ações ao passar o mouse: vidro claro em vez do painel escuro */
+body.light-theme.echo-layout-glass .message-hover-actions {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--glass-card-edge);
+  box-shadow: 0 8px 24px rgba(42, 31, 45, 0.14);
+}
+
+/* Compositor flutuante com botão de enviar no coral da marca */
+body.light-theme.echo-layout-glass .composer {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-color: var(--glass-card-edge) !important;
+  border-radius: 26px !important;
+}
+
+/* ── Barra lateral: cartões de vidro, sala ativa em verde, canal aberto em coral ── */
+body.light-theme .channels-sidebar.echo-layout-glass .category-name {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--text-muted) !important;
+}
+
+body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-node:not(.has-users) .channel-item.voice-item {
+  background: rgba(255, 255, 255, 0.62) !important;
+  border: 1px solid var(--glass-card-edge) !important;
+  border-radius: 16px !important;
+  box-shadow: inset 0 1px 0 #fff, 0 4px 14px rgba(42, 31, 45, 0.06) !important;
+}
+
+body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-node.has-users {
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.14), rgba(34, 197, 94, 0.07)) !important;
+  border: 1.5px solid rgba(34, 197, 94, 0.45) !important;
+  border-radius: 20px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 24px rgba(34, 197, 94, 0.12) !important;
+}
+body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-node.has-users .channel-item-name {
+  color: #14532d !important;
+  font-weight: 800;
+}
+body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-node.has-users .sidebar-voice-name {
+  color: var(--text-primary) !important;
+}
+
+body.light-theme .channels-sidebar.echo-layout-glass .channel-group-text .channel-item {
+  background: rgba(255, 255, 255, 0.62) !important;
+  border: 1px solid var(--glass-card-edge) !important;
+  border-radius: 14px !important;
+}
+body.light-theme .channels-sidebar.echo-layout-glass .channel-group-text .channel-item.active {
+  background: linear-gradient(180deg, rgba(223, 109, 93, 0.22), rgba(223, 109, 93, 0.12)) !important;
+  border-color: rgba(223, 109, 93, 0.5) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 4px 14px rgba(223, 109, 93, 0.2) !important;
+}
+body.light-theme .channels-sidebar.echo-layout-glass .channel-group-text .channel-item.active .channel-item-name {
+  color: #9a3a2e !important;
+  font-weight: 800;
+}
+
+/* Nome do espaço sobre a capa: a capa pode ser clara ou cheia de detalhes, então o nome vai em branco
+   sobre uma sombra que escurece o pé da imagem (antes era tinta escura sobre a foto e não dava para ler) */
+body.light-theme .channels-sidebar.echo-layout-glass .server-header-card.has-banner::before {
+  background: linear-gradient(180deg, rgba(24, 14, 28, 0.06) 0%, rgba(24, 14, 28, 0.38) 45%, rgba(24, 14, 28, 0.86) 100%) !important;
+}
+body.light-theme .channels-sidebar.echo-layout-glass .server-header-card.has-banner .server-title {
+  color: #fff !important;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.75);
+}
+body.light-theme .channels-sidebar.echo-layout-glass .server-header-card.has-banner .server-dropdown-chevron {
+  color: #fff !important;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.8));
+}
+
+/* Filtro de canais: a caixa é a pílula de vidro e o campo dentro dela fica transparente */
+body.light-theme .channels-sidebar.echo-layout-glass .channels-search-box {
+  background: rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid var(--glass-card-edge) !important;
+  border-radius: 14px !important;
+  box-shadow: inset 0 1px 0 #fff !important;
+}
+body.light-theme .channels-sidebar.echo-layout-glass .channels-search-input {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: var(--text-primary) !important;
+}
+/* O filtro divide a linha com o botão "Recolher": sem isto ele toma 100% e espreme o botão */
+.channels-sidebar.echo-layout-glass .channels-search-wrap .channels-search-box {
+  width: auto !important;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.channels-sidebar.echo-layout-glass .channels-search-wrap .channels-collapse-btn {
+  flex: 0 0 auto;
+  display: inline-flex !important;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  white-space: nowrap;
+  padding: 0 11px 0 9px;
+}
+.channels-sidebar.echo-layout-glass .channels-search-wrap .channels-collapse-btn span {
+  white-space: nowrap;
+}
+body.light-theme .channels-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Nomes dos canais: legíveis e firmes sobre o vidro */
+body.light-theme .channels-sidebar.echo-layout-glass .channel-item-name {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+body.light-theme .channels-sidebar.echo-layout-glass .channel-item .ch-icon {
+  color: var(--text-secondary);
+}
+body.light-theme .channels-sidebar.echo-layout-glass .channel-unread-dot {
+  background: var(--accent-color) !important;
+  box-shadow: 0 0 0 3px rgba(223, 109, 93, 0.2) !important;
+}
+
+/* Contagem da sala: pílula verde quando há gente */
+body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-limit-badge {
+  font-weight: 800;
+  color: var(--text-muted);
+}
+body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-limit-badge.occupied {
+  color: #15803d;
+}
+
+/* Participantes da sala: avatar arredondado (quadrado suave), nome firme, sem anel fixo */
+body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-node.has-users .sidebar-voice-user {
+  padding: 5px 8px !important;
+  border-radius: 12px !important;
+}
+body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-node.has-users .sidebar-voice-user:hover {
+  background: rgba(255, 255, 255, 0.65) !important;
+}
+body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-node.has-users .sidebar-voice-avatar {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  border-radius: 10px !important;
+  border: 1.5px solid #fff !important;
+  box-shadow: 0 2px 6px rgba(42, 31, 45, 0.18) !important;
+}
+body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-node.has-users .sidebar-voice-avatar img {
+  border-radius: 9px !important;
+}
+body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-node.has-users .sidebar-voice-user.speaking .sidebar-voice-avatar {
+  border-color: #22c55e !important;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.28) !important;
+}
+body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-node.has-users .sidebar-voice-name {
+  font-weight: 600 !important;
+}
+body.light-theme .channels-sidebar.echo-layout-glass .voice-speaking-bars span {
+  background: #16a34a !important;
+}
+body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-node.has-users .sidebar-voice-user-icons svg {
+  color: var(--text-muted);
+}
+
+/* "Assistir" (transmissão ao vivo): pílula coral cheia, no lugar do "AO VIVO" do design */
+body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-node.has-users .sidebar-voice-stream-action-badge {
+  background: linear-gradient(180deg, #ef6a5d, #dc3f3f) !important;
+  border: 0 !important;
+  color: #fff !important;
+  border-radius: 8px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 4px 10px rgba(220, 63, 63, 0.3) !important;
+}
+
+body.light-theme .channels-sidebar.echo-layout-glass .profile-footer-card {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border: 1px solid var(--glass-card-edge) !important;
+  border-radius: 18px !important;
+}
+
+/* Rodapé do usuário na barra lateral de Configurações: vidro claro, não a pílula escura do tema antigo */
+body.light-theme.echo-layout-glass .settings-sidebar .profile-footer-card,
+body.light-theme.echo-layout-glass .settings-sidebar .profile-footer-card:hover {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid var(--glass-card-edge) !important;
+  box-shadow: 0 8px 20px -12px rgba(74, 53, 49, 0.3) !important;
+}
+body.light-theme.echo-layout-glass .settings-sidebar .profile-footer-card:hover {
+  border-color: rgba(223, 109, 93, 0.4) !important;
+}
+body.light-theme.echo-layout-glass .settings-sidebar .sidebar-profile-footer {
+  border-top-color: rgba(74, 53, 49, 0.08) !important;
+}
+
+/* Texto que o tema antigo deixava branco ou muito claro e some no fundo claro */
+body.light-theme .msg-meta strong {
+  color: var(--text-primary);
+}
+body.light-theme.echo-layout-glass .echo-input-desc,
+body.light-theme.echo-layout-glass .echo-char-counter {
+  color: var(--text-muted) !important;
+}
+body.light-theme.echo-layout-glass .echo-hero-avatar-inner,
+body.light-theme.echo-layout-glass .echo-stage-avatar-inner {
+  color: var(--text-primary) !important;
+}
+
+/* Aba ativa do editor de perfil: coral Echo, não o ciano pálido com texto branco */
+body.light-theme.echo-layout-glass .echo-editor-tab-btn.active {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color)) !important;
+  border: 0 !important;
+  color: #fff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 18px -8px rgba(223, 109, 93, 0.7) !important;
+}
+body.light-theme.echo-layout-glass .echo-editor-tab-btn:not(.active) {
+  color: var(--text-secondary) !important;
+}
+body.light-theme.echo-layout-glass .echo-editor-tab-btn:not(.active):hover {
+  background: rgba(223, 109, 93, 0.1) !important;
+  color: var(--text-primary) !important;
+}
+
+body.light-theme.echo-layout-glass .echo-presence-option.active {
+  background: rgba(223, 109, 93, 0.1) !important;
+  border-color: rgba(223, 109, 93, 0.5) !important;
+  box-shadow: 0 6px 16px -8px rgba(223, 109, 93, 0.45) !important;
+}
+
+/* Selos (PRO, NOVO, cargo): versões escuras o bastante para ler sobre o claro */
+body.light-theme.echo-layout-glass .echo-prestige-badge.badge-owner {
+  background: rgba(245, 158, 11, 0.16) !important;
+  border-color: rgba(180, 83, 9, 0.35) !important;
+}
+body.light-theme.echo-layout-glass .echo-prestige-badge.badge-owner span {
+  color: #92400e !important;
+}
+body.light-theme.echo-layout-glass .echo-inv-menu-badge {
+  background: rgba(223, 109, 93, 0.14) !important;
+  border-color: rgba(223, 109, 93, 0.4) !important;
+  color: #b84a3c !important;
+}
+body.light-theme.echo-layout-glass .settings-menu .menu-item:not(.active) span[style*="251, 191, 36"],
+body.light-theme.echo-layout-glass .settings-menu .menu-item:not(.active) span[style*="#fbbf24"] {
+  color: #92400e !important;
+}
+
+/* ── Cabeçalho do canal: "#" e nome grandes em coral/tinta, como no design ── */
+body.light-theme.echo-layout-glass .content-header {
+  background: rgba(255, 255, 255, 0.42) !important;
+  border-bottom: 1px solid var(--glass-card-edge) !important;
+}
+body.light-theme .content-header h1 {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+body.light-theme .content-header .header-icon {
+  color: var(--accent-color) !important;
+}
+body.light-theme .content-header .header-space {
+  color: var(--text-muted);
+}
+
+/* ── Conversa: cartões com respiro entre si e sombra suave ── */
+body.light-theme.echo-layout-glass .msg-card {
+  margin-bottom: 10px;
+  padding: 10px 16px !important;
+}
+body.light-theme.echo-layout-glass .msg-card.msg-consecutive {
+  margin-top: -4px;
+}
+body.light-theme.echo-layout-glass .msg-card.has-mention .msg-body,
+body.light-theme.echo-layout-glass .msg-card.mention-highlight .msg-body {
+  background: rgba(255, 236, 231, 0.9);
+  border-color: rgba(223, 109, 93, 0.55);
+}
+
+/* ── Compositor: pílula flutuante e botão de enviar coral ── */
+body.light-theme.echo-layout-glass .composer {
+  box-shadow: inset 0 1px 0 #fff, 0 14px 40px rgba(42, 31, 45, 0.12) !important;
+}
+body.light-theme .composer .send-btn {
+  background: linear-gradient(180deg, #e9826f, var(--accent-color)) !important;
+  color: #fff !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 6px 16px rgba(223, 109, 93, 0.4) !important;
+}
+body.light-theme .composer .send-btn:disabled {
+  opacity: 0.5;
+  box-shadow: none !important;
+}
+body.light-theme .composer .composer-action-btn {
+  color: var(--text-secondary) !important;
+}
+
+/* ── Divisória entre o chat e as barras laterais ──
+   A borda branca do vidro some sobre o fundo claro, então as barras ficavam coladas no chat. */
+/* As duas barras também viram painéis de vidro soltos, com a mesma borda, canto e sombra do chat */
+body.light-theme.echo-layout-glass .channels-sidebar,
+body.light-theme .channels-sidebar.echo-layout-glass {
+  height: auto !important;
+  align-self: stretch;
+  margin: 10px 0 10px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  border-radius: 26px;
+  box-shadow: inset 0 1px 0 #fff, 0 16px 44px rgba(42, 31, 45, 0.14) !important;
+}
+body.light-theme.echo-layout-glass .members-sidebar {
+  height: auto !important;
+  align-self: stretch;
+  margin: 10px 10px 10px 0;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  border-radius: 26px;
+  box-shadow: inset 0 1px 0 #fff, 0 16px 44px rgba(42, 31, 45, 0.14) !important;
+}
+
+/* O chat vira um painel de vidro próprio, flutuando entre as barras, como no design.
+   É isso que separa o chat das laterais: um painel com borda, cantos arredondados e uma
+   folga de fundo dos dois lados (a linha fina sozinha não aparecia sobre o fundo claro). */
+body.light-theme.echo-layout-glass .main-content {
+  flex: 1 1 0 !important;
+  width: auto !important;
+  height: auto !important;
+  align-self: stretch;
+  margin: 10px 10px 10px 10px;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.38) !important;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: inset 0 1px 0 #fff, 0 16px 44px rgba(42, 31, 45, 0.14);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+}
+body.light-theme.echo-layout-glass .main-content .content-header {
+  border-radius: 26px 26px 0 0;
+}
+
+/* ── Resto do app: textos feitos em branco/cinza-claro para fundo escuro, agora sobre vidro claro ──
+   Só entram aqui os que ficam sobre painéis de vidro (nenhum botão de fundo colorido). */
+body.light-theme .friends-hero-title,
+body.light-theme .activity-panel-header h3,
+body.light-theme .friends-my-profile-name,
+body.light-theme .activity-user-name,
+body.light-theme .activity-game-title,
+body.light-theme .friends-radar-title,
+body.light-theme .empty-activity-title,
+body.light-theme .pending-banner-text strong,
+body.light-theme .profile-footer-activity-gamename,
+body.light-theme .music-bot-track-title,
+body.light-theme .space-settings-floating-bar-text {
+  color: var(--text-primary) !important;
+}
+body.light-theme .friend-quick-btn,
+body.light-theme .dm-media-time,
+body.light-theme .profile-footer-activity-elapsed,
+body.light-theme .echo-inventory-desc,
+body.light-theme .echo-inv-tab:not(.active),
+body.light-theme .echo-inv-checkbox-text,
+body.light-theme .echo-inv-store-tag,
+body.light-theme .echo-inv-badge-free,
+body.light-theme .echo-shop-action-btn.secondary,
+body.light-theme .floating-btn-reset,
+body.light-theme .music-bot-quick-btn {
+  color: var(--text-secondary) !important;
+}
+body.light-theme .echo-inv-tab:not(.active):hover,
+body.light-theme .echo-inv-checkbox-btn:hover .echo-inv-checkbox-text {
+  color: var(--text-primary) !important;
+}
+
+/* Barra lateral de membros: mesmo vidro claro das outras superfícies. Os nomes ficam como o app define
+   (cor, efeito e animação); nenhum filtro ou contorno é aplicado a eles. */
+body.light-theme.echo-layout-glass .members-sidebar {
+  background: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Cartão do membro: só o texto secundário (nomes e etiquetas ficam como o app define) */
+body.light-theme .member-hover-popover .hover-popover-handle,
+body.light-theme .member-hover-popover .hover-popover-pronouns {
+  color: var(--text-secondary) !important;
+}
+body.light-theme .member-hover-popover .hover-popover-section-label {
+  color: var(--text-secondary) !important;
+}
+
+/* Atividades na lista de membros (jogando, em chamada, ausente…): as cores vinham para fundo escuro,
+   com título claro e tempo em ciano sobre a pílula ciano. Aqui a pílula é branca, o título é tinta
+   escura e o tempo usa a cor do jogo bem escurecida, para se ler em qualquer jogo. */
+body.light-theme .member-status-text.activity-game {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-color: color-mix(in srgb, var(--game-color) 50%, rgba(42, 31, 45, 0.15)) !important;
+  color: var(--text-primary) !important;
+}
+body.light-theme .member-status-text .member-game-title {
+  color: var(--text-primary) !important;
+  font-weight: 700;
+}
+body.light-theme .member-status-text .member-game-time {
+  color: color-mix(in srgb, var(--game-color) 40%, #1c1224) !important;
+  font-weight: 800;
+}
+body.light-theme .member-status-text.activity-voice,
+body.light-theme .member-voice-pill,
+body.light-theme .member-status-voice-sub {
+  color: #15803d !important;
+}
+body.light-theme .member-status-sub-idle,
+body.light-theme .member-status-text.status-idle {
+  color: #b45309 !important;
+}
+body.light-theme .member-status-sub-dnd,
+body.light-theme .member-status-text.status-dnd {
+  color: #b91c1c !important;
+}
+body.light-theme .member-status-text.custom {
+  color: var(--text-secondary) !important;
+}
+
+/* ── Barra do topo, como no design ── */
+/* Marca: átomo coral solto, sem o disco escuro */
+body.light-theme .brand-mark-atom {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: var(--accent-color) !important;
+}
+body.light-theme .brand-name {
+  font-weight: 800;
+  font-size: 18px;
+}
+
+/* Espaços: sem a pílula em volta; botões coloridos com iniciais brancas; nome do espaço aberto */
+body.light-theme.echo-layout-glass .topbar-center-dock {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+body.light-theme.echo-layout-glass .topbar-server-btn {
+  background: var(--server-bg, rgba(255, 255, 255, 0.8)) !important;
+  border: 0 !important;
+  box-shadow: 0 2px 8px rgba(42, 31, 45, 0.18) !important;
+}
+body.light-theme .topbar-server-initials {
+  color: #fff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25) !important;
+}
+body.light-theme .topbar-server-name {
+  color: var(--text-primary) !important;
+  font-weight: 700;
+  font-size: 14px;
+}
+body.light-theme .topbar-server-indicator.active {
+  width: 22px !important;
+  background: linear-gradient(180deg, #e9826f, var(--accent-color)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+body.light-theme .topbar-server-badge {
+  background: linear-gradient(180deg, #e9826f, var(--accent-color)) !important;
+  border: 2px solid #fff;
+  box-sizing: content-box;
+}
+body.light-theme .topbar-server-add-btn {
+  background: transparent !important;
+  border: 1.5px dashed #b9aeb4 !important;
+  color: var(--text-muted) !important;
+}
+
+/* Ícones da direita: soltos (sem caixa), a estrela amarela, divisor suave */
+body.light-theme.echo-layout-glass .topbar-actions-group .topbar-icon-btn {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body.light-theme.echo-layout-glass .topbar-actions-group .topbar-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.6) !important;
+}
+body.light-theme .topbar-icon-svg.icon-star {
+  color: #f5b301;
+}
+body.light-theme .topbar-v-divider {
+  background: rgba(42, 31, 45, 0.14) !important;
+}
+
+/* ── Cabeçalho do canal: "# geral" e o tópico na mesma linha, botões quadrados de vidro ── */
+body.light-theme .content-header .header-space {
+  display: none;
+}
+body.light-theme .content-header .header-info {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+}
+body.light-theme .content-header .channel-topic-header-text {
+  color: var(--text-muted) !important;
+  font-size: 13px;
+  font-weight: 500;
+}
+body.light-theme.echo-layout-glass .channel-header-action-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+  border: 1px solid var(--glass-card-edge) !important;
+  color: var(--text-secondary) !important;
+  box-shadow: inset 0 1px 0 #fff !important;
+}
+body.light-theme.echo-layout-glass .channel-header-action-btn.active {
+  background: rgba(223, 109, 93, 0.2) !important;
+  color: var(--accent-hover) !important;
+}
+
+/* Chat de texto dentro da chamada de voz: também é um painel de vidro solto, com a mesma borda,
+   canto e sombra dos outros painéis (antes só tinha uma linha fina na esquerda, que sumia). */
+body.light-theme.echo-layout-glass .voice-chat-pane {
+  height: auto;
+  align-self: stretch;
+  margin: 12px 12px 12px 0;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 0 #fff, 0 16px 44px rgba(42, 31, 45, 0.14);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+}
+body.light-theme.echo-layout-glass .voice-chat-composer {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid var(--glass-card-edge);
+  border-radius: 22px;
+  box-shadow: inset 0 1px 0 #fff, 0 10px 28px rgba(42, 31, 45, 0.1);
+}
+body.light-theme .voice-chat-composer .send-btn,
+body.light-theme .voice-chat-composer button[type="submit"] {
+  background: linear-gradient(180deg, #e9826f, var(--accent-color)) !important;
+  color: #fff !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 6px 16px rgba(223, 109, 93, 0.4) !important;
+}
+
+/* ── 8. LOJA DE COSMÉTICOS E INVENTÁRIO (ECHO AURORA LIGHT) ────────────────
+   Precedência final: papel pêssego suave, vidro fosco orgânico, cantos de 24-26px,
+   abas e botões em pílulas 999px e acento coral (#df6d5d).
+   Elimina qualquer resquício ciano/preto de effects.css e alinha badges perfeitamente. */
+
+/* Container rolável da loja no app */
+body.light-theme .echo-shop-container {
+  flex: 1 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 22px !important;
+  padding: 28px 36px 56px !important;
+  box-sizing: border-box !important;
+  scrollbar-gutter: stable;
+  max-width: 1320px !important;
+  margin: 0 auto !important;
+  width: 100% !important;
+}
+
+/* Cabeçalho da loja */
+body.light-theme .echo-shop-title {
+  color: var(--text-primary, #2d2424) !important;
+  font-size: 26px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+  background: none !important;
+  -webkit-text-fill-color: initial !important;
+  text-shadow: none !important;
+}
+
+body.light-theme .echo-shop-subtitle {
+  color: var(--text-muted, #9c8a88) !important;
+  font-size: 13.5px !important;
+}
+
+body.light-theme .echo-shop-badge-icon {
+  background: rgba(223, 109, 93, 0.12) !important;
+  border: 1px solid rgba(223, 109, 93, 0.28) !important;
+  box-shadow: 0 8px 20px -6px rgba(223, 109, 93, 0.35) !important;
+  border-radius: 18px !important;
+  backdrop-filter: blur(16px) !important;
+}
+
+body.light-theme .echo-shop-header-btn {
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid var(--glass-card-edge) !important;
+  color: var(--text-secondary, #6e5d5d) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 4px 14px rgba(42, 31, 45, 0.05) !important;
+  font-weight: 700 !important;
+}
+
+body.light-theme .echo-shop-header-btn:hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: var(--text-primary, #2d2424) !important;
+  border-color: rgba(223, 109, 93, 0.4) !important;
+}
+
+body.light-theme .echo-shop-close-btn {
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid var(--glass-card-edge) !important;
+  color: var(--text-muted, #9c8a88) !important;
+}
+
+body.light-theme .echo-shop-close-btn:hover {
+  background: rgba(239, 68, 68, 0.14) !important;
+  color: #ef4444 !important;
+}
+
+/* Trilho de abas superiores em pílula */
+body.light-theme .echo-shop-main-tabs,
+body.light-theme.echo-layout-glass .echo-shop-main-tabs {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 5px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+  border: 1px solid var(--glass-card-edge) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 8px 24px rgba(42, 31, 45, 0.06) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  scrollbar-width: none !important;
+  margin: 0 0 4px 0 !important;
+}
+
+body.light-theme .echo-shop-main-tab,
+body.light-theme.echo-layout-glass .echo-shop-main-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 18px !important;
+  border-radius: 999px !important;
+  border: 0 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: var(--text-secondary, #6e5d5d) !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  transition: all 0.16s ease !important;
+}
+
+body.light-theme .echo-shop-main-tab:hover,
+body.light-theme.echo-layout-glass .echo-shop-main-tab:hover {
+  background: rgba(255, 255, 255, 0.85) !important;
+  color: var(--text-primary, #2d2424) !important;
+}
+
+body.light-theme .echo-shop-main-tab.active,
+body.light-theme.echo-layout-glass .echo-shop-main-tab.active {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -6px rgba(223, 109, 93, 0.5) !important;
+  border: 0 !important;
+  text-shadow: none !important;
+}
+
+body.light-theme .echo-shop-tab-count,
+body.light-theme.echo-layout-glass .echo-shop-tab-count {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  padding: 2px 7px !important;
+  border-radius: 999px !important;
+  background: rgba(74, 53, 49, 0.08) !important;
+  color: var(--text-secondary, #6e5d5d) !important;
+}
+
+body.light-theme .echo-shop-main-tab.active .echo-shop-tab-count,
+body.light-theme.echo-layout-glass .echo-shop-main-tab.active .echo-shop-tab-count {
+  background: rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+}
+
+/* Provador / Vitrine (Showcase) — fluido, sem cortes e sem risco ciano */
+body.light-theme .echo-shop-showcase-card,
+body.light-theme.echo-layout-glass .echo-shop-showcase-card {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 24px !important;
+  padding: 26px 32px !important;
+  border-radius: 26px !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 16px 40px rgba(42, 31, 45, 0.08) !important;
+  backdrop-filter: blur(24px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+  position: relative !important;
+  overflow: visible !important;
+  min-height: auto !important;
+  height: auto !important;
+  flex-shrink: 0 !important;
+  flex-wrap: wrap !important;
+  margin-bottom: 4px !important;
+}
+
+body.light-theme .echo-shop-showcase-card::before,
+body.light-theme.echo-layout-glass .echo-shop-showcase-card::before {
+  display: none !important;
+  content: none !important;
+}
+
+body.light-theme .echo-shop-preview-side {
+  display: flex !important;
+  align-items: center !important;
+  gap: 24px !important;
+  min-width: 0 !important;
+  flex: 1 1 360px !important;
+}
+
+body.light-theme .echo-shop-preview-bubble,
+body.light-theme.echo-layout-glass .echo-shop-preview-bubble {
+  width: 96px !important;
+  height: 96px !important;
+  min-width: 96px !important;
+  min-height: 96px !important;
+  border-radius: 24px !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid var(--glass-card-edge) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 8px 20px rgba(42, 31, 45, 0.06) !important;
+  flex-shrink: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  position: relative !important;
+  overflow: visible !important;
+}
+
+body.light-theme .echo-shop-preview-tag {
+  color: #df6d5d !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+body.light-theme .echo-shop-preview-name {
+  color: var(--text-primary, #2d2424) !important;
+  font-size: 22px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+}
+
+body.light-theme .echo-shop-preview-desc {
+  color: var(--text-secondary, #6e5d5d) !important;
+  font-size: 13.5px !important;
+  line-height: 1.45 !important;
+}
+
+body.light-theme .echo-shop-pill-category {
+  background: rgba(74, 53, 49, 0.06) !important;
+  border: 1px solid rgba(74, 53, 49, 0.14) !important;
+  color: var(--text-secondary, #6e5d5d) !important;
+  border-radius: 999px !important;
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+
+body.light-theme .echo-shop-preview-actions {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  flex-shrink: 0 !important;
+  min-width: 200px !important;
+}
+
+body.light-theme .echo-shop-action-btn.acquire,
+body.light-theme .echo-shop-action-btn.primary,
+body.light-theme.echo-layout-glass .echo-shop-action-btn.acquire,
+body.light-theme.echo-layout-glass .echo-shop-action-btn.primary {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  font-weight: 800 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -8px rgba(223, 109, 93, 0.5) !important;
+  cursor: pointer !important;
+  padding: 10px 22px !important;
+  font-size: 13px !important;
+}
+
+body.light-theme .echo-shop-action-btn.secondary,
+body.light-theme.echo-layout-glass .echo-shop-action-btn.secondary {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid var(--glass-card-edge) !important;
+  color: var(--text-secondary, #6e5d5d) !important;
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+  padding: 10px 22px !important;
+  font-size: 13px !important;
+}
+
+body.light-theme .echo-shop-action-btn.secondary:hover,
+body.light-theme.echo-layout-glass .echo-shop-action-btn.secondary:hover {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  color: #ef4444 !important;
+}
+
+body.light-theme .echo-shop-action-btn.active,
+body.light-theme.echo-layout-glass .echo-shop-action-btn.active {
+  background: rgba(34, 197, 94, 0.16) !important;
+  border: 1px solid rgba(34, 197, 94, 0.4) !important;
+  color: #15803d !important;
+  border-radius: 999px !important;
+  font-weight: 800 !important;
+  padding: 10px 22px !important;
+  font-size: 13px !important;
+}
+
+/* Barra de filtros por categoria */
+body.light-theme .echo-shop-category-bar {
+  display: flex !important;
+  gap: 8px !important;
+  overflow-x: auto !important;
+  padding: 4px 0 !important;
+  scrollbar-width: none !important;
+  margin: 2px 0 6px 0 !important;
+}
+
+body.light-theme .echo-shop-cat-btn,
+body.light-theme.echo-layout-glass .echo-shop-cat-btn {
+  padding: 7px 18px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+  border: 1px solid var(--glass-card-edge) !important;
+  color: var(--text-secondary, #6e5d5d) !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  box-shadow: inset 0 1px 0 #fff !important;
+  cursor: pointer !important;
+  transition: all 0.16s ease !important;
+}
+
+body.light-theme .echo-shop-cat-btn:hover,
+body.light-theme.echo-layout-glass .echo-shop-cat-btn:hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: var(--text-primary, #2d2424) !important;
+}
+
+body.light-theme .echo-shop-cat-btn.active,
+body.light-theme.echo-layout-glass .echo-shop-cat-btn.active {
+  background: #df6d5d !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px -4px rgba(223, 109, 93, 0.6) !important;
+  font-weight: 800 !important;
+}
+
+/* Cards de cosméticos do catálogo */
+body.light-theme .echo-shop-card,
+body.light-theme.echo-layout-glass .echo-shop-card {
+  padding: 16px !important;
+  border-radius: 24px !important;
+  background: rgba(255, 255, 255, 0.68) !important;
+  border: 1px solid var(--glass-card-edge) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 10px 28px rgba(42, 31, 45, 0.06) !important;
+  backdrop-filter: blur(18px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
+  color: var(--text-primary, #2d2424) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  position: relative !important;
+  cursor: pointer !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+}
+
+body.light-theme .echo-shop-card:hover,
+body.light-theme.echo-layout-glass .echo-shop-card:hover {
+  transform: translateY(-3px) !important;
+  border-color: rgba(223, 109, 93, 0.45) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 16px 36px rgba(42, 31, 45, 0.1), 0 0 16px rgba(223, 109, 93, 0.15) !important;
+}
+
+body.light-theme .echo-shop-card.selected,
+body.light-theme.echo-layout-glass .echo-shop-card.selected {
+  border-color: #df6d5d !important;
+  box-shadow: inset 0 1px 0 #fff, 0 0 0 2px rgba(223, 109, 93, 0.25), 0 14px 34px rgba(42, 31, 45, 0.1) !important;
+}
+
+body.light-theme .echo-shop-card-visualizer,
+body.light-theme.echo-layout-glass .echo-shop-card-visualizer {
+  height: 124px !important;
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid var(--glass-card-edge) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  display: grid !important;
+  place-items: center !important;
+}
+
+/* Badges nos cards — Ancoragem estrita e independente sem colisão ou esticamento */
+body.light-theme .echo-shop-card-badge,
+body.light-theme.echo-layout-glass .echo-shop-card-badge {
+  position: absolute !important;
+  top: 10px !important;
+  left: 10px !important;
+  right: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  width: fit-content !important;
+  max-width: calc(50% - 14px) !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 3px 8px !important;
+  border-radius: 999px !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+  z-index: 5 !important;
+}
+
+body.light-theme .echo-shop-owned-badge,
+body.light-theme.echo-layout-glass .echo-shop-owned-badge {
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  left: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  width: fit-content !important;
+  max-width: calc(50% - 14px) !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 3px 8px !important;
+  border-radius: 999px !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  background: rgba(34, 197, 94, 0.16) !important;
+  border: 1px solid rgba(34, 197, 94, 0.4) !important;
+  color: #15803d !important;
+  z-index: 5 !important;
+}
+
+body.light-theme .echo-shop-card-title {
+  color: var(--text-primary, #2d2424) !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  margin: 0 !important;
+}
+
+body.light-theme .echo-shop-card-cat {
+  color: var(--text-muted, #9c8a88) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+
+body.light-theme .echo-shop-card-desc {
+  color: var(--text-secondary, #6e5d5d) !important;
+  font-size: 12.5px !important;
+  line-height: 1.4 !important;
+}
+
+/* Botões nos cards da loja */
+body.light-theme .echo-shop-equip-btn,
+body.light-theme.echo-layout-glass .echo-shop-equip-btn {
+  width: 100% !important;
+  padding: 8px 14px !important;
+  border-radius: 999px !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  background: rgba(74, 53, 49, 0.07) !important;
+  border: 1px solid rgba(74, 53, 49, 0.15) !important;
+  color: var(--text-primary, #2d2424) !important;
+  cursor: pointer !important;
+  transition: all 0.16s ease !important;
+}
+
+body.light-theme .echo-shop-equip-btn:hover:not(:disabled),
+body.light-theme.echo-layout-glass .echo-shop-equip-btn:hover:not(:disabled) {
+  background: #df6d5d !important;
+  border-color: #df6d5d !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px -4px rgba(223, 109, 93, 0.6) !important;
+}
+
+body.light-theme .echo-shop-equip-btn.acquire-btn,
+body.light-theme.echo-layout-glass .echo-shop-equip-btn.acquire-btn {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 14px -4px rgba(223, 109, 93, 0.5) !important;
+}
+
+body.light-theme .echo-shop-equip-btn.equipped,
+body.light-theme.echo-layout-glass .echo-shop-equip-btn.equipped {
+  background: rgba(34, 197, 94, 0.16) !important;
+  border: 1px solid rgba(34, 197, 94, 0.4) !important;
+  color: #15803d !important;
+  border-radius: 999px !important;
+  cursor: default !important;
+}
+
+/* Card Mockup de Perfil no Provador */
+body.light-theme .echo-shop-mock-profile-card,
+body.light-theme.echo-layout-glass .echo-shop-mock-profile-card {
+  background: rgba(255, 255, 255, 0.88) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 14px 34px -10px rgba(42, 31, 45, 0.18) !important;
+  border-radius: 22px !important;
+}
+
+body.light-theme .echo-shop-mock-profile-card .mock-card-name {
+  color: var(--text-primary, #2d2424) !important;
+  font-weight: 800 !important;
+}
+
+body.light-theme .echo-shop-mock-profile-card .mock-card-handle {
+  color: var(--text-muted, #9c8a88) !important;
+}
+
+/* Toast Feedback */
+body.light-theme .echo-shop-toast,
+body.light-theme.echo-layout-glass .echo-shop-toast {
+  background: rgba(42, 31, 45, 0.92) !important;
+  color: #ffffff !important;
+  border-radius: 999px !important;
+  padding: 10px 22px !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25) !important;
+  font-weight: 700 !important;
+}
+
+/* ── INVENTÁRIO DE COSMÉTICOS (AURORA LIGHT) ────────────────────────────── */
+body.light-theme .echo-inventory-header-card,
+body.light-theme.echo-layout-glass .echo-inventory-header-card,
+body.light-theme .echo-inventory-stage-card,
+body.light-theme.echo-layout-glass .echo-inventory-stage-card {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 12px 32px -12px rgba(42, 31, 45, 0.16) !important;
+  border-radius: 26px !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+}
+
+body.light-theme .echo-inventory-title {
+  color: var(--text-primary, #2d2424) !important;
+  font-size: 22px !important;
+  font-weight: 800 !important;
+}
+
+body.light-theme .echo-inventory-shop-btn,
+body.light-theme.echo-layout-glass .echo-inventory-shop-btn {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  font-weight: 800 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -8px rgba(223, 109, 93, 0.5) !important;
+}
+
+body.light-theme .echo-inventory-nav-bar,
+body.light-theme.echo-layout-glass .echo-inventory-nav-bar {
+  background: rgba(255, 255, 255, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  border-radius: 999px !important;
+  box-shadow: inset 0 1px 0 #fff, 0 6px 18px rgba(42, 31, 45, 0.06) !important;
+  padding: 5px !important;
+}
+
+body.light-theme .echo-inv-tab,
+body.light-theme.echo-layout-glass .echo-inv-tab {
+  color: var(--text-secondary, #756260) !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+}
+
+body.light-theme .echo-inv-tab.active,
+body.light-theme.echo-layout-glass .echo-inv-tab.active {
+  background: #df6d5d !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 16px -6px rgba(223, 109, 93, 0.6) !important;
+}
+
+body.light-theme .echo-inv-card,
+body.light-theme.echo-layout-glass .echo-inv-card {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 8px 24px -10px rgba(42, 31, 45, 0.15) !important;
+  border-radius: 22px !important;
+  color: var(--text-primary, #2d2424) !important;
+}
+
+body.light-theme .echo-inv-card:hover,
+body.light-theme.echo-layout-glass .echo-inv-card:hover {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(223, 109, 93, 0.45) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 14px 30px -8px rgba(42, 31, 45, 0.18) !important;
+}
+
+body.light-theme .echo-stage-btn-equip,
+body.light-theme.echo-layout-glass .echo-stage-btn-equip {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  font-weight: 800 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 6px 16px -6px rgba(223, 109, 93, 0.6) !important;
+}
+
+body.light-theme .echo-inv-equip-btn,
+body.light-theme.echo-layout-glass .echo-inv-equip-btn {
+  background: rgba(74, 53, 49, 0.08) !important;
+  border: 1px solid rgba(74, 53, 49, 0.14) !important;
+  color: var(--text-primary, #2d2424) !important;
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+}
+
+body.light-theme .echo-inv-equip-btn:hover:not(:disabled),
+body.light-theme.echo-layout-glass .echo-inv-equip-btn:hover:not(:disabled) {
+  background: #df6d5d !important;
+  border-color: #df6d5d !important;
+  color: #ffffff !important;
+}
+
+body.light-theme .echo-inv-equipped-pill,
+body.light-theme.echo-layout-glass .echo-inv-equipped-pill {
+  background: rgba(34, 197, 94, 0.16) !important;
+  border: 1px solid rgba(34, 197, 94, 0.4) !important;
+  color: #15803d !important;
+  border-radius: 999px !important;
+}
+
+/* Modo desempenho: sem desfoque e sem manchas, só o papel liso */
+body.theme-performance-opaque.light-theme,
+body.theme-performance-opaque.light-theme .echo-app,
+body.theme-performance-opaque.light-theme.echo-layout-glass .workspace {
+  background: var(--bg-primary) !important;
+}

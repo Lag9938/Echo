@@ -1,0 +1,1329 @@
+/* ==========================================================================
+   ECHO SHOP & COSMETICS INVENTORY — REDESIGN AURORA
+   Linguagem visual unificada: papel pêssego, vidro fosco com bordas suaves,
+   cantos generosos (22–28px) e acento coral (#df6d5d).
+   Substitui o visual cósmico/escuro antigo pelos tokens do tema Aurora.
+   ========================================================================== */
+
+/* ── 1. LOJA DE COSMÉTICOS (ECHO SHOP) ─────────────────────────────────── */
+
+.echo-shop-container {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 24px 32px 48px;
+  width: 100%;
+  box-sizing: border-box;
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+
+/* A coluna tem altura fixa e rola: sem isto os filhos encolhem e as abas/cartões saem cortados */
+.echo-shop-container > * {
+  flex-shrink: 0;
+}
+
+/* Cabeçalho superior: marca, título e ações (inventário + fechar) */
+.echo-shop-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.echo-shop-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.echo-shop-badge-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 35%, transparent);
+  box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--accent-color) 40%, transparent);
+  flex-shrink: 0;
+}
+
+.echo-shop-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.echo-shop-subtitle {
+  margin: 3px 0 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.echo-shop-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.echo-shop-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.echo-shop-header-btn:hover {
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.echo-shop-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.16s ease;
+  font-size: 14px;
+}
+
+.echo-shop-close-btn:hover {
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+  transform: rotate(90deg);
+}
+
+/* Trilho segmentado de abas da loja */
+.echo-shop-main-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 18%, transparent);
+  overflow-x: auto;
+  scrollbar-width: none;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.echo-shop-main-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.echo-shop-main-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.16s ease;
+}
+
+.echo-shop-main-tab:hover {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
+}
+
+.echo-shop-main-tab.active {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color));
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -8px color-mix(in srgb, var(--accent-color) 80%, transparent);
+}
+
+.echo-shop-tab-count {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-secondary);
+}
+
+.echo-shop-main-tab.active .echo-shop-tab-count {
+  background: rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+
+/* Cartão do Provador (Showcase) */
+.echo-shop-showcase-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 30px;
+  border-radius: 26px;
+  background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: visible;
+  min-height: auto;
+  height: auto;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.echo-shop-preview-side {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-width: 0;
+  flex: 1;
+}
+
+.echo-shop-preview-bubble {
+  width: 96px;
+  height: 96px;
+  min-width: 96px;
+  min-height: 96px;
+  display: grid;
+  place-items: center;
+  border-radius: 26px;
+  background: color-mix(in srgb, var(--bg-primary) 65%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 18%, transparent);
+  flex-shrink: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: visible;
+}
+
+.echo-shop-preview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.echo-shop-preview-tag {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-color);
+}
+
+.echo-shop-preview-name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.echo-shop-preview-desc {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  max-width: 480px;
+}
+
+.echo-shop-preview-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.echo-shop-pill-category {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
+}
+
+.echo-shop-preview-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.echo-shop-action-btn {
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  border: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  white-space: nowrap;
+}
+
+.echo-shop-action-btn.primary,
+.echo-shop-action-btn.acquire {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color));
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -8px color-mix(in srgb, var(--accent-color) 80%, transparent);
+}
+
+.echo-shop-action-btn.primary:hover,
+.echo-shop-action-btn.acquire:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+}
+
+.echo-shop-action-btn.secondary {
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
+  color: var(--text-secondary);
+}
+
+.echo-shop-action-btn.secondary:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+}
+
+.echo-shop-action-btn.active {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  color: #16a34a;
+  cursor: default;
+}
+
+/* Barra de filtros por categoria */
+.echo-shop-category-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
+}
+
+.echo-shop-category-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.echo-shop-cat-btn {
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.echo-shop-cat-btn:hover {
+  background: color-mix(in srgb, var(--text-primary) 9%, transparent);
+  color: var(--text-primary);
+}
+
+.echo-shop-cat-btn.active {
+  background: var(--accent-color);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--accent-color) 70%, transparent);
+}
+
+/* Grade de itens e cartões */
+.echo-shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.echo-shop-card {
+  padding: 16px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
+  box-shadow: 0 6px 20px -8px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+}
+
+.echo-shop-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent-color) 45%, transparent);
+  box-shadow: 0 14px 30px -10px rgba(0, 0, 0, 0.25);
+}
+
+.echo-shop-card.selected {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 25%, transparent), 0 10px 26px -8px rgba(0, 0, 0, 0.2);
+}
+
+.echo-shop-card-visualizer {
+  height: 120px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bg-primary) 65%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 14%, transparent);
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.echo-shop-card-badge {
+  position: absolute !important;
+  top: 10px !important;
+  left: 10px !important;
+  right: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  z-index: 5;
+  width: fit-content !important;
+  max-width: calc(50% - 14px) !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.echo-shop-owned-badge {
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  left: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: rgba(34, 197, 94, 0.18);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  color: #16a34a;
+  z-index: 5;
+  width: fit-content !important;
+  max-width: calc(50% - 14px) !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.echo-shop-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.echo-shop-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.echo-shop-card-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.echo-shop-card-cat {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.echo-shop-card-desc {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.echo-shop-card-footer {
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+.echo-shop-equip-btn {
+  width: 100%;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 22%, transparent);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.echo-shop-equip-btn:hover {
+  background: var(--accent-color);
+  border-color: transparent;
+  color: #fff;
+}
+
+.echo-shop-equip-btn.acquire-btn {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color));
+  color: #fff;
+  border: 0;
+  box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--accent-color) 70%, transparent);
+}
+
+.echo-shop-equip-btn.equipped {
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #16a34a;
+  cursor: default;
+}
+
+/* Card Mockup de Perfil no Provador de Efeitos */
+.echo-shop-mock-profile-card {
+  width: 280px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--bg-secondary) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 22%, transparent);
+  box-shadow: 0 10px 26px -8px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.echo-shop-mock-profile-card .mock-card-banner {
+  height: 64px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-color) 25%, #2a1f2d) 0%, #1a1622 100%);
+}
+
+.echo-shop-mock-profile-card .mock-card-body {
+  padding: 0 14px 14px;
+  background: transparent;
+}
+
+.echo-shop-mock-profile-card .mock-card-name {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.echo-shop-mock-profile-card .mock-card-handle {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── 2. INVENTÁRIO DE COSMÉTICOS (COSMETICS INVENTORY) ─────────────────── */
+
+.echo-inventory-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.echo-inventory-header-card {
+  padding: 22px 26px;
+  border-radius: 26px;
+  background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
+  box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.echo-inventory-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.echo-inventory-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.echo-inventory-desc {
+  margin: 3px 0 0;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+
+.echo-inventory-shop-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -8px color-mix(in srgb, var(--accent-color) 80%, transparent);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.echo-inventory-shop-btn:hover {
+  transform: translateY(-2px);
+}
+
+/* Trilho de abas do inventário */
+.echo-inventory-nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 18%, transparent);
+  flex-wrap: wrap;
+}
+
+.echo-inventory-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.echo-inv-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.echo-inv-tab:hover {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
+}
+
+.echo-inv-tab.active {
+  background: var(--accent-color);
+  color: #fff;
+  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent-color) 75%, transparent);
+}
+
+.echo-inv-tab-count {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  color: var(--text-secondary);
+}
+
+.echo-inv-tab.active .echo-inv-tab-count {
+  background: rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+
+/* Card de Estágio do Inventário (lado esquerdo) */
+.echo-inventory-stage-card {
+  padding: 20px;
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
+  box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.echo-stage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.echo-stage-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--accent-color);
+  text-transform: uppercase;
+}
+
+.echo-stage-live-badge .stage-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  box-shadow: 0 0 8px var(--accent-color);
+}
+
+.echo-stage-scope-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* Botões do estágio do inventário */
+.echo-stage-btn-equip {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 6px 16px -6px color-mix(in srgb, var(--accent-color) 75%, transparent);
+  cursor: pointer;
+}
+
+.echo-stage-btn-reset,
+.echo-stage-btn-unequip {
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.echo-stage-btn-reset:hover {
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  color: var(--text-primary);
+}
+
+.echo-stage-btn-unequip:hover {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+}
+
+/* Cards de itens do inventário */
+.echo-inv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.echo-inv-card {
+  padding: 14px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
+  box-shadow: 0 4px 14px -6px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.echo-inv-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent-color) 45%, transparent);
+  box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.2);
+}
+
+.echo-inv-card.is-active,
+.echo-inv-card.is-equipped {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 25%, transparent);
+}
+
+/* Toast de notificações da loja e inventário */
+.echo-shop-toast,
+.echo-inventory-toast {
+  position: fixed;
+  top: 72px;
+  right: 28px;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--bg-secondary) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 40%, transparent);
+  color: var(--text-primary);
+  box-shadow: 0 14px 34px -8px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  animation: soundboardPop 0.22s var(--ease-smooth, ease) both;
+}
+
+/* ==========================================================================
+   AURORA LIGHT: SOBRESCRIÇÕES DE VIDRO FOSCO E PAPEL PÊSSEGO
+   Garante contraste perfeito e substitui os fundos pretos de effects.css/calls.css
+   ========================================================================== */
+
+body.light-theme .echo-shop-title {
+  background: linear-gradient(135deg, var(--text-primary) 30%, var(--accent-color) 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+body.light-theme.echo-layout-glass .echo-shop-showcase-card,
+body.light-theme.echo-layout-glass .echo-shop-card,
+body.light-theme.echo-layout-glass .echo-inventory-header-card,
+body.light-theme.echo-layout-glass .echo-inventory-stage-card,
+body.light-theme.echo-layout-glass .echo-inv-card {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 12px 32px -12px rgba(42, 31, 45, 0.18) !important;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
+body.light-theme.echo-layout-glass .echo-shop-card:hover,
+body.light-theme.echo-layout-glass .echo-inv-card:hover {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: color-mix(in srgb, var(--accent-color) 45%, #fff) !important;
+}
+
+/* Trilhos segmentados de abas da Loja e do Inventário */
+body.light-theme .echo-shop-main-tabs,
+body.light-theme.echo-layout-glass .echo-shop-main-tabs,
+body.light-theme .echo-inventory-nav-bar,
+body.light-theme.echo-layout-glass .echo-inventory-nav-bar {
+  background: rgba(255, 255, 255, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  border-radius: 999px !important;
+  box-shadow: inset 0 1px 0 #fff, 0 6px 18px rgba(42, 31, 45, 0.06) !important;
+  padding: 5px !important;
+}
+
+/* Abas individuais da Loja */
+body.light-theme .echo-shop-main-tab,
+body.light-theme.echo-layout-glass .echo-shop-main-tab {
+  border-radius: 999px !important;
+  color: var(--text-secondary, #756260) !important;
+  background: transparent !important;
+  border: 0 !important;
+  font-weight: 700 !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+  transition: all 0.16s ease !important;
+}
+
+body.light-theme .echo-shop-main-tab:hover,
+body.light-theme.echo-layout-glass .echo-shop-main-tab:hover {
+  background: rgba(255, 255, 255, 0.7) !important;
+  color: var(--text-primary, #2d2424) !important;
+}
+
+body.light-theme .echo-shop-main-tab.active,
+body.light-theme.echo-layout-glass .echo-shop-main-tab.active {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -6px rgba(223, 109, 93, 0.5) !important;
+  text-shadow: none !important;
+}
+
+body.light-theme .echo-shop-tab-count,
+body.light-theme.echo-layout-glass .echo-shop-tab-count {
+  background: rgba(74, 53, 49, 0.08) !important;
+  color: var(--text-secondary, #756260) !important;
+  border-radius: 999px !important;
+}
+
+body.light-theme .echo-shop-main-tab.active .echo-shop-tab-count,
+body.light-theme.echo-layout-glass .echo-shop-main-tab.active .echo-shop-tab-count {
+  background: rgba(255, 255, 255, 0.28) !important;
+  color: #ffffff !important;
+}
+
+/* Provador da Loja (Showcase) */
+body.light-theme.echo-layout-glass .echo-shop-showcase-card::before {
+  display: none !important; /* Remove o risco ciano antigo do topo */
+}
+
+body.light-theme .echo-shop-card-visualizer,
+body.light-theme.echo-layout-glass .echo-shop-card-visualizer,
+body.light-theme .echo-shop-preview-bubble,
+body.light-theme.echo-layout-glass .echo-shop-preview-bubble {
+  background: rgba(255, 255, 255, 0.55) !important;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow: inset 0 1px 0 #fff !important;
+  border-radius: 18px !important;
+}
+
+body.light-theme .echo-shop-preview-name,
+body.light-theme .echo-inventory-title,
+body.light-theme .echo-shop-card-title {
+  color: var(--text-primary, #2d2424) !important;
+}
+
+body.light-theme .echo-shop-preview-desc,
+body.light-theme .echo-inventory-desc,
+body.light-theme .echo-shop-card-desc {
+  color: var(--text-secondary, #756260) !important;
+}
+
+body.light-theme .echo-shop-pill-category {
+  background: rgba(74, 53, 49, 0.06) !important;
+  border: 1px solid rgba(74, 53, 49, 0.12) !important;
+  color: var(--text-secondary, #756260) !important;
+}
+
+/* Botões do Provador e da Loja */
+body.light-theme .echo-shop-action-btn.acquire,
+body.light-theme .echo-shop-action-btn.primary,
+body.light-theme.echo-layout-glass .echo-shop-action-btn.acquire,
+body.light-theme.echo-layout-glass .echo-shop-action-btn.primary {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -8px rgba(223, 109, 93, 0.5) !important;
+}
+
+body.light-theme .echo-shop-action-btn.secondary,
+body.light-theme.echo-layout-glass .echo-shop-action-btn.secondary {
+  background: rgba(255, 255, 255, 0.65) !important;
+  border: 1px solid rgba(74, 53, 49, 0.12) !important;
+  color: var(--text-secondary, #756260) !important;
+  border-radius: 999px !important;
+}
+
+body.light-theme .echo-shop-action-btn.secondary:hover,
+body.light-theme.echo-layout-glass .echo-shop-action-btn.secondary:hover {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  color: #ef4444 !important;
+}
+
+/* Filtros por Categoria na Loja */
+body.light-theme .echo-shop-cat-btn,
+body.light-theme.echo-layout-glass .echo-shop-cat-btn {
+  background: rgba(255, 255, 255, 0.65) !important;
+  border: 1px solid rgba(74, 53, 49, 0.1) !important;
+  color: var(--text-secondary, #756260) !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+}
+
+body.light-theme .echo-shop-cat-btn:hover,
+body.light-theme.echo-layout-glass .echo-shop-cat-btn:hover {
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: var(--text-primary, #2d2424) !important;
+}
+
+body.light-theme .echo-shop-cat-btn.active,
+body.light-theme.echo-layout-glass .echo-shop-cat-btn.active {
+  background: #df6d5d !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px -4px rgba(223, 109, 93, 0.6) !important;
+}
+
+/* Badges nos Cards da Loja — Nunca colidem pois têm ancoragem limpa */
+body.light-theme .echo-shop-card-badge,
+body.light-theme.echo-layout-glass .echo-shop-card-badge {
+  top: 10px !important;
+  left: 10px !important;
+  right: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  border-radius: 999px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.light-theme .echo-shop-owned-badge,
+body.light-theme.echo-layout-glass .echo-shop-owned-badge {
+  top: 10px !important;
+  right: 10px !important;
+  left: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  border-radius: 999px !important;
+  background: rgba(34, 197, 94, 0.16) !important;
+  border: 1px solid rgba(34, 197, 94, 0.38) !important;
+  color: #15803d !important;
+}
+
+/* Botões dos Cards da Loja */
+body.light-theme .echo-shop-equip-btn,
+body.light-theme.echo-layout-glass .echo-shop-equip-btn {
+  background: rgba(74, 53, 49, 0.07) !important;
+  border: 1px solid rgba(74, 53, 49, 0.14) !important;
+  color: var(--text-primary, #2d2424) !important;
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+}
+
+body.light-theme .echo-shop-equip-btn:hover:not(:disabled),
+body.light-theme.echo-layout-glass .echo-shop-equip-btn:hover:not(:disabled) {
+  background: #df6d5d !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px -4px rgba(223, 109, 93, 0.5) !important;
+}
+
+body.light-theme .echo-shop-equip-btn.acquire-btn,
+body.light-theme.echo-layout-glass .echo-shop-equip-btn.acquire-btn {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  box-shadow: 0 4px 14px -4px rgba(223, 109, 93, 0.5) !important;
+}
+
+body.light-theme .echo-shop-equip-btn.equipped,
+body.light-theme.echo-layout-glass .echo-shop-equip-btn.equipped {
+  background: rgba(34, 197, 94, 0.14) !important;
+  border: 1px solid rgba(34, 197, 94, 0.35) !important;
+  color: #15803d !important;
+  border-radius: 999px !important;
+}
+
+/* Card Mockup de Perfil no Provador */
+body.light-theme .echo-shop-mock-profile-card,
+body.light-theme.echo-layout-glass .echo-shop-mock-profile-card {
+  background: rgba(255, 255, 255, 0.88) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 14px 34px -10px rgba(42, 31, 45, 0.18) !important;
+  border-radius: 22px !important;
+}
+
+body.light-theme .echo-shop-mock-profile-card .mock-card-body,
+body.light-theme.echo-layout-glass .echo-shop-mock-profile-card .mock-card-body {
+  background: transparent !important;
+}
+
+body.light-theme .echo-shop-mock-profile-card .mock-card-name {
+  color: var(--text-primary, #2d2424) !important;
+}
+
+body.light-theme .echo-shop-mock-profile-card .mock-card-handle {
+  color: var(--text-muted, #9c8a88) !important;
+}
+
+/* ── INVENTÁRIO DE COSMÉTICOS: SOBRESCRIÇÕES AURORA LIGHT ────────────────── */
+
+/* Botão "Loja Echo" no topo */
+body.light-theme .echo-inventory-shop-btn,
+body.light-theme.echo-layout-glass .echo-inventory-shop-btn {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  font-weight: 800 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -8px rgba(223, 109, 93, 0.5) !important;
+}
+
+/* Abas de categorias do inventário (elimina o texto branco fantasma) */
+body.light-theme .echo-inv-tab,
+body.light-theme.echo-layout-glass .echo-inv-tab {
+  color: var(--text-secondary, #756260) !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+  transition: all 0.16s ease !important;
+}
+
+body.light-theme .echo-inv-tab:hover,
+body.light-theme.echo-layout-glass .echo-inv-tab:hover {
+  background: rgba(255, 255, 255, 0.7) !important;
+  color: var(--text-primary, #2d2424) !important;
+}
+
+body.light-theme .echo-inv-tab.active,
+body.light-theme.echo-layout-glass .echo-inv-tab.active {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -8px rgba(223, 109, 93, 0.5) !important;
+}
+
+body.light-theme .echo-inv-tab-count,
+body.light-theme.echo-layout-glass .echo-inv-tab-count {
+  background: rgba(74, 53, 49, 0.08) !important;
+  color: var(--text-secondary, #756260) !important;
+  border-radius: 999px !important;
+}
+
+body.light-theme .echo-inv-tab.active .echo-inv-tab-count,
+body.light-theme.echo-layout-glass .echo-inv-tab.active .echo-inv-tab-count {
+  background: rgba(255, 255, 255, 0.28) !important;
+  color: #ffffff !important;
+}
+
+/* Checkbox "Apenas Adquiridos" */
+body.light-theme .echo-inv-checkbox-text,
+body.light-theme.echo-layout-glass .echo-inv-checkbox-text {
+  color: var(--text-primary, #2d2424) !important;
+  font-weight: 700 !important;
+}
+
+body.light-theme .echo-custom-checkbox,
+body.light-theme.echo-layout-glass .echo-custom-checkbox {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border: 1.5px solid rgba(74, 53, 49, 0.25) !important;
+  border-radius: 6px !important;
+}
+
+body.light-theme .echo-custom-checkbox.checked,
+body.light-theme.echo-layout-glass .echo-custom-checkbox.checked {
+  background: #df6d5d !important;
+  border-color: #df6d5d !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 10px rgba(223, 109, 93, 0.35) !important;
+}
+
+/* Estágio do Inventário (Provador esquerdo) */
+body.light-theme .echo-stage-name,
+body.light-theme.echo-layout-glass .echo-stage-name {
+  color: var(--text-primary, #2d2424) !important;
+}
+
+body.light-theme .echo-stage-handle,
+body.light-theme.echo-layout-glass .echo-stage-handle {
+  color: var(--text-muted, #9c8a88) !important;
+}
+
+body.light-theme .echo-stage-bio,
+body.light-theme.echo-layout-glass .echo-stage-bio {
+  background: rgba(255, 255, 255, 0.65) !important;
+  color: var(--text-secondary, #756260) !important;
+  border: 1px solid rgba(74, 53, 49, 0.08) !important;
+  border-radius: 12px !important;
+}
+
+body.light-theme .echo-stage-controls,
+body.light-theme.echo-layout-glass .echo-stage-controls {
+  background: rgba(255, 255, 255, 0.5) !important;
+  border: 1px solid rgba(74, 53, 49, 0.08) !important;
+  border-radius: 16px !important;
+}
+
+body.light-theme .echo-stage-preview-box,
+body.light-theme.echo-layout-glass .echo-stage-preview-box {
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.85) 0%, rgba(245, 235, 230, 0.5) 100%) !important;
+  border: 1px solid rgba(74, 53, 49, 0.08) !important;
+  border-radius: 18px !important;
+}
+
+/* Cartão de perfil do provador: vidro claro em vez do cartão cinza-escuro do tema antigo */
+body.light-theme .echo-stage-preview-card,
+body.light-theme.echo-layout-glass .echo-stage-preview-card {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 14px 30px -14px rgba(74, 53, 49, 0.3) !important;
+}
+
+/* "Sem Decoração" / nome do item: o ciano antigo some no fundo claro */
+body.light-theme .echo-stage-item-name,
+body.light-theme.echo-layout-glass .echo-stage-item-name,
+body.light-theme.echo-layout-glass .echo-inv-shop-link-btn {
+  color: var(--accent-color) !important;
+  text-shadow: none !important;
+}
+
+body.light-theme .echo-stage-banner-overlay,
+body.light-theme.echo-layout-glass .echo-stage-banner-overlay {
+  background: linear-gradient(180deg, transparent 35%, rgba(255, 255, 255, 0.85) 100%) !important;
+}
+
+body.light-theme .echo-stage-btn-equip,
+body.light-theme.echo-layout-glass .echo-stage-btn-equip {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 18px -6px rgba(223, 109, 93, 0.5) !important;
+}
+
+body.light-theme .echo-stage-btn-unequip,
+body.light-theme.echo-layout-glass .echo-stage-btn-unequip {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  color: #dc2626 !important;
+  border-radius: 999px !important;
+}
+
+body.light-theme .echo-stage-btn-reset,
+body.light-theme.echo-layout-glass .echo-stage-btn-reset {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border: 1px solid rgba(74, 53, 49, 0.12) !important;
+  color: var(--text-secondary, #756260) !important;
+  border-radius: 999px !important;
+}
+
+/* Cards da Grade do Inventário — Fim do texto branco invisível */
+body.light-theme .echo-inv-card-title-row h4,
+body.light-theme.echo-layout-glass .echo-inv-card-title-row h4 {
+  color: var(--text-primary, #2d2424) !important;
+  font-weight: 800 !important;
+}
+
+body.light-theme .echo-inv-card-body p,
+body.light-theme.echo-layout-glass .echo-inv-card-body p {
+  color: var(--text-secondary, #756260) !important;
+}
+
+body.light-theme .echo-inv-card-preview-box,
+body.light-theme.echo-layout-glass .echo-inv-card-preview-box {
+  background: rgba(255, 255, 255, 0.55) !important;
+  border: 1px solid rgba(74, 53, 49, 0.06) !important;
+  border-radius: 14px !important;
+}
+
+body.light-theme .echo-inv-owned-tag,
+body.light-theme.echo-layout-glass .echo-inv-owned-tag {
+  background: rgba(34, 197, 94, 0.14) !important;
+  border: 1px solid rgba(34, 197, 94, 0.35) !important;
+  color: #15803d !important;
+  border-radius: 999px !important;
+}
+
+body.light-theme .echo-inv-store-tag,
+body.light-theme.echo-layout-glass .echo-inv-store-tag {
+  background: rgba(74, 53, 49, 0.07) !important;
+  border: 1px solid rgba(74, 53, 49, 0.12) !important;
+  color: var(--text-secondary, #756260) !important;
+  border-radius: 999px !important;
+}
+
+/* Notificações Toast */
+body.light-theme .echo-shop-toast,
+body.light-theme .echo-inventory-toast {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid rgba(255, 255, 255, 0.98) !important;
+  color: var(--text-primary, #2d2424) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 14px 36px -10px rgba(42, 31, 45, 0.2) !important;
+  border-radius: 999px !important;
+}
+
+/* ==========================================================================
+   AURORA DARK: SOBRESCRIÇÕES PARA LOJA E INVENTÁRIO
+   Ameixa profundo (#17111c / #241c2c), vidro fosco fumê e acento coral (#df6d5d)
+   ========================================================================== */
+
+body.theme-aurora-dark.echo-layout-glass .echo-shop-showcase-card,
+body.theme-aurora-dark.echo-layout-glass .echo-shop-card,
+body.theme-aurora-dark.echo-layout-glass .echo-inventory-header-card,
+body.theme-aurora-dark.echo-layout-glass .echo-inventory-stage-card,
+body.theme-aurora-dark.echo-layout-glass .echo-inv-card {
+  background: rgba(36, 28, 44, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+body.theme-aurora-dark .echo-shop-main-tabs,
+body.theme-aurora-dark.echo-layout-glass .echo-shop-main-tabs,
+body.theme-aurora-dark .echo-inventory-nav-bar,
+body.theme-aurora-dark.echo-layout-glass .echo-inventory-nav-bar {
+  background: rgba(23, 17, 28, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 999px !important;
+}
+
+body.theme-aurora-dark .echo-shop-main-tab.active,
+body.theme-aurora-dark.echo-layout-glass .echo-shop-main-tab.active,
+body.theme-aurora-dark .echo-inv-tab.active,
+body.theme-aurora-dark.echo-layout-glass .echo-inv-tab.active {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  box-shadow: 0 8px 20px -6px rgba(223, 109, 93, 0.6) !important;
+}
+
+body.theme-aurora-dark .echo-shop-card-badge,
+body.theme-aurora-dark.echo-layout-glass .echo-shop-card-badge {
+  top: 10px !important;
+  left: 10px !important;
+  right: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  border-radius: 999px !important;
+}
+
+body.theme-aurora-dark .echo-shop-owned-badge,
+body.theme-aurora-dark.echo-layout-glass .echo-shop-owned-badge {
+  top: 10px !important;
+  right: 10px !important;
+  left: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  border-radius: 999px !important;
+}
+
+body.theme-aurora-dark .echo-shop-action-btn.acquire,
+body.theme-aurora-dark .echo-shop-equip-btn.acquire-btn,
+body.theme-aurora-dark .echo-inventory-shop-btn,
+body.theme-aurora-dark .echo-stage-btn-equip {
+  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  box-shadow: 0 6px 18px -4px rgba(223, 109, 93, 0.55) !important;
+}
+

@@ -59,85 +59,165 @@
 }
 
 
-/* ── Auto-Update Banner ────────────────────────────── */
-/* Aviso flutuante logo abaixo da barra superior. Antes ele ficava no fluxo da página, embaixo da .topbar —
-   que é fixa no topo e marcada como área de arrastar a janela (-webkit-app-region: drag). No Electron, um
-   clique sobre uma área de arrastar move a janela em vez de chegar no botão, então "Reiniciar para
-   atualizar" não respondia. Fixo, acima de tudo e com no-drag, o clique chega no botão; e fica abaixo da
-   barra para não cobrir os botões de minimizar/fechar. */
+/* ── Aviso de atualização ──────────────────────────────
+   Cartão de vidro flutuante logo abaixo da barra superior. Ele precisa ser fixo, acima de tudo e com no-drag:
+   a .topbar é área de arrastar a janela (-webkit-app-region: drag) e, no Electron, um clique sobre ela move
+   a janela em vez de chegar no botão "Reiniciar para atualizar". Fica abaixo da barra para não cobrir os
+   botões de minimizar/fechar. */
 .update-banner {
   position: fixed;
   top: 60px;
   left: 50%;
   transform: translateX(-50%);
+  width: max-content;
   max-width: calc(100vw - 32px);
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 10px 8px 16px;
-  border-radius: 12px;
-  background: var(--accent-color);
-  color: #fff;
+  gap: 14px;
+  padding: 10px 12px 10px 12px;
+  border-radius: 20px;
+  background: var(--glass-card, rgba(24, 22, 27, 0.82));
+  border: 1px solid var(--glass-card-edge, rgba(255, 255, 255, 0.12));
+  color: var(--text-primary, #f2edef);
   font-size: 13px;
-  font-weight: 500;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 18px 44px -12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
   z-index: 99998;
   -webkit-app-region: no-drag;
+  animation: update-banner-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .update-banner * {
   -webkit-app-region: no-drag;
 }
 
-.update-banner span {
+.update-banner-icon {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #fff;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color));
+  box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--accent-color) 85%, transparent);
+}
+
+.update-banner.is-downloading .update-banner-icon svg {
+  animation: update-icon-bob 1.3s ease-in-out infinite;
+}
+
+.update-banner.is-ready .update-banner-icon {
+  background: linear-gradient(180deg, #4ade80, #16a34a);
+  box-shadow: 0 8px 18px -8px rgba(34, 197, 94, 0.8);
+  animation: update-ready-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Anel girando em volta do ícone enquanto baixa */
+.update-banner-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 15px;
+  border: 2px solid transparent;
+  border-top-color: var(--accent-color);
+  border-right-color: color-mix(in srgb, var(--accent-color) 35%, transparent);
+  animation: update-spin 1s linear infinite;
+}
+
+.update-banner-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 190px;
+}
+
+.update-banner-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  white-space: nowrap;
+}
+
+.update-banner-line strong {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-primary, #f2edef);
+}
+
+.update-banner-percent {
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-color);
+}
+
+.update-banner-sub {
+  font-size: 12px;
+  color: var(--text-secondary, #bdb6bb);
   white-space: nowrap;
 }
 
 .update-progress-bar {
-  flex: 1;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 3px;
+  position: relative;
+  height: 7px;
+  border-radius: 999px;
   overflow: hidden;
-  min-width: 100px;
+  background: color-mix(in srgb, var(--text-primary, #fff) 12%, transparent);
 }
 
 .update-progress-fill {
+  position: relative;
   height: 100%;
-  background: #fff;
-  border-radius: 3px;
-  transition: width 0.3s ease;
+  border-radius: 999px;
+  overflow: hidden;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent-color) 70%, #fff), var(--accent-color));
+  transition: width 0.4s ease;
+}
+
+/* Brilho que corre pela barra, para mostrar que está trabalhando mesmo quando o número demora a mudar */
+.update-progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.6) 50%, transparent 80%);
+  transform: translateX(-100%);
+  animation: update-shimmer 1.4s ease-in-out infinite;
 }
 
 .update-restart-btn {
-  padding: 4px 14px;
-  background: #fff;
-  color: var(--accent-color);
-  border: none;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
+  flex-shrink: 0;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #fff;
   white-space: nowrap;
-  transition: opacity 0.2s;
+  cursor: pointer;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 18px -8px color-mix(in srgb, var(--accent-color) 85%, transparent);
+  transition: transform 0.16s ease, filter 0.16s ease;
 }
 
 .update-restart-btn:hover {
-  opacity: 0.9;
+  transform: translateY(-1px);
+  filter: brightness(1.06);
 }
 
-/* ── Applying Update Fullscreen Overlay ── */
+/* ── Tela "Atualizando o Echo" (depois de clicar em reiniciar) ── */
 .update-applying-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(14, 17, 24, 0.94);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: var(--aurora-mesh, radial-gradient(circle at 30% 20%, #2a2430, #0c0b0d));
+  background-color: var(--bg-primary, #0c0b0d);
   z-index: 100000;
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 0.25s ease-out;
+  animation: fadeIn 0.3s ease-out;
   -webkit-app-region: no-drag;
 }
 
@@ -146,35 +226,116 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 36px 44px;
-  background: rgba(22, 26, 35, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  padding: 38px 46px 34px;
+  background: var(--glass-card, rgba(24, 22, 27, 0.82));
+  border: 1px solid var(--glass-card-edge, rgba(255, 255, 255, 0.12));
+  border-radius: 28px;
+  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
   max-width: 400px;
-  gap: 12px;
+  gap: 10px;
+}
+
+.update-applying-orbit {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  color: var(--accent-color);
+  margin-bottom: 8px;
+}
+
+.update-applying-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: var(--accent-color);
+  border-right-color: color-mix(in srgb, var(--accent-color) 30%, transparent);
+  animation: update-spin 1.1s linear infinite;
+}
+
+.update-applying-ring.is-outer {
+  inset: -9px;
+  border-width: 2px;
+  border-top-color: color-mix(in srgb, var(--accent-color) 45%, transparent);
+  border-right-color: transparent;
+  animation-duration: 1.9s;
+  animation-direction: reverse;
 }
 
 .update-applying-modal h3 {
-  margin: 8px 0 0;
-  font-size: 19px;
-  font-weight: 600;
-  color: #fff;
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary, #f2edef);
 }
 
 .update-applying-modal p {
   margin: 0;
   font-size: 13.5px;
-  color: var(--text-secondary, #949ba4);
+  color: var(--text-secondary, #bdb6bb);
 }
 
-.update-applying-modal .loader {
-  margin: 8px 0;
+/* Barra "indo e voltando": não sabemos quanto falta, só que está acontecendo */
+.update-applying-track {
+  position: relative;
+  width: 220px;
+  height: 6px;
+  margin: 12px 0 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--text-primary, #fff) 12%, transparent);
 }
 
-.update-applying-modal span {
+.update-applying-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent-color) 70%, #fff), var(--accent-color));
+  animation: update-slide 1.3s ease-in-out infinite;
+}
+
+.update-applying-note {
   font-size: 12px;
-  color: var(--text-muted, #6b7280);
+  color: var(--text-muted, #8a8489);
+}
+
+@keyframes update-banner-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-14px) scale(0.97); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+@keyframes update-spin { to { transform: rotate(360deg); } }
+@keyframes update-icon-bob {
+  0%, 100% { transform: translateY(-1.5px); }
+  50% { transform: translateY(1.5px); }
+}
+@keyframes update-shimmer { to { transform: translateX(100%); } }
+@keyframes update-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+@keyframes update-ready-pop {
+  from { transform: scale(0.6); }
+  to { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .update-banner,
+  .update-banner-ring,
+  .update-banner.is-downloading .update-banner-icon svg,
+  .update-progress-fill::after,
+  .update-applying-ring,
+  .update-applying-bar {
+    animation: none;
+  }
+  .update-applying-bar { transform: translateX(75%); }
 }
 
 

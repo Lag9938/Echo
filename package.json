@@ -17,7 +17,9 @@
     "audit:css": "node scripts/audit-css.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preview:build": "vite build --config vite.preview.config.ts",
+    "aurora:dark": "node scripts/gen-aurora-dark.mjs"
   },
   "dependencies": {
     "@sapphi-red/web-noise-suppressor": "^0.4.0",

@@ -1,0 +1,472 @@
+/* ==========================================================================
+   JANELAS DE CONVITE E DE ADICIONAR AMIGO — painel de vidro no padrão do app
+   Usadas por "Convidar amigos para um espaço" e "Adicionar amigo". Tudo vem das variáveis do tema,
+   então vale em todos os temas (antes era um escuro fixo com estilos direto no código).
+   ========================================================================== */
+
+.invite-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(20, 12, 28, 0.38);
+  backdrop-filter: blur(10px) saturate(130%);
+  -webkit-backdrop-filter: blur(10px) saturate(130%);
+  animation: soundboardFade 0.18s ease both;
+}
+
+.invite-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(500px, 100%);
+  max-height: min(720px, calc(100vh - 48px));
+  padding: 22px 22px 24px;
+  overflow: hidden;
+  border-radius: 28px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-secondary) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 24%, transparent);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(26px) saturate(170%);
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  animation: soundboardPop 0.26s var(--ease-smooth, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+/* Cabeçalho */
+.invite-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.invite-space-icon {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  object-fit: cover;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.45);
+}
+.invite-space-icon.add-friend-icon {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color));
+}
+.invite-title {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.3;
+}
+.invite-title h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.invite-title p {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.invite-close {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.invite-close:hover {
+  background: color-mix(in srgb, var(--text-primary) 14%, transparent);
+  color: var(--text-primary);
+  transform: rotate(90deg);
+}
+
+/* Busca em pílula */
+.invite-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 22%, transparent);
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.invite-search:focus-within {
+  border-color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 7%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 16%, transparent);
+}
+.invite-search-icon,
+.invite-link-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.invite-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: 13.5px;
+  color: var(--text-primary);
+}
+.invite-search input::placeholder,
+.invite-link-box input::placeholder {
+  color: var(--text-muted);
+}
+.invite-search-clear {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  font-size: 10px;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  cursor: pointer;
+}
+
+/* Seções */
+.invite-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+.invite-friends-section {
+  flex: 1;
+}
+.invite-link-section {
+  padding-top: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
+}
+.invite-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.invite-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.invite-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+/* Lista de amigos */
+.invite-friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 232px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.invite-friend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.invite-friend:hover {
+  background: color-mix(in srgb, var(--accent-color) 8%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color) 28%, transparent);
+}
+.invite-friend-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.invite-avatar {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 16%, transparent);
+}
+.invite-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.invite-presence {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2.5px solid var(--bg-secondary);
+  background: #94a3b8;
+}
+.invite-presence.online {
+  background: #22c55e;
+}
+.invite-friend-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.invite-friend-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.invite-friend-sub {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.invite-friend-sub.online {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+/* Estados vazios */
+.invite-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 22px 16px;
+  border-radius: 20px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--text-muted) 30%, transparent);
+}
+.invite-empty strong {
+  font-size: 13.5px;
+  color: var(--text-primary);
+}
+.invite-empty-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+}
+.invite-empty-small {
+  padding: 16px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+/* Selos */
+.invite-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.invite-chip.ok {
+  color: #15803d;
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.32);
+}
+.invite-chip.info {
+  color: var(--accent-hover);
+  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 36%, transparent);
+}
+.invite-chip.tiny {
+  padding: 2px 9px;
+  font-size: 10.5px;
+}
+
+/* Link / campo com botão dentro */
+.invite-link-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 5px 5px 5px 16px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 22%, transparent);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.invite-link-box:focus-within {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 16%, transparent);
+}
+.invite-link-box input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+form.invite-link-box input {
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+/* Botões */
+.invite-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border: 0;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+  cursor: pointer;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 18px -8px color-mix(in srgb, var(--accent-color) 80%, transparent);
+  transition: transform 0.16s var(--ease-spring, ease), box-shadow 0.16s ease, opacity 0.16s ease;
+}
+.invite-primary-btn.small {
+  padding: 7px 14px;
+  font-size: 12px;
+}
+.invite-primary-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.invite-primary-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.invite-primary-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.invite-primary-btn.done {
+  background: #22c55e;
+  box-shadow: 0 8px 18px -8px rgba(34, 197, 94, 0.8);
+}
+
+.invite-secondary-row {
+  display: flex;
+  gap: 8px;
+}
+.invite-secondary-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 22%, transparent);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.invite-secondary-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color) 40%, transparent);
+  color: var(--text-primary);
+}
+.invite-secondary-btn.done {
+  color: #15803d;
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+.invite-secondary-btn:disabled {
+  opacity: 0.55;
+}
+
+/* Dica e avisos */
+.invite-tip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 18px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--accent-color) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 18%, transparent);
+}
+.invite-tip svg {
+  color: var(--accent-color);
+}
+.invite-notice {
+  padding: 9px 14px;
+  border-radius: 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.invite-notice.success {
+  color: #15803d;
+  background: rgba(34, 197, 94, 0.14);
+}
+.invite-notice.error {
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .invite-backdrop,
+  .invite-modal {
+    animation: none;
+  }
+}
+
+/* No Electron a barra do topo é uma área de arrastar a janela e engole cliques: a janela e tudo
+   dentro dela precisam ser "no-drag" para os botões responderem (mesmo cuidado do banner de atualização) */
+.invite-backdrop,
+.invite-backdrop * {
+  -webkit-app-region: no-drag;
+}

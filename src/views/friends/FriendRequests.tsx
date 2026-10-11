@@ -40,6 +40,11 @@ export interface FriendRequestsProps {
   }>
 }
 
+/**
+ * Abas de solicitações pendentes e de adicionar amigo.
+ * Segue a mesma linguagem visual do Hub de Amigos: cartões de vidro,
+ * botões de ação táteis e sem estilos inline para respeitar o tema Aurora.
+ */
 export const FriendRequests = memo(function FriendRequests({
   friendTab,
   setFriendTab,
@@ -57,169 +62,187 @@ export const FriendRequests = memo(function FriendRequests({
 }: FriendRequestsProps) {
   if (friendTab === 'pending') {
     return (
-      <div className="friends-list-container" style={{ maxWidth: '100%' }}>
+      <div className="friends-list-container">
         {pendingRequests.length === 0 ? (
-          <div className="friends-hero-empty-card">
-            <div className="echo-orbital-beacon">
-              <div className="echo-orbital-ring">
-                <div className="echo-orbital-satellite" />
-              </div>
-              <div className="echo-orbital-core">
-                <ClockIcon style={{ width: '22px', height: '22px' }} />
-              </div>
+          /* Estado vazio calmo e acolhedor (substitui o beacon cósmico antigo por um visual limpo de vidro) */
+          <div className="friends-empty-calm">
+            <div className="friends-empty-calm-icon">
+              <ClockIcon style={{ width: '28px', height: '28px' }} />
             </div>
-            <h2 className="friends-hero-title">Nenhuma solicitação pendente</h2>
-            <p className="friends-hero-desc">
+            <h3 className="friends-empty-calm-title">Nenhuma solicitação pendente</h3>
+            <p className="friends-empty-calm-desc">
               Você não possui convites pendentes de envio ou recebimento no momento. Quando alguém te convidar, você verá o alerta aqui.
             </p>
-            <div className="friends-hero-actions">
-              <button 
-                type="button" 
-                className="friends-hero-btn-primary" 
-                onClick={() => setFriendTab('add')}
-              >
-                <UserPlusIcon style={{ width: '15px', height: '15px' }} />
-                <span>Convidar Novos Amigos</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              className="friends-empty-calm-btn primary"
+              onClick={() => setFriendTab('add')}
+            >
+              <UserPlusIcon style={{ width: '15px', height: '15px' }} />
+              <span>Convidar Novos Amigos</span>
+            </button>
           </div>
         ) : (
-          <div className="friends-list-modern">
-            {pendingRequests.map(req => {
-              const isReceived = req.initiatorId !== user.id
-              return (
-                <div key={req.id} className="friend-card-modern">
-                  <div className="friend-card-left">
-                    <div className="friend-avatar-modern">
-                      {req.user.avatar_url ? (
-                        <img src={req.user.avatar_url} alt={req.user.display_name} />
-                      ) : (
-                        req.user.display_name.slice(0, 1).toUpperCase()
-                      )}
-                    </div>
-                    <div className="friend-meta-modern">
-                      <span className="friend-name-modern">{req.user.display_name}</span>
-                      <span className="friend-status-modern" style={{ color: isReceived ? '#10b981' : 'var(--text-muted)' }}>
-                        {isReceived ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            <InboxIcon style={{ width: '12px', height: '12px' }} />
-                            <span>Quer ser seu amigo</span>
-                          </span>
+          <>
+            {/* Título de seção idêntico ao das abas Online e Todos */}
+            <h2 className="friends-section-title">
+              <span>Solicitações pendentes</span>
+              <span className="friends-section-count">{pendingRequests.length}</span>
+            </h2>
+            <div className="friends-list-modern">
+              {pendingRequests.map(req => {
+                const isReceived = req.initiatorId !== user.id
+                return (
+                  <div key={req.id} className="friend-card-modern friend-card-pending">
+                    <div className="friend-card-left">
+                      <div className="friend-avatar-modern">
+                        {req.user.avatar_url ? (
+                          <img src={req.user.avatar_url} alt={req.user.display_name} />
                         ) : (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            <SendIcon style={{ width: '12px', height: '12px' }} />
-                            <span>Solicitação enviada</span>
-                          </span>
+                          req.user.display_name.slice(0, 1).toUpperCase()
                         )}
-                      </span>
+                      </div>
+                      <div className="friend-meta-modern">
+                        <span className="friend-name-modern">{req.user.display_name}</span>
+                        <span className="friend-status-modern">
+                          {isReceived ? (
+                            <span className="friend-request-badge received">
+                              <InboxIcon style={{ width: '13px', height: '13px' }} />
+                              <span>Quer ser seu amigo</span>
+                            </span>
+                          ) : (
+                            <span className="friend-request-badge sent">
+                              <SendIcon style={{ width: '13px', height: '13px' }} />
+                              <span>Solicitação enviada</span>
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="friend-card-right">
+                      <div className="friend-card-actions">
+                        {isReceived ? (
+                          <>
+                            <button
+                              type="button"
+                              className="friend-quick-btn accept"
+                              onClick={() => acceptFriendRequest(req.id)}
+                              title="Aceitar Solicitação"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              type="button"
+                              className="friend-quick-btn danger"
+                              onClick={() => removeFriendship(req.id)}
+                              title="Recusar Solicitação"
+                            >
+                              ✕
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="friend-quick-pill cancel"
+                            onClick={() => removeFriendship(req.id)}
+                            title="Cancelar solicitação"
+                          >
+                            Cancelar
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-
-                  <div className="friend-card-actions">
-                    {isReceived ? (
-                      <>
-                        <button className="friend-quick-btn" onClick={() => acceptFriendRequest(req.id)} title="Aceitar Solicitação" style={{ color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.4)' }}>
-                          ✓
-                        </button>
-                        <button className="friend-quick-btn danger" onClick={() => removeFriendship(req.id)} title="Recusar Solicitação">
-                          ✕
-                        </button>
-                      </>
-                    ) : (
-                      <button className="friend-action-btn cancel-btn" onClick={() => removeFriendship(req.id)} title="Cancelar solicitação">
-                        Cancelar
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          </>
         )}
       </div>
     )
   }
 
-  // Add friend tab
+  // Aba Adicionar amigo (quando renderizada diretamente na página de amigos)
   return (
-    <div className="add-friend-container" style={{ maxWidth: '640px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Share My Link Banner */}
+    <div className="add-friend-container">
+      {/* Cartão de compartilhamento do link de amigo */}
       <div className="add-friend-hero-card">
-        <div className="add-friend-hero-title">
-          <LinkIcon style={{ width: '16px', height: '16px', color: 'var(--accent-color)' }} />
-          <span>Compartilhe seu Link de Amigo</span>
+        <div className="add-friend-hero-header">
+          <div className="add-friend-hero-icon">
+            <LinkIcon style={{ width: '18px', height: '18px' }} />
+          </div>
+          <div className="add-friend-hero-text">
+            <h3 className="add-friend-hero-title">Compartilhe seu Link de Amigo</h3>
+            <p className="add-friend-hero-desc">
+              Envie seu link direto no WhatsApp, redes sociais ou chat do jogo para seus amigos adicionarem você com 1 clique.
+            </p>
+          </div>
         </div>
-        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
-          Envie seu link direto no WhatsApp, redes sociais ou chat do jogo para seus amigos adicionarem você com 1 clique.
-        </p>
         <div className="add-friend-link-row">
           <span className="add-friend-link-text">echo.lobby/add/@{profileDisplayName || 'gamer'}</span>
-          <button type="button" className="add-friend-copy-btn" onClick={copyFriendLink} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-            <CopyIcon style={{ width: '12px', height: '12px' }} />
+          <button type="button" className="add-friend-copy-btn" onClick={copyFriendLink}>
+            <CopyIcon style={{ width: '13px', height: '13px' }} />
             <span>Copiar Link</span>
           </button>
         </div>
       </div>
 
-      {/* Direct Username Form */}
-      <div style={{ background: 'var(--bg-secondary)', padding: '20px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
-        <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 600 }}>Adicionar por Nome de Exibição</h3>
-        <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+      {/* Formulário de adicionar amigo pelo nome de usuário */}
+      <div className="add-friend-card">
+        <h3 className="add-friend-card-title">Adicionar por Nome de Exibição</h3>
+        <p className="add-friend-card-desc">
           Digite o nome exato do jogador para enviar um pedido de amizade.
         </p>
         <form onSubmit={sendFriendRequest} className="add-friend-form">
-          <input 
-            value={friendSearchQuery} 
-            onChange={e => setFriendSearchQuery(e.target.value)} 
-            placeholder="Ex: Lag9938, CyberNinja, ProGamer..." 
-            required 
+          <input
+            value={friendSearchQuery}
+            onChange={e => setFriendSearchQuery(e.target.value)}
+            placeholder="Ex: Lag9938, CyberNinja, ProGamer..."
+            required
             minLength={2}
-            style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '14px', fontWeight: 600, outline: 'none' }}
+            className="add-friend-input"
           />
-          <button 
-            type="submit" 
-            style={{ padding: '12px 24px', borderRadius: '10px', background: 'var(--accent-color)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}
-          >
+          <button type="submit" className="add-friend-submit-btn">
             Enviar Pedido
           </button>
         </form>
         {friendSearchNotice && (
-          <div className={`friend-search-notice ${friendSearchNotice.includes('sucesso') ? 'success' : 'error'}`} style={{ marginTop: '12px' }}>
+          <div className={`friend-search-notice ${friendSearchNotice.includes('sucesso') ? 'success' : 'error'}`}>
             {friendSearchNotice}
           </div>
         )}
       </div>
 
-      {/* Friend Suggestions */}
+      {/* Sugestões de amigos dos espaços em comum */}
       {suggestedMembers.length > 0 && (
-        <div style={{ marginTop: '10px' }}>
-          <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <UsersIcon style={{ width: '15px', height: '15px', color: 'var(--accent-color)' }} />
+        <div className="add-friend-suggestions-section">
+          <h4 className="add-friend-suggestions-title">
+            <UsersIcon style={{ width: '15px', height: '15px' }} />
             <span>Sugestões de Jogadores dos seus Espaços</span>
           </h4>
           <div className="friend-suggestions-grid">
             {suggestedMembers.map(m => (
               <div key={m.user.id} className="friend-suggestion-card">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                  <div className="friend-avatar-modern" style={{ width: 34, height: 34, fontSize: 12 }}>
+                <div className="friend-suggestion-user">
+                  <div className="friend-avatar-modern suggestion-avatar">
                     {m.user.avatar_url ? (
                       <img src={m.user.avatar_url} alt={m.user.display_name} />
                     ) : (
                       m.user.display_name.slice(0, 1).toUpperCase()
                     )}
                   </div>
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <span className="friend-suggestion-name">
                     {m.user.display_name}
                   </span>
                 </div>
-                <button 
-                  type="button" 
-                  className="activity-action-btn" 
+                <button
+                  type="button"
+                  className="friend-suggestion-btn"
                   onClick={() => {
                     setFriendSearchQuery(m.user.display_name)
                   }}
-                  style={{ padding: '5px 10px', fontSize: '11px', width: 'auto' }}
-                  title="Adicionar"
+                  title="Convidar jogador"
                 >
                   + Convidar
                 </button>

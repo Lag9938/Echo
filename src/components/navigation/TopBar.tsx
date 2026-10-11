@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, memo } from 'react'
+﻿import React, { useState, useRef, memo } from 'react'
 import type { Space, Channel, Page, SavedMessageItem } from '../../types'
 import { Brand } from './Brand'
 import { WindowControls } from './WindowControls'
@@ -86,21 +86,11 @@ export const TopBar = memo(function TopBar(props: TopBarProps) {
     unreadDMs = {},
     loadChannelsForSpace = () => {},
     activeVoiceChannelId = null,
-    isVoiceConnected = false,
     participants = [],
     savedMessages = [],
     currentUserId
   } = props
 
-  // Chamada em andamento: canal e espaço dela, para a pílula da barra
-  const activeCall = useMemo(() => {
-    if (!isVoiceConnected || !activeVoiceChannelId) return null
-    for (const [spaceId, chs] of Object.entries(spaceChannels)) {
-      const channel = chs.find(c => c.id === activeVoiceChannelId)
-      if (channel) return { channel, space: spaces.find(s => s.id === (channel.space_id || spaceId)) ?? null }
-    }
-    return null
-  }, [isVoiceConnected, activeVoiceChannelId, spaceChannels, spaces])
   const serversTrackRef = useRef<HTMLDivElement>(null)
 
   const handleServersWheel = (e: React.WheelEvent) => {
@@ -212,7 +202,11 @@ export const TopBar = memo(function TopBar(props: TopBarProps) {
                       }
                     }
                   }}
-                  style={{ background: space.icon_url ? 'transparent' : getServerGradient(space.name) }}
+                  style={{
+                    background: space.icon_url ? 'transparent' : getServerGradient(space.name),
+                    // O tema claro troca o fundo do botão por vidro; esta variável devolve o degradê de cada espaço
+                    '--server-bg': space.icon_url ? 'transparent' : getServerGradient(space.name)
+                  } as React.CSSProperties}
                   title={space.name}
                 >
                   {space.icon_url ? (
@@ -401,23 +395,6 @@ export const TopBar = memo(function TopBar(props: TopBarProps) {
 
       {/* ZONA DIREITA: Ações Icon-Only Elegantes, Divisor e Controles de Janela */}
       <div className="topbar-right-zone">
-        {activeCall && (
-          <div
-            role="button"
-            tabIndex={0}
-            className="topbar-call-pill"
-            title="Voltar para a chamada"
-            onClick={() => {
-              setPage('Servidores')
-              if (activeCall.space) setExpandedSpace(activeCall.space.id)
-              setSelectedChannel(activeCall.channel)
-            }}
-            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.click() }}
-          >
-            <i className="topbar-call-live" />
-            <span className="topbar-call-name">{(activeCall.space?.name || activeCall.channel.name).split(' ')[0]}</span>
-          </div>
-        )}
         <div className="topbar-actions-group">
           <button
             type="button"

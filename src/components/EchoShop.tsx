@@ -726,7 +726,7 @@ export function EchoShop({
                   {previewFinishMeta?.description || 'Textura visual e acabamento reflexivo no card do perfil.'}
                 </p>
                 <div className="echo-shop-preview-meta">
-                  <span className="echo-shop-pill-category" style={{ borderColor: '#6366f1' }}>
+                  <span className="echo-shop-pill-category" style={{ borderColor: 'var(--accent-color)' }}>
                     {previewFinishMeta?.badge || 'Acabamento'}
                   </span>
                 </div>
