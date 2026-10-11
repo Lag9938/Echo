@@ -6,7 +6,9 @@ import { ModernVoiceNotePlayer } from '../../components/chat/ModernVoiceNotePlay
 import { ChatLinkEmbed } from '../../components/chat/ChatLinkEmbed'
 import { StickerPicker } from '../../components/StickerPicker'
 import { formatMessageText } from '../../lib/messageFormatter'
-import { openExternalUrl } from '../../lib/openExternal'
+import { FileAttachmentCard } from '../../components/chat/FileAttachmentCard'
+import { isCaptionJustFileName, readFileInfo, sendFilesInOrder } from '../../lib/attachments'
+import { useFileDrop } from '../../hooks/useFileDrop'
 import {
   PanelLeftIcon,
   UserPlusIcon,
@@ -141,8 +143,15 @@ export const DMConversation = memo(function DMConversation({
   handleDMPaste,
   onSendDMSticker
 }: DMConversationProps) {
+  const { isDragging, dropProps } = useFileDrop((files) => { void sendFilesInOrder(files, (f) => onUploadFile(f)) }, !isUploading)
   return (
-    <section className="dm-full-chat">
+    <section className="dm-full-chat file-drop-host" {...dropProps}>
+      {isDragging && (
+        <div className="file-drop-overlay">
+          Solte para enviar
+          <span>Até 25 MB por arquivo</span>
+        </div>
+      )}
       {/* Header */}
       <div className="dm-full-header">
         <div className="dm-full-header-left">
@@ -441,19 +450,14 @@ export const DMConversation = memo(function DMConversation({
                             activeAudioRef={voiceNoteAudioRef}
                           />
                         ) : isOtherFile ? (
-                          <a
-                            href={msg.attachment_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="dm-attachment-file"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              openExternalUrl(msg.attachment_url)
-                            }}
-                          >
-                            <PaperclipIcon style={{ width: '12px', height: '12px', display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }} />
-                            <span>{msg.body}</span>
-                          </a>
+                          <>
+                            {!isCaptionJustFileName(msg.body, readFileInfo(msg.attachment_url, msg.body)) && (
+                              <div className="dm-text-body file-card-caption" style={{ wordBreak: 'break-word', lineHeight: 1.45 }}>
+                                {formatMessageText(msg.body, profileDisplayName)}
+                              </div>
+                            )}
+                            <FileAttachmentCard url={msg.attachment_url!} fallbackName={msg.body} />
+                          </>
                         ) : (
                           <div className="dm-text-body" style={{ wordBreak: 'break-word', lineHeight: 1.45 }}>
                             {formatMessageText(msg.body, profileDisplayName)}
@@ -568,8 +572,8 @@ export const DMConversation = memo(function DMConversation({
             </div>
           )}
           <form className="dm-full-compose" onSubmit={handleDMComposeSubmit}>
-            <input type="file" ref={dmFileRef} style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadFile(f); e.target.value = '' }} />
-            <button type="button" className="dm-attach-btn" onClick={() => dmFileRef.current?.click()} disabled={isUploading} title="Anexar arquivo">
+            <input type="file" multiple ref={dmFileRef} style={{ display: 'none' }} onChange={(e) => { const chosen = Array.from(e.target.files ?? []); e.target.value = ''; void sendFilesInOrder(chosen, (f) => onUploadFile(f)) }} />
+            <button type="button" className="dm-attach-btn" onClick={() => dmFileRef.current?.click()} disabled={isUploading} title="Enviar arquivo (até 25 MB)">
               {isUploading ? <ClockIcon style={{ width: '16px', height: '16px' }} /> : <PaperclipIcon style={{ width: '16px', height: '16px' }} />}
             </button>
             {onStartVoiceNote && (

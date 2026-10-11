@@ -14,6 +14,7 @@ import { useSpacesStore } from '../stores/useSpacesStore'
 import { useThreadsStore } from '../stores/useThreadsStore'
 import { useEchoThreads } from '../hooks/useEchoThreads'
 import { ThreadPanel } from '../components/chat/ThreadPanel'
+import { filesFromTransfer, sendFilesInOrder } from '../lib/attachments'
 
 export interface TextChannelViewProps {
   currentSpace: Space | null
@@ -369,7 +370,13 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
     dragCounterRef.current = 0
     setIsDraggingOver(false)
 
-    const file = e.dataTransfer?.files?.[0]
+    const dropped = filesFromTransfer(e.dataTransfer)
+    // Vários de uma vez: vão direto, um depois do outro (a prévia com legenda é só para uma imagem)
+    if (dropped.length > 1) {
+      void sendFilesInOrder(dropped, (f) => handleChatFileUpload(f))
+      return
+    }
+    const file = dropped[0]
     if (file) {
       if (file.type.startsWith('image/')) {
         setPendingImagePreview(prev => {

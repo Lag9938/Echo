@@ -43,6 +43,7 @@ export interface FriendsViewProps {
   onCloseDM: () => void
   isUploading: boolean
   onUploadFile: (file: File, caption?: string) => void
+  onUploadGroupFile?: (groupId: string, file: File) => unknown
   profileDisplayName: string
   profileAvatarUrl: string
   myGamePresence?: { name: string; icon: string; startedAt: number } | null
@@ -145,6 +146,7 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
     onCloseDM,
     isUploading,
     onUploadFile,
+  onUploadGroupFile,
     profileDisplayName,
     profileAvatarUrl,
     myGamePresence,
@@ -836,6 +838,8 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
           setGroupDraft={setGroupDraft}
           notifyGroupTyping={notifyGroupTyping}
           onSendGroupMessage={onSendGroupMessage}
+          onUploadGroupFile={onUploadGroupFile}
+          isUploading={isUploading}
         />
       ) : selectedDMUserId && dmUser ? (
         <DMConversation

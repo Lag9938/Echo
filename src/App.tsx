@@ -1597,6 +1597,7 @@ function Echo({ user }: { user: User }) {
     handleCloseDM,
     handleSendDMForm,
     handleUploadDMFile,
+    handleUploadGroupFile,
     handleRemoveRecentDM,
     handleStartVoiceNoteDM,
     handleToggleSaveDM,
@@ -1615,7 +1616,9 @@ function Echo({ user }: { user: User }) {
     setIsUploading,
     setError,
     startVoiceNoteRecording,
-    toggleSaveMessage
+    toggleSaveMessage,
+    sendGroupMessage,
+    showToast
   })
 
   const handleSignOut = useCallback(() => {
@@ -2119,6 +2122,7 @@ function Echo({ user }: { user: User }) {
             onCloseDM={handleCloseDM}
             isUploading={isUploading}
             onUploadFile={handleUploadDMFile}
+            onUploadGroupFile={handleUploadGroupFile}
             profileDisplayName={profileDisplayName}
             profileAvatarUrl={profileAvatarUrl}
             myGamePresence={myGamePresence}

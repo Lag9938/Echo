@@ -11,13 +11,13 @@ import {
   HashtagIcon,
   MegaphoneIcon,
   MusicIcon,
-  PaperclipIcon,
   PinIcon,
   StarIcon,
   TrashIcon,
   VolumeIcon
 } from '../icons'
-import { openExternalUrl } from '../../lib/openExternal'
+import { FileAttachmentCard } from './FileAttachmentCard'
+import { isCaptionJustFileName, readFileInfo } from '../../lib/attachments'
 import { isAutoImageCaption } from '../../lib/attachmentCaption'
 import type { VoiceFeedEvent } from '../../lib/voiceActivity'
 import { formatReplyCount, type ThreadSummaries } from '../../lib/threads'
@@ -563,19 +563,12 @@ export const MessageList = memo(function MessageList({
                           activeAudioRef={voiceNoteAudioRef}
                         />
                       ) : message.attachment_url && !message.attachment_type?.startsWith('image') && message.attachment_type !== 'audio' && message.attachment_type !== 'sticker' ? (
-                        <a
-                          href={message.attachment_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="msg-attachment-file"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            openExternalUrl(message.attachment_url)
-                          }}
-                        >
-                          <PaperclipIcon style={{ width: '13px', height: '13px', display: 'inline-block', verticalAlign: 'middle', marginRight: '5px' }} />
-                          <span>{displayedBody}</span>
-                        </a>
+                        <>
+                          {!isCaptionJustFileName(displayedBody, readFileInfo(message.attachment_url, displayedBody)) && (
+                            <p className="file-card-caption">{formatMessageText(displayedBody, profileDisplayName, serverEmojis)}</p>
+                          )}
+                          <FileAttachmentCard url={message.attachment_url} fallbackName={displayedBody} />
+                        </>
                       ) : (
                         <>
                           <p>{formatMessageText(displayedBody, profileDisplayName, serverEmojis)}</p>

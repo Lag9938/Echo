@@ -85,6 +85,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Open External URL in default browser
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+  // Arquivos recebidos nas conversas: baixar com "Salvar como" e mostrar na pasta
+  downloadAttachment: (url, name) => ipcRenderer.invoke('download-attachment', url, name),
+  showDownloadedFile: (filePath) => ipcRenderer.invoke('show-downloaded-file', filePath),
 
   // Asaas Payments & Subscriptions Integration
   asaasGetCheckoutUrl: () => ipcRenderer.invoke('asaas-get-checkout-url'),

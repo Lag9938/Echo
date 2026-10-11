@@ -1,6 +1,7 @@
 import { app, shell, desktopCapturer, Notification } from 'electron'
 import { applyStreamingPriority } from '../services/processPriority.js'
 import { getActiveCaptureMode, readCaptureMode, writeCaptureMode } from '../services/captureMode.js'
+import { downloadAttachment, wasDownloadedHere } from '../services/attachmentDownload.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { promisify } from 'node:util'
@@ -60,6 +61,16 @@ export function setupWindowIpc(safeHandle, getMainWindow, setIsQuitting, rootDir
       }
     }
     return false
+  })
+
+  // Baixar um arquivo recebido numa conversa (só anexos do Echo; abre a janela "Salvar como")
+  safeHandle('download-attachment', (_event, url, name) => downloadAttachment(getMainWindow(), url, name))
+
+  // Mostrar na pasta um arquivo que acabou de ser baixado por aqui
+  safeHandle('show-downloaded-file', (_event, filePath) => {
+    if (!wasDownloadedHere(filePath) || !fs.existsSync(filePath)) return false
+    shell.showItemInFolder(filePath)
+    return true
   })
 
   safeHandle('get-sources', async () => {

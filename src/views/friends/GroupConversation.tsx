@@ -1,9 +1,11 @@
-import { useState, memo } from 'react'
+import { useState, useRef, memo } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { GroupChat, GroupMessage } from '../../types'
 import { StickerPicker } from '../../components/StickerPicker'
 import { formatMessageText } from '../../lib/messageFormatter'
-import { openExternalUrl } from '../../lib/openExternal'
+import { FileAttachmentCard } from '../../components/chat/FileAttachmentCard'
+import { isCaptionJustFileName, readFileInfo, sendFilesInOrder } from '../../lib/attachments'
+import { useFileDrop } from '../../hooks/useFileDrop'
 import {
   PanelLeftIcon,
   UsersIcon,
@@ -30,6 +32,8 @@ export interface GroupConversationProps {
   setGroupDraft?: (val: string) => void
   notifyGroupTyping?: (groupId: string) => void
   onSendGroupMessage?: (groupId: string, body: string, attachmentUrl?: string, attachmentType?: string) => void
+  onUploadGroupFile?: (groupId: string, file: File) => unknown
+  isUploading?: boolean
 }
 
 export const GroupConversation = memo(function GroupConversation({
@@ -47,12 +51,24 @@ export const GroupConversation = memo(function GroupConversation({
   groupDraft,
   setGroupDraft,
   notifyGroupTyping,
-  onSendGroupMessage
+  onSendGroupMessage,
+  onUploadGroupFile,
+  isUploading = false
 }: GroupConversationProps) {
   const [showGroupStickerPicker, setShowGroupStickerPicker] = useState(false)
+  const groupFileRef = useRef<HTMLInputElement>(null)
+  const groupId = currentActiveGroup.id
+  const sendFiles = (files: File[]) => { void sendFilesInOrder(files, (f) => onUploadGroupFile?.(groupId, f)) }
+  const { isDragging, dropProps } = useFileDrop(sendFiles, Boolean(onUploadGroupFile) && !isUploading)
 
   return (
-    <section className="dm-full-chat group-full-chat">
+    <section className="dm-full-chat group-full-chat file-drop-host" {...dropProps}>
+      {isDragging && (
+        <div className="file-drop-overlay">
+          Solte para enviar
+          <span>Até 25 MB por arquivo</span>
+        </div>
+      )}
       {/* Header */}
       <div className="dm-full-header">
         <div className="dm-full-header-left">
@@ -203,19 +219,14 @@ export const GroupConversation = memo(function GroupConversation({
                     {(gMsg.body || isOtherFile) && !isSticker && !isImage && (
                       <div className="dm-bubble">
                         {isOtherFile ? (
-                          <a
-                            href={gMsg.attachment_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="dm-attachment-file"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              openExternalUrl(gMsg.attachment_url)
-                            }}
-                          >
-                            <PaperclipIcon style={{ width: 12, height: 12, display: 'inline-block', verticalAlign: 'middle', marginRight: 4 }} />
-                            <span>{gMsg.body || 'Arquivo'}</span>
-                          </a>
+                          <>
+                            {!isCaptionJustFileName(gMsg.body, readFileInfo(gMsg.attachment_url, gMsg.body)) && (
+                              <div className="dm-text-body file-card-caption" style={{ wordBreak: 'break-word', lineHeight: 1.45 }}>
+                                {formatMessageText(gMsg.body, profileDisplayName)}
+                              </div>
+                            )}
+                            <FileAttachmentCard url={gMsg.attachment_url!} fallbackName={gMsg.body} />
+                          </>
                         ) : (
                           <div className="dm-text-body" style={{ wordBreak: 'break-word', lineHeight: 1.45 }}>
                             {formatMessageText(gMsg.body, profileDisplayName)}
@@ -260,6 +271,21 @@ export const GroupConversation = memo(function GroupConversation({
         >
           <StickerIcon style={{ width: 16, height: 16 }} />
         </button>
+        {onUploadGroupFile && (
+          <>
+            <input type="file" multiple ref={groupFileRef} style={{ display: 'none' }} onChange={(e) => { const chosen = Array.from(e.target.files ?? []); e.target.value = ''; sendFiles(chosen) }} />
+            <button
+              type="button"
+              className="dm-attach-btn"
+              onClick={() => groupFileRef.current?.click()}
+              disabled={isUploading}
+              title="Enviar arquivo (até 25 MB)"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', opacity: isUploading ? 0.5 : 1 }}
+            >
+              <PaperclipIcon style={{ width: 16, height: 16 }} />
+            </button>
+          </>
+        )}
         <input
           id="group-message-input"
           value={groupDraft}

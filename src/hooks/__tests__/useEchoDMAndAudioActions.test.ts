@@ -93,17 +93,29 @@ describe('useEchoDMActions', () => {
 
     // A regra do banco só aceita anexos de DM em dm/<id do próprio usuário>/
     const path = storage.upload.mock.calls[0][0] as string
-    expect(path).toMatch(new RegExp(`^dm/${ME}/\\d+-[0-9a-f-]{36}\\.PNG$`))
+    expect(path).toMatch(new RegExp(`^dm/${ME}/\\d+-[0-9a-f-]{36}\\.png$`))
     expect(storage.upload.mock.calls[0][1]).toBe(file)
+    // O tipo vai junto: o Windows nem sempre informa, e o servidor recusa o que vem sem tipo
+    expect(storage.upload.mock.calls[0][2]).toEqual({ contentType: 'image/png' })
     expect(options.sendDirectMessage).toHaveBeenCalledWith('olha isso', 'https://cdn.test/arquivo.png', 'image')
     expect(options.setIsUploading.mock.calls).toEqual([[true], [false]])
   })
 
-  it('arquivo que não é imagem vai como "file" e, sem legenda, usa o rascunho ou o nome do arquivo', async () => {
+  it('arquivo que não é imagem vai como "file", com nome e tamanho no endereço, e sem legenda usa o nome', async () => {
     const options = makeOptions({ dmDraft: '' })
     const { result } = renderHook(() => useEchoDMActions(options))
     await act(async () => { await result.current.handleUploadDMFile(new File(['x'], 'relatorio.pdf', { type: 'application/pdf' })) })
-    expect(options.sendDirectMessage).toHaveBeenCalledWith('relatorio.pdf', 'https://cdn.test/arquivo.png', 'file')
+    expect(options.sendDirectMessage).toHaveBeenCalledWith('relatorio.pdf', 'https://cdn.test/arquivo.png#name=relatorio.pdf&size=1', 'file')
+  })
+
+  it('arquivo que o servidor não aceita nem chega a ser enviado, e a pessoa recebe o motivo', async () => {
+    const options = makeOptions()
+    const { result } = renderHook(() => useEchoDMActions(options))
+    await act(async () => { await result.current.handleUploadDMFile(new File(['x'], 'instalador.exe', { type: 'application/x-msdownload' })) })
+    expect(storage.upload).not.toHaveBeenCalled()
+    expect(options.setError.mock.calls[0][0]).toContain('.exe')
+    expect(options.sendDirectMessage).not.toHaveBeenCalled()
+    expect(options.setIsUploading.mock.calls).toEqual([[true], [false]])
   })
 
   it('falha no envio do arquivo mostra o erro, libera o envio e não manda mensagem', async () => {
@@ -113,7 +125,8 @@ describe('useEchoDMActions', () => {
 
     await act(async () => { await result.current.handleUploadDMFile(new File(['x'], 'a.png', { type: 'image/png' })) })
 
-    expect(options.setError).toHaveBeenCalledWith('arquivo grande demais')
+    // Em português e com o nome do arquivo, em vez do erro técnico do servidor
+    expect(options.setError.mock.calls[0][0]).toContain('Não foi possível enviar "a.png"')
     expect(options.setIsUploading.mock.calls).toEqual([[true], [false]])
     expect(options.sendDirectMessage).not.toHaveBeenCalled()
   })

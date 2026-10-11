@@ -1,4 +1,5 @@
 import React, { memo } from 'react'
+import { sendFilesInOrder } from '../../lib/attachments'
 import type { User } from '@supabase/supabase-js'
 import type { Space, Channel, Message, ServerEmoji, RolePermissions } from '../../types'
 import { StickerPicker } from '../StickerPicker'
@@ -319,9 +320,16 @@ export const MessageComposer = memo(function MessageComposer({
             <input 
               type="file" 
               id="chat-file-input" 
+              multiple
               style={{ display: 'none' }} 
               onChange={(e) => { 
-                const f = e.target.files?.[0]
+                const chosen = Array.from(e.target.files ?? [])
+                if (chosen.length > 1) {
+                  void sendFilesInOrder(chosen, (file) => handleChatFileUpload(file))
+                  e.target.value = ''
+                  return
+                }
+                const f = chosen[0]
                 if (f) {
                   if (f.type.startsWith('image/')) {
                     setPendingImagePreview(prev => {
@@ -336,7 +344,7 @@ export const MessageComposer = memo(function MessageComposer({
                 e.target.value = '' 
               }} 
             />
-            <button type="button" className="composer-action-btn" onClick={() => document.getElementById('chat-file-input')?.click()} disabled={isUploading} title="Anexar arquivo ou imagem">
+            <button type="button" className="composer-action-btn" onClick={() => document.getElementById('chat-file-input')?.click()} disabled={isUploading} title="Enviar arquivo (até 25 MB) ou imagem">
               <PaperclipIcon style={{ width: '15px', height: '15px' }} />
             </button>
 

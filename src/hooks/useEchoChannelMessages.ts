@@ -4,6 +4,7 @@ import type { Message, Channel, Space, RolePermissions } from '../types'
 import { trackMessageSent } from '../lib/analytics'
 import { MESSAGE_DELETED_EVENT, THREAD_MESSAGE_EVENT, isMissingThreadColumn, threadSupport } from '../lib/threads'
 import { emitNotice } from '../lib/realtimeNotices'
+import { uploadAttachment } from '../lib/attachmentUpload'
 import {
   generateTempMessageId,
   createAntiSpamState,
@@ -411,20 +412,14 @@ export function useEchoChannelMessages({
     setIsUploading(true)
     setError('')
     try {
-      const rawExt = file.name && file.name.includes('.') ? file.name.split('.').pop() : (file.type.split('/')[1] || 'png')
-      const ext = (rawExt || 'png').replace(/[^a-zA-Z0-9]/g, '')
-      const path = `channels/${selectedChannel.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`
-      const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file)
-      if (uploadError) {
-        setError(uploadError.message)
-        setIsUploading(false)
+      const result = await uploadAttachment(supabase, `channels/${selectedChannel.id}`, file)
+      if (!result.ok) {
+        showToast('Arquivo não enviado', result.reason, 'info')
         return
       }
-      const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
-      const baseType = file.type.startsWith('image/') ? 'image' : 'file'
-      const fileType = baseType === 'image' && sizePreference ? `image:${sizePreference}` : baseType
+      const fileType = result.attachmentType === 'image' && sizePreference ? `image:${sizePreference}` : result.attachmentType
       const messageText = caption && caption.trim() ? caption.trim() : (file.name || 'Imagem')
-      await postChannelMessage(selectedChannel.id, messageText, urlData.publicUrl, fileType)
+      await postChannelMessage(selectedChannel.id, messageText, result.url, fileType)
     } catch (err: any) {
       setError(err.message || 'Erro no upload.')
     } finally {

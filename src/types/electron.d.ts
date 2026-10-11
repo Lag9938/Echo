@@ -83,6 +83,8 @@ export interface ElectronAPI {
 
   // External Browser URL Opening
   openExternal: (url: string) => Promise<boolean>
+  downloadAttachment?: (url: string, name: string) => Promise<{ status: 'saved' | 'cancelled' | 'failed'; path?: string }>
+  showDownloadedFile?: (filePath: string) => Promise<boolean>
 
   // Asaas Payments & Subscriptions Integration
   asaasGetCheckoutUrl?: () => Promise<{

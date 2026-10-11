@@ -1,5 +1,6 @@
 import { useCallback, type Dispatch, type FormEvent, type MutableRefObject, type SetStateAction } from 'react'
 import { supabase } from '../lib/supabase'
+import { uploadAttachment } from '../lib/attachmentUpload'
 import type { DirectMessage, Page } from '../types'
 
 export interface UseEchoDMActionsOptions {
@@ -17,6 +18,8 @@ export interface UseEchoDMActionsOptions {
   setError: (message: string) => void
   startVoiceNoteRecording: (target?: 'channel' | 'dm') => unknown
   toggleSaveMessage: (msg: any, type: 'channel' | 'dm', extra?: any) => void
+  sendGroupMessage?: (groupId: string, body: string, attachmentUrl?: string, attachmentType?: string) => unknown
+  showToast?: (title: string, message: string, type?: any) => void
 }
 
 /**
@@ -37,7 +40,9 @@ export function useEchoDMActions({
   setIsUploading,
   setError,
   startVoiceNoteRecording,
-  toggleSaveMessage
+  toggleSaveMessage,
+  sendGroupMessage,
+  showToast
 }: UseEchoDMActionsOptions) {
   const handleOpenDM = useCallback((friendId: string) => {
     setSelectedDMUserId(friendId)
@@ -70,18 +75,37 @@ export function useEchoDMActions({
   const handleUploadDMFile = useCallback(async (file: File, caption?: string) => {
     if (!supabase) return
     setIsUploading(true)
-    const rawExt = file.name && file.name.includes('.') ? file.name.split('.').pop() : (file.type.split('/')[1] || 'png')
-    const ext = (rawExt || 'png').replace(/[^a-zA-Z0-9]/g, '')
-    // O caminho fica dentro da pasta do próprio usuário: é o que a regra de envio do banco exige (migração 13)
-    const path = `dm/${userId}/${Date.now()}-${crypto.randomUUID()}.${ext}`
-    const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file)
-    if (uploadError) { setError(uploadError.message); setIsUploading(false); return }
-    const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path)
-    const fileType = file.type.startsWith('image/') ? 'image' : 'file'
-    const messageText = caption && caption.trim() ? caption.trim() : (dmDraft.trim() || file.name || 'Imagem')
-    await sendDirectMessage(messageText, urlData.publicUrl, fileType)
-    setIsUploading(false)
-  }, [userId, dmDraft, sendDirectMessage, setError, setIsUploading])
+    try {
+      // A pasta é a do próprio usuário: é o que a regra de envio do banco exige (migração 13)
+      const result = await uploadAttachment(supabase, `dm/${userId}`, file)
+      if (!result.ok) {
+        if (showToast) showToast('Arquivo não enviado', result.reason, 'info')
+        else setError(result.reason)
+        return
+      }
+      const messageText = caption && caption.trim() ? caption.trim() : (file.name || 'Imagem')
+      await sendDirectMessage(messageText, result.url, result.attachmentType)
+    } finally {
+      setIsUploading(false)
+    }
+  }, [userId, sendDirectMessage, setError, setIsUploading, showToast])
+
+  // Grupos: o arquivo também vai para a pasta pessoal de quem envia
+  const handleUploadGroupFile = useCallback(async (groupId: string, file: File) => {
+    if (!supabase || !sendGroupMessage) return
+    setIsUploading(true)
+    try {
+      const result = await uploadAttachment(supabase, `dm/${userId}`, file)
+      if (!result.ok) {
+        if (showToast) showToast('Arquivo não enviado', result.reason, 'info')
+        else setError(result.reason)
+        return
+      }
+      await sendGroupMessage(groupId, file.name || 'Arquivo', result.url, result.attachmentType)
+    } finally {
+      setIsUploading(false)
+    }
+  }, [userId, sendGroupMessage, setError, setIsUploading, showToast])
 
   const handleRemoveRecentDM = useCallback((dmId: string) => {
     setRecentDMUserIds(prev => prev.filter(id => id !== dmId))
@@ -112,6 +136,7 @@ export function useEchoDMActions({
     handleCloseDM,
     handleSendDMForm,
     handleUploadDMFile,
+    handleUploadGroupFile,
     handleRemoveRecentDM,
     handleStartVoiceNoteDM,
     handleToggleSaveDM,
