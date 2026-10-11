@@ -7,6 +7,7 @@ import { ChatLinkEmbed } from '../../components/chat/ChatLinkEmbed'
 import { StickerPicker } from '../../components/StickerPicker'
 import { formatMessageText } from '../../lib/messageFormatter'
 import { FileAttachmentCard } from '../../components/chat/FileAttachmentCard'
+import { ChatDateDivider, withDayDividers } from '../../components/chat/ChatDateDivider'
 import { isCaptionJustFileName, readFileInfo, sendFilesInOrder } from '../../lib/attachments'
 import { useFileDrop } from '../../hooks/useFileDrop'
 import {
@@ -342,7 +343,9 @@ export const DMConversation = memo(function DMConversation({
             boxSizing: 'border-box'
           }}
         >
-          {directMessages.map((msg) => {
+          {withDayDividers(directMessages).map((entry) => {
+            if (entry.kind === 'day') return <ChatDateDivider key={entry.key} date={entry.date} />
+            const msg = entry.message
             const isSent = msg.sender_id === user.id
             const isImage = Boolean(msg.attachment_url && msg.attachment_type === 'image')
             const isAudio = Boolean(msg.attachment_url && msg.attachment_type === 'audio')

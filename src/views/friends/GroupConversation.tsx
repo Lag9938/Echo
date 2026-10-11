@@ -4,6 +4,7 @@ import type { GroupChat, GroupMessage } from '../../types'
 import { StickerPicker } from '../../components/StickerPicker'
 import { formatMessageText } from '../../lib/messageFormatter'
 import { FileAttachmentCard } from '../../components/chat/FileAttachmentCard'
+import { ChatDateDivider, withDayDividers } from '../../components/chat/ChatDateDivider'
 import { isCaptionJustFileName, readFileInfo, sendFilesInOrder } from '../../lib/attachments'
 import { useFileDrop } from '../../hooks/useFileDrop'
 import {
@@ -155,7 +156,9 @@ export const GroupConversation = memo(function GroupConversation({
             <p style={{ fontSize: 13, margin: 0 }}>Este é o início do grupo. Envie uma mensagem!</p>
           </div>
         ) : (
-          (groupMessages[currentActiveGroup.id] || []).map((gMsg) => {
+          withDayDividers(groupMessages[currentActiveGroup.id] || []).map((entry) => {
+            if (entry.kind === 'day') return <ChatDateDivider key={entry.key} date={entry.date} />
+            const gMsg = entry.message
             const isSent = gMsg.sender_id === user.id
             const isSticker = Boolean(gMsg.attachment_url && gMsg.attachment_type === 'sticker')
             const isImage = Boolean(gMsg.attachment_url && (gMsg.attachment_type === 'image' || gMsg.attachment_type?.startsWith('image')))
