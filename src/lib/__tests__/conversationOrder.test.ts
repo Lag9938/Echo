@@ -16,6 +16,11 @@ describe('ordem da lista de conversas diretas', () => {
     expect(sortConversationsByName(withOpenedFirst)).toEqual(sortConversationsByName(base))
   })
 
+  it('nome salvo com espaço na frente não fura a fila', () => {
+    const sorted = sortConversationsByName([conv('1', ' castiel'), conv('2', 'Bag'), conv('3', 'elden')])
+    expect(sorted.map((c) => c.display_name.trim())).toEqual(['Bag', 'castiel', 'elden'])
+  })
+
   it('nomes iguais ficam sempre na mesma ordem, e a lista original não é alterada', () => {
     const input = [conv('z', 'Ana'), conv('a', 'Ana')]
     expect(sortConversationsByName(input).map((c) => c.id)).toEqual(['a', 'z'])
