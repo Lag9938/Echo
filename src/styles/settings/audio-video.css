@@ -471,3 +471,175 @@ body.echo-layout-glass .tech-card.spatial-audio-card {
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.4), 0 0 24px rgba(0, 242, 254, 0.18) !important;
 }
 
+/* ==========================================================================
+   ECHO SETTINGS - MODULAR LINEAR CLEAN AUDIO LAYOUT (OPÇÃO 1)
+   ========================================================================== */
+
+.echo-audio-card {
+  border-radius: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.echo-layout-glass .echo-audio-card {
+  background: rgba(18, 24, 38, 0.55);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+body.echo-layout-glass .echo-audio-card:hover {
+  background: rgba(24, 32, 48, 0.65);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.theme-performance-opaque .echo-audio-card,
+body.echo-layout-classic .echo-audio-card {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: var(--bg-secondary) !important;
+}
+
+.echo-audio-select {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+body.echo-layout-glass .echo-audio-select {
+  background: rgba(10, 14, 24, 0.75);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.echo-audio-select:focus,
+.echo-audio-select:hover {
+  border-color: var(--accent-color);
+}
+
+/* Modo de Transmissão Cards */
+.echo-transmit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .echo-transmit-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.echo-transmit-card {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1.5px solid var(--border-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.echo-transmit-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.echo-transmit-card.selected {
+  border-color: var(--accent-color);
+  background: rgba(0, 242, 254, 0.08);
+  box-shadow: 0 0 0 1px var(--accent-color), 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+body.echo-layout-glass .echo-transmit-card {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Filtros Grid 2x2 */
+.echo-filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.echo-filter-item {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  transition: all 0.18s ease;
+}
+
+body.echo-layout-glass .echo-filter-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.echo-filter-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* VU Meter Fluido Estilo Studio */
+.echo-clean-vu-box {
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+body.echo-layout-glass .echo-clean-vu-box {
+  background: rgba(8, 11, 18, 0.65);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.echo-vu-track {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+  padding: 2px;
+}
+
+.echo-vu-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #00f2fe 0%, #10b981 60%, #ef4444 95%);
+  transition: width 0.08s ease-out;
+}
+
+.echo-vu-zone-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.4);
+  z-index: 2;
+}
+
+

@@ -273,7 +273,7 @@ export function SubscriptionTab({
             borderRadius: '6px',
             background: isPremiumUser ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
             border: isPremiumUser ? '1px solid #10b981' : '1px solid #f59e0b',
-            color: isPremiumUser ? '#34d399' : '#fbbf24',
+            color: isPremiumUser ? 'var(--ok-text, #34d399)' : 'var(--amber-text, #fbbf24)',
             letterSpacing: '0.04em'
           }}>
             {isPremiumUser ? 'PRO ATIVO' : 'ECHO PRO'}
@@ -287,8 +287,8 @@ export function SubscriptionTab({
       {/* Plan Status Card */}
       <div style={{
         background: isPremiumUser 
-          ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%)'
-          : 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%)',
+          ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, var(--glass-card, rgba(15, 23, 42, 0.6)) 100%)'
+          : 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, var(--glass-card, rgba(15, 23, 42, 0.6)) 100%)',
         border: isPremiumUser 
           ? '1px solid rgba(16, 185, 129, 0.3)' 
           : '1px solid rgba(245, 158, 11, 0.25)',
@@ -321,7 +321,7 @@ export function SubscriptionTab({
 
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#fff' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)' }}>
                   {isPremiumUser ? 'Echo Pro Mensal' : 'Plano Gratuito'}
                 </h3>
                 {isPremiumUser && (
@@ -331,7 +331,7 @@ export function SubscriptionTab({
                     gap: '4px',
                     fontSize: '10px',
                     fontWeight: '700',
-                    color: '#34d399',
+                    color: 'var(--ok-text, #34d399)',
                     background: 'rgba(16, 185, 129, 0.15)',
                     padding: '2px 6px',
                     borderRadius: '4px'
@@ -351,7 +351,7 @@ export function SubscriptionTab({
           </div>
 
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '24px', fontWeight: '900', color: '#fff', letterSpacing: '-0.02em' }}>
+            <div style={{ fontSize: '24px', fontWeight: '900', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
               R$ 9,90
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary, #94a3b8)' }}>
@@ -364,7 +364,7 @@ export function SubscriptionTab({
         <div style={{ 
           marginTop: '20px', 
           paddingTop: '16px', 
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          borderTop: '1px solid color-mix(in srgb, var(--text-primary) 8%, transparent)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -380,9 +380,9 @@ export function SubscriptionTab({
                 style={{
                   padding: '9px 16px',
                   borderRadius: '8px',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#fff',
+                  background: 'color-mix(in srgb, var(--text-primary) 8%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--text-primary) 15%, transparent)',
+                  color: 'var(--text-primary)',
                   fontWeight: '700',
                   fontSize: '12px',
                   cursor: 'pointer',
@@ -481,7 +481,7 @@ export function SubscriptionTab({
       {/* In-Page Pix Module */}
       {showPixModule && !isPremiumUser && (
         <div style={{
-          background: 'rgba(15, 23, 42, 0.7)',
+          background: 'var(--glass-card, rgba(15, 23, 42, 0.7))',
           border: '1px solid rgba(16, 185, 129, 0.3)',
           borderRadius: '14px',
           padding: '22px',
@@ -551,7 +551,7 @@ export function SubscriptionTab({
                 )}
               </div>
 
-              <div style={{ fontSize: '12px', color: '#fff', fontWeight: '600', marginBottom: '4px' }}>
+              <div style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: '600', marginBottom: '4px' }}>
                 Valor: R$ {Number(pixData.value || 9.90).toFixed(2).replace('.', ',')}
               </div>
 
@@ -570,7 +570,7 @@ export function SubscriptionTab({
                   fontSize: '12px',
                   background: copiedPix ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)',
                   border: copiedPix ? '1px solid #10b981' : '1px solid rgba(16, 185, 129, 0.3)',
-                  color: copiedPix ? '#34d399' : '#10b981',
+                  color: copiedPix ? 'var(--ok-text, #34d399)' : 'var(--ok-text, #10b981)',
                   borderRadius: '8px',
                   cursor: 'pointer',
                   margin: '0 auto 12px auto',
@@ -657,9 +657,9 @@ export function SubscriptionTab({
                     width: '100%',
                     padding: '9px 12px',
                     borderRadius: '7px',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    color: '#fff',
+                    background: 'color-mix(in srgb, var(--text-primary) 4%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--text-primary) 8%, transparent)',
+                    color: 'var(--text-primary)',
                     fontSize: '12px',
                     boxSizing: 'border-box'
                   }}
@@ -681,9 +681,9 @@ export function SubscriptionTab({
                     width: '100%',
                     padding: '9px 12px',
                     borderRadius: '7px',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    color: '#fff',
+                    background: 'color-mix(in srgb, var(--text-primary) 4%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--text-primary) 8%, transparent)',
+                    color: 'var(--text-primary)',
                     fontSize: '12px',
                     boxSizing: 'border-box'
                   }}
@@ -737,15 +737,15 @@ export function SubscriptionTab({
 
       {/* Perks Comparison Grid */}
       <div style={{ marginBottom: '28px' }}>
-        <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#fff', margin: '0 0 12px 0' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)', margin: '0 0 12px 0' }}>
           Benefícios do Echo Pro
         </h3>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '12px' }}>
           {/* Perk 1 */}
           <div style={{
-            background: 'rgba(255, 255, 255, 0.02)',
-            border: '1px solid rgba(255, 255, 255, 0.06)',
+            background: 'color-mix(in srgb, var(--text-primary) 2%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--text-primary) 6%, transparent)',
             borderRadius: '12px',
             padding: '16px'
           }}>
@@ -761,7 +761,7 @@ export function SubscriptionTab({
             }}>
               <ColoredLightningIcon size={20} />
             </div>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '4px' }}>
               Apoiador Oficial Echo
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-secondary, #94a3b8)', lineHeight: '1.4' }}>
@@ -771,8 +771,8 @@ export function SubscriptionTab({
 
           {/* Perk 2 */}
           <div style={{
-            background: 'rgba(255, 255, 255, 0.02)',
-            border: '1px solid rgba(255, 255, 255, 0.06)',
+            background: 'color-mix(in srgb, var(--text-primary) 2%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--text-primary) 6%, transparent)',
             borderRadius: '12px',
             padding: '16px'
           }}>
@@ -788,7 +788,7 @@ export function SubscriptionTab({
             }}>
               <BadgeVipIcon style={{ width: '20px', height: '20px' }} />
             </div>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '4px' }}>
               Distintivo Echo VIP
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-secondary, #94a3b8)', lineHeight: '1.4' }}>
@@ -798,8 +798,8 @@ export function SubscriptionTab({
 
           {/* Perk 3 */}
           <div style={{
-            background: 'rgba(255, 255, 255, 0.02)',
-            border: '1px solid rgba(255, 255, 255, 0.06)',
+            background: 'color-mix(in srgb, var(--text-primary) 2%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--text-primary) 6%, transparent)',
             borderRadius: '12px',
             padding: '16px'
           }}>
@@ -815,7 +815,7 @@ export function SubscriptionTab({
             }}>
               <PaletteIcon style={{ width: '18px', height: '18px', color: '#38bdf8' }} />
             </div>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '4px' }}>
               Temas Exclusivos
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-secondary, #94a3b8)', lineHeight: '1.4' }}>
@@ -827,8 +827,8 @@ export function SubscriptionTab({
 
       {/* Security & Payment Details Footer */}
       <div style={{
-        background: 'rgba(255, 255, 255, 0.02)',
-        border: '1px solid rgba(255, 255, 255, 0.05)',
+        background: 'color-mix(in srgb, var(--text-primary) 2%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--text-primary) 5%, transparent)',
         borderRadius: '10px',
         padding: '14px 18px',
         display: 'flex',

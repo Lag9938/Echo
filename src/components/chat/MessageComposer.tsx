@@ -1,4 +1,5 @@
-import React, { memo } from 'react'
+import React, { memo, useState } from 'react'
+import { sendFilesInOrder } from '../../lib/attachments'
 import type { User } from '@supabase/supabase-js'
 import type { Space, Channel, Message, ServerEmoji, RolePermissions } from '../../types'
 import { StickerPicker } from '../StickerPicker'
@@ -152,6 +153,16 @@ export const MessageComposer = memo(function MessageComposer({
   supabase,
   postChannelMessage
 }: MessageComposerProps) {
+  // As janelas de GIF, figurinhas e emoji abrem rente ao botão que foi apertado (antes ficavam
+  // coladas à direita, longe dos botões da esquerda). Guarda o ponto de ancoragem, em px, dentro do formulário.
+  const [pickerLeft, setPickerLeft] = useState<number | null>(null)
+  const anchorPicker = (e: React.MouseEvent<HTMLButtonElement>, popoverWidth: number) => {
+    const btn = e.currentTarget
+    const formWidth = btn.parentElement?.clientWidth ?? 0
+    const maxLeft = Math.max(12, formWidth - popoverWidth - 12)
+    setPickerLeft(Math.max(12, Math.min(btn.offsetLeft - 8, maxLeft)))
+  }
+
   if (currentSpace && !canUserDo(currentSpace.id, user.id, 'sendMessages')) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px 20px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '13px', margin: '0 16px 16px 16px' }}>
@@ -315,13 +326,24 @@ export const MessageComposer = memo(function MessageComposer({
               </div>
             </div>
           )}
-          <form className="composer" onSubmit={handleComposerSubmit} style={{ position: 'relative' }}>
+          <form
+            className="composer"
+            onSubmit={handleComposerSubmit}
+            style={{ position: 'relative', ...(pickerLeft !== null ? { ['--picker-left' as string]: `${pickerLeft}px` } : {}) } as React.CSSProperties}
+          >
             <input 
               type="file" 
               id="chat-file-input" 
+              multiple
               style={{ display: 'none' }} 
               onChange={(e) => { 
-                const f = e.target.files?.[0]
+                const chosen = Array.from(e.target.files ?? [])
+                if (chosen.length > 1) {
+                  void sendFilesInOrder(chosen, (file) => handleChatFileUpload(file))
+                  e.target.value = ''
+                  return
+                }
+                const f = chosen[0]
                 if (f) {
                   if (f.type.startsWith('image/')) {
                     setPendingImagePreview(prev => {
@@ -336,7 +358,7 @@ export const MessageComposer = memo(function MessageComposer({
                 e.target.value = '' 
               }} 
             />
-            <button type="button" className="composer-action-btn" onClick={() => document.getElementById('chat-file-input')?.click()} disabled={isUploading} title="Anexar arquivo ou imagem">
+            <button type="button" className="composer-action-btn" onClick={() => document.getElementById('chat-file-input')?.click()} disabled={isUploading} title="Enviar arquivo (até 25 MB) ou imagem">
               <PaperclipIcon style={{ width: '15px', height: '15px' }} />
             </button>
 
@@ -354,7 +376,8 @@ export const MessageComposer = memo(function MessageComposer({
             <button 
               type="button" 
               className={`composer-action-btn ${showGifPicker ? 'active' : ''}`} 
-              onClick={() => {
+              onClick={(e) => {
+                anchorPicker(e, 360)
                 setShowGifPicker(!showGifPicker)
                 setShowStickerPicker(false)
                 setShowEmojiPicker(false)
@@ -369,7 +392,8 @@ export const MessageComposer = memo(function MessageComposer({
             <button 
               type="button" 
               className={`composer-action-btn ${showStickerPicker ? 'active' : ''}`} 
-              onClick={() => {
+              onClick={(e) => {
+                anchorPicker(e, 340)
                 setShowStickerPicker(!showStickerPicker)
                 setShowGifPicker(false)
                 setShowEmojiPicker(false)
@@ -383,7 +407,8 @@ export const MessageComposer = memo(function MessageComposer({
             <button 
               type="button" 
               className={`composer-action-btn ${showEmojiPicker ? 'active' : ''}`} 
-              onClick={() => {
+              onClick={(e) => {
+                anchorPicker(e, 320)
                 setShowEmojiPicker(!showEmojiPicker)
                 setShowGifPicker(false)
                 setShowStickerPicker(false)
@@ -397,11 +422,9 @@ export const MessageComposer = memo(function MessageComposer({
             {showMentionPicker && mentionCandidates.length > 0 && (
               <div className="mention-picker-popover" role="listbox">
                 <div className="mention-picker-header">
-                  <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
-                    Membros correspondentes
-                  </span>
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                    ↑↓ navegar • ↵ selecionar • Esc fechar
+                  <span className="mention-picker-title">Mencionar</span>
+                  <span className="mention-picker-hints">
+                    <kbd>↑↓</kbd> navegar <kbd>↵</kbd> escolher <kbd>Esc</kbd> fechar
                   </span>
                 </div>
                 <div className="mention-picker-list">
@@ -464,14 +487,14 @@ export const MessageComposer = memo(function MessageComposer({
             {/* GIF Picker Popover */}
             {showGifPicker && (
               <div className="gif-picker-popover">
-                <div style={{ padding: '10px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input 
-                    value={gifSearchQuery} 
+                <div className="gif-picker-header">
+                  <input
+                    className="gif-picker-search"
+                    value={gifSearchQuery}
                     onChange={(e) => setGifSearchQuery(e.target.value)}
                     placeholder="Buscar GIFs de games..."
-                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '6px 10px', color: 'var(--text-primary)', outline: 'none', fontSize: '12.5px' }}
                   />
-                  <button type="button" onClick={() => setShowGifPicker(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
+                  <button type="button" className="gif-picker-close" onClick={() => setShowGifPicker(false)} title="Fechar">✕</button>
                 </div>
                 <div className="gif-picker-grid">
                   {GAMING_GIFS.filter(g => !gifSearchQuery || g.title.toLowerCase().includes(gifSearchQuery.toLowerCase())).map((gif, idx) => (

@@ -29,16 +29,16 @@ export const SpaceEmojisTab = memo(function SpaceEmojisTab({
       </div>
 
       {/* Form de Criação de Emoji */}
-      <div style={{ background: 'var(--bg-secondary)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '20px' }}>
-        <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: 'var(--text-primary)' }}>Adicionar Novo Emoji ou GIF</h4>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="space-emoji-uploader">
+        <h4 className="space-emoji-uploader-title">Adicionar Novo Emoji ou GIF</h4>
+        <div className="space-emoji-uploader-row">
           <input 
             type="text" 
             value={newEmojiName} 
             onChange={(e) => setNewEmojiName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
             placeholder="Nome do emoji (ex: pepe, hype, gg)"
             maxLength={32}
-            style={{ flex: 1, minWidth: '220px', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13.5px' }}
+            className="space-emoji-name-input"
           />
           <input 
             type="file" 
@@ -60,8 +60,7 @@ export const SpaceEmojisTab = memo(function SpaceEmojisTab({
           />
           <button 
             type="button" 
-            className="add-space-card-btn" 
-            style={{ width: 'auto', padding: '10px 20px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            className="add-space-card-btn space-emoji-upload-btn" 
             disabled={uploadingEmoji}
             onClick={() => {
               if (!newEmojiName.trim()) {
@@ -75,19 +74,19 @@ export const SpaceEmojisTab = memo(function SpaceEmojisTab({
             <span>{uploadingEmoji ? 'Enviando...' : 'Carregar Imagem / GIF'}</span>
           </button>
         </div>
-        <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', display: 'block', marginTop: '6px' }}>Formatos suportados: .png, .gif, .jpg, .webp (Recomendado: 128x128px com fundo transparente).</span>
+        <span className="space-emoji-format-hint">Formatos suportados: .png, .gif, .jpg, .webp (Recomendado: 128x128px com fundo transparente).</span>
       </div>
 
       {/* Grid de Emojis do Servidor */}
-      <div className="server-emojis-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '14px' }}>
+      <div className="server-emojis-grid">
         {serverEmojis.map(emoji => (
-          <div key={emoji.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-            <img src={emoji.url} alt={emoji.name} style={{ width: '36px', height: '36px', objectFit: 'contain', borderRadius: '4px' }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div key={emoji.id} className="space-emoji-card">
+            <img src={emoji.url} alt={emoji.name} className="space-emoji-img" />
+            <div className="space-emoji-info">
+              <span className="space-emoji-name">
                 :{emoji.name}:
               </span>
-              <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
+              <span className="space-emoji-date">
                 {new Date(emoji.created_at).toLocaleDateString('pt-BR')}
               </span>
             </div>
@@ -102,9 +101,9 @@ export const SpaceEmojisTab = memo(function SpaceEmojisTab({
           </div>
         ))}
         {serverEmojis.length === 0 && (
-          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--text-muted)', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-            <SmileIcon style={{ width: '36px', height: '36px', margin: '0 auto 10px auto', opacity: 0.5 }} />
-            <p style={{ margin: 0, fontSize: '14px' }}>Nenhum emoji personalizado cadastrado ainda.</p>
+          <div className="space-emoji-empty-state">
+            <SmileIcon className="space-emoji-empty-icon" />
+            <p>Nenhum emoji personalizado cadastrado ainda.</p>
           </div>
         )}
       </div>

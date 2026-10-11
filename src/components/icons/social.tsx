@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 
 export function UserPlusIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
@@ -94,8 +94,10 @@ export function ClockIcon({ className, style }: { className?: string; style?: Re
 
 export function PhoneOffIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(135deg)', ...style }}>
-      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 2.59 3.4z" fill="currentColor"/>
+    // Mesmo ícone do botão vermelho de desligar ao lado de "transmitir" na sala de voz: fone com um traço cortando
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-6-6 19.8 19.8 0 0 1-3.12-8.69A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91" />
+      <line x1="22" y1="2" x2="2" y2="22" />
     </svg>
   )
 }
@@ -520,10 +522,32 @@ export function BanIcon({ className, style }: { className?: string; style?: Reac
 export function StickerIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M15.5 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3Z"/>
-      <path d="M15 3v6h6"/>
-      <circle cx="10" cy="13" r="1.5"/>
-      <path d="m14 13-2.5 2.5-1-1"/>
+      {/* Adesivo com o canto de baixo descolando e uma carinha sorrindo */}
+      <path d="M5 3h14a2 2 0 0 1 2 2v9l-7 7H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/>
+      <path d="M21 14h-5a2 2 0 0 0-2 2v5"/>
+      <circle cx="9" cy="9.5" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="15" cy="9.5" r="1" fill="currentColor" stroke="none"/>
+      <path d="M8.5 13.2a4 4 0 0 0 6.5.4"/>
+    </svg>
+  )
+}
+
+
+export function ReplyIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 14 4 9 9 4" />
+      <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
+    </svg>
+  )
+}
+
+export function MoreHorizontalIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <circle cx="5" cy="12" r="1.9" />
+      <circle cx="12" cy="12" r="1.9" />
+      <circle cx="19" cy="12" r="1.9" />
     </svg>
   )
 }

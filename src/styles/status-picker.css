@@ -1,0 +1,355 @@
+﻿/* ==========================================================================
+   SELETOR DE STATUS — "ondas do eco" (vale em todos os temas)
+   Quatro cartões em grade 2×2. Cada status é um ponto de cor com anéis concêntricos em volta,
+   como o eco de um som: o status ativo respira (os anéis pulsam), os outros ficam parados.
+     Online = ponto cheio · Ausente = meia-lua · Não perturbe = ponto com traço · Invisível = só o contorno
+   A cor vem de --status-color (voice.css). Fica depois de voice.css para ganhar do estilo antigo.
+   ========================================================================== */
+
+body .status-picker-popover {
+  width: 224px;
+  max-width: calc(100% - 20px);
+  padding: 10px;
+  border-radius: 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+body .status-picker-popover .status-picker-heading {
+  grid-column: 1 / -1;
+  padding: 2px 6px 4px;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+}
+
+/* Cartão de cada status */
+body .status-picker-popover .status-picker-option {
+  --ring-a: color-mix(in srgb, var(--status-color) 26%, transparent);
+  --ring-b: color-mix(in srgb, var(--status-color) 12%, transparent);
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  min-height: 108px;
+  padding: 24px 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 22%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--text-muted) 22%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--text-primary) 3%, transparent);
+  box-shadow: none;
+  text-align: center;
+  transform: none;
+  overflow: hidden;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s var(--ease-smooth, ease);
+}
+body .status-picker-popover .status-picker-option:hover {
+  background: color-mix(in srgb, var(--status-color) 9%, transparent);
+  border-color: color-mix(in srgb, var(--status-color) 40%, transparent);
+  transform: translateY(-2px);
+}
+body .status-picker-popover .status-picker-option.selected {
+  background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--status-color) 24%, transparent) 0%, color-mix(in srgb, var(--status-color) 6%, transparent) 70%);
+  border-color: color-mix(in srgb, var(--status-color) 60%, transparent);
+  box-shadow: 0 8px 22px -10px color-mix(in srgb, var(--status-color) 70%, transparent);
+}
+
+/* O ponto + os anéis do eco */
+body .status-picker-popover .status-picker-option .status-dot-bullet {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  margin-bottom: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--status-color);
+  box-shadow: 0 0 0 6px var(--ring-a), 0 0 0 13px var(--ring-b);
+}
+body .status-picker-popover .status-picker-option .status-dot-bullet svg {
+  display: none;
+}
+body .status-picker-popover .status-picker-option.selected .status-dot-bullet {
+  animation: statusEchoRings 2.2s ease-in-out infinite;
+}
+@keyframes statusEchoRings {
+  0%, 100% { box-shadow: 0 0 0 6px var(--ring-a), 0 0 0 13px var(--ring-b); }
+  50%      { box-shadow: 0 0 0 8px var(--ring-a), 0 0 0 17px transparent; }
+}
+
+/* Ausente: meia-lua */
+body .status-picker-popover .status-picker-option.idle .status-dot-bullet {
+  background: radial-gradient(circle at 72% 28%, transparent 0 36%, var(--status-color) 38%);
+}
+/* Não perturbe: traço branco no meio do ponto */
+body .status-picker-popover .status-picker-option.dnd .status-dot-bullet::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 8px;
+  height: 2.5px;
+  border-radius: 2px;
+  background: #fff;
+}
+/* Invisível: só o contorno, e os anéis tracejados */
+body .status-picker-popover .status-picker-option.invisible .status-dot-bullet {
+  background: transparent;
+  box-shadow: inset 0 0 0 2.5px var(--status-color), 0 0 0 6px var(--ring-b);
+  animation: none;
+}
+
+/* Texto */
+body .status-picker-popover .status-meta {
+  align-items: center;
+  gap: 1px;
+}
+body .status-picker-popover .status-meta strong {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+body .status-picker-popover .status-meta span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Marca de escolhido: selinho no canto do cartão */
+body .status-picker-popover .status-picker-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  box-sizing: content-box;
+  width: 10px;
+  height: 10px;
+  padding: 3px;
+  border-radius: 50%;
+  background: var(--status-color);
+  color: #fff;
+  filter: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body .status-picker-popover .status-picker-option.selected .status-dot-bullet {
+    animation: none;
+  }
+  body .status-picker-popover .status-picker-option {
+    transition: none;
+  }
+}
+
+/* ==========================================================================
+   SELO DE STATUS NO AVATAR (lista de membros, cartão do membro, rodapé do perfil e cartões de amigos)
+   Mesma linguagem do seletor: ponto cheio, meia-lua, ponto com traço e só o contorno,
+   com um anel de recorte na cor do painel. O online emite um "eco" suave.
+   No rodapé ele ficava escondido atrás da decoração do avatar; agora fica por cima.
+   ========================================================================== */
+/* classe repetida: o effects.css (.x.idle com !important) tem especificidade 0,2,0 e vencia o tamanho e o arredondamento daqui */
+body .member-status-dot.member-status-dot,
+body .profile-status-indicator.profile-status-indicator,
+body .online-indicator.online-indicator {
+  --sc: #94a3b8;
+  --ring: var(--bg-secondary, #fff);
+  background: var(--sc) !important;
+  border: 2.5px solid var(--ring) !important;
+  border-radius: 50% !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+  animation: none;
+}
+body .member-status-dot.online,
+body .profile-status-indicator.online,
+body .online-indicator.online { --sc: #22c55e; }
+body .member-status-dot.idle,
+body .profile-status-indicator.idle,
+body .online-indicator.idle { --sc: #f59e0b; }
+body .member-status-dot.dnd,
+body .profile-status-indicator.dnd,
+body .online-indicator.dnd { --sc: #ef4444; }
+body .member-status-dot.offline,
+body .online-indicator.offline,
+body .member-status-dot.invisible,
+body .profile-status-indicator.invisible,
+body .online-indicator.invisible { --sc: #94a3b8; }
+
+/* Tamanho e posição (o cartão do membro tem as suas próprias medidas) */
+body .member-status-dot.member-status-dot:not(.hover-popover-avatar-wrap *),
+body .profile-status-indicator.profile-status-indicator,
+body .online-indicator.online-indicator {
+  /* O "Não perturbe" tinha position: relative no CSS antigo: o selo caía no fluxo do avatar e era
+     espremido até sumir. Sempre absoluto, preso ao canto do avatar. */
+  position: absolute !important;
+  width: 15px !important;
+  height: 15px !important;
+  right: -3px !important;
+  bottom: -3px !important;
+  z-index: 40 !important;
+}
+
+/* Online: ponto cheio com um eco que se abre e some */
+body .member-status-dot.online,
+body .profile-status-indicator.online,
+body .online-indicator.online {
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--sc) 60%, transparent) !important;
+  animation: statusBadgeEcho 2.6s ease-out infinite;
+}
+@keyframes statusBadgeEcho {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--sc) 55%, transparent); }
+  70%  { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+/* Em chamada de voz o anel de fala do app continua mandando */
+body .member-status-dot.voice-active {
+  animation: none;
+  box-shadow: 0 0 0 1.5px var(--speaking-color, #22c55e) !important;
+}
+
+/* Ausente: meia-lua */
+body .member-status-dot.idle,
+body .profile-status-indicator.idle,
+body .online-indicator.idle {
+  background: radial-gradient(circle at 72% 28%, var(--ring) 0 34%, var(--sc) 36%) !important;
+  box-shadow: none !important;
+  animation: none;
+}
+body .member-status-dot.idle::before,
+body .member-status-dot.idle::after,
+body .profile-status-indicator.idle::before,
+body .online-indicator.idle::before,
+body .profile-status-indicator.idle::after,
+body .online-indicator.idle::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* Não perturbe: ponto vermelho com um traço branco */
+body .member-status-dot.dnd,
+body .profile-status-indicator.dnd,
+body .online-indicator.dnd {
+  box-shadow: none !important;
+}
+body .member-status-dot.dnd::after,
+body .profile-status-indicator.dnd::after,
+body .online-indicator.dnd::after {
+  content: '' !important;
+  display: block !important;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 2px;
+  border-radius: 1px;
+  background: #fff !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+/* Invisível / offline: só o contorno */
+body .member-status-dot.offline,
+body .online-indicator.offline,
+body .member-status-dot.invisible,
+body .profile-status-indicator.invisible,
+body .online-indicator.invisible {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 2.5px solid var(--ring) !important;
+  box-shadow: inset 0 0 0 2px var(--sc) !important;
+}
+body .member-status-dot.offline,
+body .online-indicator.offline::after,
+body .member-status-dot.invisible::after,
+body .profile-status-indicator.invisible::after,
+body .online-indicator.invisible::after {
+  content: none !important;
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body .member-status-dot.online,
+  body .profile-status-indicator.online,
+body .online-indicator.online {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+   STATUS DENTRO DO PAINEL DA CHAMADA
+   Na chamada o rodapé mostra "Na chamada · sala" no lugar do status. Esta linha deixa trocar o status
+   sem sair da sala: quatro botões redondos com o selo de cada status e o nome do atual ao lado.
+   ========================================================================== */
+.profile-call-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 4px;
+}
+.profile-call-status-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.profile-call-status-options {
+  display: flex;
+  gap: 6px;
+}
+.profile-call-status-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.profile-call-status-btn:hover {
+  background: color-mix(in srgb, var(--text-primary) 12%, transparent);
+  transform: translateY(-1px);
+}
+.profile-call-status-btn.selected {
+  border-color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-primary) 14%, transparent);
+}
+.profile-call-status-btn.online.selected { border-color: #22c55e; background: color-mix(in srgb, #22c55e 18%, transparent); }
+.profile-call-status-btn.idle.selected { border-color: #f59e0b; background: color-mix(in srgb, #f59e0b 18%, transparent); }
+.profile-call-status-btn.dnd.selected { border-color: #ef4444; background: color-mix(in srgb, #ef4444 18%, transparent); }
+.profile-call-status-current {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+/* ── Painel da chamada mais enxuto ──
+   Sem a linha de ping/jitter; mutar e silenciar viram botões baixos com ícone e texto lado a lado;
+   o status fica numa linha discreta e "Sair" mais fino. */
+body .profile-call-card {
+  gap: 8px;
+  padding: 12px 12px 12px;
+}
+body .profile-call-toggle {
+  flex-direction: row;
+  gap: 8px;
+  min-height: 0;
+  height: 40px;
+  padding: 0 10px;
+  border-radius: 14px;
+  font-size: 12px;
+}
+body .profile-call-toggle svg {
+  width: 17px;
+  height: 17px;
+}
+body .profile-call-status {
+  justify-content: space-between;
+  padding: 2px 2px 0;
+}
+body .profile-call-status-btn {
+  width: 26px;
+  height: 26px;
+}
+body .profile-call-leave {
+  height: 38px;
+  font-size: 12.5px;
+}

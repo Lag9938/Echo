@@ -15,10 +15,11 @@ interface StickerPickerProps {
 function StickerIconSvg({ style }: { style?: React.CSSProperties }) {
   return (
     <svg style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <circle cx="10" cy="14" r="1.5" />
-      <path d="m18 17-3-3-4 4" />
+      <path d="M5 3h14a2 2 0 0 1 2 2v9l-7 7H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+      <path d="M21 14h-5a2 2 0 0 0-2 2v5" />
+      <circle cx="9" cy="9.5" r="1" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="9.5" r="1" fill="currentColor" stroke="none" />
+      <path d="M8.5 13.2a4 4 0 0 0 6.5.4" />
     </svg>
   )
 }
@@ -151,23 +152,19 @@ export function StickerPicker({ onSelectSticker, onClose, userId }: StickerPicke
       {/* Cabeçalho do Seletor */}
       <div className="sticker-picker-header">
         <div className="sticker-picker-header-title">
-          <StickerIconSvg style={{ color: '#00f2fe' }} />
-          <span className="sticker-header-text">Figurinhas</span>
-          <span className="sticker-count-badge">
-            {stickers.length} {stickers.length === 1 ? 'salva' : 'salvas'}
+          <span className="sticker-title-icon">
+            <StickerIconSvg />
           </span>
+          <div className="sticker-title-stack">
+            <span className="sticker-header-text">Figurinhas</span>
+            <span className="sticker-count-badge">
+              {stickers.length === 0
+                ? 'Sua coleção está vazia'
+                : `${stickers.length} ${stickers.length === 1 ? 'salva' : 'salvas'} · clique para enviar`}
+            </span>
+          </div>
         </div>
         <div className="sticker-picker-header-actions">
-          <button
-            type="button"
-            className="sticker-create-btn"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isProcessing}
-            title="Adicionar imagem como figurinha"
-          >
-            <PlusIconSvg style={{ width: 13, height: 13 }} />
-            <span>Adicionar</span>
-          </button>
           <button
             type="button"
             className="sticker-close-btn"
@@ -204,7 +201,7 @@ export function StickerPicker({ onSelectSticker, onClose, userId }: StickerPicke
             </div>
             <h4 className="sticker-empty-title">Nenhuma figurinha salva</h4>
             <p className="sticker-empty-desc">
-              Importe qualquer foto, meme ou arte para sua coleção pessoal.
+              Importe uma foto, meme ou arte, ou arraste a imagem para cá.
             </p>
             <button
               type="button"
@@ -264,10 +261,6 @@ export function StickerPicker({ onSelectSticker, onClose, userId }: StickerPicke
         )}
       </div>
 
-      {/* Rodapé limpo com instrução elegante */}
-      <div className="sticker-picker-footer">
-        <span>Clique para enviar na conversa • Arraste imagens para adicionar</span>
-      </div>
     </div>
   )
 }

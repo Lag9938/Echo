@@ -1,0 +1,368 @@
+﻿/* ==========================================================================
+   RECOLHER A BARRA DE CANAIS
+   O botão ao lado do filtro recolhe a barra e sobra uma tirinha na borda. Passar o mouse na tirinha
+   mostra a barra flutuando sobre o chat (não empurra nada); clicar nela, ou no botão que vira "fixar",
+   traz a barra de volta de vez. A lógica é a mesma das outras espiadas (hooks/useHoverPeek.ts).
+   ========================================================================== */
+
+/* Filtro de canais + botão de recolher, lado a lado */
+.channels-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.channels-search-wrap .channels-search-box {
+  flex: 1;
+  min-width: 0;
+}
+.channels-collapse-btn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.18s var(--ease-spring, ease);
+}
+.channels-collapse-btn:hover {
+  background: color-mix(in srgb, var(--accent-color) 16%, transparent);
+  color: var(--accent-color);
+  transform: scale(1.08);
+}
+
+/* A coluna da barra recolhida: a seta de fixar no topo e os canais do espaço em miniatura embaixo.
+   Passar o mouse em qualquer parte da coluna mostra a barra completa ao lado; a seta fixa. */
+.channels-rail {
+  position: relative;
+  flex-shrink: 0;
+  align-self: stretch;
+  width: 58px;
+  margin: 10px 0 10px 8px;
+  padding: 10px 0 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--bg-secondary) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 22%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  transition: background 0.18s ease, border-color 0.18s ease;
+  -webkit-app-region: no-drag;
+}
+.channels-rail.is-active {
+  background: color-mix(in srgb, var(--accent-color) 8%, var(--bg-secondary));
+  border-color: color-mix(in srgb, var(--accent-color) 34%, transparent);
+}
+
+/* Seta de fixar */
+.channels-rail-pin {
+  position: relative;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.2s var(--ease-spring, ease), box-shadow 0.16s ease;
+}
+.channels-rail-pin svg {
+  transition: transform 0.2s var(--ease-spring, ease);
+}
+.channels-rail-pin:hover {
+  color: #fff;
+  background: var(--accent-color);
+  box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--accent-color) 80%, transparent);
+}
+.channels-rail-pin:hover svg {
+  transform: translateX(2px);
+}
+.channels-rail-pin:active {
+  transform: scale(0.92);
+}
+.channels-rail-list {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 3px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+.channels-rail-list::-webkit-scrollbar {
+  display: none;
+}
+.channels-rail-divider {
+  flex-shrink: 0;
+  width: 24px;
+  height: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--text-muted) 32%, transparent);
+}
+
+/* Cada canal: um quadradinho suave na cor do próprio nome (de leve, não um bloco chapado) */
+.channels-rail-tile {
+  --hue: 200;
+  position: relative;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.channels-rail-tile-face {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, hsl(var(--hue) 70% 45%) 72%, var(--text-primary));
+  background: hsl(var(--hue) 75% 60% / 0.2);
+  border: 1px solid hsl(var(--hue) 70% 55% / 0.38);
+  transition: border-radius 0.22s var(--ease-spring, ease), transform 0.18s var(--ease-spring, ease), background 0.15s ease;
+}
+.channels-rail-tile:hover .channels-rail-tile-face {
+  border-radius: 21px;
+  transform: translateY(-2px);
+  background: hsl(var(--hue) 75% 60% / 0.34);
+}
+.channels-rail-tile:active .channels-rail-tile-face {
+  transform: scale(0.94);
+}
+.channels-rail-tile.selected::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  width: 4px;
+  height: 24px;
+  border-radius: 0 4px 4px 0;
+  background: var(--accent-color);
+  transform: translateY(-50%);
+}
+.channels-rail-tile.selected .channels-rail-tile-face {
+  border-radius: 21px;
+  color: #fff;
+  background: var(--accent-color);
+  border-color: transparent;
+  box-shadow: 0 8px 16px -8px color-mix(in srgb, var(--accent-color) 80%, transparent);
+}
+.channels-rail-tile.has-users:not(.selected) .channels-rail-tile-face {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #22c55e 28%, transparent);
+}
+.channels-rail-tile-type {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1.5px solid color-mix(in srgb, var(--text-muted) 28%, transparent);
+}
+.channels-rail-tile.in-call .channels-rail-tile-type {
+  color: #fff;
+  background: #22c55e;
+  border-color: var(--bg-secondary);
+}
+.channels-rail-tile-unread {
+  position: absolute;
+  right: -3px;
+  top: -3px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2.5px solid var(--bg-secondary);
+}
+.channels-rail-tile-count {
+  position: absolute;
+  right: -4px;
+  top: -4px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  background: #16a34a;
+  border: 2px solid var(--bg-secondary);
+}
+/* A barra espiada: flutua sobre o conteúdo, do lado da tirinha */
+body .channels-sidebar.channels-sidebar.is-peek.is-peek {
+  position: absolute !important;
+  top: 10px;
+  bottom: 10px;
+  left: 76px;
+  height: auto !important;
+  margin: 0 !important;
+  z-index: 60;
+  border-radius: 26px !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.38), 0 0 0 1px color-mix(in srgb, var(--accent-color) 14%, transparent) !important;
+  transform-origin: left center;
+  animation: railPeekIn 0.24s var(--ease-smooth, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+.channels-sidebar.is-peek .channels-sidebar-resizer {
+  display: none;
+}
+@keyframes railPeekIn {
+  from {
+    opacity: 0;
+    transform: translateX(-18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body .channels-sidebar.is-peek {
+    animation: none !important;
+  }
+  .channels-rail,
+  .channels-rail-tile-face,
+  .channels-rail-pin {
+    transition: none;
+  }
+}
+
+/* A coluna inteira é clicável para fixar (a seta, os espaços vazios e as bordas); os canais só abrem o canal */
+.channels-rail {
+  cursor: pointer;
+}
+.channels-rail:hover {
+  background: color-mix(in srgb, var(--accent-color) 8%, var(--bg-secondary));
+  border-color: color-mix(in srgb, var(--accent-color) 34%, transparent);
+}
+
+/* Aviso dentro da barra espiada: explica, com destaque, que a coluna ao lado fixa a barra.
+   A setinha aponta para a coluna e dá um empurrãozinho para chamar a atenção. */
+.channels-peek-hint {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 96px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 22px;
+  cursor: pointer;
+  color: var(--text-primary);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-color) 22%, transparent), color-mix(in srgb, var(--accent-color) 7%, transparent)),
+    color-mix(in srgb, var(--bg-secondary) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 45%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 18px 36px -16px color-mix(in srgb, var(--accent-color) 70%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: peekHintIn 0.4s var(--ease-smooth, cubic-bezier(0.16, 1, 0.3, 1)) 0.25s both;
+  transition: transform 0.18s var(--ease-spring, ease), box-shadow 0.18s ease;
+}
+.channels-peek-hint:hover {
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 22px 40px -16px color-mix(in srgb, var(--accent-color) 85%, transparent);
+}
+.channels-peek-hint-arrow {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: #fff;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 8px 18px -8px color-mix(in srgb, var(--accent-color) 85%, transparent);
+}
+.channels-peek-hint-arrow svg {
+  animation: peekHintNudge 1.5s ease-in-out infinite;
+}
+.channels-peek-hint-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  line-height: 1.35;
+}
+.channels-peek-hint-text strong {
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.channels-peek-hint-text span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+@keyframes peekHintIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes peekHintNudge {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(-4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .channels-peek-hint,
+  .channels-peek-hint-arrow svg {
+    animation: none;
+  }
+}
+/* "Recolher" à vista: pílula com ícone e texto, na cor do tema, para quem chega agora entender o que faz */
+.channels-collapse-btn {
+  width: auto;
+  height: 34px;
+  gap: 6px;
+  padding: 0 13px 0 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 34%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.channels-collapse-btn:hover {
+  color: #fff;
+  background: var(--accent-color);
+  border-color: transparent;
+  box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--accent-color) 85%, transparent);
+  transform: translateY(-1px);
+}
+.channels-collapse-btn svg {
+  transition: transform 0.2s var(--ease-spring, ease);
+}
+.channels-collapse-btn:hover svg {
+  transform: translateX(-2px);
+}

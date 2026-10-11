@@ -1,8 +1,9 @@
-import React, { useState, useCallback, useEffect, useRef, memo } from 'react'
+﻿import React, { useState, useCallback, useEffect, useRef, memo } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { VoiceParticipant } from '../lib/useVoiceChannel'
 import type { Space, Channel, Message, PinnedMessage, ServerEmoji, RolePermissions, ServerRole } from '../types'
 import { MembersSidebar } from '../components/sidebar/MembersSidebar'
+import { useHoverPeek } from '../hooks/useHoverPeek'
 import { PinnedMessagesDrawer } from '../components/chat/PinnedMessagesDrawer'
 import { StreamTile } from '../components/streaming/StreamTile'
 import { AvatarDecoration } from '../components/AvatarDecoration'
@@ -336,22 +337,26 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
   // Chat de texto da chamada: abre no fim e acompanha as mensagens novas. Só rola sozinho se a pessoa já
   // estava perto do fim (quem subiu para ler o histórico não é puxado de volta).
   const lastVoiceChatMessageId = messages[messages.length - 1]?.id
+  // Passar o mouse nos botões de chat e de membros espia a janela; o clique a fixa
+  const chatPeek = useHoverPeek(showVoiceChat, setShowVoiceChat)
+  const membersPeek = useHoverPeek(showMembersList, setShowMembersList)
+  const voiceChatOpen = chatPeek.visible
   const voiceChatAtBottomRef = useRef(true)
-  useEffect(() => { voiceChatAtBottomRef.current = true }, [selectedChannel.id, showVoiceChat])
+  useEffect(() => { voiceChatAtBottomRef.current = true }, [selectedChannel.id, voiceChatOpen])
   useEffect(() => {
     const container = messagesEndRef.current?.parentElement
-    if (!showVoiceChat || !container) return
+    if (!voiceChatOpen || !container) return
     if (voiceChatAtBottomRef.current) container.scrollTop = container.scrollHeight
     const onScroll = () => {
       voiceChatAtBottomRef.current = container.scrollHeight - container.scrollTop - container.clientHeight < 160
     }
     container.addEventListener('scroll', onScroll, { passive: true })
     return () => container.removeEventListener('scroll', onScroll)
-  }, [lastVoiceChatMessageId, showVoiceChat, selectedChannel.id, messagesEndRef])
+  }, [lastVoiceChatMessageId, voiceChatOpen, selectedChannel.id, messagesEndRef])
 
   // Window paste listener when voice chat drawer is visible
   useEffect(() => {
-    if (!showVoiceChat) return
+    if (!voiceChatOpen) return
     const onWindowPaste = (e: ClipboardEvent) => {
       const target = e.target as HTMLElement | null
       if (target && target.tagName === 'INPUT' && target.id !== 'voice-chat-input') {
@@ -364,7 +369,7 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
     }
     window.addEventListener('paste', onWindowPaste)
     return () => window.removeEventListener('paste', onWindowPaste)
-  }, [showVoiceChat, handleVoicePaste])
+  }, [voiceChatOpen, handleVoicePaste])
 
   // Esc key cancels pending voice chat image
   useEffect(() => {
@@ -453,9 +458,9 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                       {/* Voice Text Chat Toggle Button */}
                       <button 
                         type="button"
-                        className={`channel-header-action-btn ${showVoiceChat ? 'active' : ''}`} 
-                        onClick={() => setShowVoiceChat(!showVoiceChat)}
+                        className={`channel-header-action-btn ${showVoiceChat ? 'active' : ''}${chatPeek.peek ? ' peeking' : ''}`}
                         title={showVoiceChat ? "Ocultar Chat de Texto" : "Mostrar Chat de Texto"}
+                        {...chatPeek.triggerProps}
                       >
                         <MessageSquareIcon style={{ width: '15px', height: '15px' }} />
                       </button>
@@ -463,9 +468,9 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                       {/* Members List Button */}
                       <button 
                         type="button"
-                        className={`channel-header-action-btn ${showMembersList ? 'active' : ''}`} 
-                        onClick={() => setShowMembersList(!showMembersList)}
+                        className={`channel-header-action-btn ${showMembersList ? 'active' : ''}${membersPeek.peek ? ' peeking' : ''}`}
                         title={showMembersList ? "Ocultar Lista de Membros" : "Mostrar Lista de Membros"}
+                        {...membersPeek.triggerProps}
                       >
                         <UsersIcon style={{ width: '15px', height: '15px' }} />
                       </button>
@@ -474,7 +479,7 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
 
                   <div className="voice-workspace-wrapper" style={{ display: 'flex', flex: 1, minHeight: 0, width: '100%' }}>
                     <div className="voice-content" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0', minWidth: 0 }}>
-                      <div className="voice-split-layout" style={!showVoiceChat ? { gridTemplateColumns: '1fr' } : undefined}>
+                      <div className="voice-split-layout" style={!voiceChatOpen ? { gridTemplateColumns: '1fr' } : undefined}>
                           {/* Media pane (Left) */}
                           <div className="voice-media-pane">
                             {(() => {
@@ -987,7 +992,11 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                           </div>
 
                           {/* Chat pane (Right) */}
-                          <div className="voice-chat-pane" style={!showVoiceChat ? { display: 'none' } : undefined}>
+                          <div
+                            className={`voice-chat-pane${chatPeek.peek ? ' is-peek' : ''}`}
+                            style={!voiceChatOpen ? { display: 'none' } : undefined}
+                            {...chatPeek.panelProps}
+                          >
                             <div className="voice-chat-messages">
                               {messages.length === 0 && (
                                 <div className="no-messages">
@@ -1234,7 +1243,10 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                       serverEmojis={serverEmojis}
                     />
 <MembersSidebar
-                      isVisible={showMembersList}
+                      isVisible={membersPeek.visible}
+                      isPeek={membersPeek.peek}
+                      onPeekEnter={membersPeek.panelProps.onMouseEnter}
+                      onPeekLeave={membersPeek.panelProps.onMouseLeave}
                       currentSpace={currentSpace}
                       spaceMembers={spaceMembers}
                       spaceChannels={spaceChannels}

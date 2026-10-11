@@ -1,4 +1,4 @@
-import React, { memo } from 'react'
+﻿import React, { memo } from 'react'
 import type { Space, Channel } from '../../types'
 import {
   ClockIcon,
@@ -24,6 +24,9 @@ export interface ChannelHeaderProps {
   setIsWatchingStreams?: (val: boolean) => void
   showMembersList: boolean
   setShowMembersList: React.Dispatch<React.SetStateAction<boolean>>
+  /** Passar o mouse espia a lista de membros e o clique a fixa (useHoverPeek). Sem isto o botão só alterna. */
+  membersTriggerProps?: React.ButtonHTMLAttributes<HTMLButtonElement>
+  membersPeeking?: boolean
 }
 
 export const ChannelHeader = memo(function ChannelHeader({
@@ -40,7 +43,9 @@ export const ChannelHeader = memo(function ChannelHeader({
   isWatchingStreams = false,
   setIsWatchingStreams = () => {},
   showMembersList,
-  setShowMembersList
+  setShowMembersList,
+  membersTriggerProps,
+  membersPeeking = false
 }: ChannelHeaderProps) {
   return (
     <header className="content-header">
@@ -130,9 +135,10 @@ export const ChannelHeader = memo(function ChannelHeader({
 
         <button 
           type="button"
-          className={`channel-header-action-btn ${showMembersList ? 'active' : ''}`} 
+          className={`channel-header-action-btn ${showMembersList ? 'active' : ''}${membersPeeking ? ' peeking' : ''}`}
           onClick={() => setShowMembersList(!showMembersList)}
           title={showMembersList ? "Ocultar Lista de Membros" : "Mostrar Lista de Membros"}
+          {...membersTriggerProps}
         >
           <UsersIcon style={{ width: '15px', height: '15px' }} />
         </button>

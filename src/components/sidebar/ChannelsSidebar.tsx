@@ -1,4 +1,4 @@
-import React, { memo } from 'react'
+﻿import React, { memo } from 'react'
 import { createPortal } from 'react-dom'
 import type { FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
@@ -10,6 +10,8 @@ import { SPACE_SETTINGS_PERMISSIONS } from '../../lib/permissions'
 import { isMusicBotIdentity } from '../../lib/musicBotState'
 import { SERVER_BANNER_PRESETS } from '../../lib/formatters'
 import { MusicBotMiniPlayer } from './MusicBotMiniPlayer'
+import { useHoverPeek } from '../../hooks/useHoverPeek'
+import { PanelLeftCloseIcon } from '../icons'
 import {
   BellIcon,
   BellOffIcon,
@@ -17,19 +19,16 @@ import {
   ChevronRightIcon,
   CrownIcon,
   HashtagIcon,
-  HeadphonesIcon,
   HeadphonesOffIcon,
   LogOutIcon,
   MegaphoneIcon,
   MessageSquareIcon,
-  MicIcon,
   MicOffIcon,
   PhoneOffIcon,
   PlusIcon,
   ScreenIcon,
   SearchIcon,
   SettingsIcon,
-  SoundboardIcon,
   UserIcon,
   UserPlusIcon,
   UsersIcon,
@@ -291,6 +290,14 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
   })
 
   const [isResizing, setIsResizing] = React.useState(false)
+  // Recolher a barra de canais: sobra uma tirinha na borda. Passar o mouse nela espia a barra
+  // (flutuando sobre o chat) e clicar fixa de novo. A escolha fica salva.
+  const [collapsed, setCollapsed] = React.useState<boolean>(() => localStorage.getItem('echo-channels-sidebar-collapsed') === 'true')
+  const setSidebarOpen = React.useCallback((open: boolean) => {
+    setCollapsed(!open)
+    localStorage.setItem('echo-channels-sidebar-collapsed', String(!open))
+  }, [])
+  const railPeek = useHoverPeek(!collapsed, setSidebarOpen, { openDelay: 120, closeDelay: 500 })
 
   const handleMouseDownResize = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -707,9 +714,70 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
           }
 
           return (
-            <aside 
-              className={`sidebar channels-sidebar ${sidebarLayout === 'classic' ? 'echo-layout-classic' : 'echo-layout-glass'} ${isResizing ? 'is-resizing' : ''}`}
+            <>
+            {collapsed && (
+              <div
+                className={`channels-rail${railPeek.peek ? ' is-active' : ''}`}
+                aria-label="Canais do espaço (barra recolhida)"
+                onMouseEnter={railPeek.triggerProps.onMouseEnter}
+                onMouseLeave={railPeek.triggerProps.onMouseLeave}
+                onClick={railPeek.triggerProps.onClick}
+              >
+                {/* A seta fica sempre à vista: passar o mouse nela mostra "Fixar", clicar traz a barra de volta */}
+                <button
+                  type="button"
+                  className="channels-rail-pin"
+                  onClick={(e) => { e.stopPropagation(); railPeek.triggerProps.onClick() }}
+                  title="Fixar a barra de canais"
+                  aria-label="Fixar a barra de canais"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <polyline points="9 6 15 12 9 18" />
+                  </svg>
+                </button>
+                <span className="channels-rail-divider" />
+
+                {/* Os canais do espaço em miniatura: voz primeiro, depois texto */}
+                <div className="channels-rail-list">
+                  {[...visibleChannels.filter(c => c.type === 'voice'), ...visibleChannels.filter(c => c.type !== 'voice')].map((ch, i, all) => {
+                    const isVoice = ch.type === 'voice'
+                    const isSelected = selectedChannel?.id === ch.id
+                    const isUnread = !isVoice && unreadChannels.has(ch.id)
+                    const voiceCount = isVoice ? (spaceVoiceUsers[ch.id]?.length ?? 0) : 0
+                    const inCall = isVoice && activeVoiceChannelId === ch.id
+                    const hue = Array.from(ch.name).reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 17)
+                    const initials = ch.name.replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '#'
+                    const startsText = !isVoice && i > 0 && all[i - 1].type === 'voice'
+                    return (
+                      <React.Fragment key={ch.id}>
+                        {startsText && <span className="channels-rail-divider" />}
+                        <button
+                          type="button"
+                          className={`channels-rail-tile${isSelected ? ' selected' : ''}${isVoice ? ' voice' : ''}${voiceCount > 0 ? ' has-users' : ''}${inCall ? ' in-call' : ''}`}
+                          style={{ '--hue': hue } as React.CSSProperties}
+                          title={`${isVoice ? 'Sala de voz' : 'Canal'}: ${ch.name}${voiceCount > 0 ? ` · ${voiceCount} na sala` : ''}`}
+                          aria-label={ch.name}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedChannel(ch)
+                            if (isVoice && (activeVoiceChannelId !== ch.id || !isConnected)) handleJoinVoice(ch.id, ch.space_id)
+                          }}
+                        >
+                          <span className="channels-rail-tile-face">{initials}</span>
+                          <span className="channels-rail-tile-type">{isVoice ? <VolumeIcon style={{ width: '9px', height: '9px' }} /> : '#'}</span>
+                          {isUnread && <span className="channels-rail-tile-unread" />}
+                          {voiceCount > 0 && <span className="channels-rail-tile-count">{voiceCount}</span>}
+                        </button>
+                      </React.Fragment>
+                    )
+                  })}
+                </div>
+              </div>
+            )}            {railPeek.visible && (
+            <aside
+              className={`sidebar channels-sidebar ${sidebarLayout === 'classic' ? 'echo-layout-classic' : 'echo-layout-glass'} ${isResizing ? 'is-resizing' : ''}${collapsed ? ' is-collapsed' : ''}${railPeek.peek ? ' is-peek' : ''}`}
               style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, maxWidth: `${sidebarWidth}px` }}
+              {...(railPeek.peek ? railPeek.panelProps : {})}
             >
               {/* Server Header Card with Dropdown Menu */}
               <div 
@@ -864,49 +932,26 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                     </button>
                   )}
                 </div>
-              </div>
+                {/* Recolher a barra (quando ela só está espiando, quem fixa é a coluna ao lado, com o aviso abaixo) */}
+                {!collapsed && (
+                  <button
+                    type="button"
+                    className="channels-collapse-btn"
+                    onClick={() => setSidebarOpen(false)}
+                    title="Recolher a barra de canais"
+                    aria-label="Recolher a barra de canais"
+                  >
+                    <PanelLeftCloseIcon style={{ width: '15px', height: '15px' }} />
+                    <span>Recolher</span>
+                  </button>
+                )}              </div>
 
               {/* Scrollable Channels Area */}
               <div className="sidebar-scrollable custom-scrollbar">
                 <div className="channels-tree">
-                  {uncategorizedText.length > 0 && (
-                    <div className="channel-group">
-                      <div className="channel-category-header-wrap">
-                        <button
-                          type="button"
-                          className="channel-category-header"
-                          onClick={() => toggleCategoryCollapse(activeSpace.id, '__text__')}
-                        >
-                          <span className="category-chevron">
-                            {collapsedCategories.has(`${activeSpace.id}::__text__`) ? (
-                              <ChevronRightIcon style={{ width: '10px', height: '10px' }} />
-                            ) : (
-                              <ChevronDownIcon style={{ width: '10px', height: '10px' }} />
-                            )}
-                          </span>
-                          <span className="category-name">CANAIS DE TEXTO</span>
-                        </button>
-                        {(canUserDo(activeSpace.id, user.id, 'manageChannels') || activeSpace.creator_id === user.id) && (
-                          <button 
-                            type="button" 
-                            onClick={() => { setShowNewChannel(activeSpace.id); setNewChannelCategory(''); setNewChannelType('text'); }} 
-                            title="Criar canal de texto" 
-                            className="category-add-channel-btn"
-                          >
-                            <PlusIcon style={{ width: '12px', height: '12px' }} />
-                          </button>
-                        )}
-                      </div>
-                      {!collapsedCategories.has(`${activeSpace.id}::__text__`) && (
-                        <div className="category-channels-list">
-                          {uncategorizedText.map(renderChannelNode)}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
+                  {/* Canais de voz primeiro: são o que as pessoas procuram para entrar numa conversa ao vivo */}
                   {uncategorizedVoice.length > 0 && (
-                    <div className="channel-group">
+                    <div className="channel-group channel-group-voice">
                       <div className="channel-category-header-wrap">
                         <button
                           type="button"
@@ -936,6 +981,42 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                       {!collapsedCategories.has(`${activeSpace.id}::__voice__`) && (
                         <div className="category-channels-list">
                           {uncategorizedVoice.map(renderChannelNode)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {uncategorizedText.length > 0 && (
+                    <div className="channel-group channel-group-text">
+                      <div className="channel-category-header-wrap">
+                        <button
+                          type="button"
+                          className="channel-category-header"
+                          onClick={() => toggleCategoryCollapse(activeSpace.id, '__text__')}
+                        >
+                          <span className="category-chevron">
+                            {collapsedCategories.has(`${activeSpace.id}::__text__`) ? (
+                              <ChevronRightIcon style={{ width: '10px', height: '10px' }} />
+                            ) : (
+                              <ChevronDownIcon style={{ width: '10px', height: '10px' }} />
+                            )}
+                          </span>
+                          <span className="category-name">CANAIS DE TEXTO</span>
+                        </button>
+                        {(canUserDo(activeSpace.id, user.id, 'manageChannels') || activeSpace.creator_id === user.id) && (
+                          <button 
+                            type="button" 
+                            onClick={() => { setShowNewChannel(activeSpace.id); setNewChannelCategory(''); setNewChannelType('text'); }} 
+                            title="Criar canal de texto" 
+                            className="category-add-channel-btn"
+                          >
+                            <PlusIcon style={{ width: '12px', height: '12px' }} />
+                          </button>
+                        )}
+                      </div>
+                      {!collapsedCategories.has(`${activeSpace.id}::__text__`) && (
+                        <div className="category-channels-list">
+                          {uncategorizedText.map(renderChannelNode)}
                         </div>
                       )}
                     </div>
@@ -1165,91 +1246,6 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                 )}
               </div>
 
-              {/* Docked Voice Status Panel (Ergonomic layout - compact inside call, full outside) */}
-              {activeVoiceChannelId && (
-                  <div className={`voice-status-panel ${isViewingActiveVoiceChannel ? 'compact' : ''}`}>
-                    <div className="voice-status-header-row">
-                      <div
-                        className={`voice-status-info ${!isViewingActiveVoiceChannel ? 'clickable' : ''}`}
-                        onClick={() => {
-                          if (!isViewingActiveVoiceChannel && activeVoiceChannel) {
-                            setSelectedChannel(activeVoiceChannel)
-                          }
-                        }}
-                        title={!isViewingActiveVoiceChannel ? "Clique para voltar à chamada" : undefined}
-                      >
-                        <span className={`voice-status-live-dot ${isVoiceReconnecting ? 'reconnecting' : ''}`} />
-                        <div className="voice-status-text">
-                          <span className="voice-status-channel" title={activeVoiceChannel?.name}>{activeVoiceChannel?.name}</span>
-                          <span className="voice-status-label" style={isVoiceReconnecting ? { color: '#f0b232' } : undefined}>
-                            {isVoiceReconnecting ? 'Reconectando…' : <CallElapsed />}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="voice-status-header-right" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                        <div className="connection-quality-indicator" style={{ position: 'relative', cursor: 'pointer' }} onClick={(e) => e.stopPropagation()}>
-                          <div className={`connection-bars ${isVoiceReconnecting ? 'reconnecting' : (rtcStats && rtcStats.ping < 100 ? 'good' : rtcStats && rtcStats.ping < 200 ? 'medium' : 'bad')}`}>
-                            <i /><i /><i />
-                          </div>
-
-                          {/* Tooltip de Estatísticas RTC */}
-                          <div className="connection-stats-tooltip">
-                            <strong>Conexão RTC</strong>
-                            <div className="stat-row"><span>Latência (Ping):</span> <strong>{rtcStats ? `${rtcStats.ping} ms` : 'Medindo...'}</strong></div>
-                            <div className="stat-row"><span>Jitter:</span> <strong>{rtcStats ? `${rtcStats.jitter} ms` : '0 ms'}</strong></div>
-                            <div className="stat-row"><span>Perda de Pacotes:</span> <strong>{rtcStats ? `${rtcStats.packetLoss} %` : '0 %'}</strong></div>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          className="voice-disconnect-btn"
-                          onClick={handleLeaveVoice}
-                          title="Desconectar da chamada de voz"
-                        >
-                          <PhoneOffIcon style={{ width: '13px', height: '13px' }} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {isPttMode && (
-                      <div style={{ textAlign: 'center', padding: '4px 8px', background: isPttActive ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.05)', borderRadius: '6px', margin: '4px 0 6px', border: isPttActive ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.1)', fontSize: '11px', fontWeight: 600, color: isPttActive ? '#10b981' : 'var(--text-secondary)' }}>
-                        {isPttActive ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', justifyContent: 'center' }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
-                            Transmitindo Voz
-                          </span>
-                        ) : `PTT: [${pttKey.replace('Key', '')}]`}
-                      </div>
-                    )}
-
-                    {!isViewingActiveVoiceChannel && (
-                      <div className="voice-status-actions-strip">
-                        <button className={`voice-action-btn ${isMuted ? 'muted' : ''}`} onClick={handleToggleMute} title={isMuted ? "Desmutar microfone" : "Mutar microfone"}>
-                          {isMuted ? <MicOffIcon /> : <MicIcon />}
-                        </button>
-                        <button className={`voice-action-btn ${isDeafened ? 'muted' : ''}`} onClick={handleToggleDeafen} title={isDeafened ? "Desensurdecer" : "Ensurdecer (Mutar todos)"}>
-                          {isDeafened ? <HeadphonesOffIcon /> : <HeadphonesIcon />}
-                        </button>
-                        <button className="voice-action-btn" onClick={() => setShowSoundboardModal(true)} title="Soundboard Gamer">
-                          <SoundboardIcon />
-                        </button>
-                        {activeScreenSharers && activeScreenSharers.length > 0 && (
-                          <button
-                            className={`voice-action-btn ${isPiPActive ? 'active' : ''}`}
-                            onClick={() => setIsPiPActive?.(!isPiPActive)}
-                            title={isPiPActive ? "Fechar Mini Player" : "Abrir Mini Player Flutuante da Transmissão"}
-                            style={{ color: isPiPActive ? '#1eb4ff' : undefined }}
-                          >
-                            <ScreenIcon />
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
               {/* User Profile Footer */}
               <UnifiedUserProfileFooter
                 displayName={profileDisplayName}
@@ -1265,6 +1261,29 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                 onSignOut={onSignOut}
                 myGamePresence={myGamePresence}
                 avatarDecoration={avatarDecoration}
+                call={activeVoiceChannelId ? {
+                  channelName: activeVoiceChannel?.name ?? 'Chamada',
+                  elapsed: <CallElapsed />,
+                  isReconnecting: isVoiceReconnecting,
+                  isViewingCall: isViewingActiveVoiceChannel,
+                  isMuted,
+                  isDeafened,
+                  onToggleMute: handleToggleMute,
+                  onToggleDeafen: handleToggleDeafen,
+                  onLeave: handleLeaveVoice,
+                  onReturn: () => { if (activeVoiceChannel) setSelectedChannel(activeVoiceChannel) },
+                  onOpenSoundboard: isViewingActiveVoiceChannel ? undefined : () => setShowSoundboardModal(true),
+                  onTogglePiP: !isViewingActiveVoiceChannel && activeScreenSharers && activeScreenSharers.length > 0
+                    ? () => setIsPiPActive?.(!isPiPActive)
+                    : undefined,
+                  isPiPActive,
+                  rtcStats: rtcStats ?? null,
+                  connectionQuality: isVoiceReconnecting
+                    ? 'reconnecting'
+                    : (rtcStats && rtcStats.ping < 100 ? 'good' : rtcStats && rtcStats.ping < 200 ? 'medium' : rtcStats ? 'bad' : 'good'),
+                  pttLabel: isPttMode ? (isPttActive ? 'Transmitindo voz' : `PTT: [${pttKey.replace('Key', '')}]`) : null,
+                  pttActive: isPttActive
+                } : null}
               />
               {/* Em document.body: a barra lateral (overflow hidden + backdrop-filter no layout de vidro) vira o
                   bloco de referência de position: fixed e cortava o menu na borda dela. */}
@@ -1472,6 +1491,27 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                 </>
               , document.body)}
 
+              {collapsed && (
+                <div
+                  className="channels-peek-hint"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSidebarOpen(true)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSidebarOpen(true) }}
+                >
+                  <span className="channels-peek-hint-arrow" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="19" y1="12" x2="5" y2="12" />
+                      <polyline points="11 6 5 12 11 18" />
+                    </svg>
+                  </span>
+                  <span className="channels-peek-hint-text">
+                    <strong>Quer deixar a barra sempre aberta?</strong>
+                    <span>Clique em qualquer lugar da coluna ao lado para fixar.</span>
+                  </span>
+                </div>
+              )}
+
               <div
                 className={`channels-sidebar-resizer ${isResizing ? 'active' : ''}`}
                 onMouseDown={handleMouseDownResize}
@@ -1479,5 +1519,7 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                 title="Arraste para redimensionar a barra lateral (Duplo clique para redefinir)"
               />
             </aside>
+            )}
+            </>
           )
 })

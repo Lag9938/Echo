@@ -940,7 +940,7 @@ body.light-theme .local-stream-preview-toggle-btn:hover {
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 18px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35), 0 20px 45px -8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.18);
   z-index: 20;
   opacity: 0;
   transform: translateY(6px);
@@ -965,7 +965,7 @@ body.light-theme .local-stream-preview-toggle-btn:hover {
 body.light-theme .stream-unified-glass-bar {
   background: rgba(255, 255, 255, 0.85);
   border-color: rgba(226, 232, 240, 0.85);
-  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05), 0 16px 36px -8px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 /* Telemetry (Esquerda Integrada) */

@@ -1979,8 +1979,7 @@ body.echo-layout-glass .content-header {
   backdrop-filter: blur(28px) saturate(200%) !important;
   -webkit-backdrop-filter: blur(28px) saturate(200%) !important;
   border-bottom: 1px solid color-mix(in srgb, var(--border-color, rgba(255, 255, 255, 0.12)) 45%, rgba(255, 255, 255, 0.12)) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18),
-              0 8px 30px rgba(0, 0, 0, 0.35) !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2), 0 10px 28px -6px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
   position: relative !important;
   z-index: 10 !important;
 }
@@ -1999,42 +1998,41 @@ body.echo-layout-glass .content-header > * {
   z-index: 1;
 }
 
-/* Glass Header Action Buttons */
+/* Glass Header Action Buttons - Clean layered lighting without nested blur clutter */
 body.echo-layout-glass .channel-header-action-btn {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  border-radius: 10px !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 2px 8px rgba(0, 0, 0, 0.22) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  border-radius: 9px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
   color: var(--text-secondary, #94a3b8) !important;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  transition: transform 0.18s var(--ease-spring), background 0.16s ease, color 0.16s ease, border-color 0.16s ease, box-shadow 0.18s ease !important;
 }
 
 body.echo-layout-glass .channel-header-action-btn:hover {
-  background: rgba(255, 255, 255, 0.12) !important;
-  border-color: color-mix(in srgb, var(--accent-color, #00f2fe) 60%, rgba(255, 255, 255, 0.35)) !important;
-  color: var(--accent-color, #00f2fe) !important;
-  transform: translateY(-2px) scale(1.05) !important;
-  box-shadow: 0 0 16px color-mix(in srgb, var(--accent-color, #00f2fe) 45%, transparent),
-              0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  background: rgba(255, 255, 255, 0.10) !important;
+  border-color: color-mix(in srgb, var(--accent-color, #00f2fe) 45%, rgba(255, 255, 255, 0.2)) !important;
+  color: var(--text-primary, #ffffff) !important;
+  transform: translateY(-1px) scale(1.04) !important;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent-color, #00f2fe) 30%, transparent), 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+}
+
+body.echo-layout-glass .channel-header-action-btn:active {
+  transform: scale(0.96) !important;
 }
 
 body.echo-layout-glass .channel-header-action-btn.active {
-  background: color-mix(in srgb, var(--accent-color, #00f2fe) 22%, rgba(255, 255, 255, 0.08)) !important;
-  border-color: var(--accent-color, #00f2fe) !important;
+  background: color-mix(in srgb, var(--accent-color, #00f2fe) 20%, rgba(255, 255, 255, 0.08)) !important;
+  border-color: color-mix(in srgb, var(--accent-color, #00f2fe) 50%, rgba(255, 255, 255, 0.15)) !important;
   color: var(--accent-color, #00f2fe) !important;
-  box-shadow: 0 0 18px color-mix(in srgb, var(--accent-color, #00f2fe) 50%, transparent),
-              inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent-color, #00f2fe) 40%, transparent),
+              inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
 }
 
 body.echo-layout-glass .channel-search-box-wrapper > div {
   background: rgba(0, 0, 0, 0.28) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  border-radius: 10px !important;
-  backdrop-filter: blur(14px) !important;
-  -webkit-backdrop-filter: blur(14px) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 9px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
 }
 
 /* Light Theme Overrides for Channel Header */
@@ -2253,51 +2251,55 @@ body.echo-layout-glass .composer {
   background: rgba(14, 19, 32, 0.78) !important;
   backdrop-filter: blur(28px) saturate(200%) !important;
   -webkit-backdrop-filter: blur(28px) saturate(200%) !important;
-  border: 1px solid rgba(0, 242, 254, 0.3) !important;
+  border: 1px solid color-mix(in srgb, var(--accent-color, #00f2fe) 25%, rgba(255, 255, 255, 0.12)) !important;
   border-radius: 20px !important;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 0 20px rgba(0, 242, 254, 0.1) !important;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25), 0 16px 38px -8px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0 18px color-mix(in srgb, var(--accent-color, #00f2fe) 12%, transparent) !important;
+  transition: transform 0.2s var(--ease-smooth), box-shadow 0.2s var(--ease-smooth), border-color 0.2s var(--ease-smooth), background 0.2s var(--ease-smooth) !important;
 }
 
 body.echo-layout-glass .composer:focus-within {
-  border-color: rgba(0, 242, 254, 0.6) !important;
-  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.65), 0 0 28px rgba(0, 242, 254, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+  border-color: color-mix(in srgb, var(--accent-color, #00f2fe) 55%, rgba(255, 255, 255, 0.25)) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3), 0 20px 44px -8px rgba(0, 0, 0, 0.65), inset 0 1.5px 0 rgba(255, 255, 255, 0.25), 0 0 26px color-mix(in srgb, var(--accent-color, #00f2fe) 25%, transparent) !important;
   transform: translateY(-2px);
 }
 
 body.echo-layout-glass .composer-action-btn {
-  border-radius: 10px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: all 0.16s ease;
+  transition: transform 0.16s var(--ease-smooth), background 0.16s ease, color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 body.echo-layout-glass .composer-action-btn:hover {
-  background: rgba(0, 242, 254, 0.15) !important;
-  border-color: rgba(0, 242, 254, 0.4) !important;
-  color: #00f2fe !important;
+  background: color-mix(in srgb, var(--accent-color, #00f2fe) 16%, rgba(255, 255, 255, 0.06)) !important;
+  border-color: color-mix(in srgb, var(--accent-color, #00f2fe) 40%, transparent) !important;
+  color: var(--accent-color, #00f2fe) !important;
   transform: translateY(-1px);
-  box-shadow: 0 0 12px rgba(0, 242, 254, 0.25);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent-color, #00f2fe) 25%, transparent);
 }
 
 body.echo-layout-glass .composer-action-btn.active {
-  background: linear-gradient(135deg, rgba(0, 242, 254, 0.2) 0%, rgba(99, 102, 241, 0.25) 100%) !important;
-  border-color: rgba(0, 242, 254, 0.4) !important;
-  color: #00f2fe !important;
-  box-shadow: 0 0 14px rgba(0, 242, 254, 0.25);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-color, #00f2fe) 22%, transparent) 0%, rgba(99, 102, 241, 0.22) 100%) !important;
+  border-color: color-mix(in srgb, var(--accent-color, #00f2fe) 45%, transparent) !important;
+  color: var(--accent-color, #00f2fe) !important;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent-color, #00f2fe) 25%, transparent);
 }
 
 body.echo-layout-glass .send-btn {
-  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%) !important;
-  box-shadow: 0 4px 16px rgba(0, 242, 254, 0.45) !important;
+  background: linear-gradient(135deg, var(--accent-color, #00f2fe) 0%, color-mix(in srgb, var(--accent-color, #00f2fe) 70%, white) 100%) !important;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-color, #00f2fe) 38%, transparent), 0 6px 18px color-mix(in srgb, var(--accent-color, #00f2fe) 28%, transparent) !important;
   color: #0b1120 !important;
   border-radius: 12px !important;
-  transition: all 0.18s ease !important;
+  transition: transform 0.18s var(--ease-spring), box-shadow 0.18s ease !important;
 }
 
 body.echo-layout-glass .send-btn:hover {
-  transform: scale(1.08) !important;
-  box-shadow: 0 6px 22px rgba(0, 242, 254, 0.65) !important;
+  transform: scale(1.06) !important;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-color, #00f2fe) 48%, transparent), 0 8px 24px color-mix(in srgb, var(--accent-color, #00f2fe) 38%, transparent) !important;
+}
+
+body.echo-layout-glass .send-btn:active {
+  transform: scale(0.96) !important;
 }
 
 /* In-Chat Space Invite Embed Card */
@@ -2305,14 +2307,15 @@ body.echo-layout-glass .in-app-space-invite-card {
   background: linear-gradient(135deg, rgba(16, 20, 32, 0.72) 0%, rgba(22, 28, 44, 0.65) 100%) !important;
   backdrop-filter: blur(24px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-  border: 1px solid rgba(0, 242, 254, 0.35) !important;
+  border: 1px solid color-mix(in srgb, var(--accent-color, #00f2fe) 30%, rgba(255, 255, 255, 0.12)) !important;
   border-radius: 18px !important;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 242, 254, 0.15) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), 0 14px 34px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0 18px color-mix(in srgb, var(--accent-color, #00f2fe) 14%, transparent) !important;
+  transition: transform 0.2s var(--ease-smooth), box-shadow 0.2s var(--ease-smooth), border-color 0.2s var(--ease-smooth) !important;
 }
 
 body.echo-layout-glass .in-app-space-invite-card:hover {
-  border-color: rgba(0, 242, 254, 0.55) !important;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 28px rgba(0, 242, 254, 0.25) !important;
+  border-color: color-mix(in srgb, var(--accent-color, #00f2fe) 50%, rgba(255, 255, 255, 0.25)) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35), 0 18px 42px -6px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 0 24px color-mix(in srgb, var(--accent-color, #00f2fe) 22%, transparent) !important;
   transform: translateY(-2px);
 }
 
@@ -2325,13 +2328,13 @@ body.echo-layout-glass .msg-card {
 body.echo-layout-glass .msg-card:hover,
 body.echo-layout-glass .msg-card.msg-own:hover {
   background: rgba(255, 255, 255, 0.04) !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.15) !important;
   border-radius: 12px !important;
 }
 
 body.echo-layout-glass .msg-card.has-mention {
-  background: rgba(0, 242, 254, 0.08) !important;
-  box-shadow: inset 3px 0 0 #00f2fe, inset 0 0 0 1px rgba(0, 242, 254, 0.25), 0 0 20px rgba(0, 242, 254, 0.08) !important;
+  background: color-mix(in srgb, var(--accent-color, #00f2fe) 09%, transparent) !important;
+  box-shadow: inset 3px 0 0 var(--accent-color, #00f2fe), inset 0 0 0 1px color-mix(in srgb, var(--accent-color, #00f2fe) 25%, transparent), 0 0 20px color-mix(in srgb, var(--accent-color, #00f2fe) 08%, transparent) !important;
 }
 
 /* Attachment images */
@@ -2415,16 +2418,24 @@ body.echo-layout-glass.light-theme .chat-workspace-wrapper {
 
 body.light-theme.echo-layout-glass .composer,
 body.echo-layout-glass.light-theme .composer {
-  background: rgba(255, 255, 255, 0.78) !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+  backdrop-filter: blur(28px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
   border-color: rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04), 0 12px 28px -6px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+}
+
+body.light-theme.echo-layout-glass .composer:focus-within,
+body.echo-layout-glass.light-theme .composer:focus-within {
+  border-color: color-mix(in srgb, var(--accent-color, #0284c7) 45%, rgba(0, 0, 0, 0.12)) !important;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06), 0 16px 36px -6px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 1), 0 0 18px color-mix(in srgb, var(--accent-color, #0284c7) 20%, transparent) !important;
 }
 
 body.light-theme.echo-layout-glass .call-strip,
 body.echo-layout-glass.light-theme .call-strip {
-  background: rgba(255, 255, 255, 0.78) !important;
+  background: rgba(255, 255, 255, 0.82) !important;
   border-color: rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04), 0 10px 24px -4px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
 }
 
 body.light-theme.echo-layout-glass .call-strip-main b,
@@ -2700,4 +2711,14 @@ body.light-theme.echo-layout-glass .thread-panel {
 }
 body.theme-performance-opaque .thread-panel {
   background: var(--bg-secondary);
+}
+
+/* ── Janelas de GIF, figurinhas e emoji: abrem rente ao botão apertado ──
+   O MessageComposer calcula --picker-left a partir do botão. Antes o GIF e as figurinhas ficavam fixos
+   em right: 16px, do lado oposto aos botões. Sem a variável (ex.: aberta por outro caminho) ficam à esquerda. */
+body .composer .gif-picker-popover,
+body .composer .sticker-picker-popup,
+body .composer .emoji-picker-popover {
+  left: var(--picker-left, 16px) !important;
+  right: auto !important;
 }

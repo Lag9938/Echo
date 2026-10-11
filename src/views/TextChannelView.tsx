@@ -8,12 +8,14 @@ import { MessageList } from '../components/chat/MessageList'
 import { MessageComposer } from '../components/chat/MessageComposer'
 import { CallStrip } from '../components/chat/CallStrip'
 import { useVoiceActivity } from '../hooks/useVoiceActivity'
+import { useHoverPeek } from '../hooks/useHoverPeek'
 import { PaperclipIcon } from '../components/icons'
 import { useUIStore } from '../stores/useUIStore'
 import { useSpacesStore } from '../stores/useSpacesStore'
 import { useThreadsStore } from '../stores/useThreadsStore'
 import { useEchoThreads } from '../hooks/useEchoThreads'
 import { ThreadPanel } from '../components/chat/ThreadPanel'
+import { filesFromTransfer, sendFilesInOrder } from '../lib/attachments'
 
 export interface TextChannelViewProps {
   currentSpace: Space | null
@@ -180,6 +182,9 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
     notifyTyping,
     onJoinVoice
   } = props
+
+  // Passar o mouse no botão de membros espia a lista; o clique a fixa
+  const membersPeek = useHoverPeek(showMembersList, setShowMembersList)
 
   // Chamada em andamento no espaço (faixa no topo) e eventos de voz para o meio da conversa
   const currentSpaceChannels = currentSpace ? spaceChannels[currentSpace.id] : undefined
@@ -369,7 +374,13 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
     dragCounterRef.current = 0
     setIsDraggingOver(false)
 
-    const file = e.dataTransfer?.files?.[0]
+    const dropped = filesFromTransfer(e.dataTransfer)
+    // Vários de uma vez: vão direto, um depois do outro (a prévia com legenda é só para uma imagem)
+    if (dropped.length > 1) {
+      void sendFilesInOrder(dropped, (f) => handleChatFileUpload(f))
+      return
+    }
+    const file = dropped[0]
     if (file) {
       if (file.type.startsWith('image/')) {
         setPendingImagePreview(prev => {
@@ -521,6 +532,8 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
         setIsWatchingStreams={setIsWatchingStreams}
         showMembersList={showMembersList}
         setShowMembersList={setShowMembersList}
+        membersTriggerProps={membersPeek.triggerProps}
+        membersPeeking={membersPeek.peek}
       />
       <div 
         className="chat-workspace-wrapper" 
@@ -737,7 +750,10 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
         />
 
         <MembersSidebar
-          isVisible={showMembersList}
+          isVisible={membersPeek.visible}
+          isPeek={membersPeek.peek}
+          onPeekEnter={membersPeek.panelProps.onMouseEnter}
+          onPeekLeave={membersPeek.panelProps.onMouseLeave}
           currentSpace={currentSpace}
           spaceMembers={spaceMembers}
           spaceChannels={spaceChannels}
