@@ -25,7 +25,8 @@ import { NOISE_GATE_PROCESSOR, type NoiseGateParams } from './audio/noiseGate'
 import { browserNoiseSuppression } from './audio/noiseSuppression'
 import { PeerBoost } from './audio/peerBoost'
 import { playJoinSound, playLeaveSound, playSoundboardEffect } from './soundEffects'
-import { trackVoiceJoined, trackVoiceLeft, trackScreenShareStarted, trackScreenShareStopped, trackScreenShareWatched } from './analytics'
+import { trackVoiceJoined, trackVoiceLeft, trackVoiceJoinProblem, trackScreenShareStarted, trackScreenShareStopped, trackScreenShareWatched } from './analytics'
+import { DUPLICATE_SESSION_NOTICE, describeMicrophoneError, describeVoiceJoinError } from './voiceJoinErrors'
 import { installPresenceTrackThrottle } from './presenceThrottle'
 import { isMusicBotIdentity, parseMusicBotState, encodeMusicBotVolume, MUSIC_BOT_CONTROL_TOPIC } from './musicBotState'
 import { useMusicBotStore } from '../stores/useMusicBotStore'
@@ -1217,31 +1218,39 @@ export function useVoiceChannel(options?: {
         video: false
       }
 
-      let rawStream: MediaStream
+      // Microfone que não abre (bloqueado no Windows, desconectado, em uso por outro programa) não impede de
+      // entrar: a pessoa entra só ouvindo e recebe o motivo. Antes a entrada inteira era abortada em silêncio.
+      let rawStream: MediaStream | null = null
+      let microphoneError: unknown = null
       try {
         rawStream = await navigator.mediaDevices.getUserMedia(constraints)
       } catch (devErr) {
         console.warn('[Voice] Falha com deviceId específico, usando padrão:', devErr)
-        rawStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation,
-            noiseSuppression: browserNs,
-            autoGainControl: true
-          },
-          video: false
-        })
+        try {
+          rawStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation,
+              noiseSuppression: browserNs,
+              autoGainControl: true
+            },
+            video: false
+          })
+        } catch (fallbackErr) {
+          console.error('[Voice] Microfone indisponível, entrando só para ouvir:', fallbackErr)
+          microphoneError = fallbackErr
+        }
       }
 
       localRawStreamRef.current = rawStream
       myInfoRef.current = { userId, displayName, avatarUrl }
 
       // Inicia medidor local de fala com 0ms de atraso
-      startLocalVad(rawStream)
+      if (rawStream) startLocalVad(rawStream)
       syncParticipants()
 
       // Áudio profissional: sempre cria o pipeline DSP mono para permitir alternar IA instantaneamente
       let finalStream = rawStream
-      try {
+      if (rawStream) try {
         const { finalStream: dspStream, audioCtx, nodes } = await createStudioMicrophoneDSP(
           rawStream,
           isAiDenoiseEnabledRef.current,
@@ -1408,6 +1417,16 @@ export function useVoiceChannel(options?: {
           leaveVoice()
           onDisconnectedRef.current?.()
           onKickedFromVoiceRef.current?.()
+          return
+        }
+
+        // A mesma conta entrou nesta sala por outro aparelho ou outra janela. Reconectar aqui derrubaria a
+        // outra sessão, que reconectaria e derrubaria esta, sem fim: cada lado veria "entrei e caí na hora".
+        if (reason === DisconnectReason.DUPLICATE_IDENTITY) {
+          leaveVoice()
+          onDisconnectedRef.current?.()
+          trackVoiceJoinProblem(DUPLICATE_SESSION_NOTICE.code)
+          onReconnectMediaNoticeRef.current?.(DUPLICATE_SESSION_NOTICE.title, DUPLICATE_SESSION_NOTICE.message)
           return
         }
 
@@ -1627,8 +1646,17 @@ export function useVoiceChannel(options?: {
         onReconnectMediaNoticeRef.current?.('Somente ouvindo', 'Seus cargos neste espaço não têm a permissão "Falar".')
       }
 
+      // Entrou sem microfone: fica mutado e sabe o porquê
+      if (room.state === 'connected' && microphoneError) {
+        setIsMuted(true)
+        isMutedRef.current = true
+        const notice = describeMicrophoneError(microphoneError)
+        trackVoiceJoinProblem(notice.code)
+        onReconnectMediaNoticeRef.current?.(notice.title, notice.message)
+      }
+
       // Publica microfone do usuário
-      if (room.state === 'connected' && canPublish) {
+      if (room.state === 'connected' && canPublish && finalStream) {
         try {
           const micTrack = finalStream.getAudioTracks()[0]
           if (micTrack) {
@@ -1717,6 +1745,12 @@ export function useVoiceChannel(options?: {
       }
     } catch (err) {
       console.error('[LiveKit] Falha ao entrar no canal de voz:', err)
+      // A pessoa precisa saber por que não entrou (durante a reconexão automática o aviso de reconexão já cobre)
+      if (!isReconnectingRef.current) {
+        const notice = describeVoiceJoinError(err)
+        trackVoiceJoinProblem(notice.code)
+        onReconnectMediaNoticeRef.current?.(notice.title, notice.message)
+      }
       if (isReconnectingRef.current) {
         stopLocalVad()
         stopScreenShare()
@@ -1877,6 +1911,11 @@ export function useVoiceChannel(options?: {
 
   // Toggle Mute
   const toggleMute = useCallback(() => {
+    // Entrou sem microfone (não abriu ao entrar): não há o que desmutar; avisa em vez de fingir que ligou
+    if (isMutedRef.current && !localRawStreamRef.current && roomRef.current?.state === 'connected') {
+      onReconnectMediaNoticeRef.current?.('Microfone indisponível', 'O microfone não abriu quando você entrou. Confira o dispositivo e entre de novo na chamada para falar.')
+      return
+    }
     const next = !isMutedRef.current
     isMutedRef.current = next
     setIsMuted(next)

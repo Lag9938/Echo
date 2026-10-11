@@ -99,6 +99,11 @@ export function trackVoiceJoined(channelId: string) {
   })
 }
 
+/** A entrada na chamada falhou ou aconteceu sem microfone. `reason` é um rótulo curto (voiceJoinErrors.ts). */
+export function trackVoiceJoinProblem(reason: string) {
+  trackEvent('voice_join_problem', { reason })
+}
+
 export function trackVoiceLeft(channelId: string, durationSeconds: number) {
   trackEvent('voice_left', {
     channel_id: channelId,
