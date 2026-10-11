@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useMemo, useCallback, memo, type FormEvent } from 'react'
+﻿import { useState, useEffect, useRef, useMemo, useCallback, memo, type FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { DirectMessage, FriendshipRequest, Page, GroupChat, GroupMessage } from '../types'
 import { formatGameDuration } from '../lib/formatters'
+import { sortConversationsByName } from '../lib/conversationOrder'
 import { AvatarDecoration } from '../components/AvatarDecoration'
 import { GameLogo } from '../components/GameLogos'
 import { UnifiedUserProfileFooter } from '../components/sidebar/UnifiedUserProfileFooter'
@@ -527,7 +528,9 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
       resolveUserData(f.user.id)
     })
 
-    return list
+    // Ordem fixa, por nome. Antes a conversa aberta (e a última em que se clicou) pulava para o topo, e a
+    // lista inteira mudava de lugar a cada clique.
+    return sortConversationsByName(list)
   }, [selectedDMUserId, recentDMUserIds, unreadDMs, acceptedFriends, knownProfiles, spaceMembers, presenceData, onlineUsers, user.id, blockedUserIds])
 
   const filteredDMConversations = useMemo(() => {
