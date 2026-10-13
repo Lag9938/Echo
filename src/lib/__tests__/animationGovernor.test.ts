@@ -21,13 +21,14 @@ describe('limitador das animações decorativas', () => {
     const entrance = animation({ iterations: 1 })
     const spinner = animation({ className: 'loader' })
     const speaking = animation({ className: 'avatar is-speaking' })
+    const nameEffect = animation({ className: 'member-name name-effect-celestial_gold' })
     const governed = new Set<any>()
 
-    adoptDecorativeAnimations([shimmer, entrance, spinner, speaking], governed)
+    adoptDecorativeAnimations([shimmer, entrance, spinner, speaking, nameEffect], governed)
     expect([...governed]).toEqual([shimmer])
     expect(shimmer.pause).toHaveBeenCalledTimes(1)
-    // Aviso deslizando, "carregando" e "quem está falando" seguem na taxa normal
-    for (const free of [entrance, spinner, speaking]) expect(free.pause).not.toHaveBeenCalled()
+    // Aviso deslizando, "carregando" e "quem está falando" seguem na taxa normal; efeito de nome ninguém toca
+    for (const free of [entrance, spinner, speaking, nameEffect]) expect(free.pause).not.toHaveBeenCalled()
 
     // Assumir de novo não pausa duas vezes
     adoptDecorativeAnimations([shimmer], governed)

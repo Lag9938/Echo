@@ -26,10 +26,21 @@ interface GovernedAnimation {
   effect?: { getComputedTiming?: () => { iterations?: number }; target?: (Element & { isConnected?: boolean }) | null } | null
 }
 
+/**
+ * Os efeitos de nome (`.name-effect-*`) ficam de fora: letras, brilho e animação deles não são alterados por
+ * nada no app, nem na taxa de quadros (regra do projeto).
+ */
+const UNTOUCHED_SELECTOR = '[class*="name-effect-"]'
+
+function isUntouched(animation: GovernedAnimation): boolean {
+  const target = animation.effect?.target
+  return Boolean(target && typeof target.closest === 'function' && target.closest(UNTOUCHED_SELECTOR))
+}
+
 /** Pausa e passa a controlar as animações decorativas que estão rodando soltas */
 export function adoptDecorativeAnimations(animations: GovernedAnimation[], governed: Set<GovernedAnimation>): void {
   for (const animation of animations) {
-    if (governed.has(animation) || animation.playState !== 'running' || !isDecorativeLoop(animation as any)) continue
+    if (governed.has(animation) || animation.playState !== 'running' || !isDecorativeLoop(animation as any) || isUntouched(animation)) continue
     try {
       animation.pause()
       governed.add(animation)
