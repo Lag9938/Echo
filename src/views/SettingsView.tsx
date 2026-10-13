@@ -1,4 +1,5 @@
 import { useState, lazy, Suspense } from 'react'
+import type { MotionPreference } from '../lib/motionPreference'
 import { WhatsNewModal } from '../components/WhatsNewModal'
 const CosmeticsInventory = lazy(() => import('../components/CosmeticsInventory').then(m => ({ default: m.CosmeticsInventory })))
 import type { Page } from '../types'
@@ -74,6 +75,8 @@ export interface SettingsViewProps {
   onChatDensityChange?: (density: 'cozy' | 'compact') => void
   performanceMode?: boolean
   onPerformanceModeChange?: (val: boolean) => void
+  motionPreference?: MotionPreference
+  onMotionPreferenceChange?: (value: MotionPreference) => void
   sidebarLayout?: 'glass' | 'classic'
   onSidebarLayoutChange?: (layout: 'glass' | 'classic') => void
   pttModeSetting?: boolean
@@ -158,6 +161,8 @@ export function SettingsView({
   onChatDensityChange,
   performanceMode = false,
   onPerformanceModeChange,
+  motionPreference = 'system',
+  onMotionPreferenceChange,
   sidebarLayout = 'glass',
   onSidebarLayoutChange,
   pttModeSetting,
@@ -350,6 +355,8 @@ export function SettingsView({
             onChatDensityChange={onChatDensityChange}
             performanceMode={performanceMode}
             onPerformanceModeChange={onPerformanceModeChange}
+            motionPreference={motionPreference}
+            onMotionPreferenceChange={onMotionPreferenceChange}
             sidebarLayout={sidebarLayout}
             onSidebarLayoutChange={onSidebarLayoutChange}
           />

@@ -422,7 +422,7 @@ body.theme-valorant .members-sidebar {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--card-accent, var(--accent-color));
+  background: var(--card-accent, var(--accent-fill));
   color: #fff;
   display: flex;
   align-items: center;

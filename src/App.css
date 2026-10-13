@@ -68,9 +68,15 @@
 /* Sala de voz, transmissão e grade de participantes redesenhadas */
 @import './styles/voice-aurora.css';
 
+/* Painel flutuante da chamada (quando você está em voz fora da tela da sala) */
+@import './styles/floating-call.css';
+
 /* 7. Temas que sobrescrevem os demais (sempre por último) */
 @import './styles/aurora.css';
 @import './styles/aurora-dark.css';
 @import './styles/aurora-dark-overrides.css';
+
+/* 8. Acessibilidade: foco visível, movimento reduzido e contraste (por último, vale sobre tudo) */
+@import './styles/accessibility.css';
 
 

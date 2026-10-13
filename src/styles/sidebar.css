@@ -244,13 +244,13 @@
 .guild-add-btn:hover {
   background: rgba(16, 185, 129, 0.15);
   border-color: rgba(16, 185, 129, 0.6);
-  color: #10b981;
+  color: var(--ok-text, #10b981);
   box-shadow: 0 0 16px rgba(16, 185, 129, 0.35), 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 .guild-explore-btn:hover {
   background: rgba(223, 109, 93, 0.15);
   border-color: var(--accent-color);
-  color: var(--accent-color);
+  color: var(--accent-text);
   box-shadow: 0 0 16px rgba(223, 109, 93, 0.35), 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 .guild-explore-btn:hover .guild-explore-icon-svg {
@@ -499,7 +499,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 .server-owner-chip {
   font-size: 10.5px;
   font-weight: 700;
-  color: #eab308;
+  color: var(--warn-text, #eab308);
   background: rgba(234, 179, 8, 0.12);
   border: 1px solid rgba(234, 179, 8, 0.28);
   padding: 2px 7px;
@@ -530,7 +530,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 }
 .server-stat-chip.channels {
   background: rgba(56, 189, 248, 0.12);
-  color: #38bdf8;
+  color: var(--info-text, #38bdf8);
   border: 1px solid rgba(56, 189, 248, 0.25);
 }
 .server-stat-chip.channels:hover {
@@ -539,7 +539,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 }
 .server-stat-chip.members {
   background: rgba(167, 139, 250, 0.12);
-  color: #a78bfa;
+  color: var(--violet-text, #a78bfa);
   border: 1px solid rgba(167, 139, 250, 0.25);
 }
 .server-stat-chip.members:hover {
@@ -577,7 +577,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   transform: translateX(2px);
 }
 .server-dropdown-item:hover svg {
-  color: var(--accent-color);
+  color: var(--accent-text);
   transform: scale(1.1);
 }
 
@@ -796,7 +796,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   color: var(--text-primary);
 }
 .channel-item.voice-item.in-voice {
-  color: var(--accent-color) !important;
+  color: var(--accent-text) !important;
   font-weight: 700;
 }
 .ch-icon {
@@ -808,7 +808,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 }
 .channel-item:hover .ch-icon {
   transform: scale(1.15);
-  color: var(--accent-color);
+  color: var(--accent-text);
 }
 .ch-icon svg {
   width: 16px;
@@ -825,7 +825,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   font-weight: 600;
   padding: 1px 5px;
   border-radius: 4px;
-  background: var(--accent-color);
+  background: var(--accent-fill);
   color: #fff;
   text-transform: uppercase;
 }
@@ -848,7 +848,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   border-radius: 10px;
 }
 /* Tem gente na chamada: contagem na cor do espaço; com transmissão, um ponto que pulsa (no lugar do bloco vermelho "AO VIVO") */
-.voice-channel-limit-badge.occupied { color: var(--accent-color); }
+.voice-channel-limit-badge.occupied { color: var(--accent-text); }
 .voice-channel-limit-badge .live-dot {
   width: 7px;
   height: 7px;
@@ -864,7 +864,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   .voice-channel-limit-badge .live-dot { animation: none; }
 }
 .channel-live-badge {
-  background: #ef4444;
+  background: #d92222;
   color: #fff;
   font-size: 9.5px;
   font-weight: 800;
@@ -941,7 +941,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   color: #fff;
   font-size: 10px;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--accent-color), #c75a4a);
+  background: linear-gradient(135deg, var(--accent-fill), #c75a4a);
   border: 1.5px solid transparent;
   transition: all .15s ease;
   /* Sempre um círculo perfeito: não deixa a linha (flex) espremer o avatar quando o nome ou os botões crescem,
@@ -1016,7 +1016,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   box-sizing: border-box;
   font-size: 11px;
   font-weight: 700;
-  color: var(--accent-color);
+  color: var(--accent-text);
   background: var(--accent-light, color-mix(in srgb, var(--accent-color) 16%, transparent));
   border: 1px solid color-mix(in srgb, var(--accent-color) 40%, transparent);
   border-radius: 8px;
@@ -1043,7 +1043,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 
 .sidebar-voice-stream-action-badge:hover {
   color: #fff;
-  background: var(--accent-color);
+  background: var(--accent-fill);
   border-color: var(--accent-color);
 }
 
@@ -1199,7 +1199,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 }
 
 .voice-user-menu-item.watch-stream:hover {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
+  background: linear-gradient(135deg, #d92222, #dc2626);
   border-color: #ef4444;
   color: #ffffff;
   box-shadow: 0 4px 16px rgba(239, 68, 68, 0.45);
@@ -1275,7 +1275,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   line-height: 1.4;
 }
 .empty-create-server-btn {
-  background: var(--accent-color);
+  background: var(--accent-fill);
   color: #fff;
   border: none;
   padding: 10px 18px;
@@ -1333,7 +1333,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   transition: all .12s;
 }
 .type-btn:hover { border-color: var(--text-muted); }
-.type-btn.type-active { border-color: var(--accent-color); color: var(--accent-color); background: var(--accent-light); }
+.type-btn.type-active { border-color: var(--accent-color); color: var(--accent-text); background: var(--accent-light); }
 .new-channel-form input {
   padding: 8px 10px; border-radius: 7px; border: 1.5px solid var(--border-color);
   background: var(--bg-secondary); font-size: 13px; color: var(--text-primary);
@@ -1342,7 +1342,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 .new-ch-actions { display: flex; gap: 6px; }
 .ch-create-btn {
   flex: 1; padding: 7px; border-radius: 7px; font-size: 12px;
-  font-weight: 700; color: #fff; background: var(--accent-color);
+  font-weight: 700; color: #fff; background: var(--accent-fill);
 }
 .ch-create-btn:hover { background: var(--accent-hover); }
 .ch-cancel-btn {
@@ -1369,7 +1369,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 }
 .add-space-trigger-btn:hover {
   background: var(--accent-light);
-  color: var(--accent-color);
+  color: var(--accent-text);
   border-color: var(--accent-color);
   transform: scale(1.08);
 }
@@ -1467,7 +1467,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 .members-search-toggle-btn:hover {
   background: rgba(0, 242, 254, 0.12);
   border-color: rgba(0, 242, 254, 0.35);
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
   box-shadow: 0 0 10px rgba(0, 242, 254, 0.25);
   transform: translateY(-1px);
 }
@@ -1484,7 +1484,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 .members-search-toggle-btn.active {
   background: rgba(0, 242, 254, 0.18);
   border-color: rgba(0, 242, 254, 0.5);
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
   box-shadow: 0 0 8px rgba(0, 242, 254, 0.25);
 }
 
@@ -1502,7 +1502,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   border-radius: 6px;
   background: rgba(0, 242, 254, 0.08);
   border: 1px solid rgba(0, 242, 254, 0.25);
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -1888,7 +1888,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 }
 .member-badge.creator {
   background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
+  color: var(--warn-text, #f59e0b);
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
 .member-badge.role {
@@ -1954,17 +1954,17 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
-  color: #22c55e;
+  color: var(--ok-text, #22c55e);
 }
 .member-status-text.activity-voice {
-  color: #22c55e;
+  color: var(--ok-text, #22c55e);
   font-weight: 500;
 }
 .member-voice-pill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: #22c55e;
+  color: var(--ok-text, #22c55e);
   font-weight: 600;
   font-size: 11px;
   line-height: 1.2;
@@ -2226,7 +2226,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 .hover-popover-badge.creator {
   background: rgba(245, 158, 11, 0.15);
   border-color: rgba(245, 158, 11, 0.45);
-  color: #f59e0b;
+  color: var(--warn-text, #f59e0b);
   box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
 }
 
@@ -2250,7 +2250,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 }
 
 .hover-popover-status-pill.online {
-  color: #4ade80;
+  color: var(--ok-text, #4ade80);
   background: rgba(34, 197, 94, 0.12);
   border-color: rgba(34, 197, 94, 0.35);
 }
@@ -2260,7 +2260,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 }
 
 .hover-popover-status-pill.idle {
-  color: #fbbf24;
+  color: var(--warn-text, #fbbf24);
   background: rgba(245, 158, 11, 0.12);
   border-color: rgba(245, 158, 11, 0.35);
 }
@@ -2269,7 +2269,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 }
 
 .hover-popover-status-pill.dnd {
-  color: #f87171;
+  color: var(--danger-text, #f87171);
   background: rgba(239, 68, 68, 0.12);
   border-color: rgba(239, 68, 68, 0.35);
 }
@@ -2326,7 +2326,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 .hover-popover-activity.game {
   background: rgba(34, 197, 94, 0.12);
   border: 1px solid rgba(34, 197, 94, 0.3);
-  color: #86efac;
+  color: var(--ok-text, #86efac);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -2335,7 +2335,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 .hover-popover-activity.voice {
   background: rgba(0, 242, 254, 0.1);
   border: 1px solid rgba(0, 242, 254, 0.25);
-  color: #67e8f9;
+  color: var(--cyan-text, #67e8f9);
 }
 
 .hover-popover-quote {
@@ -2470,7 +2470,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 
 .hover-popover-btn.danger {
   background: rgba(239, 68, 68, 0.1);
-  color: #fca5a5;
+  color: var(--danger-text, #fca5a5);
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
@@ -2482,7 +2482,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 
 .hover-popover-btn.warning {
   background: rgba(245, 158, 11, 0.1);
-  color: #fde047;
+  color: var(--warn-text, #fde047);
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
@@ -2498,7 +2498,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent-color), #6366f1);
+  background: linear-gradient(135deg, var(--accent-fill), #6366f1);
   display: grid;
   place-items: center;
   color: #fff;
@@ -2691,7 +2691,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   color: #fff;
   font-weight: 700;
   font-size: 13px;
-  background: linear-gradient(135deg, var(--accent-color), #c75a4a);
+  background: linear-gradient(135deg, var(--accent-fill), #c75a4a);
   flex-shrink: 0;
   position: relative;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -2732,7 +2732,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   text-overflow: ellipsis;
 }
 .profile-footer-status.game {
-  color: #10b981;
+  color: var(--ok-text, #10b981);
   font-weight: 700;
 }
 .profile-footer-status.game .game-status-icon {
@@ -2839,7 +2839,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   font-size: 8.5px;
   font-weight: 800;
   letter-spacing: 0.6px;
-  color: #38bdf8;
+  color: var(--info-text, #38bdf8);
   text-transform: uppercase;
   line-height: 1;
 }
@@ -2870,7 +2870,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   gap: 5px;
   font-size: 11px;
   font-weight: 600;
-  color: #38bdf8;
+  color: var(--info-text, #38bdf8);
   background: rgba(56, 189, 248, 0.1);
   padding: 2px 7px;
   border-radius: 6px;
@@ -3041,7 +3041,7 @@ body.theme-performance-opaque.echo-layout-glass .channels-sidebar {
 .channels-sidebar.echo-layout-glass .server-dropdown-item.danger:hover {
   background: rgba(239, 68, 68, 0.16) !important;
   border-color: rgba(239, 68, 68, 0.3) !important;
-  color: #f87171 !important;
+  color: var(--danger-text, #f87171) !important;
 }
 
 body.light-theme .channels-sidebar.echo-layout-glass .server-dropdown-menu {
@@ -3345,7 +3345,7 @@ body.light-theme .channels-sidebar.echo-layout-glass .channel-item.active {
 .channels-sidebar.echo-layout-glass .voice-channel-node.has-users .sidebar-voice-stream-action-badge {
   background: color-mix(in srgb, var(--accent-color, #38bdf8) 18%, transparent) !important;
   border: 1px solid color-mix(in srgb, var(--accent-color, #38bdf8) 50%, transparent) !important;
-  color: var(--accent-color, #38bdf8) !important;
+  color: var(--accent-text) !important;
   border-radius: 6px !important;
   height: 24px !important;
   min-width: 24px !important;
@@ -3543,14 +3543,14 @@ body.echo-layout-glass .members-search-toggle-btn {
 body.echo-layout-glass .members-search-toggle-btn:hover {
   background: rgba(255, 255, 255, 0.12) !important;
   border-color: var(--accent-color, #00f2fe) !important;
-  color: var(--accent-color, #00f2fe) !important;
+  color: var(--accent-text) !important;
   box-shadow: 0 0 10px var(--accent-glow, rgba(0, 242, 254, 0.3)) !important;
 }
 
 body.echo-layout-glass .members-quick-invite-btn {
   background: linear-gradient(135deg, color-mix(in srgb, var(--accent-color, #00f2fe) 22%, transparent) 0%, rgba(255, 255, 255, 0.05) 100%) !important;
   border: 1px solid color-mix(in srgb, var(--accent-color, #00f2fe) 50%, rgba(255, 255, 255, 0.2)) !important;
-  color: var(--accent-color, #00f2fe) !important;
+  color: var(--accent-text) !important;
   border-radius: 8px !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 8px color-mix(in srgb, var(--accent-color, #00f2fe) 25%, transparent) !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
@@ -3754,7 +3754,7 @@ body.echo-layout-glass .hover-popover-badge {
 body.echo-layout-glass .hover-popover-badge.creator {
   background: rgba(245, 158, 11, 0.16);
   border: 1px solid rgba(245, 158, 11, 0.45);
-  color: #fbbf24;
+  color: var(--warn-text, #fbbf24);
   box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
 }
 
@@ -3774,7 +3774,7 @@ body.echo-layout-glass .hover-popover-status-pill {
 }
 
 body.echo-layout-glass .hover-popover-status-pill.online {
-  color: #4ade80;
+  color: var(--ok-text, #4ade80);
   background: rgba(34, 197, 94, 0.14);
   border-color: rgba(34, 197, 94, 0.4);
   box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
@@ -3814,7 +3814,7 @@ body.echo-layout-glass .hover-popover-activity {
 body.echo-layout-glass .hover-popover-activity.voice {
   background: linear-gradient(135deg, rgba(0, 242, 254, 0.12) 0%, rgba(139, 92, 246, 0.08) 100%);
   border: 1px solid rgba(0, 242, 254, 0.32);
-  color: #67e8f9;
+  color: var(--cyan-text, #67e8f9);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 4px 14px rgba(0, 242, 254, 0.15);
 }
 
@@ -3828,7 +3828,7 @@ body.light-theme.echo-layout-glass .hover-popover-activity.voice {
 body.echo-layout-glass .hover-popover-activity.game {
   background: linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(16, 185, 129, 0.08) 100%);
   border: 1px solid rgba(34, 197, 94, 0.35);
-  color: #86efac;
+  color: var(--ok-text, #86efac);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 4px 14px rgba(34, 197, 94, 0.15);
 }
 
@@ -4016,7 +4016,7 @@ body.light-theme.echo-layout-glass .hover-popover-btn.secondary:hover {
   cursor: pointer;
 }
 .profile-call-head.clickable:hover .profile-call-title small {
-  color: var(--accent-color);
+  color: var(--accent-text);
 }
 .profile-call-title {
   display: flex;
@@ -4081,12 +4081,12 @@ body.light-theme.echo-layout-glass .hover-popover-btn.secondary:hover {
 .profile-call-toggle.is-off {
   background: rgba(239, 68, 68, 0.16);
   border-color: rgba(239, 68, 68, 0.4);
-  color: #f87171;
+  color: var(--danger-text, #f87171);
 }
 .profile-call-toggle.is-active {
   background: color-mix(in srgb, var(--accent-color) 20%, transparent);
   border-color: color-mix(in srgb, var(--accent-color) 55%, transparent);
-  color: var(--accent-color);
+  color: var(--accent-text);
 }
 
 .profile-call-ptt {
@@ -4102,7 +4102,7 @@ body.light-theme.echo-layout-glass .hover-popover-btn.secondary:hover {
 .profile-call-ptt.active {
   border-color: #10b981;
   background: rgba(16, 185, 129, 0.18);
-  color: #10b981;
+  color: var(--ok-text, #10b981);
 }
 
 .profile-call-quality {
@@ -4124,7 +4124,7 @@ body.light-theme.echo-layout-glass .hover-popover-btn.secondary:hover {
   height: 42px;
   border: 0;
   border-radius: 999px;
-  background: #ef4444;
+  background: #d92222;
   color: #fff;
   font: inherit;
   font-size: 13px;

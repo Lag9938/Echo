@@ -50,7 +50,7 @@
 
 .friends-sidebar-home-btn.active {
   background: var(--accent-light, rgba(0, 242, 254, 0.12));
-  color: var(--accent-color);
+  color: var(--accent-text);
   font-weight: 700;
 }
 
@@ -61,7 +61,7 @@
 }
 
 .home-pending-badge {
-  background: #ef4444;
+  background: #d92222;
   color: white;
   font-size: 11px;
   font-weight: 700;
@@ -155,7 +155,7 @@
 }
 
 .dm-unread-badge {
-  background: #ef4444;
+  background: #d92222;
   color: white;
   font-size: 10px;
   font-weight: 700;
@@ -182,7 +182,7 @@
 }
 
 .dm-dismiss-btn:hover {
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
   background: rgba(239, 68, 68, 0.1);
 }
 
@@ -321,7 +321,7 @@
   border-radius: 6px;
   font-size: 12.5px;
   font-weight: 600;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #15803d 0%, #059669 100%);
   color: #fff;
   border: none;
   cursor: pointer;
@@ -356,7 +356,7 @@
 .dm-header-action-btn.call:hover {
   background: rgba(34, 197, 94, 0.15);
   border-color: rgba(34, 197, 94, 0.4);
-  color: #4ade80;
+  color: var(--ok-text, #4ade80);
 }
 
 .dm-header-action-btn.close {
@@ -366,7 +366,7 @@
 .dm-header-action-btn.close:hover {
   background: rgba(239, 68, 68, 0.15);
   border-color: rgba(239, 68, 68, 0.4);
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
 }
 
 .dm-full-messages-list {
@@ -426,7 +426,7 @@
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
-  background: #10b981;
+  background: #15803d;
   color: white;
   border: none;
   cursor: pointer;
@@ -466,7 +466,7 @@
 }
 
 .dm-send-btn {
-  background: var(--accent-color);
+  background: var(--accent-fill);
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -544,17 +544,17 @@
 
 .friends-menu .menu-item.active {
   background: rgba(0, 242, 254, 0.12);
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .friends-menu .menu-item.add-friend-item {
-  color: #10b981;
+  color: var(--ok-text, #10b981);
 }
 
 .friends-menu .menu-item.add-friend-item.active {
   background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
+  color: var(--ok-text, #10b981);
 }
 
 .menu-icon {
@@ -574,18 +574,18 @@
 }
 
 .friends-menu .menu-item.active .menu-badge {
-  background: var(--accent-color);
+  background: var(--accent-fill);
   color: #fff;
 }
 
 .pending-badge {
   background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
 }
 
 .gaming-badge {
   background: rgba(34, 197, 94, 0.15);
-  color: #22c55e;
+  color: var(--ok-text, #22c55e);
   border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
@@ -652,7 +652,7 @@
 }
 
 .friends-sidebar-toggle-btn.active {
-  color: var(--accent-color);
+  color: var(--accent-text);
   background: rgba(0, 242, 254, 0.08);
   border-color: rgba(0, 242, 254, 0.25);
 }
@@ -734,21 +734,21 @@
 
 .friends-tab-pill.active {
   background: rgba(0, 242, 254, 0.12);
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
   border-color: rgba(0, 242, 254, 0.28);
   box-shadow: 0 2px 10px rgba(0, 242, 254, 0.15);
 }
 
 .dark-theme .friends-tab-pill.active {
   background: rgba(0, 242, 254, 0.12);
-  color: #38bdf8;
+  color: var(--info-text, #38bdf8);
   border-color: rgba(56, 189, 248, 0.3);
   box-shadow: 0 2px 12px rgba(0, 242, 254, 0.2);
 }
 
 .friends-tab-pill.add-friend {
   background: rgba(34, 197, 94, 0.14);
-  color: #22c55e;
+  color: var(--ok-text, #22c55e);
   border: 1px solid rgba(34, 197, 94, 0.3);
   font-weight: 600;
   margin-left: 6px;
@@ -791,12 +791,12 @@
 
 .tab-pill-badge.gaming {
   background: rgba(34, 197, 94, 0.2);
-  color: #22c55e;
+  color: var(--ok-text, #22c55e);
 }
 
 .tab-pill-badge.pending {
   background: rgba(239, 68, 68, 0.22);
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
   animation: badgeHop 3.2s infinite ease-in-out;
 }
@@ -818,16 +818,16 @@
 
 .friends-tab-pill.active .tab-pill-badge {
   background: rgba(0, 242, 254, 0.25);
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
 }
 
 .dark-theme .friends-tab-pill.active .tab-pill-badge {
   background: rgba(56, 189, 248, 0.25);
-  color: #38bdf8;
+  color: var(--info-text, #38bdf8);
 }
 
 .friends-tab-pill.active .tab-pill-badge.pending {
-  background: #ef4444;
+  background: #d92222;
   color: #ffffff;
   box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
 }
@@ -847,7 +847,7 @@
   gap: 5px;
   font-size: 11px;
   font-weight: 600;
-  color: #22c55e;
+  color: var(--ok-text, #22c55e);
   background: rgba(34, 197, 94, 0.12);
   border: 1px solid rgba(34, 197, 94, 0.25);
   padding: 2px 7px;
@@ -939,7 +939,7 @@
   font-weight: 600;
   font-size: 13px;
   color: #fff;
-  background: linear-gradient(135deg, var(--accent-color), #7c3aed);
+  background: linear-gradient(135deg, var(--accent-fill), #7c3aed);
   flex-shrink: 0;
 }
 
@@ -967,7 +967,7 @@
 
 .sidebar-activity-sub {
   font-size: 11px;
-  color: #22c55e;
+  color: var(--ok-text, #22c55e);
   font-weight: 600;
 }
 
@@ -1014,7 +1014,7 @@
   font-weight: 700;
   background: rgba(0, 242, 254, 0.1);
   border: 1px solid rgba(0, 242, 254, 0.25);
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
   cursor: pointer;
   transition: all 0.16s var(--ease-spring);
 }
@@ -1146,7 +1146,7 @@
 }
 
 .friends-search-kbd:hover {
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
   border-color: rgba(0, 242, 254, 0.4);
   border-bottom-color: rgba(0, 242, 254, 0.6);
   transform: translateY(-1px);
@@ -1173,7 +1173,7 @@
 }
 
 .friends-search-clear-btn:hover {
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
   background: rgba(239, 68, 68, 0.15);
   transform: scale(1.18) rotate(90deg);
 }
@@ -1271,7 +1271,7 @@
   font-weight: 600;
   font-size: 15px;
   color: #fff;
-  background: linear-gradient(135deg, var(--accent-color), #7c3aed);
+  background: linear-gradient(135deg, var(--accent-fill), #7c3aed);
   flex-shrink: 0;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
@@ -1330,7 +1330,7 @@
   height: 20px;
   padding: 0 6px;
   border-radius: 10px;
-  background: #22c55e;
+  background: #15803d;
   color: #ffffff;
   font-size: 11px;
   font-weight: 700;
@@ -1448,39 +1448,39 @@
 .friend-quick-btn.msg:hover {
   background: rgba(14, 165, 233, 0.18);
   border-color: #38bdf8;
-  color: #38bdf8;
+  color: var(--info-text, #38bdf8);
   transform: translateY(0);
   box-shadow: 0 3px 12px rgba(56, 189, 248, 0.3);
 }
 .friend-quick-btn.msg:hover svg {
   transform: scale(1.12);
-  color: #38bdf8;
+  color: var(--info-text, #38bdf8);
 }
 
 /* 2. Call button (Emerald / Game Green) */
 .friend-quick-btn.call:hover {
   background: rgba(16, 185, 129, 0.18);
   border-color: #10b981;
-  color: #10b981;
+  color: var(--ok-text, #10b981);
   transform: translateY(0);
   box-shadow: 0 3px 12px rgba(16, 185, 129, 0.3);
 }
 .friend-quick-btn.call:hover svg {
   transform: scale(1.12) rotate(-8deg);
-  color: #10b981;
+  color: var(--ok-text, #10b981);
 }
 
 /* 3. Profile button (Violet / Royal) */
 .friend-quick-btn.profile:hover {
   background: rgba(167, 139, 250, 0.18);
   border-color: #a78bfa;
-  color: #a78bfa;
+  color: var(--violet-text, #a78bfa);
   transform: translateY(0);
   box-shadow: 0 3px 12px rgba(167, 139, 250, 0.3);
 }
 .friend-quick-btn.profile:hover svg {
   transform: scale(1.12);
-  color: #a78bfa;
+  color: var(--violet-text, #a78bfa);
 }
 
 /* 4. Danger / Remove friendship button (Coral / Crimson) */
@@ -1496,13 +1496,13 @@
 .friend-quick-btn.danger:hover {
   background: rgba(239, 68, 68, 0.2);
   border-color: #ef4444;
-  color: #f87171;
+  color: var(--danger-text, #f87171);
   transform: translateY(0);
   box-shadow: 0 3px 12px rgba(239, 68, 68, 0.32);
 }
 .friend-quick-btn.danger:hover .friend-btn-close-icon {
   transform: rotate(90deg) scale(1.15);
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
 }
 
 /* ── Calm Minimal Empty States ────────────────────────────── */
@@ -1571,7 +1571,7 @@
 .friends-empty-calm-btn.primary {
   background: linear-gradient(135deg, rgba(0, 242, 254, 0.15) 0%, rgba(124, 58, 237, 0.15) 100%);
   border-color: rgba(0, 242, 254, 0.35);
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
 }
 
 .friends-empty-calm-btn.primary:hover {
@@ -1736,7 +1736,7 @@
   border-radius: 10px;
   background: rgba(239, 68, 68, 0.22);
   border: 1px solid rgba(239, 68, 68, 0.45);
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -1764,7 +1764,7 @@
 .pending-banner-action-btn {
   padding: 8px 18px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  background: linear-gradient(135deg, #d92222 0%, #dc2626 100%);
   color: #ffffff;
   border: none;
   font-size: 12.5px;
@@ -1823,7 +1823,7 @@
 .friends-offline-view-all-btn {
   background: transparent;
   border: none;
-  color: var(--accent-color);
+  color: var(--accent-text);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -1899,7 +1899,7 @@
 }
 .friends-my-profile-status {
   font-size: 11.5px;
-  color: #22c55e;
+  color: var(--ok-text, #22c55e);
   font-weight: 600;
 }
 
@@ -1909,7 +1909,7 @@
   border-radius: 10px;
   background: rgba(0, 242, 254, 0.1);
   border: 1px solid rgba(0, 242, 254, 0.3);
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -2031,7 +2031,7 @@
 .activity-game-time {
   font-size: 11.5px;
   font-weight: 600;
-  color: #22c55e;
+  color: var(--ok-text, #22c55e);
   display: flex;
   align-items: center;
   gap: 5px;
@@ -2043,7 +2043,7 @@
   border-radius: 10px;
   background: rgba(0, 242, 254, 0.1);
   border: 1px solid rgba(0, 242, 254, 0.3);
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
@@ -2234,7 +2234,7 @@
   border: 1px solid rgba(0, 242, 254, 0.4);
   display: grid;
   place-items: center;
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
   position: relative;
   z-index: 2;
   transition: transform 0.3s var(--ease-spring), box-shadow 0.3s ease;
@@ -2340,7 +2340,7 @@
 .add-friend-copy-btn {
   padding: 6px 12px;
   border-radius: 8px;
-  background: var(--accent-color);
+  background: var(--accent-fill);
   color: #fff;
   border: none;
   font-size: 12px;
@@ -2395,7 +2395,7 @@
   font-size: 13.5px;
   font-weight: 700;
   color: #fff;
-  background: var(--accent-color);
+  background: var(--accent-fill);
   transition: background .12s;
 }
 .add-friend-form button:hover {
@@ -2422,7 +2422,7 @@
 /* -- Nav Badge ---------------------------- */
 .nav-badge { position: absolute; top: -4px; right: -8px; background: #e74c3c; color: white; font-size: 10px; font-weight: bold; min-width: 16px; height: 16px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
 .unread-badge { position: absolute; top: -6px; right: -6px; background: #e74c3c; color: white; font-size: 9px; font-weight: bold; min-width: 14px; height: 14px; border-radius: 7px; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
-.msg-btn { font-size: 16px !important; background: var(--accent-color) !important; color: white !important; border-radius: 50% !important; width: 34px !important; height: 34px !important; display: flex !important; align-items: center; justify-content: center; }
+.msg-btn { font-size: 16px !important; background: var(--accent-fill) !important; color: white !important; border-radius: 50% !important; width: 34px !important; height: 34px !important; display: flex !important; align-items: center; justify-content: center; }
 .msg-btn:hover { opacity: 0.85; }
 
 /* -- DM Chat Panel ------------------------ */
@@ -2547,7 +2547,7 @@
 
 /* ── Universal Chat Links ── */
 .chat-link {
-  color: #00f2fe !important;
+  color: var(--cyan-text, #00f2fe) !important;
   text-decoration: underline !important;
   text-underline-offset: 3px;
   cursor: pointer !important;
@@ -2630,7 +2630,7 @@
   gap: 7px;
   background: rgba(0, 242, 254, 0.22);
   border: 1px solid #00f2fe;
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
   padding: 6px 14px;
   border-radius: 20px;
   font-size: 12px;
@@ -2661,10 +2661,10 @@
 .dm-compose { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-top: 1px solid var(--border-color); background: var(--bg-tertiary); }
 .dm-compose input[type="text"], .dm-compose input:not([type]) { flex: 1; border: 1px solid var(--border-color); border-radius: 20px; padding: 8px 14px; font-size: 13px; background: var(--bg-secondary); color: var(--text-primary); outline: none; }
 .dm-compose input:focus { border-color: var(--accent-color); }
-.dm-compose button[type="submit"] { background: var(--accent-color); color: white; border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.dm-compose button[type="submit"] { background: var(--accent-fill); color: white; border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .dm-compose button[type="submit"]:disabled { opacity: 0.4; cursor: default; }
 .dm-attach-btn { background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px; color: var(--text-muted); }
-.dm-attach-btn:hover { color: var(--accent-color); }
+.dm-attach-btn:hover { color: var(--accent-text); }
 
 
 /* -- Message Attachment Preview ------------ */
@@ -2708,7 +2708,7 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   filter: brightness(1.06);
 }
-.msg-attachment-file { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; margin-top: 4px; color: var(--accent-color); text-decoration: none; font-size: 13px; }
+.msg-attachment-file { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; margin-top: 4px; color: var(--accent-text); text-decoration: none; font-size: 13px; }
 
 /* ==========================================================================
    ECHO FRIENDS HUB & DIRECT MESSAGES - CYBER FROSTED GLASS
@@ -2822,7 +2822,7 @@ body.echo-layout-glass .friends-tab-pill.active {
 body.echo-layout-glass .friends-tab-pill.add-friend {
   background: rgba(16, 185, 129, 0.15) !important;
   border: 1px solid rgba(16, 185, 129, 0.35) !important;
-  color: #34d399 !important;
+  color: var(--ok-text, #34d399) !important;
 }
 
 body.echo-layout-glass .friends-tab-pill.add-friend:hover {
@@ -2832,7 +2832,7 @@ body.echo-layout-glass .friends-tab-pill.add-friend:hover {
 }
 
 body.echo-layout-glass .friends-tab-pill.add-friend.active {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  background: linear-gradient(135deg, #15803d 0%, #059669 100%) !important;
   color: #fff !important;
   border-color: #34d399 !important;
   box-shadow: 0 4px 18px rgba(16, 185, 129, 0.4) !important;

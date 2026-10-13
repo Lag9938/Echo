@@ -329,6 +329,47 @@ body.light-theme.echo-layout-glass .settings-sidebar .sidebar-profile-footer {
   border-top-color: rgba(74, 53, 49, 0.08) !important;
 }
 
+/* Itens ativos e botões primários com texto branco: fundo coral escuro o bastante (contraste 4,5:1).
+   O tema antigo pintava estes de ciano translúcido, o que deixava o texto branco quase invisível sobre o claro. */
+body.light-theme.echo-layout-glass .friends-tab-pill.active,
+body.light-theme.echo-layout-glass .friends-sidebar-home-btn.active,
+body.light-theme.echo-layout-glass .call-strip-btn {
+  background: linear-gradient(180deg, var(--accent-fill-top), var(--accent-fill)) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 8px 18px -8px color-mix(in srgb, var(--accent-fill) 85%, transparent) !important;
+}
+body.light-theme.echo-layout-glass .friends-tab-pill.active span,
+body.light-theme.echo-layout-glass .friends-sidebar-home-btn.active span {
+  color: #fff !important;
+}
+body.light-theme .dm-unread-badge {
+  background: var(--accent-fill) !important;
+  color: #fff !important;
+}
+/* Contador dentro de uma aba ativa (coral): vidro escuro, não branco translúcido, para o número ler */
+body.light-theme .echo-shop-main-tab.active .echo-shop-tab-count,
+body.light-theme.echo-layout-glass .echo-shop-main-tab.active .echo-shop-tab-count,
+body.light-theme .echo-inv-tab.active .echo-inv-tab-count,
+body.light-theme.echo-layout-glass .echo-inv-tab.active .echo-inv-tab-count,
+body.light-theme.echo-layout-glass .friends-content .friends-tab-pill.active .tab-pill-badge,
+body.light-theme .friends-tab-pill.active .tab-pill-badge {
+  background: rgba(0, 0, 0, 0.22) !important;
+  color: #fff !important;
+}
+/* Bolinhas de notificação (contagem de pedidos/mensagens): vermelho/coral fundo o bastante para o branco ler */
+body.light-theme .topbar-icon-badge.badge-red,
+body.light-theme .topbar-server-badge {
+  background: #d92222 !important;
+  background-image: none !important;
+  color: #fff !important;
+}
+body.light-theme .sidebar-voice-avatar,
+body.light-theme .profile-footer-avatar,
+body.light-theme .server-avatar-squircle {
+  background-image: linear-gradient(135deg, var(--accent-fill-top), var(--accent-fill));
+}
+
 /* Texto que o tema antigo deixava branco ou muito claro e some no fundo claro */
 body.light-theme .msg-meta strong {
   color: var(--text-primary);
@@ -344,7 +385,7 @@ body.light-theme.echo-layout-glass .echo-stage-avatar-inner {
 
 /* Aba ativa do editor de perfil: coral Echo, não o ciano pálido com texto branco */
 body.light-theme.echo-layout-glass .echo-editor-tab-btn.active {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color)) !important;
+  background: linear-gradient(180deg, var(--accent-fill-top), var(--accent-fill)) !important;
   border: 0 !important;
   color: #fff !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 18px -8px rgba(223, 109, 93, 0.7) !important;
@@ -393,7 +434,7 @@ body.light-theme .content-header h1 {
   color: var(--text-primary);
 }
 body.light-theme .content-header .header-icon {
-  color: var(--accent-color) !important;
+  color: var(--accent-text) !important;
 }
 body.light-theme .content-header .header-space {
   color: var(--text-muted);
@@ -418,7 +459,7 @@ body.light-theme.echo-layout-glass .composer {
   box-shadow: inset 0 1px 0 #fff, 0 14px 40px rgba(42, 31, 45, 0.12) !important;
 }
 body.light-theme .composer .send-btn {
-  background: linear-gradient(180deg, #e9826f, var(--accent-color)) !important;
+  background: linear-gradient(180deg, #e9826f, var(--accent-fill)) !important;
   color: #fff !important;
   border: 0 !important;
   border-radius: 50% !important;
@@ -560,7 +601,7 @@ body.light-theme .brand-mark-atom {
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
-  color: var(--accent-color) !important;
+  color: var(--accent-text) !important;
 }
 body.light-theme .brand-name {
   font-weight: 800;
@@ -669,7 +710,7 @@ body.light-theme.echo-layout-glass .voice-chat-composer {
 }
 body.light-theme .voice-chat-composer .send-btn,
 body.light-theme .voice-chat-composer button[type="submit"] {
-  background: linear-gradient(180deg, #e9826f, var(--accent-color)) !important;
+  background: linear-gradient(180deg, #e9826f, var(--accent-fill)) !important;
   color: #fff !important;
   border: 0 !important;
   border-radius: 50% !important;
@@ -748,7 +789,7 @@ body.light-theme .echo-shop-close-btn {
 
 body.light-theme .echo-shop-close-btn:hover {
   background: rgba(239, 68, 68, 0.14) !important;
-  color: #ef4444 !important;
+  color: var(--danger-text, #ef4444) !important;
 }
 
 /* Trilho de abas superiores em pílula */
@@ -798,7 +839,7 @@ body.light-theme.echo-layout-glass .echo-shop-main-tab:hover {
 
 body.light-theme .echo-shop-main-tab.active,
 body.light-theme.echo-layout-glass .echo-shop-main-tab.active {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #ffffff !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -6px rgba(223, 109, 93, 0.5) !important;
   border: 0 !important;
@@ -876,7 +917,7 @@ body.light-theme.echo-layout-glass .echo-shop-preview-bubble {
 }
 
 body.light-theme .echo-shop-preview-tag {
-  color: #df6d5d !important;
+  color: var(--accent-text) !important;
   font-size: 11px !important;
   font-weight: 800 !important;
   letter-spacing: 0.08em !important;
@@ -918,7 +959,7 @@ body.light-theme .echo-shop-action-btn.acquire,
 body.light-theme .echo-shop-action-btn.primary,
 body.light-theme.echo-layout-glass .echo-shop-action-btn.acquire,
 body.light-theme.echo-layout-glass .echo-shop-action-btn.primary {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #ffffff !important;
   border: 0 !important;
   border-radius: 999px !important;
@@ -944,7 +985,7 @@ body.light-theme .echo-shop-action-btn.secondary:hover,
 body.light-theme.echo-layout-glass .echo-shop-action-btn.secondary:hover {
   background: rgba(239, 68, 68, 0.12) !important;
   border-color: rgba(239, 68, 68, 0.3) !important;
-  color: #ef4444 !important;
+  color: var(--danger-text, #ef4444) !important;
 }
 
 body.light-theme .echo-shop-action-btn.active,
@@ -990,7 +1031,7 @@ body.light-theme.echo-layout-glass .echo-shop-cat-btn:hover {
 
 body.light-theme .echo-shop-cat-btn.active,
 body.light-theme.echo-layout-glass .echo-shop-cat-btn.active {
-  background: #df6d5d !important;
+  background: var(--accent-fill) !important;
   border-color: transparent !important;
   color: #ffffff !important;
   box-shadow: 0 4px 14px -4px rgba(223, 109, 93, 0.6) !important;
@@ -1062,7 +1103,7 @@ body.light-theme.echo-layout-glass .echo-shop-card-badge {
   font-weight: 800 !important;
   letter-spacing: 0.04em !important;
   text-transform: uppercase !important;
-  color: #ffffff !important;
+  color: var(--badge-ink, #ffffff) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
   z-index: 5 !important;
 }
@@ -1127,7 +1168,7 @@ body.light-theme.echo-layout-glass .echo-shop-equip-btn {
 
 body.light-theme .echo-shop-equip-btn:hover:not(:disabled),
 body.light-theme.echo-layout-glass .echo-shop-equip-btn:hover:not(:disabled) {
-  background: #df6d5d !important;
+  background: var(--accent-fill) !important;
   border-color: #df6d5d !important;
   color: #ffffff !important;
   box-shadow: 0 4px 14px -4px rgba(223, 109, 93, 0.6) !important;
@@ -1135,7 +1176,7 @@ body.light-theme.echo-layout-glass .echo-shop-equip-btn:hover:not(:disabled) {
 
 body.light-theme .echo-shop-equip-btn.acquire-btn,
 body.light-theme.echo-layout-glass .echo-shop-equip-btn.acquire-btn {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #ffffff !important;
   border: 0 !important;
   border-radius: 999px !important;
@@ -1202,7 +1243,7 @@ body.light-theme .echo-inventory-title {
 
 body.light-theme .echo-inventory-shop-btn,
 body.light-theme.echo-layout-glass .echo-inventory-shop-btn {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #ffffff !important;
   border: 0 !important;
   border-radius: 999px !important;
@@ -1230,7 +1271,7 @@ body.light-theme.echo-layout-glass .echo-inv-tab {
 
 body.light-theme .echo-inv-tab.active,
 body.light-theme.echo-layout-glass .echo-inv-tab.active {
-  background: #df6d5d !important;
+  background: var(--accent-fill) !important;
   color: #ffffff !important;
   box-shadow: 0 6px 16px -6px rgba(223, 109, 93, 0.6) !important;
 }
@@ -1253,7 +1294,7 @@ body.light-theme.echo-layout-glass .echo-inv-card:hover {
 
 body.light-theme .echo-stage-btn-equip,
 body.light-theme.echo-layout-glass .echo-stage-btn-equip {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #ffffff !important;
   border: 0 !important;
   border-radius: 999px !important;
@@ -1272,7 +1313,7 @@ body.light-theme.echo-layout-glass .echo-inv-equip-btn {
 
 body.light-theme .echo-inv-equip-btn:hover:not(:disabled),
 body.light-theme.echo-layout-glass .echo-inv-equip-btn:hover:not(:disabled) {
-  background: #df6d5d !important;
+  background: var(--accent-fill) !important;
   border-color: #df6d5d !important;
   color: #ffffff !important;
 }

@@ -38,7 +38,7 @@ body.light-theme .screen-picker-header-info p {
 
 body.light-theme.echo-layout-glass .screen-picker-badge,
 body.light-theme .screen-picker-badge {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #fff !important;
   border-radius: 999px !important;
   border: 0 !important;
@@ -194,7 +194,7 @@ body.light-theme .source-thumb-icon-placeholder {
 
 body.light-theme.echo-layout-glass .source-selected-badge,
 body.light-theme .source-selected-badge {
-  background: #df6d5d !important;
+  background: var(--accent-fill) !important;
   color: #fff !important;
   border-radius: 999px !important;
   font-weight: 800 !important;
@@ -202,7 +202,7 @@ body.light-theme .source-selected-badge {
 }
 
 body.light-theme .source-game-badge {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%);
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%);
   color: #fff;
   border-radius: 8px;
   font-weight: 800;
@@ -240,7 +240,7 @@ body.light-theme .screen-picker-quality-box {
 }
 
 body.light-theme .picker-quality-warning {
-  color: #dc2626;
+  color: var(--danger-text, #dc2626);
 }
 
 .picker-chip-badge-locked {
@@ -275,7 +275,7 @@ body.light-theme .picker-config-chip:hover:not(:disabled) {
 
 body.light-theme.echo-layout-glass .picker-config-chip.active,
 body.light-theme .picker-config-chip.active {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #fff !important;
   border-color: transparent !important;
   box-shadow: 0 4px 14px rgba(223, 109, 93, 0.45) !important;
@@ -327,7 +327,7 @@ body.light-theme .picker-close-btn:hover {
 
 body.light-theme.echo-layout-glass .picker-go-live-btn,
 body.light-theme .picker-go-live-btn {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #fff !important;
   border: none !important;
   border-radius: 999px !important;
@@ -373,7 +373,7 @@ body.light-theme .conn-pill.mid {
 }
 
 body.light-theme .conn-pill.poor {
-  color: #dc2626;
+  color: var(--danger-text, #dc2626);
 }
 
 /* Painel acolhedor antes de entrar na chamada de voz */
@@ -405,7 +405,7 @@ body.light-theme .voice-join-panel p {
 }
 
 body.light-theme .voice-join-submit-btn {
-  background: linear-gradient(135deg, var(--aurora-accent, #df6d5d) 0%, #d85c4b 100%);
+  background: linear-gradient(135deg, var(--aurora-accent, var(--accent-fill)) 0%, #d85c4b 100%);
   color: #fff;
   border-radius: 999px;
   padding: 12px 32px;
@@ -478,7 +478,7 @@ body.light-theme .participant-name-text {
 }
 
 body.light-theme .participant-name-state {
-  color: #dc2626;
+  color: var(--danger-text, #dc2626);
 }
 
 /* Card com câmera ligada */
@@ -543,7 +543,7 @@ body.light-theme .voice-controls-bar .control-btn:active {
 /* Microfone ou som mutado */
 body.light-theme .voice-controls-bar .control-btn.muted {
   background: rgba(239, 68, 68, 0.12) !important;
-  color: #dc2626 !important;
+  color: var(--danger-text, #dc2626) !important;
   border: 1px solid rgba(239, 68, 68, 0.28) !important;
 }
 
@@ -554,7 +554,7 @@ body.light-theme .voice-controls-bar .control-btn.muted:hover {
 
 /* Botão Echo AI Studio (Denoise) */
 body.light-theme .voice-controls-bar .control-btn.ai-btn.active {
-  background: linear-gradient(135deg, var(--aurora-accent, #df6d5d) 0%, #9061f9 100%) !important;
+  background: linear-gradient(135deg, var(--aurora-accent, var(--accent-fill)) 0%, #9061f9 100%) !important;
   color: #fff !important;
   box-shadow: 0 4px 14px rgba(223, 109, 93, 0.35) !important;
 }
@@ -575,7 +575,7 @@ body.light-theme .voice-controls-bar .control-btn.screen-btn.sharing {
 
 /* Botão desconectar da chamada */
 body.light-theme .voice-controls-bar .control-btn.leave-btn {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  background: linear-gradient(135deg, #d92222 0%, #dc2626 100%) !important;
   color: #fff !important;
   border-radius: 14px;
   box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35) !important;
@@ -610,7 +610,7 @@ body.light-theme .screen-share-dropdown .dropdown-option:hover {
 }
 
 body.light-theme .screen-share-dropdown .dropdown-option.selected {
-  background: var(--aurora-accent, #df6d5d);
+  background: var(--aurora-accent, var(--accent-fill));
   color: #fff;
 }
 
@@ -658,7 +658,7 @@ body.light-theme .local-stream-preview-toggle-btn {
 }
 
 body.light-theme .local-stream-preview-toggle-btn:hover {
-  background: var(--aurora-accent, #df6d5d) !important;
+  background: var(--aurora-accent, var(--accent-fill)) !important;
   color: #fff !important;
   transform: translateY(-1px);
 }
@@ -717,7 +717,7 @@ body.light-theme .stream-smoothing-btn:hover {
 }
 
 body.light-theme .stream-smoothing-btn.active {
-  background: var(--aurora-accent, #df6d5d);
+  background: var(--aurora-accent, var(--accent-fill));
   color: #fff;
   border-color: var(--aurora-accent, #df6d5d);
 }

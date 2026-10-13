@@ -1,4 +1,5 @@
 import React, { memo, useMemo } from 'react'
+import { roleInk } from '../../lib/accentContrast'
 import type { User } from '@supabase/supabase-js'
 import type { Space, Channel, Message, PinnedMessage, ServerEmoji, RolePermissions, ServerRole } from '../../types'
 import { AvatarDecoration } from '../AvatarDecoration'
@@ -444,7 +445,7 @@ export const MessageList = memo(function MessageList({
                                 <>
                                   <strong 
                                     className={authorNameEffect && authorNameEffect !== 'none' ? `name-effect-${authorNameEffect}` : ''}
-                                    style={{ color: (authorNameEffect && authorNameEffect !== 'none') ? undefined : (msgRole?.color || 'var(--text-primary)'), cursor: 'pointer' }}
+                                    style={{ color: (authorNameEffect && authorNameEffect !== 'none') ? undefined : roleInk(msgRole?.color), cursor: 'pointer' }}
                                     onClick={() => {
                                       if (currentSpace) {
                                         const memRoles = memberRoleMap[message.author_id] || []
@@ -503,7 +504,7 @@ export const MessageList = memo(function MessageList({
                                   fontWeight: 700, 
                                   padding: '1px 6px', 
                                   borderRadius: '4px', 
-                                  color: msgRole.color, 
+                                  color: roleInk(msgRole.color),
                                   background: `${msgRole.color}18`, 
                                   border: `1px solid ${msgRole.color}44` 
                                 }}

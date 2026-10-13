@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { buildWatchdogSpawn } from './updateRelaunch.js'
+import { buildNoticeWindowScript } from './updateNotice.js'
 
 // Volta automática para a versão anterior quando uma atualização não abre.
 //
@@ -171,21 +172,9 @@ export function buildRollbackScript({ exePath, installerPath, downloadUrl, logFi
     `$logFile = '${quote(logFile || '')}'`,
     'function Log($m) { if ($logFile) { try { [IO.File]::AppendAllText($logFile, (Get-Date).ToUniversalTime().ToString("o") + " volta: " + $m + "`n", (New-Object Text.UTF8Encoding($false))) } catch {} } }',
     `Log "iniciada: desfazendo a ${quote(badVersion)} e voltando para a ${quote(goodVersion)}"`,
-    '$form = $null; $label = $null',
-    'try {',
-    '  Add-Type -AssemblyName System.Windows.Forms, System.Drawing',
-    '  $form = New-Object System.Windows.Forms.Form',
-    "  $form.Text = 'Echo'; $form.FormBorderStyle = 'None'; $form.StartPosition = 'CenterScreen'",
-    '  $form.Size = New-Object System.Drawing.Size(460, 124); $form.TopMost = $true; $form.ShowInTaskbar = $false',
-    '  $form.BackColor = [System.Drawing.Color]::FromArgb(14, 17, 24)',
-    '  $label = New-Object System.Windows.Forms.Label',
-    "  $label.ForeColor = [System.Drawing.Color]::White; $label.Dock = 'Fill'; $label.TextAlign = 'MiddleCenter'",
-    "  $label.Font = New-Object System.Drawing.Font('Segoe UI', 10.5)",
-    '  $form.Controls.Add($label); $form.Show()',
-    '} catch { $form = $null }',
-    'function Say($t) { if ($label) { $label.Text = $t; [System.Windows.Forms.Application]::DoEvents() } }',
-    'function Pump($seconds) { for ($i = 0; $i -lt $seconds * 10; $i++) { if ($form) { [System.Windows.Forms.Application]::DoEvents() }; Start-Sleep -Milliseconds 100 } }',
-    `Say "A versão nova do Echo não abriu direito.\`r\`nVoltando para a versão ${quote(goodVersion)}…"`,
+    // O visual do aviso (janela desenhada à mão, com Say/Tick/Pump) está em updateNotice.js
+    ...buildNoticeWindowScript({ width: 540, height: 132, title: 'Voltando para a versão anterior…', subtitle: '' }),
+    `Say 'A versão nova não abriu direito' 'Voltando para a versão ${quote(goodVersion)} do Echo…'`,
     '$name = [IO.Path]::GetFileNameWithoutExtension($exe)',
     '$deadline = (Get-Date).AddSeconds(30)',
     'while ((Get-Date) -lt $deadline -and (Get-Process -Name $name -ErrorAction SilentlyContinue)) { Pump 1 }',
@@ -193,21 +182,21 @@ export function buildRollbackScript({ exePath, installerPath, downloadUrl, logFi
     'try {',
     '  if (-not $installer -or -not (Test-Path -LiteralPath $installer)) {',
     '    Log ("sem cópia local do instalador; baixando " + $url)',
-    `    Say "Baixando a versão ${quote(goodVersion)} do Echo…\`r\`nIsso pode levar alguns minutos."`,
+    `    Say 'Baixando a versão ${quote(goodVersion)} do Echo…' 'Isso pode levar alguns minutos.'`,
     "    $installer = Join-Path $env:TEMP ('Echo-Rollback-' + [Guid]::NewGuid().ToString('N') + '.exe')",
     '    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12',
     "    $ProgressPreference = 'SilentlyContinue'",
     '    Invoke-WebRequest -Uri $url -OutFile $installer -UseBasicParsing',
     '    Log "instalador baixado"',
     '  } else { Log ("usando a cópia local do instalador: " + $installer) }',
-    `  Say "Instalando a versão ${quote(goodVersion)} do Echo…"`,
+    `  Say 'Instalando a versão ${quote(goodVersion)} do Echo…' 'Suas conversas e configurações não são afetadas.'`,
     "  $process = Start-Process -FilePath $installer -ArgumentList '--updated', '/S', '--force-run' -PassThru",
     '  while (-not $process.HasExited) { Pump 1 }',
     '  Log ("instalador terminou com código " + $process.ExitCode)',
     '  if ($process.ExitCode -ne 0) { throw ("o instalador saiu com código " + $process.ExitCode) }',
     '} catch {',
     '  Log ("FALHOU: " + $_.Exception.Message)',
-    `  Say "Não foi possível voltar automaticamente.\`r\`nBaixe o Echo ${quote(goodVersion)} em github.com/Lag9938/Echo/releases"`,
+    `  Say 'Não foi possível voltar automaticamente' 'Baixe o Echo ${quote(goodVersion)} em github.com/Lag9938/Echo/releases' 'error'`,
     '  Pump 20',
     '  if ($form) { $form.Close() }',
     '  exit 1',

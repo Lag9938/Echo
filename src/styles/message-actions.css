@@ -56,12 +56,12 @@ body .msg-card .message-hover-actions > .hover-action-btn.reply-btn {
   border-radius: 999px;
   font-size: 12.5px;
   font-weight: 800;
-  color: var(--accent-color);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--accent-color) 14%, transparent);
 }
 body .msg-card .message-hover-actions > .hover-action-btn.reply-btn:hover {
   color: #fff;
-  background: var(--accent-color);
+  background: var(--accent-fill);
   box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--accent-color) 80%, transparent);
 }
 
@@ -167,7 +167,7 @@ body .msg-card .msg-more-pop .hover-action-btn:hover {
   transform: none;
 }
 body .msg-card .msg-more-pop .hover-action-btn.delete-btn {
-  color: #dc2626;
+  color: var(--danger-text, #dc2626);
 }
 body .msg-card .msg-more-pop .hover-action-btn.delete-btn:hover {
   background: rgba(239, 68, 68, 0.14);
@@ -213,7 +213,7 @@ body .msg-card .msg-more-pop .hover-action-btn:active {
 }
 body .msg-card .msg-more-pop .hover-action-btn.delete-btn:hover {
   background: rgba(239, 68, 68, 0.14) !important;
-  color: #dc2626 !important;
+  color: var(--danger-text, #dc2626) !important;
   border-color: transparent !important;
 }
 body .msg-card .msg-react-pop .hover-action-btn:hover {

@@ -59,7 +59,7 @@
 
 .settings-menu .menu-item.active {
   background: var(--accent-light);
-  color: var(--accent-color);
+  color: var(--accent-text);
 }
 
 .settings-content {
@@ -185,7 +185,7 @@ body.echo-layout-glass .settings-signout-btn {
   padding: 10px 14px;
   background: rgba(239, 68, 68, 0.08);
   border: 1px solid rgba(239, 68, 68, 0.2);
-  color: #f87171;
+  color: var(--danger-text, #f87171);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -197,7 +197,7 @@ body.echo-layout-glass .settings-signout-btn {
 body.echo-layout-glass .settings-signout-btn:hover {
   background: rgba(239, 68, 68, 0.18);
   border-color: rgba(239, 68, 68, 0.4);
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
   transform: translateX(2px);
 }
 

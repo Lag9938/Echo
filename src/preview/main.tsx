@@ -14,6 +14,9 @@ import { FriendsView } from '../views/FriendsView'
 import { SettingsView } from '../views/SettingsView'
 import { EchoShop } from '../components/EchoShop'
 import { UpdateBanner } from '../components/common/UpdateBanner'
+import { useKeyboardActivation } from '../hooks/useKeyboardActivation'
+import { useModalAccessibility } from '../hooks/useModalAccessibility'
+import { FloatingCallPanel } from '../components/voice/FloatingCallPanel'
 import { CosmeticsInventory } from '../components/CosmeticsInventory'
 import { SpaceStudioModal } from '../components/modals/SpaceStudioModal'
 import { MemberProfileModalWrapper } from '../components/modals/MemberProfileModalWrapper'
@@ -210,6 +213,8 @@ function ServerScreen() {
   const [draft, setDraft] = useState('')
   const [showMembers, setShowMembers] = useState(false)
   const [replying, setReplying] = useState<any>(null)
+  const [callMuted, setCallMuted] = useState(false)
+  const [callDeaf, setCallDeaf] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const endRef = useRef<HTMLDivElement | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -290,6 +295,23 @@ function ServerScreen() {
           <TextChannelView {...textProps} />
         </section>
       </section>
+      <FloatingCallPanel
+        channelName="Sala principal"
+        spaceName="Amigos da Madrugada"
+        participants={[
+          { userId: 'me', displayName: 'teste', isSpeaking: false, isMuted: callMuted },
+          { userId: 'u2', displayName: 'Kauê', isSpeaking: true, isMuted: false },
+          { userId: 'u3', displayName: 'Bia', isSpeaking: false, isMuted: true },
+          { userId: 'u4', displayName: 'Duda', isSpeaking: false, isMuted: false }
+        ]}
+        currentUserId="me"
+        isMuted={callMuted}
+        isDeafened={callDeaf}
+        onToggleMute={() => setCallMuted(m => !m)}
+        onToggleDeafen={() => setCallDeaf(d => !d)}
+        onLeave={noop}
+        onReturn={noop}
+      />
     </Frame>
   )
 }
@@ -752,6 +774,8 @@ function Preview() {
     return (SCREENS.map(s => s[0]) as string[]).includes(part) ? (part as ScreenKey) : 'servidor'
   })
 
+  useKeyboardActivation()
+  useModalAccessibility()
   useEffect(() => {
     seedStores()
   }, [])

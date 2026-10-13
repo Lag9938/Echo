@@ -234,7 +234,7 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  background: #10b981;
+  background: #15803d;
   color: #fff;
   font-size: 10px;
   font-weight: 800;
@@ -249,7 +249,7 @@
   position: absolute;
   top: 8px;
   left: 8px;
-  background: linear-gradient(135deg, #ef4444 0%, #ec4899 100%);
+  background: linear-gradient(135deg, #d92222 0%, #ec4899 100%);
   color: #fff;
   font-size: 9px;
   font-weight: 800;
@@ -437,7 +437,7 @@
 }
 
 .picker-audio-badge-rec {
-  background: #10b981;
+  background: #15803d;
   color: #fff;
   font-size: 8.5px;
   font-weight: 600;
@@ -455,7 +455,7 @@
 }
 
 .picker-go-live-btn {
-  background: #10b981;
+  background: #15803d;
   color: #fff;
   border: none;
   padding: 10px 22px;
@@ -479,7 +479,7 @@
 
 .stream-res-badge {
   background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
+  color: var(--ok-text, #10b981);
   border: 1px solid rgba(16, 185, 129, 0.35);
   border-radius: 6px;
   padding: 2px 8px;
@@ -531,7 +531,7 @@
 }
 
 .stream-action-btn.active {
-  background: var(--accent-color) !important;
+  background: var(--accent-fill) !important;
   border-color: var(--accent-color) !important;
   color: #fff !important;
 }
@@ -559,7 +559,7 @@
 }
 .screen-picker-capture-mode em {
   font-style: normal;
-  color: #f59e0b;
+  color: var(--warn-text, #f59e0b);
 }
 .picker-close-btn {
   padding: 9px 20px;
@@ -686,7 +686,7 @@
   padding: 2px 7px;
   border-radius: 6px;
   background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
+  color: var(--danger-text, #f87171);
   border: 1px solid rgba(239, 68, 68, 0.3);
   display: inline-flex;
   align-items: center;
@@ -707,7 +707,7 @@
 }
 .stream-tab-btn.active .stream-tab-live-badge {
   background: rgba(239, 68, 68, 0.22);
-  color: #fca5a5;
+  color: var(--danger-text, #fca5a5);
   border-color: rgba(239, 68, 68, 0.5);
 }
 .streams-view-mode-toggles {
@@ -772,13 +772,13 @@
 .stream-control-btn.pip-active {
   background: rgba(0, 242, 254, 0.14);
   border-color: rgba(0, 242, 254, 0.55);
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
   box-shadow: 0 0 12px rgba(0, 242, 254, 0.2);
 }
 .stream-control-btn.stop-btn {
   background: rgba(239, 68, 68, 0.12);
   border-color: rgba(239, 68, 68, 0.35);
-  color: #f87171;
+  color: var(--danger-text, #f87171);
 }
 .stream-control-btn.stop-btn:hover {
   background: rgba(239, 68, 68, 0.25);
@@ -896,7 +896,7 @@
 .local-stream-preview-toggle-btn:hover {
   background: var(--bg-hover, rgba(255, 255, 255, 0.1));
   border-color: var(--accent-color);
-  color: var(--accent-color);
+  color: var(--accent-text);
   transform: translateY(-1px);
 }
 
@@ -921,7 +921,7 @@ body.light-theme .local-stream-preview-toggle-btn {
 body.light-theme .local-stream-preview-toggle-btn:hover {
   background: var(--bg-primary);
   border-color: var(--accent-color);
-  color: var(--accent-color);
+  color: var(--accent-text);
 }
 
 /* ── Unified Floating Glass Cinema Bar (Echo Style) ───────────────────── */
@@ -1007,7 +1007,7 @@ body.light-theme .stream-unified-glass-bar {
   gap: 6px;
   background: rgba(239, 68, 68, 0.15);
   border: 1px solid rgba(239, 68, 68, 0.4);
-  color: #f87171;
+  color: var(--danger-text, #f87171);
   padding: 4px 9px;
   border-radius: 8px;
   font-size: 11px;
@@ -1080,7 +1080,7 @@ body.light-theme .stream-avatar-circle {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   font-weight: 700;
-  color: var(--accent-color, #38bdf8);
+  color: var(--accent-text);
   user-select: none;
   white-space: nowrap;
 }
@@ -1088,7 +1088,7 @@ body.light-theme .stream-avatar-circle {
 body.light-theme .stream-quality-pill {
   background: rgba(0, 0, 0, 0.05);
   border-color: rgba(0, 0, 0, 0.06);
-  color: var(--accent-color, #0284c7);
+  color: var(--accent-text);
 }
 
 /* Actions Pod (Direita com Squircles Uniformes) */
@@ -1143,11 +1143,11 @@ body.light-theme .stream-squircle-btn:hover {
 .stream-squircle-btn.active {
   background: rgba(56, 189, 248, 0.2);
   border-color: var(--accent-color, #38bdf8);
-  color: var(--accent-color, #38bdf8);
+  color: var(--accent-text);
 }
 
 .stream-squircle-btn.fps-boost-btn {
-  color: #34d399;
+  color: var(--ok-text, #34d399);
   background: rgba(16, 185, 129, 0.12);
   border-color: rgba(16, 185, 129, 0.3);
 }
@@ -1155,17 +1155,17 @@ body.light-theme .stream-squircle-btn:hover {
 .stream-squircle-btn.fps-boost-btn:hover {
   background: rgba(16, 185, 129, 0.22);
   border-color: #34d399;
-  color: #34d399;
+  color: var(--ok-text, #34d399);
 }
 
 .stream-squircle-btn.exit-btn {
   background: rgba(239, 68, 68, 0.16);
   border-color: rgba(239, 68, 68, 0.35);
-  color: #f87171;
+  color: var(--danger-text, #f87171);
 }
 
 .stream-squircle-btn.exit-btn:hover {
-  background: #ef4444;
+  background: #d92222;
   border-color: #ef4444;
   color: #ffffff;
   box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
@@ -1240,14 +1240,14 @@ body.light-theme .stream-volume-icon {
   font-size: 11px;
   font-family: 'JetBrains Mono', monospace;
   font-weight: 700;
-  color: var(--accent-color, #38bdf8);
+  color: var(--accent-text);
   min-width: 32px;
   text-align: right;
   user-select: none;
 }
 
 body.light-theme .stream-volume-pct {
-  color: var(--accent-color, #0284c7);
+  color: var(--accent-text);
 }
 
 .stream-glass-sep {
@@ -1350,7 +1350,7 @@ body.light-theme .stream-stats-hud-overlay {
   align-items: center;
   justify-content: space-between;
   font-size: 12.5px;
-  color: var(--accent-color, #38bdf8);
+  color: var(--accent-text);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding-bottom: 8px;
   margin-bottom: 10px;
@@ -1435,7 +1435,7 @@ body.light-theme .stats-row strong {
 .stream-action-btn.active {
   background: rgba(0, 242, 254, 0.18);
   border-color: rgba(0, 242, 254, 0.5);
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
 }
 .fullscreen-toggle-btn {
   background: transparent;
@@ -1575,7 +1575,7 @@ body.light-theme .stats-row strong {
   gap: 5px;
   font-size: 9.5px;
   font-weight: 700;
-  color: #ff4655;
+  color: var(--danger-text, #ff4655);
   letter-spacing: 0.5px;
   background: rgba(255, 70, 85, 0.18);
   border: 1px solid rgba(255, 70, 85, 0.4);
@@ -1688,7 +1688,7 @@ body.light-theme .stats-row strong {
 .echo-pip-vol-text {
   font-size: 10px;
   font-weight: 700;
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
   min-width: 28px;
   font-family: monospace;
 }
@@ -1697,7 +1697,7 @@ body.light-theme .stats-row strong {
 .picker-config-chip.pro-locked {
   border-color: rgba(245, 158, 11, 0.4) !important;
   background: rgba(245, 158, 11, 0.08) !important;
-  color: #fbbf24 !important;
+  color: var(--warn-text, #fbbf24) !important;
   cursor: pointer !important;
   transition: all 0.2s ease;
 }
