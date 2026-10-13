@@ -27,6 +27,7 @@ import { PeerBoost } from './audio/peerBoost'
 import { playJoinSound, playLeaveSound, playSoundboardEffect } from './soundEffects'
 import { trackVoiceJoined, trackVoiceLeft, trackVoiceJoinProblem, trackScreenShareStarted, trackScreenShareStopped, trackScreenShareWatched } from './analytics'
 import { DUPLICATE_SESSION_NOTICE, describeMicrophoneError, describeVoiceJoinError } from './voiceJoinErrors'
+import { releaseAllScreenShare, stopCaptureStream } from './screenShareCleanup'
 import { installPresenceTrackThrottle } from './presenceThrottle'
 import { isMusicBotIdentity, parseMusicBotState, encodeMusicBotVolume, MUSIC_BOT_CONTROL_TOPIC } from './musicBotState'
 import { useMusicBotStore } from '../stores/useMusicBotStore'
@@ -899,24 +900,15 @@ export function useVoiceChannel(options?: {
   // Stop screen share
   const stopScreenShare = useCallback(() => {
     const room = roomRef.current
-    if (localScreenVideoTrackRef.current) {
-      if (room) {
-        room.localParticipant.unpublishTrack(localScreenVideoTrackRef.current).catch(() => {})
-      }
-      localScreenVideoTrackRef.current.stop()
-      localScreenVideoTrackRef.current = null
-    }
-    if (localScreenAudioTrackRef.current) {
-      if (room) {
-        room.localParticipant.unpublishTrack(localScreenAudioTrackRef.current).catch(() => {})
-      }
-      localScreenAudioTrackRef.current.stop()
-      localScreenAudioTrackRef.current = null
-    }
+    // Tira do ar TUDO que está publicado como tela, não só a última faixa lembrada (lib/screenShareCleanup.ts)
+    releaseAllScreenShare(room?.localParticipant as any, [localScreenVideoTrackRef.current, localScreenAudioTrackRef.current])
+    localScreenVideoTrackRef.current = null
+    localScreenAudioTrackRef.current = null
     if (nativeAudioCleanupRef.current) {
       try { nativeAudioCleanupRef.current() } catch (e) {}
       nativeAudioCleanupRef.current = null
     }
+    stopCaptureStream(localScreenStreamRef.current)
     localScreenStreamRef.current = null
     setLocalScreenStream(null)
 
@@ -1985,6 +1977,18 @@ export function useVoiceChannel(options?: {
     }
 
     try {
+      // Já havia uma transmissão ("Mudar de Janela"): encerra a anterior antes de capturar a nova. Sem isto a
+      // antiga ficava publicada para sempre, mesmo depois de "Parar Transmissão".
+      releaseAllScreenShare(room.localParticipant as any, [localScreenVideoTrackRef.current, localScreenAudioTrackRef.current])
+      localScreenVideoTrackRef.current = null
+      localScreenAudioTrackRef.current = null
+      if (localScreenStreamRef.current) {
+        stopCaptureStream(localScreenStreamRef.current)
+        localScreenStreamRef.current = null
+        // Se a captura nova falhar, a tela não pode continuar dizendo que há transmissão
+        setLocalScreenStream(null)
+      }
+
       if (nativeAudioCleanupRef.current) {
         try { nativeAudioCleanupRef.current() } catch (e) {}
         nativeAudioCleanupRef.current = null
@@ -2293,6 +2297,14 @@ export function useVoiceChannel(options?: {
             ...screenSharePublishEncoding(calculatedBitrate, targetFps),
             degradationPreference: 'maintain-framerate'
           })
+
+          // A pessoa parou (ou trocou de tela) enquanto esta publicação ainda era negociada: ela acabou de
+          // entrar no ar depois do "parar". Tira agora, em vez de deixar uma transmissão que ninguém controla.
+          if (localScreenVideoTrackRef.current !== localVideoTrack) {
+            releaseAllScreenShare(null, [localVideoTrack])
+            room.localParticipant.unpublishTrack(localVideoTrack, true).catch(() => {})
+            return
+          }
 
           screenShareStartTimeRef.current = Date.now()
           streamSessionRef.current = createStreamSession(targetFps)
