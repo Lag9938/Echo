@@ -131,7 +131,7 @@
   gap: 8px;
   background: rgba(16, 185, 129, 0.15);
   border: 1px solid rgba(16, 185, 129, 0.4);
-  color: #34d399;
+  color: var(--ok-text, #34d399);
   font-size: 12.5px;
   font-weight: 600;
   padding: 6px 14px;
@@ -396,31 +396,31 @@
 
 .badge-owner {
   background: rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
+  color: var(--warn-text, #fbbf24);
   border: 1px solid rgba(245, 158, 11, 0.5);
   box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
 }
 .badge-vip {
   background: rgba(168, 85, 247, 0.2);
-  color: #c084fc;
+  color: var(--violet-text, #c084fc);
   border: 1px solid rgba(168, 85, 247, 0.5);
   box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
 }
 .badge-early {
   background: rgba(16, 185, 129, 0.2);
-  color: #34d399;
+  color: var(--ok-text, #34d399);
   border: 1px solid rgba(16, 185, 129, 0.5);
   box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
 }
 .badge-gamer {
   background: rgba(239, 68, 68, 0.2);
-  color: #f87171;
+  color: var(--danger-text, #f87171);
   border: 1px solid rgba(239, 68, 68, 0.5);
   box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
 }
 .badge-podcaster {
   background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  color: var(--info-text, #60a5fa);
   border: 1px solid rgba(59, 130, 246, 0.5);
   box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
 }
@@ -440,7 +440,7 @@
 }
 
 .echo-status-wave {
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
 }
 
 .echo-status-text {
@@ -570,7 +570,7 @@
 
 .echo-editor-tab-btn.active {
   background: var(--accent-light);
-  color: var(--accent-color);
+  color: var(--accent-text);
   border: 1px solid rgba(223, 109, 93, 0.25);
   box-shadow: 0 2px 8px rgba(223, 109, 93, 0.12);
 }
@@ -1039,13 +1039,13 @@
 
 .echo-badge-status-pill.unlocked {
   background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
+  color: var(--ok-text, #34d399);
   border: 1px solid rgba(16, 185, 129, 0.35);
 }
 
 .echo-badge-status-pill.locked {
   background: rgba(239, 68, 68, 0.12);
-  color: #fca5a5;
+  color: var(--danger-text, #fca5a5);
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
@@ -1140,7 +1140,7 @@
 }
 
 .floating-save-btn {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #15803d 0%, #059669 100%);
   border: none;
   color: #fff;
   font-size: 13.5px;
@@ -1571,7 +1571,7 @@
   z-index: 10;
   font-size: 12px;
   font-weight: 600;
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
 }
 
 .sticker-loading-spinner {
@@ -1597,7 +1597,7 @@
   z-index: 20;
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
   pointer-events: none;
 }
 
@@ -1694,7 +1694,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
   font-size: 16px;
   font-weight: 700;
 }
@@ -1702,7 +1702,7 @@
 .create-tile-label {
   font-size: 10px;
   font-weight: 700;
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
 }
 
 .sticker-item {
@@ -1751,7 +1751,7 @@
   height: 18px;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.75);
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
   border: 1px solid rgba(239, 68, 68, 0.4);
   font-size: 11px;
   font-weight: 700;
@@ -1769,7 +1769,7 @@
 }
 
 .sticker-delete-btn:hover {
-  background: #ef4444;
+  background: #d92222;
   color: #ffffff;
   transform: scale(1.1);
 }
@@ -1804,7 +1804,7 @@ body.echo-layout-glass .profile-saved-toast {
   backdrop-filter: blur(16px) !important;
   -webkit-backdrop-filter: blur(16px) !important;
   box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25) !important;
-  color: #34d399 !important;
+  color: var(--ok-text, #34d399) !important;
   border-radius: 12px !important;
   font-weight: 700 !important;
 }

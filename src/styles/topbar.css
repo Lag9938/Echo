@@ -485,7 +485,7 @@
   border-radius: 11px;
   border-style: solid;
   border-color: var(--accent-color, #00f2fe);
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
   background: rgba(0, 242, 254, 0.1);
   transform: scale(1.06);
   box-shadow: 0 3px 12px rgba(0, 242, 254, 0.2);
@@ -639,7 +639,7 @@
 }
 .topbar-icon-btn.active {
   background: rgba(0, 242, 254, 0.12);
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
   border-color: rgba(0, 242, 254, 0.38);
   box-shadow: 0 0 16px rgba(0, 242, 254, 0.22), inset 0 0 8px rgba(0, 242, 254, 0.08);
   animation: topbarTabActivate 0.36s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -733,11 +733,11 @@
 .topbar-icon-btn:hover .compass-needle {
   transform: rotate(180deg);
   fill-opacity: 0.6;
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
 }
 .topbar-icon-btn.active .compass-needle {
   animation: topbarCompassActive 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
   fill-opacity: 0.7;
 }
 
@@ -836,11 +836,11 @@
 }
 .topbar-icon-btn:hover .icon-gear {
   transform: rotate(90deg) scale(1.14);
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
 }
 .topbar-icon-btn.active .icon-gear {
   animation: topbarGearSpin 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
 }
 
 @keyframes topbarGearSpin {
@@ -858,10 +858,10 @@
 }
 .topbar-pin-btn:hover .icon-pin {
   transform: rotate(-18deg) scale(1.14);
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
 }
 .topbar-pin-btn.pinned {
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
   background: rgba(0, 242, 254, 0.12);
   border-color: rgba(0, 242, 254, 0.28);
 }

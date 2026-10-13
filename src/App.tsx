@@ -39,6 +39,9 @@ import { TopBar } from './components/navigation/TopBar'
 import { WindowControls } from './components/navigation/WindowControls'
 import { ChannelsSidebar } from './components/sidebar/ChannelsSidebar'
 import { VoiceMiniOverlay } from './components/voice/VoiceMiniOverlay'
+import { FloatingCallPanel, shouldShowFloatingCall } from './components/voice/FloatingCallPanel'
+import { useKeyboardActivation } from './hooks/useKeyboardActivation'
+import { useModalAccessibility } from './hooks/useModalAccessibility'
 import { EchoFloatingMiniPlayer } from './components/streaming/EchoFloatingMiniPlayer'
 
 // Lazy-loaded heavy views and modals for instant initial bundle loading
@@ -539,6 +542,8 @@ function Echo({ user }: { user: User }) {
     setChatDensity,
     performanceMode,
     setPerformanceMode,
+    motionPreference,
+    setMotionPreference,
     sidebarLayout,
     setSidebarLayout,
     handleEquipDecoration,
@@ -1211,6 +1216,11 @@ function Echo({ user }: { user: User }) {
     useUIStore.getState().setTopbarPinned(topbarPinned)
   }, [topbarPinned])
 
+  // Cartões e linhas clicáveis (que não são <button>) passam a ser alcançados por Tab e acionados por Enter/Espaço
+  useKeyboardActivation()
+  // Janelas (modais): anunciadas como diálogo, com foco dentro, Tab preso nelas e foco devolvido ao fechar
+  useModalAccessibility()
+
   const handleWatchUserStream = useCallback((channel: Channel, userId: string) => {
     setSelectedChannel(channel)
     if (activeVoiceChannelId !== channel.id || !isConnected) {
@@ -1761,6 +1771,31 @@ function Echo({ user }: { user: User }) {
         onCancel={cancelVoiceReconnect}
       />
 
+      {/* Painel flutuante: continua mostrando quem fala quando você sai da tela da chamada */}
+      {activeVoiceChannel && shouldShowFloatingCall({
+        isConnected,
+        activeVoiceChannelId,
+        page,
+        selectedChannelId: selectedChannel?.id
+      }) && (
+        <FloatingCallPanel
+          channelName={activeVoiceChannel.name}
+          spaceName={spaces.find(s => s.id === activeVoiceChannel.space_id)?.name}
+          participants={participants}
+          currentUserId={user.id}
+          isMuted={isMuted}
+          isDeafened={isDeafened}
+          onToggleMute={handleToggleMute}
+          onToggleDeafen={handleToggleDeafen}
+          onLeave={handleLeaveVoice}
+          onReturn={() => {
+            setExpandedSpace(activeVoiceChannel.space_id)
+            setSelectedChannel(activeVoiceChannel)
+            setPage('Servidores')
+          }}
+        />
+      )}
+
       <TopBar
         showTopbar={showTopbar}
         hideTopbar={hideTopbar}
@@ -2253,6 +2288,8 @@ function Echo({ user }: { user: User }) {
             onChatDensityChange={setChatDensity}
             performanceMode={performanceMode}
             onPerformanceModeChange={setPerformanceMode}
+            motionPreference={motionPreference}
+            onMotionPreferenceChange={setMotionPreference}
             sidebarLayout={sidebarLayout}
             onSidebarLayoutChange={setSidebarLayout}
             pttModeSetting={pttModeSetting}

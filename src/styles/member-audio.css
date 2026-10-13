@@ -40,7 +40,7 @@
   place-items: center;
   font-size: 18px;
   font-weight: 700;
-  color: var(--accent-color);
+  color: var(--accent-text);
   background: var(--accent-light);
 }
 
@@ -126,7 +126,7 @@
   color: var(--text-primary);
 }
 
-.member-audio-value.boosted { color: #f59e0b; }
+.member-audio-value.boosted { color: var(--warn-text, #f59e0b); }
 .member-audio-value.muted { color: var(--text-muted); }
 
 .member-audio-value.small {
@@ -135,7 +135,7 @@
   color: var(--text-muted);
 }
 
-.member-audio-value.small.active { color: var(--accent-color); }
+.member-audio-value.small.active { color: var(--accent-text); }
 
 /* Volume: botão de silenciar + controle */
 .member-audio-slider-row {
@@ -164,7 +164,7 @@
 }
 
 .member-audio-mute.active {
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
   border-color: color-mix(in srgb, #ef4444 45%, var(--border-color));
   background: color-mix(in srgb, #ef4444 10%, var(--bg-secondary));
 }
@@ -265,7 +265,7 @@
 .member-audio-chip:hover { color: var(--text-primary); border-color: var(--text-muted); }
 
 .member-audio-chip.active {
-  color: var(--accent-color);
+  color: var(--accent-text);
   background: var(--accent-light);
   border-color: var(--accent-color);
 }
@@ -334,14 +334,14 @@
 .member-audio-btn.primary {
   flex: 0 0 auto;
   color: #fff;
-  background: var(--accent-color);
+  background: var(--accent-fill);
   border-color: var(--accent-color);
 }
 
 .member-audio-btn.primary:hover:not(:disabled) { background: var(--accent-hover, var(--accent-color)); }
 
 .member-audio-btn.danger {
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
   border-color: color-mix(in srgb, #ef4444 35%, var(--border-color));
   background: color-mix(in srgb, #ef4444 8%, var(--bg-secondary));
 }
@@ -352,12 +352,12 @@
 
 .member-audio-btn.danger.confirm {
   color: #fff;
-  background: #ef4444;
+  background: #d92222;
   border-color: #ef4444;
 }
 
 .member-audio-btn.danger.done {
-  color: #22c55e;
+  color: var(--ok-text, #22c55e);
   border-color: color-mix(in srgb, #22c55e 40%, var(--border-color));
   background: color-mix(in srgb, #22c55e 10%, var(--bg-secondary));
 }

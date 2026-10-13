@@ -1,4 +1,5 @@
 import React from 'react'
+import { roleInk } from '../../lib/accentContrast'
 import type { User } from '@supabase/supabase-js'
 import type { Space, Channel, ServerRole } from '../../types'
 import { UserPlusIcon, CrownIcon, VolumeIcon, SearchIcon, ChevronDownIcon } from '../icons'
@@ -364,7 +365,7 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
               <span 
                 className="member-badge role" 
                 style={{ 
-                  color: memberRole.color, 
+                  color: roleInk(memberRole.color), 
                   borderColor: `${memberRole.color}44`, 
                   background: `${memberRole.color}15` 
                 }}
@@ -596,7 +597,7 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
                 </div>
                 <span
                   className="members-group-count-pill"
-                  style={{ color: b.role.color, borderColor: `${b.role.color}35`, background: `${b.role.color}15` }}
+                  style={{ color: roleInk(b.role.color), borderColor: `${b.role.color}35`, background: `${b.role.color}15` }}
                 >
                   {b.members.length}
                 </span>

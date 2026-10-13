@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { THEMES, DEFAULT_THEME_ID } from '../lib/themes'
+import { accentVariants } from '../lib/accentContrast'
+import { readMotionPreference, type MotionPreference } from '../lib/motionPreference'
 import { buildPresencePayload } from '../lib/presencePayload'
 
 export interface UseEchoCosmeticsOptions {
@@ -101,6 +103,12 @@ export function useEchoCosmetics({
       const glow = `0 0 16px rgba(${r}, ${g}, ${b}, 0.45)`
       const rgbStr = `${r}, ${g}, ${b}`
 
+      // Variações que garantem leitura com a cor escolhida (botões com texto branco; destaque usado como texto)
+      const variants = accentVariants(color, theme === 'light' ? 'light' : 'dark')
+      document.body.style.setProperty('--accent-fill-top', variants.fillTop, 'important')
+      document.body.style.setProperty('--accent-fill', variants.fill, 'important')
+      document.body.style.setProperty('--accent-text', variants.text, 'important')
+
       document.body.style.setProperty('--accent-color', color, 'important')
       document.body.style.setProperty('--accent-hover', color, 'important')
       document.body.style.setProperty('--accent-light', light, 'important')
@@ -117,7 +125,7 @@ export function useEchoCosmetics({
     if (customAccentColor) {
       applyAccent(customAccentColor)
     } else {
-      ['--accent-color', '--accent-hover', '--accent-light', '--accent-glow', '--accent-color-rgb'].forEach(prop => {
+      ['--accent-color', '--accent-hover', '--accent-light', '--accent-glow', '--accent-color-rgb', '--accent-fill-top', '--accent-fill', '--accent-text'].forEach(prop => {
         document.body.style.removeProperty(prop)
         document.documentElement.style.removeProperty(prop)
       })
@@ -134,6 +142,14 @@ export function useEchoCosmetics({
     }
     localStorage.setItem('echo-chat-density', chatDensity)
   }, [chatDensity])
+
+  // Reduzir movimento: 'system' segue a preferência do sistema; 'reduce' e 'full' forçam (ver accessibility.css)
+  const [motionPreference, setMotionPreference] = useState<MotionPreference>(() => readMotionPreference())
+  useEffect(() => {
+    document.body.classList.toggle('reduce-motion', motionPreference === 'reduce')
+    document.body.classList.toggle('motion-full', motionPreference === 'full')
+    try { localStorage.setItem('echo-motion', motionPreference) } catch { /* sem armazenamento: só não lembra */ }
+  }, [motionPreference])
 
   // Performance Mode
   useEffect(() => {
@@ -347,6 +363,8 @@ export function useEchoCosmetics({
     setChatDensity,
     performanceMode,
     setPerformanceMode,
+    motionPreference,
+    setMotionPreference,
     sidebarLayout,
     setSidebarLayout,
     handleEquipDecoration,

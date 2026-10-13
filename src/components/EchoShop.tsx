@@ -16,6 +16,7 @@ import {
   type UserInventory
 } from '../lib/cosmeticsData'
 import { ProfileEffect } from './ProfileEffect'
+import { badgeStyle } from '../lib/accentContrast'
 import { DecoratedAvatar } from './DecoratedAvatar'
 import { AvatarDecoration } from './AvatarDecoration'
 import {
@@ -372,7 +373,7 @@ export function EchoShop({
                         status="online"
                       />
                     </div>
-                    <div className="echo-shop-card-badge" style={{ backgroundColor: item.themeColor }}>
+                    <div className="echo-shop-card-badge" style={badgeStyle(item.themeColor)}>
                       {item.badge}
                     </div>
                     {isAcquired && (
@@ -527,7 +528,7 @@ export function EchoShop({
                 >
                   <div className="echo-shop-card-visualizer effect-visualizer">
                     <ProfileEffect effectId={effect.id} />
-                    <div className="echo-shop-card-badge" style={{ backgroundColor: effect.themeColor }}>
+                    <div className="echo-shop-card-badge" style={badgeStyle(effect.themeColor)}>
                       {effect.badge}
                     </div>
                     {isAcquired && (
@@ -655,7 +656,7 @@ export function EchoShop({
                         />
                       </div>
                     </div>
-                    <div className="echo-shop-card-badge" style={{ backgroundColor: aura.color, color: aura.id === 'aura-stealth' ? '#111' : '#fff' }}>
+                    <div className="echo-shop-card-badge" style={badgeStyle(aura.color)}>
                       {aura.badge}
                     </div>
                     {isAcquired && (
@@ -783,7 +784,7 @@ export function EchoShop({
                         <span className="art-line desc" />
                       </div>
                     </div>
-                    <div className="echo-shop-card-badge" style={{ backgroundColor: '#475569' }}>
+                    <div className="echo-shop-card-badge" style={badgeStyle('#475569')}>
                       {finish.badge}
                     </div>
                     {isAcquired && (

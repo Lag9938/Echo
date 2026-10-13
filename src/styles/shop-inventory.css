@@ -115,7 +115,7 @@
 
 .echo-shop-close-btn:hover {
   background: rgba(239, 68, 68, 0.14);
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
   transform: rotate(90deg);
 }
 
@@ -160,7 +160,7 @@
 }
 
 .echo-shop-main-tab.active {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color));
+  background: linear-gradient(180deg, var(--accent-fill-top), var(--accent-fill));
   color: #fff;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -8px color-mix(in srgb, var(--accent-color) 80%, transparent);
 }
@@ -234,7 +234,7 @@
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--accent-color);
+  color: var(--accent-text);
 }
 
 .echo-shop-preview-name {
@@ -292,7 +292,7 @@
 
 .echo-shop-action-btn.primary,
 .echo-shop-action-btn.acquire {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color));
+  background: linear-gradient(180deg, var(--accent-fill-top), var(--accent-fill));
   color: #fff;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -8px color-mix(in srgb, var(--accent-color) 80%, transparent);
 }
@@ -312,13 +312,13 @@
 .echo-shop-action-btn.secondary:hover {
   background: rgba(239, 68, 68, 0.12);
   border-color: rgba(239, 68, 68, 0.35);
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
 }
 
 .echo-shop-action-btn.active {
   background: rgba(34, 197, 94, 0.15);
   border: 1px solid rgba(34, 197, 94, 0.4);
-  color: #16a34a;
+  color: var(--ok-text, #16a34a);
   cursor: default;
 }
 
@@ -354,7 +354,7 @@
 }
 
 .echo-shop-cat-btn.active {
-  background: var(--accent-color);
+  background: var(--accent-fill);
   border-color: transparent;
   color: #fff;
   box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--accent-color) 70%, transparent);
@@ -414,7 +414,7 @@
   border-radius: 999px;
   font-size: 10px;
   font-weight: 800;
-  color: #fff;
+  color: var(--badge-ink, #fff);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   z-index: 5;
@@ -439,7 +439,7 @@
   font-weight: 700;
   background: rgba(34, 197, 94, 0.18);
   border: 1px solid rgba(34, 197, 94, 0.4);
-  color: #16a34a;
+  color: var(--ok-text, #16a34a);
   z-index: 5;
   width: fit-content !important;
   max-width: calc(50% - 14px) !important;
@@ -502,13 +502,13 @@
 }
 
 .echo-shop-equip-btn:hover {
-  background: var(--accent-color);
+  background: var(--accent-fill);
   border-color: transparent;
   color: #fff;
 }
 
 .echo-shop-equip-btn.acquire-btn {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color));
+  background: linear-gradient(180deg, var(--accent-fill-top), var(--accent-fill));
   color: #fff;
   border: 0;
   box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--accent-color) 70%, transparent);
@@ -517,7 +517,7 @@
 .echo-shop-equip-btn.equipped {
   background: rgba(34, 197, 94, 0.14);
   border-color: rgba(34, 197, 94, 0.4);
-  color: #16a34a;
+  color: var(--ok-text, #16a34a);
   cursor: default;
 }
 
@@ -606,7 +606,7 @@
   font-size: 13px;
   font-weight: 800;
   color: #fff;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color));
+  background: linear-gradient(180deg, var(--accent-fill-top), var(--accent-fill));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -8px color-mix(in srgb, var(--accent-color) 80%, transparent);
   cursor: pointer;
   transition: transform 0.15s ease;
@@ -656,7 +656,7 @@
 }
 
 .echo-inv-tab.active {
-  background: var(--accent-color);
+  background: var(--accent-fill);
   color: #fff;
   box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent-color) 75%, transparent);
 }
@@ -700,7 +700,7 @@
   font-size: 10.5px;
   font-weight: 800;
   letter-spacing: 0.08em;
-  color: var(--accent-color);
+  color: var(--accent-text);
   text-transform: uppercase;
 }
 
@@ -727,7 +727,7 @@
   font-size: 13px;
   font-weight: 800;
   color: #fff;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color));
+  background: linear-gradient(180deg, var(--accent-fill-top), var(--accent-fill));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 6px 16px -6px color-mix(in srgb, var(--accent-color) 75%, transparent);
   cursor: pointer;
 }
@@ -753,7 +753,7 @@
 .echo-stage-btn-unequip:hover {
   background: rgba(239, 68, 68, 0.14);
   border-color: rgba(239, 68, 68, 0.35);
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
 }
 
 /* Cards de itens do inventário */
@@ -874,7 +874,7 @@ body.light-theme.echo-layout-glass .echo-shop-main-tab:hover {
 
 body.light-theme .echo-shop-main-tab.active,
 body.light-theme.echo-layout-glass .echo-shop-main-tab.active {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #ffffff !important;
   border: 0 !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -6px rgba(223, 109, 93, 0.5) !important;
@@ -932,7 +932,7 @@ body.light-theme .echo-shop-action-btn.acquire,
 body.light-theme .echo-shop-action-btn.primary,
 body.light-theme.echo-layout-glass .echo-shop-action-btn.acquire,
 body.light-theme.echo-layout-glass .echo-shop-action-btn.primary {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #ffffff !important;
   border: 0 !important;
   border-radius: 999px !important;
@@ -951,7 +951,7 @@ body.light-theme .echo-shop-action-btn.secondary:hover,
 body.light-theme.echo-layout-glass .echo-shop-action-btn.secondary:hover {
   background: rgba(239, 68, 68, 0.12) !important;
   border-color: rgba(239, 68, 68, 0.3) !important;
-  color: #ef4444 !important;
+  color: var(--danger-text, #ef4444) !important;
 }
 
 /* Filtros por Categoria na Loja */
@@ -972,7 +972,7 @@ body.light-theme.echo-layout-glass .echo-shop-cat-btn:hover {
 
 body.light-theme .echo-shop-cat-btn.active,
 body.light-theme.echo-layout-glass .echo-shop-cat-btn.active {
-  background: #df6d5d !important;
+  background: var(--accent-fill) !important;
   border-color: transparent !important;
   color: #ffffff !important;
   box-shadow: 0 4px 14px -4px rgba(223, 109, 93, 0.6) !important;
@@ -1015,7 +1015,7 @@ body.light-theme.echo-layout-glass .echo-shop-equip-btn {
 
 body.light-theme .echo-shop-equip-btn:hover:not(:disabled),
 body.light-theme.echo-layout-glass .echo-shop-equip-btn:hover:not(:disabled) {
-  background: #df6d5d !important;
+  background: var(--accent-fill) !important;
   border-color: transparent !important;
   color: #ffffff !important;
   box-shadow: 0 4px 12px -4px rgba(223, 109, 93, 0.5) !important;
@@ -1023,7 +1023,7 @@ body.light-theme.echo-layout-glass .echo-shop-equip-btn:hover:not(:disabled) {
 
 body.light-theme .echo-shop-equip-btn.acquire-btn,
 body.light-theme.echo-layout-glass .echo-shop-equip-btn.acquire-btn {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #ffffff !important;
   border: 0 !important;
   border-radius: 999px !important;
@@ -1065,7 +1065,7 @@ body.light-theme .echo-shop-mock-profile-card .mock-card-handle {
 /* Botão "Loja Echo" no topo */
 body.light-theme .echo-inventory-shop-btn,
 body.light-theme.echo-layout-glass .echo-inventory-shop-btn {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #ffffff !important;
   border: 0 !important;
   border-radius: 999px !important;
@@ -1093,7 +1093,7 @@ body.light-theme.echo-layout-glass .echo-inv-tab:hover {
 
 body.light-theme .echo-inv-tab.active,
 body.light-theme.echo-layout-glass .echo-inv-tab.active {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #ffffff !important;
   border: 0 !important;
   border-radius: 999px !important;
@@ -1129,7 +1129,7 @@ body.light-theme.echo-layout-glass .echo-custom-checkbox {
 
 body.light-theme .echo-custom-checkbox.checked,
 body.light-theme.echo-layout-glass .echo-custom-checkbox.checked {
-  background: #df6d5d !important;
+  background: var(--accent-fill) !important;
   border-color: #df6d5d !important;
   color: #ffffff !important;
   box-shadow: 0 0 10px rgba(223, 109, 93, 0.35) !important;
@@ -1180,7 +1180,7 @@ body.light-theme.echo-layout-glass .echo-stage-preview-card {
 body.light-theme .echo-stage-item-name,
 body.light-theme.echo-layout-glass .echo-stage-item-name,
 body.light-theme.echo-layout-glass .echo-inv-shop-link-btn {
-  color: var(--accent-color) !important;
+  color: var(--accent-text) !important;
   text-shadow: none !important;
 }
 
@@ -1191,7 +1191,7 @@ body.light-theme.echo-layout-glass .echo-stage-banner-overlay {
 
 body.light-theme .echo-stage-btn-equip,
 body.light-theme.echo-layout-glass .echo-stage-btn-equip {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #ffffff !important;
   border: 0 !important;
   border-radius: 999px !important;
@@ -1202,7 +1202,7 @@ body.light-theme .echo-stage-btn-unequip,
 body.light-theme.echo-layout-glass .echo-stage-btn-unequip {
   background: rgba(239, 68, 68, 0.12) !important;
   border: 1px solid rgba(239, 68, 68, 0.3) !important;
-  color: #dc2626 !important;
+  color: var(--danger-text, #dc2626) !important;
   border-radius: 999px !important;
 }
 
@@ -1289,7 +1289,7 @@ body.theme-aurora-dark .echo-shop-main-tab.active,
 body.theme-aurora-dark.echo-layout-glass .echo-shop-main-tab.active,
 body.theme-aurora-dark .echo-inv-tab.active,
 body.theme-aurora-dark.echo-layout-glass .echo-inv-tab.active {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #ffffff !important;
   border: 0 !important;
   border-radius: 999px !important;
@@ -1320,7 +1320,7 @@ body.theme-aurora-dark .echo-shop-action-btn.acquire,
 body.theme-aurora-dark .echo-shop-equip-btn.acquire-btn,
 body.theme-aurora-dark .echo-inventory-shop-btn,
 body.theme-aurora-dark .echo-stage-btn-equip {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #ffffff !important;
   border: 0 !important;
   border-radius: 999px !important;

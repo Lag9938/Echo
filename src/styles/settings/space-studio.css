@@ -108,7 +108,7 @@
   background: var(--bg-tertiary);
 }
 .settings-tab-btn.active {
-  color: var(--accent-color);
+  color: var(--accent-text);
   border-bottom-color: var(--accent-color);
 }
 
@@ -188,7 +188,7 @@
 }
 .settings-channel-delete-btn:hover {
   background: rgba(223, 109, 93, 0.15);
-  color: var(--accent-color);
+  color: var(--accent-text);
 }
 
 /* ── Inline Create Channel Form ─────────────────── */
@@ -243,7 +243,7 @@
   height: 32px;
   border-radius: 50%;
   overflow: hidden;
-  background: linear-gradient(135deg, var(--accent-color), #c75a4a);
+  background: linear-gradient(135deg, var(--accent-fill), #c75a4a);
   display: grid;
   place-items: center;
   color: #fff;
@@ -293,7 +293,7 @@
 
 .role-badge.role-owner {
   background: rgba(234, 179, 8, 0.15);
-  color: #eab308;
+  color: var(--warn-text, #eab308);
   border: 1px solid rgba(234, 179, 8, 0.3);
 }
 
@@ -416,7 +416,7 @@
 .space-studio-badge {
   font-size: 11px;
   font-weight: 700;
-  color: var(--accent-color);
+  color: var(--accent-text);
   background: rgba(0, 242, 254, 0.1);
   border: 1px solid rgba(0, 242, 254, 0.25);
   padding: 3px 9px;
@@ -897,13 +897,13 @@
 
 .channel-compact-action-btn.active {
   background: rgba(255, 255, 255, 0.12);
-  color: var(--accent-color, #fff);
+  color: var(--accent-text);
   border-color: rgba(255, 255, 255, 0.2);
 }
 
 .channel-compact-action-btn.danger:hover {
   background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
   border-color: rgba(239, 68, 68, 0.3);
 }
 
@@ -1105,7 +1105,7 @@
   border-radius: 8px;
   border: 1px solid rgba(239, 68, 68, 0.4);
   background: rgba(239, 68, 68, 0.12);
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -1191,7 +1191,7 @@
 
 .space-settings-nav-item.active {
   background: var(--accent-light);
-  color: var(--accent-color);
+  color: var(--accent-text);
   font-weight: 700;
 }
 
@@ -1337,7 +1337,7 @@
   width: 56px;
   height: 56px;
   border-radius: 16px;
-  background: linear-gradient(135deg, var(--accent-color), #c75a4a);
+  background: linear-gradient(135deg, var(--accent-fill), #c75a4a);
   display: grid;
   place-items: center;
   color: #fff;
@@ -1539,7 +1539,7 @@
   height: 38px;
   border-radius: 50%;
   overflow: hidden;
-  background: linear-gradient(135deg, var(--accent-color), #c75a4a);
+  background: linear-gradient(135deg, var(--accent-fill), #c75a4a);
   display: grid;
   place-items: center;
   color: #fff;
@@ -1633,7 +1633,7 @@
 
 .invite-message-btn:hover {
   background: var(--accent-light);
-  color: var(--accent-color);
+  color: var(--accent-text);
   border-color: var(--accent-color);
 }
 
@@ -1882,7 +1882,7 @@
 }
 
 .emoji-tab-btn.active {
-  color: var(--accent-color);
+  color: var(--accent-text);
   border-bottom-color: var(--accent-color);
   background: var(--bg-secondary);
 }
@@ -2253,7 +2253,7 @@
 .member-profile-poke-trigger:hover {
   background: linear-gradient(135deg, rgba(234, 179, 8, 0.22), rgba(249, 115, 22, 0.22));
   border-color: rgba(234, 179, 8, 0.5);
-  color: #facc15;
+  color: var(--warn-text, #facc15);
   transform: translateY(-2px);
   box-shadow: 0 4px 14px rgba(234, 179, 8, 0.25);
 }
@@ -2348,11 +2348,11 @@
 }
 
 .member-activity-card.gaming .member-activity-header {
-  color: #4ade80;
+  color: var(--ok-text, #4ade80);
 }
 
 .member-activity-card.voice .member-activity-header {
-  color: #818cf8;
+  color: var(--info-text, #818cf8);
 }
 
 .member-activity-body {
@@ -2523,7 +2523,7 @@
 }
 
 .member-profile-action-btn.primary {
-  background: var(--accent-color);
+  background: var(--accent-fill);
   color: #fff;
 }
 
@@ -2649,7 +2649,7 @@
   border-radius: 8px;
   background: rgba(234, 179, 8, 0.1);
   border: 1px solid rgba(234, 179, 8, 0.3);
-  color: #eab308;
+  color: var(--warn-text, #eab308);
   font-size: 12.5px;
 }
 
@@ -2755,7 +2755,7 @@
 .role-perm-missing {
   display: block;
   margin-top: 2px;
-  color: #eab308;
+  color: var(--warn-text, #eab308);
   font-style: normal;
 }
 
@@ -2811,7 +2811,7 @@
   padding: 8px 14px;
   border-radius: 8px;
   border: none;
-  background: var(--accent-color);
+  background: var(--accent-fill);
   color: #fff;
   font-size: 12.5px;
   font-weight: 700;

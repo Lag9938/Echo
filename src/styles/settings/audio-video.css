@@ -83,7 +83,7 @@
   font-size: 13px;
   font-weight: 700;
   color: #fff;
-  background: var(--accent-color);
+  background: var(--accent-fill);
   transition: all .12s;
 }
 
@@ -171,7 +171,7 @@
 
 .audio-studio-live-badge.active {
   background: rgba(16, 185, 129, 0.16);
-  color: #10b981;
+  color: var(--ok-text, #10b981);
   border: 1px solid rgba(16, 185, 129, 0.4);
   box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
 }
@@ -259,7 +259,7 @@
   font-family: monospace, monospace;
   font-size: 13px;
   font-weight: 800;
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
   letter-spacing: 0.5px;
 }
 
@@ -275,11 +275,11 @@
 }
 
 .vu-level-status.optimal {
-  color: #10b981;
+  color: var(--ok-text, #10b981);
 }
 
 .vu-level-status.peak {
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
 }
 
 /* Noise Gate Interactive Graph Box */
@@ -311,7 +311,7 @@
 }
 
 .gate-threshold-value strong {
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
 }
 
 .noise-gate-visualizer-canvas {
@@ -366,11 +366,11 @@
 }
 
 .gate-zones-legend .zone-cut {
-  color: #f87171;
+  color: var(--danger-text, #f87171);
 }
 
 .gate-zones-legend .zone-pass {
-  color: #34d399;
+  color: var(--ok-text, #34d399);
 }
 
 /* Tech Cards (AI Denoise & Spatial Audio) */
@@ -441,7 +441,7 @@ body.echo-layout-glass .mic-test-btn:hover {
 }
 
 body.echo-layout-glass .mic-test-btn.testing {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  background: linear-gradient(135deg, #d92222 0%, #dc2626 100%) !important;
   color: #fff !important;
   box-shadow: 0 4px 18px rgba(239, 68, 68, 0.45) !important;
 }

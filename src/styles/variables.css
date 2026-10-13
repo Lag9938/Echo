@@ -132,16 +132,43 @@ button, input, textarea, select {
 }
 
 /* ── Echo Aurora Light (pêssego, vidro e coral) ────── */
+/* Variações da cor de destaque que garantem leitura (contraste WCAG AA, 4,5:1):
+   --accent-text   = o destaque usado como TEXTO (links, rótulos ativos);
+   --accent-fill*  = o fundo de botões com texto branco.
+   Aqui o padrão é a própria cor de destaque; os temas Aurora trocam por valores medidos, e quando o usuário
+   escolhe uma cor própria o app calcula as variações (lib/accentContrast.ts). */
+body {
+  --accent-text: var(--accent-color);
+  --accent-fill-top: var(--accent-color);
+  --accent-fill: var(--accent-color);
+  /* Cor de cargo usada como texto (roleInk em lib/accentContrast.ts): mistura com esta tinta */
+  --role-ink-base: #ffffff;
+  --role-mix: 100%;
+}
+
 .light-theme {
   --amber-text: #92400e;
+  /* Cores de TEXTO que o tema antigo escolheu para fundo escuro; no claro viram versões 4,5:1 sobre o vidro */
+  --danger-text: #b91c1c;
+  --warn-text: #92400e;
   --ok-text: #15803d;
+  --info-text: #1d4ed8;
+  --cyan-text: #0e7490;
+  --violet-text: #6d28d9;
+  --pink-text: #be185d;
+  --accent-text: #a23d2c;
+  --accent-fill-top: #c64d3c;
+  --accent-fill: #bf4736;
+  --role-ink-base: #1a1020;
+  --role-mix: 50%;
   --bg-primary: #e4dadd;
   --bg-secondary: #f1eaeb;
   --bg-tertiary: #dcd1d5;
   --border-color: rgba(255, 255, 255, 0.55);
   --text-primary: #2a1f2d;
-  --text-secondary: #5b505f;
-  --text-muted: #8a7f8e;
+  --text-secondary: #4f4554;
+  /* #8a7f8e dava só 2,8–3,8:1 sobre o fundo claro; este passa de 4,5:1 até sobre os cartões mais escuros */
+  --text-muted: #5f5664;
   --accent-color: #df6d5d;
   --accent-hover: #d4564e;
   --accent-light: rgba(223, 109, 93, 0.14);
@@ -173,8 +200,12 @@ button, input, textarea, select {
   --border-color: rgba(255, 255, 255, 0.1);
   --text-primary: #f2edef;
   --text-secondary: #bdb6bb;
-  --text-muted: #8a8489;
+  /* #8a8489 dava 4,1–4,8:1 sobre os cartões; este passa de 5,5:1 */
+  --text-muted: #9a949a;
   --accent-color: #df6d5d;
+  --accent-fill-top: #c64d3c;
+  --accent-fill: #bf4736;
+  --role-mix: 74%;
   --accent-hover: #e88072;
   --accent-light: rgba(223, 109, 93, 0.18);
   --accent-glow: 0 0 16px rgba(223, 109, 93, 0.35);

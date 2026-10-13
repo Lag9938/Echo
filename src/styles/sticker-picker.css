@@ -41,7 +41,7 @@ body .composer .sticker-title-icon {
   place-items: center;
   border-radius: 11px;
   background: color-mix(in srgb, var(--accent-color) 16%, transparent);
-  color: var(--accent-color);
+  color: var(--accent-text);
 }
 body .composer .sticker-title-stack {
   display: flex;
@@ -107,7 +107,7 @@ body .composer .sticker-create-tile {
   border-radius: 18px;
   border: 1.5px dashed color-mix(in srgb, var(--accent-color) 55%, transparent);
   background: color-mix(in srgb, var(--accent-color) 7%, transparent);
-  color: var(--accent-color);
+  color: var(--accent-text);
   transition: background 0.18s ease, transform 0.18s var(--ease-smooth, ease);
 }
 body .composer .sticker-create-tile:hover:not(:disabled) {
@@ -120,13 +120,13 @@ body .composer .create-tile-icon-wrap {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--accent-color);
+  background: var(--accent-fill);
   color: #fff;
 }
 body .composer .create-tile-label {
   font-size: 11.5px;
   font-weight: 700;
-  color: var(--accent-color);
+  color: var(--accent-text);
 }
 
 /* Cartão de cada figurinha */
@@ -231,7 +231,7 @@ body .composer .sticker-create-primary-btn {
   border: 0;
   font-weight: 700;
   color: #fff;
-  background: var(--accent-color);
+  background: var(--accent-fill);
 }
 
 /* Rodapé antigo (a dica agora fica no cabeçalho) */
@@ -360,7 +360,7 @@ body .composer .emoji-tab-btn:hover {
 }
 body .composer .emoji-tab-btn.active {
   color: #fff;
-  background: var(--accent-color);
+  background: var(--accent-fill);
   box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--accent-color) 70%, transparent);
 }
 body .composer .emoji-picker-body {
@@ -481,7 +481,7 @@ body .composer .mention-picker-avatar {
   border-radius: 12px;
   font-size: 14px;
   color: #fff;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-color) 80%, #fff), var(--accent-color));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-fill) 80%, #fff), var(--accent-fill));
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
 }
 body .composer .mention-picker-name {

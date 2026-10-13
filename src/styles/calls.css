@@ -137,7 +137,7 @@
   width: 84px;
   height: 84px;
   border-radius: 50%;
-  background: var(--accent-color);
+  background: var(--accent-fill);
   color: #fff;
   display: flex;
   align-items: center;
@@ -191,19 +191,19 @@
 
 .incoming-call-btn.decline {
   background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .incoming-call-btn.decline:hover {
-  background: #ef4444;
+  background: #d92222;
   color: #ffffff;
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
 }
 
 .incoming-call-btn.accept {
-  background: #22c55e;
+  background: #15803d;
   color: #ffffff;
 }
 
@@ -231,7 +231,7 @@
 
 .dm-call-btn:hover {
   background: var(--accent-light);
-  color: var(--accent-color);
+  color: var(--accent-text);
   border-color: rgba(223, 109, 93, 0.3);
   transform: scale(1.05);
 }
@@ -301,7 +301,7 @@
 
 .direct-call-ctrl-btn.active {
   background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
   border-color: rgba(239, 68, 68, 0.3);
 }
 
@@ -309,7 +309,7 @@
   padding: 6px 12px;
   border-radius: 8px;
   border: none;
-  background: #ef4444;
+  background: #d92222;
   color: #ffffff;
   font-size: 12.5px;
   font-weight: 600;
@@ -345,7 +345,7 @@
   border-radius: 10px;
   border: 1px solid rgba(239, 68, 68, 0.2);
   background: rgba(239, 68, 68, 0.06);
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -355,7 +355,7 @@
 }
 
 .settings-signout-btn:hover {
-  background: #ef4444;
+  background: #d92222;
   color: #ffffff;
   border-color: #ef4444;
   transform: translateY(-1px);
@@ -872,7 +872,7 @@
 /* Settings Sidebar Badge */
 .echo-inv-menu-badge {
   background: linear-gradient(135deg, rgba(0, 242, 254, 0.25), rgba(168, 85, 247, 0.25));
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
   border: 1px solid rgba(0, 242, 254, 0.4);
   font-size: 9px;
   font-weight: 800;
@@ -1083,7 +1083,7 @@
 
 .echo-inv-tab.active .echo-inv-tab-icon {
   opacity: 1;
-  color: #38bdf8;
+  color: var(--info-text, #38bdf8);
 }
 
 .echo-inv-tab-count {
@@ -1219,7 +1219,7 @@
   gap: 6px;
   font-size: 10.5px;
   font-weight: 800;
-  color: #10b981;
+  color: var(--ok-text, #10b981);
   letter-spacing: 0.5px;
 }
 
@@ -1342,7 +1342,7 @@
   font-weight: 800;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: #a855f7;
+  color: var(--violet-text, #a855f7);
   background: rgba(168, 85, 247, 0.15);
   border: 1px solid rgba(168, 85, 247, 0.35);
   padding: 3px 8px;
@@ -1408,7 +1408,7 @@
 }
 
 .echo-stage-item-name {
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
   font-weight: 700;
   max-width: 180px;
   overflow: hidden;
@@ -1463,7 +1463,7 @@
 .echo-stage-btn-unequip {
   background: rgba(239, 68, 68, 0.12);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #f87171;
+  color: var(--danger-text, #f87171);
 }
 
 .echo-stage-btn-unequip:hover {
@@ -1570,7 +1570,7 @@
   font-size: 9px;
   font-weight: 700;
   background: rgba(34, 197, 94, 0.16);
-  color: #4ade80;
+  color: var(--ok-text, #4ade80);
   border: 1px solid rgba(34, 197, 94, 0.4);
   padding: 2px 6px;
   border-radius: 6px;
@@ -1653,7 +1653,7 @@
 
 .echo-inv-badge-deco {
   background: rgba(0, 242, 254, 0.15);
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
 }
 
 .echo-inv-badge-effect {
@@ -1666,7 +1666,7 @@
 
 .echo-inv-badge-finish {
   background: rgba(168, 85, 247, 0.15);
-  color: #c084fc;
+  color: var(--violet-text, #c084fc);
 }
 
 /* Actions inside card */
@@ -1688,7 +1688,7 @@
   align-items: center;
   font-size: 11px;
   font-weight: 700;
-  color: #22c55e;
+  color: var(--ok-text, #22c55e);
   background: rgba(34, 197, 94, 0.12);
   border: 1px solid rgba(34, 197, 94, 0.35);
   padding: 4px 10px;
@@ -1717,7 +1717,7 @@
 .echo-inv-unequip-btn {
   background: rgba(239, 68, 68, 0.15);
   border: 1px solid rgba(239, 68, 68, 0.35);
-  color: #f87171;
+  color: var(--danger-text, #f87171);
   font-size: 11px;
   font-weight: 700;
   width: 26px;
@@ -1731,14 +1731,14 @@
 }
 
 .echo-inv-unequip-btn:hover {
-  background: #ef4444;
+  background: #d92222;
   color: #fff;
 }
 
 .echo-inv-shop-link-btn {
   background: rgba(0, 242, 254, 0.1);
   border: 1px solid rgba(0, 242, 254, 0.3);
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
   font-size: 11.5px;
   font-weight: 600;
   padding: 5px 12px;
@@ -1788,7 +1788,7 @@
   margin-top: 4px;
   background: rgba(168, 85, 247, 0.2);
   border: 1px solid rgba(168, 85, 247, 0.45);
-  color: #c084fc;
+  color: var(--violet-text, #c084fc);
   font-size: 11.5px;
   font-weight: 700;
   padding: 6px 14px;
@@ -2027,7 +2027,7 @@ body.echo-layout-glass .echo-inv-shop-link-btn {
   background: rgba(0, 242, 254, 0.12) !important;
   border: 1px solid rgba(0, 242, 254, 0.35) !important;
   border-radius: 9px !important;
-  color: #00f2fe !important;
+  color: var(--cyan-text, #00f2fe) !important;
   font-weight: 700 !important;
 }
 
@@ -2085,7 +2085,7 @@ body.echo-layout-glass .echo-inv-equipped-pill {
 .finish-meta-tag {
   font-size: 11.5px;
   font-weight: 600;
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
   line-height: 1.2;
 }
 
@@ -2500,7 +2500,7 @@ body.echo-layout-glass .echo-inv-equipped-pill {
   padding: 2px 6px;
   border-radius: 4px;
   background: rgba(56, 189, 248, 0.16);
-  color: #38bdf8;
+  color: var(--info-text, #38bdf8);
   border: 1px solid rgba(56, 189, 248, 0.35);
   flex-shrink: 0;
   display: inline-flex;
@@ -2525,17 +2525,17 @@ body.echo-layout-glass .echo-inv-equipped-pill {
 }
 .role-cat-icon-badge.admin {
   background: rgba(234, 179, 8, 0.15);
-  color: #eab308;
+  color: var(--warn-text, #eab308);
   border: 1px solid rgba(234, 179, 8, 0.3);
 }
 .role-cat-icon-badge.mod {
   background: rgba(167, 139, 250, 0.15);
-  color: #a78bfa;
+  color: var(--violet-text, #a78bfa);
   border: 1px solid rgba(167, 139, 250, 0.3);
 }
 .role-cat-icon-badge.channels {
   background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
+  color: var(--info-text, #38bdf8);
   border: 1px solid rgba(56, 189, 248, 0.3);
 }
 
@@ -2636,7 +2636,7 @@ body.echo-layout-glass .echo-inv-equipped-pill {
   gap: 5px;
   font-size: 11px;
   font-weight: 700;
-  color: #38bdf8;
+  color: var(--info-text, #38bdf8);
   background: rgba(56, 189, 248, 0.12);
   border: 1px solid rgba(56, 189, 248, 0.25);
   padding: 3px 8px;
@@ -2691,7 +2691,7 @@ body.echo-layout-glass .echo-inv-equipped-pill {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent-color), #c75a4a);
+  background: linear-gradient(135deg, var(--accent-fill), #c75a4a);
   display: grid;
   place-items: center;
   color: #fff;
@@ -2827,7 +2827,7 @@ body.echo-layout-glass .echo-inv-equipped-pill {
 
 .member-add-role-btn:hover {
   background: var(--accent-light);
-  color: var(--accent-color);
+  color: var(--accent-text);
   border-color: var(--accent-color);
   border-style: solid;
 }
@@ -3095,7 +3095,7 @@ body.is-overlay-mode #root {
 }
 .mini-overlay-chip-close:hover {
   background: rgba(239, 68, 68, 0.3);
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
 }
 
 /* Active HUD Container */
@@ -3188,7 +3188,7 @@ body.is-overlay-mode #root {
 .mini-overlay-hud-btn.active-mute {
   background: rgba(239, 68, 68, 0.35);
   border-color: rgba(239, 68, 68, 0.6);
-  color: #fca5a5;
+  color: var(--danger-text, #fca5a5);
 }
 .mini-overlay-hud-btn.active-deaf {
   background: rgba(245, 158, 11, 0.35);
@@ -3347,7 +3347,7 @@ body.is-overlay-mode #root {
   letter-spacing: 0.2px;
 }
 .mini-overlay-participant.is-speaking .mini-overlay-p-name {
-  color: #4ade80;
+  color: var(--ok-text, #4ade80);
   text-shadow: 0 0 8px rgba(34, 197, 94, 0.4), 0 1px 3px rgba(0, 0, 0, 0.95);
 }
 .mini-overlay-screen-badge {
@@ -3447,7 +3447,7 @@ body.is-overlay-mode #root {
 
 .saved-close-btn:hover {
   background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
+  color: var(--danger-text, #ef4444);
 }
 
 .saved-filter-bar {
@@ -3644,7 +3644,7 @@ body.is-overlay-mode #root {
   gap: 3px;
   background: rgba(0, 242, 254, 0.09);
   border: 1px solid rgba(0, 242, 254, 0.22);
-  color: #00f2fe;
+  color: var(--cyan-text, #00f2fe);
   font-size: 11px;
   font-weight: 500;
   padding: 2px 7px;
@@ -3689,7 +3689,7 @@ body.is-overlay-mode #root {
 }
 
 .saved-unstar-btn:hover svg {
-  color: #ef4444 !important;
+  color: var(--danger-text, #ef4444) !important;
   fill: #ef4444 !important;
 }
 
@@ -3705,7 +3705,7 @@ body.is-overlay-mode #root {
 }
 
 .saved-link {
-  color: #38bdf8;
+  color: var(--info-text, #38bdf8);
   text-decoration: underline;
   word-break: break-all;
 }
@@ -3735,7 +3735,7 @@ body.is-overlay-mode #root {
 .saved-action-link {
   background: transparent;
   border: none;
-  color: #38bdf8;
+  color: var(--info-text, #38bdf8);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;

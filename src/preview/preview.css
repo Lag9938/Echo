@@ -57,7 +57,7 @@ body,
 }
 .preview-tabs button.on {
   color: #fff;
-  background: var(--accent-color);
+  background: var(--accent-fill);
 }
 .preview-stage {
   position: relative;
@@ -97,7 +97,7 @@ body,
   font-size: 13px;
   font-weight: 800;
   color: #fff;
-  background: var(--accent-color);
+  background: var(--accent-fill);
   cursor: pointer;
 }
 .preview-windows-grid {
@@ -150,7 +150,7 @@ body,
 }
 .preview-tones button.on {
   color: #fff;
-  background: var(--accent-color);
+  background: var(--accent-fill);
   border-color: transparent;
 }
 

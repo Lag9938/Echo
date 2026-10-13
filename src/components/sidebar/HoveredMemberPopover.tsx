@@ -1,4 +1,5 @@
 import React from 'react'
+import { roleInk } from '../../lib/accentContrast'
 import { ProfileEffect } from '../ProfileEffect'
 import { AvatarDecoration } from '../AvatarDecoration'
 import { GameLogo } from '../GameLogos'
@@ -183,7 +184,7 @@ export function HoveredMemberPopover({
               <span 
                 className="hover-popover-badge role"
                 style={{ 
-                  color: hoveredMemberPopover.roleColor || '#00f2fe',
+                  color: roleInk(hoveredMemberPopover.roleColor || '#00f2fe'),
                   borderColor: `${hoveredMemberPopover.roleColor || '#00f2fe'}55`,
                   background: `${hoveredMemberPopover.roleColor || '#00f2fe'}18`
                 }}
@@ -202,7 +203,7 @@ export function HoveredMemberPopover({
 
         {/* Name Row with Clan Tag & Pronouns */}
         <div className="hover-popover-name-row">
-          <span className="hover-popover-display-name" style={{ color: hoveredMemberPopover.roleColor || 'var(--text-primary)' }}>
+          <span className="hover-popover-display-name" style={{ color: roleInk(hoveredMemberPopover.roleColor) }}>
             {hoveredMemberPopover.user.display_name}
           </span>
           {memberBadge && memberBadge !== 'none' && (
@@ -270,7 +271,7 @@ export function HoveredMemberPopover({
             <span className="hover-popover-roles-title">CARGOS</span>
             <div className="hover-popover-roles-pills">
               {hoveredMemberPopover.roles.slice(0, 3).map((r: any) => (
-                <span key={r.id} className="hover-popover-role-pill" style={{ color: r.color, borderColor: `${r.color}55`, background: `${r.color}15` }}>
+                <span key={r.id} className="hover-popover-role-pill" style={{ color: roleInk(r.color), borderColor: `${r.color}55`, background: `${r.color}15` }}>
                   <span className="role-dot" style={{ background: r.color }} />
                   {r.name}
                 </span>

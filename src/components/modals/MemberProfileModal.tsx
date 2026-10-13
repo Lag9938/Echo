@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { roleInk } from '../../lib/accentContrast'
 import { ProfileEffect } from '../ProfileEffect'
 import { AvatarDecoration } from '../AvatarDecoration'
 import { GameLogo, getGameBrandColor } from '../GameLogos'
@@ -375,7 +376,7 @@ export function MemberProfileModal({
                     <span 
                       key={r.id} 
                       className="member-role-pill" 
-                      style={{ color: r.color, borderColor: `${r.color}66`, background: `${r.color}15`, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                      style={{ color: roleInk(r.color), borderColor: `${r.color}66`, background: `${r.color}15`, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                     >
                       <span className="role-dot" style={{ background: r.color }} />
                       {isOwnerRole && <CrownIcon style={{ width: '11px', height: '11px', color: r.color }} />}

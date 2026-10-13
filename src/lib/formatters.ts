@@ -1,3 +1,5 @@
+import { adjustForContrast } from './accentContrast'
+
 export function formatGameDuration(startedAt?: number): string {
   if (!startedAt) return ''
   const diffMs = Math.max(0, Date.now() - startedAt)
@@ -33,6 +35,11 @@ export const SERVER_BANNER_PRESETS = [
   { id: 'emerald', name: 'Emerald Forest', style: 'linear-gradient(135deg, #10b981, #047857)' }
 ]
 
+/** Escurece só o que for preciso para as iniciais brancas por cima passarem de 4,5:1 (âmbar, ciano e verde claros não passavam) */
+function readableGradient(gradient: string): string {
+  return gradient.replace(/#[0-9a-fA-F]{6}/g, (hex) => adjustForContrast(hex, '#ffffff', 4.5, 'darken'))
+}
+
 export function getServerGradient(name: string): string {
   const gradients = [
     'linear-gradient(135deg, #5865F2, #7289DA)',
@@ -48,7 +55,7 @@ export function getServerGradient(name: string): string {
   for (let i = 0; i < (name || '').length; i++) {
     hash = (name || '').charCodeAt(i) + ((hash << 5) - hash)
   }
-  return gradients[Math.abs(hash) % gradients.length]
+  return readableGradient(gradients[Math.abs(hash) % gradients.length])
 }
 
 export function getServerInitials(name: string): string {

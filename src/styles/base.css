@@ -52,7 +52,7 @@ input { border: 0; outline: none; background: transparent; color: inherit; }
   background: radial-gradient(circle at 35% 35%, #2a2f42 0%, #151824 100%);
   border: 1px solid rgba(0, 242, 254, 0.35);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 12px rgba(0, 242, 254, 0.25);
-  color: var(--accent-color, #00f2fe);
+  color: var(--accent-text);
   flex-shrink: 0;
   transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -140,7 +140,7 @@ body.echo-layout-glass.light-theme .main-content {
 }
 .empty-icon {
   display: grid; place-items: center; width: 56px; height: 56px;
-  color: var(--accent-color); background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 18px;
+  color: var(--accent-text); background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 18px;
   font-size: 24px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02); margin-bottom: 8px;
 }
 .empty-main h2 { font-size: 18px; font-weight: 600; color: var(--text-primary); }
@@ -160,7 +160,7 @@ body.echo-layout-glass.light-theme .main-content {
 }
 .empty-symbol {
   display: grid; place-items: center; width: 60px; height: 60px;
-  color: var(--accent-color); background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 20px;
+  color: var(--accent-text); background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 20px;
   font-size: 26px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
 }
 .empty-page h1 { margin: 12px 0 0; font-size: 22px; }

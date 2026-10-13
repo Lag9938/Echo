@@ -1,0 +1,152 @@
+/* ==========================================================================
+   ACESSIBILIDADE — foco visível, movimento reduzido e os últimos ajustes de contraste
+   Vem por último no índice para valer sobre os estilos antigos (que escondiam o foco e ignoravam a
+   preferência de "reduzir movimento" do sistema).
+   ========================================================================== */
+
+/* ── 1. Foco do teclado ───────────────────────────────────────────────────────
+   Quem navega com Tab precisa ver onde está. O mouse não dispara :focus-visible, então o anel só aparece
+   para teclado. !important porque muitos controles antigos fazem `outline: none`. */
+body :is(a[href], button, input, select, textarea, summary, [role='button'], [role='tab'], [role='radio'],
+  [role='switch'], [role='menuitem'], [role='checkbox'], [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: 2px solid var(--accent-text) !important;
+  outline-offset: 2px !important;
+}
+
+/* Campos dentro de uma pílula: quem mostra o anel é a pílula (o campo fica sem contorno próprio) */
+body .channels-search-input:focus-visible,
+body .echo-social-input-field .echo-text-input:focus-visible,
+body .dm-search-input:focus-visible,
+body .friends-search-input:focus-visible {
+  outline: none !important;
+}
+body .channels-search-box:focus-within,
+body .dm-search-wrap:focus-within,
+body .friends-search-wrap:focus-within {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+/* ── 2. Reduzir movimento ─────────────────────────────────────────────────────
+   Três modos (Configurações > Aparência): automático segue o sistema; "reduzir" e "completo" forçam.
+   Corta o que é decoração: animações viram um único quadro e as transições ficam instantâneas. Indicadores de
+   progresso (spinner e a tela "Atualizando") continuam girando, porque senão a tela pareceria travada. */
+@media (prefers-reduced-motion: reduce) {
+  body:not(.motion-full) *:not(.loader):not(.update-applying-ring):not(.update-applying-bar):not(.update-banner-ring),
+  body:not(.motion-full) *:not(.loader):not(.update-applying-ring):not(.update-applying-bar):not(.update-banner-ring)::before,
+  body:not(.motion-full) *:not(.loader):not(.update-applying-ring):not(.update-applying-bar):not(.update-banner-ring)::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}
+body.reduce-motion *:not(.loader):not(.update-applying-ring):not(.update-applying-bar):not(.update-banner-ring),
+body.reduce-motion *:not(.loader):not(.update-applying-ring):not(.update-applying-bar):not(.update-banner-ring)::before,
+body.reduce-motion *:not(.loader):not(.update-applying-ring):not(.update-applying-bar):not(.update-banner-ring)::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0s !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
+/* Cartão da opção em Aparência */
+.echo-motion-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 20px;
+  padding: 18px 20px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+}
+.echo-motion-card-text h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+.echo-motion-card-text p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.echo-motion-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+.echo-motion-option {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  text-align: left;
+  font: inherit;
+  border-radius: 16px;
+  cursor: pointer;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+.echo-motion-option strong { font-size: 13.5px; font-weight: 800; }
+.echo-motion-option span { font-size: 11.5px; color: var(--text-secondary); }
+.echo-motion-option:hover {
+  border-color: color-mix(in srgb, var(--accent-color) 55%, transparent);
+}
+.echo-motion-option.is-selected {
+  border-color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+}
+
+/* ── 3. Contraste: o que sobrou da revisão (medido nos dois temas, mínimo 4,5:1) ──────────── */
+
+/* Bolinhas de notificação */
+body.echo-layout-glass .topbar .topbar-icon-badge.badge-red,
+body.echo-layout-glass .topbar .topbar-server-badge {
+  background: #d92222 !important;
+  background-image: none !important;
+  color: #fff !important;
+}
+
+/* "Ctrl K" ao lado da busca */
+body .friends-search-kbd {
+  color: var(--text-secondary) !important;
+}
+
+/* Nome na etiqueta do vídeo da chamada: a etiqueta é um chip escuro, então o texto é claro nos dois temas */
+body .participant-name-text {
+  color: #fff !important;
+}
+
+body.light-theme .mention-tag.mention-me {
+  color: #7c2d12 !important;
+}
+body.light-theme .voice-channel-limit-badge.occupied {
+  color: #166534 !important;
+}
+body.light-theme .profile-footer-sub-status.in-call {
+  color: var(--ok-text) !important;
+}
+body.light-theme .echo-inv-menu-badge {
+  color: var(--accent-text) !important;
+}
+body.light-theme .echo-presence-option span {
+  color: var(--text-secondary) !important;
+}
+body.light-theme .echo-shop-owned-badge,
+body.light-theme .echo-inv-owned-tag,
+body.light-theme .echo-inv-equipped-pill,
+body.light-theme .echo-shop-action-btn.active,
+body.light-theme .member-profile-action-btn.secondary {
+  color: #166534 !important;
+}
+body.light-theme .echo-stage-card-pill {
+  color: #5b21b6 !important;
+}

@@ -1,4 +1,4 @@
-﻿/* ==========================================================================
+/* ==========================================================================
    RECOLHER A BARRA DE CANAIS
    O botão ao lado do filtro recolhe a barra e sobra uma tirinha na borda. Passar o mouse na tirinha
    mostra a barra flutuando sobre o chat (não empurra nada); clicar nela, ou no botão que vira "fixar",
@@ -30,7 +30,7 @@
 }
 .channels-collapse-btn:hover {
   background: color-mix(in srgb, var(--accent-color) 16%, transparent);
-  color: var(--accent-color);
+  color: var(--accent-text);
   transform: scale(1.08);
 }
 
@@ -71,7 +71,7 @@
   place-items: center;
   border: 0;
   border-radius: 50%;
-  color: var(--accent-color);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--accent-color) 14%, transparent);
   cursor: pointer;
   transition: background 0.16s ease, color 0.16s ease, transform 0.2s var(--ease-spring, ease), box-shadow 0.16s ease;
@@ -81,7 +81,7 @@
 }
 .channels-rail-pin:hover {
   color: #fff;
-  background: var(--accent-color);
+  background: var(--accent-fill);
   box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--accent-color) 80%, transparent);
 }
 .channels-rail-pin:hover svg {
@@ -162,7 +162,7 @@
 .channels-rail-tile.selected .channels-rail-tile-face {
   border-radius: 21px;
   color: #fff;
-  background: var(--accent-color);
+  background: var(--accent-fill);
   border-color: transparent;
   box-shadow: 0 8px 16px -8px color-mix(in srgb, var(--accent-color) 80%, transparent);
 }
@@ -187,7 +187,7 @@
 }
 .channels-rail-tile.in-call .channels-rail-tile-type {
   color: #fff;
-  background: #22c55e;
+  background: #15803d;
   border-color: var(--bg-secondary);
 }
 .channels-rail-tile-unread {
@@ -213,7 +213,7 @@
   font-size: 10px;
   font-weight: 800;
   color: #fff;
-  background: #16a34a;
+  background: #15803d;
   border: 2px solid var(--bg-secondary);
 }
 /* A barra espiada: flutua sobre o conteúdo, do lado da tirinha */
@@ -301,7 +301,7 @@ body .channels-sidebar.channels-sidebar.is-peek.is-peek {
   place-items: center;
   border-radius: 16px;
   color: #fff;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color));
+  background: linear-gradient(180deg, var(--accent-fill-top), var(--accent-fill));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 8px 18px -8px color-mix(in srgb, var(--accent-color) 85%, transparent);
 }
 .channels-peek-hint-arrow svg {
@@ -348,14 +348,14 @@ body .channels-sidebar.channels-sidebar.is-peek.is-peek {
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
-  color: var(--accent-color);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--accent-color) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent-color) 34%, transparent);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 .channels-collapse-btn:hover {
   color: #fff;
-  background: var(--accent-color);
+  background: var(--accent-fill);
   border-color: transparent;
   box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--accent-color) 85%, transparent);
   transform: translateY(-1px);

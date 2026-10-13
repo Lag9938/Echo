@@ -78,7 +78,7 @@ body .voice-chat-pane.is-peek::after {
 /* Espiando: um anel pulsa no botão, avisando que a janela aberta é provisória */
 .channel-header-action-btn.peeking {
   background: color-mix(in srgb, var(--accent-color) 14%, transparent) !important;
-  color: var(--accent-color) !important;
+  color: var(--accent-text) !important;
   animation: peekRing 1.6s ease-in-out infinite;
 }
 @keyframes peekRing {

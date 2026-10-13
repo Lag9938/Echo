@@ -57,7 +57,7 @@ body.light-theme .settings-menu .menu-item:hover {
 }
 
 body.light-theme .settings-menu .menu-item.active {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 78%, #fff), var(--accent-color)) !important;
+  background: linear-gradient(180deg, var(--accent-fill-top), var(--accent-fill)) !important;
   color: #fff !important;
   border: 0 !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -8px color-mix(in srgb, var(--accent-color) 80%, transparent) !important;
@@ -82,13 +82,13 @@ body.light-theme .settings-sidebar .sidebar-header span {
 body.light-theme .settings-signout-btn {
   background: rgba(239, 68, 68, 0.08) !important;
   border: 1px solid rgba(239, 68, 68, 0.22) !important;
-  color: #ef4444 !important;
+  color: var(--danger-text, #ef4444) !important;
   border-radius: 14px;
 }
 
 body.light-theme .settings-signout-btn:hover {
   background: rgba(239, 68, 68, 0.18) !important;
-  color: #dc2626 !important;
+  color: var(--danger-text, #dc2626) !important;
 }
 
 /* ── 2. ABA MEU PERFIL (PROFILE TAB) ─────────────────────────────────────── */
@@ -297,7 +297,7 @@ body.light-theme .echo-btn-secondary {
 body.light-theme .echo-btn-secondary:hover:not(:disabled) {
   background: #fff !important;
   border-color: rgba(223, 109, 93, 0.5) !important;
-  color: var(--accent-color) !important;
+  color: var(--accent-text) !important;
 }
 
 /* Redes sociais do perfil: cada campo é uma única pílula (fundo e borda do tema), com o campo transparente dentro */
@@ -344,8 +344,8 @@ body.echo-layout-glass .echo-social-input-field .echo-text-input:focus {
 }
 .echo-social-input-icon.is-steam { color: #607d8b; }
 .echo-social-input-icon.is-twitch { color: #9146ff; }
-.echo-social-input-icon.is-youtube { color: #ef4444; }
-.echo-social-input-icon.is-kick { color: #16a34a; }
+.echo-social-input-icon.is-youtube { color: var(--danger-text, #ef4444); }
+.echo-social-input-icon.is-kick { color: var(--ok-text, #16a34a); }
 
 /* Dock de Seleção de Temas */
 .echo-themes-dock {
@@ -500,7 +500,7 @@ body.light-theme .echo-transmit-card:hover {
 
 body.light-theme .mic-test-btn,
 .mic-test-btn {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #fff !important;
   border-radius: 999px !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -8px rgba(223, 109, 93, 0.6) !important;
@@ -570,7 +570,7 @@ body.light-theme .echo-audio-hotkeys-card {
   padding: 2px 8px;
   border-radius: 999px;
   background: rgba(223, 109, 93, 0.14);
-  color: var(--accent-color, #df6d5d);
+  color: var(--accent-text);
   border: 1px solid rgba(223, 109, 93, 0.3);
 }
 
@@ -589,7 +589,7 @@ body.light-theme .echo-audio-hotkeys-card {
 }
 
 body.light-theme .echo-audio-hotkeys-btn {
-  background: linear-gradient(135deg, #df6d5d 0%, #e05244 100%) !important;
+  background: linear-gradient(135deg, var(--accent-fill) 0%, var(--accent-fill) 100%) !important;
   color: #fff !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 18px -6px rgba(223, 109, 93, 0.5) !important;
 }

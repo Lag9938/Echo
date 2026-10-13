@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
+import { buildNoticeWindowScript } from './updateNotice.js'
 
 const escapeSingleQuoted = (text) => String(text).replace(/'/g, "''")
 
@@ -30,22 +31,11 @@ export function buildRelaunchScript(execPath, updaterDirName, logFile) {
     'Log "iniciado"',
     // Aviso na tela enquanto o instalador (silencioso) trabalha: sem ele eram 20 a 70 segundos sem nada
     // aparecendo, e parecia que o Echo tinha fechado de vez. Se a janela não puder ser criada, o vigia segue igual.
-    '$form = $null',
-    'try {',
-    '  Add-Type -AssemblyName System.Windows.Forms, System.Drawing',
-    '  $form = New-Object System.Windows.Forms.Form',
-    "  $form.Text = 'Atualizando o Echo'; $form.FormBorderStyle = 'None'; $form.StartPosition = 'CenterScreen'",
-    '  $form.Size = New-Object System.Drawing.Size(380, 104); $form.TopMost = $true; $form.ShowInTaskbar = $false',
-    '  $form.BackColor = [System.Drawing.Color]::FromArgb(14, 17, 24)',
-    '  $label = New-Object System.Windows.Forms.Label',
-    '  $label.Text = "Atualizando o Echo…`r`nEle reabre sozinho em instantes."',
-    "  $label.ForeColor = [System.Drawing.Color]::White; $label.Dock = 'Fill'; $label.TextAlign = 'MiddleCenter'",
-    "  $label.Font = New-Object System.Drawing.Font('Segoe UI', 11)",
-    '  $form.Controls.Add($label); $form.Show(); [System.Windows.Forms.Application]::DoEvents()',
-    '  Log "aviso de atualização na tela"',
-    '} catch { $form = $null; Log ("aviso de atualização não pôde ser mostrado: " + $_.Exception.Message) }',
-    // Espera 1 s mantendo o aviso vivo (uma janela que não processa eventos aparece como "não respondendo")
-    'function Wait1 { for ($i = 0; $i -lt 10; $i++) { if ($form) { [System.Windows.Forms.Application]::DoEvents() }; Start-Sleep -Milliseconds 100 } }',
+    // O visual (e o fato de a janela ser desenhada à mão) está em updateNotice.js.
+    ...buildNoticeWindowScript({ width: 420, height: 128, title: 'Atualizando o Echo', subtitle: 'Ele reabre sozinho em instantes.' }),
+    'if ($form) { Log "aviso de atualização na tela" } else { Log ("aviso de atualização não pôde ser mostrado: " + $script:noticeError) }',
+    // Espera 1 s mantendo o aviso vivo e animado (uma janela que não processa eventos aparece como "não respondendo")
+    'function Wait1 { Pump 1 }',
     // O processo do app aparece um pouco antes da janela dele: o aviso fica mais 2 s para não haver um vão
     'function Finish { Wait1; Wait1; if ($form) { $form.Close() }; exit }',
     'while ((Get-Date) -lt $deadline -and (Get-Process -Name $name)) { Wait1 }',

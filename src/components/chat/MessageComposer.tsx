@@ -1,4 +1,5 @@
 import React, { memo, useState } from 'react'
+import { roleInk } from '../../lib/accentContrast'
 import { sendFilesInOrder } from '../../lib/attachments'
 import type { User } from '@supabase/supabase-js'
 import type { Space, Channel, Message, ServerEmoji, RolePermissions } from '../../types'
@@ -449,7 +450,7 @@ export const MessageComposer = memo(function MessageComposer({
                           {cand.roleName && (
                             <span 
                               className="mention-picker-role"
-                              style={cand.roleColor ? { color: cand.roleColor } : undefined}
+                              style={cand.roleColor ? { color: roleInk(cand.roleColor) } : undefined}
                             >
                               {cand.roleName}
                             </span>

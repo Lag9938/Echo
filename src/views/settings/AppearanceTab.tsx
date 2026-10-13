@@ -1,5 +1,6 @@
 import React from 'react'
 import { THEMES } from '../../lib/themes'
+import { MOTION_OPTIONS, type MotionPreference } from '../../lib/motionPreference'
 
 export interface AppearanceTabProps {
   theme: string
@@ -11,6 +12,8 @@ export interface AppearanceTabProps {
   onChatDensityChange?: (density: 'cozy' | 'compact') => void
   performanceMode?: boolean
   onPerformanceModeChange?: (val: boolean) => void
+  motionPreference?: MotionPreference
+  onMotionPreferenceChange?: (value: MotionPreference) => void
   sidebarLayout?: 'glass' | 'classic'
   onSidebarLayoutChange?: (layout: 'glass' | 'classic') => void
 }
@@ -126,6 +129,8 @@ export function AppearanceTab({
   onChatDensityChange,
   performanceMode = false,
   onPerformanceModeChange,
+  motionPreference = 'system',
+  onMotionPreferenceChange,
   sidebarLayout = 'glass',
   onSidebarLayoutChange,
 }: AppearanceTabProps) {
@@ -758,6 +763,32 @@ export function AppearanceTab({
             </span>
           </div>
         )}
+      </div>
+
+      {/* Reduzir movimento: acessibilidade (e conforto) para quem se incomoda com animações */}
+      <div className="echo-motion-card">
+        <div className="echo-motion-card-text">
+          <h3 id="echo-motion-title">Movimento e animações</h3>
+          <p id="echo-motion-desc">
+            Reduza as animações e transições do app (brilhos que pulsam, molas, deslizes). Em Automático, o Echo segue a
+            opção &quot;reduzir movimento&quot; do seu sistema.
+          </p>
+        </div>
+        <div className="echo-motion-options" role="radiogroup" aria-labelledby="echo-motion-title" aria-describedby="echo-motion-desc">
+          {MOTION_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              role="radio"
+              aria-checked={motionPreference === opt.value}
+              className={`echo-motion-option ${motionPreference === opt.value ? 'is-selected' : ''}`}
+              onClick={() => onMotionPreferenceChange?.(opt.value)}
+            >
+              <strong>{opt.label}</strong>
+              <span>{opt.hint}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
