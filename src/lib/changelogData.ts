@@ -18,11 +18,49 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.61.0',
+    title: 'Echo v0.61.0 - Mais Leve e Mais Seguro',
+    date: '13 de Outubro de 2026',
+    tagline: 'O Echo deixa de pesar no computador, a transmissão de tela para de verdade e o Aurora ganha acabamento.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '⚡',
+        badge: 'DESEMPENHO',
+        title: 'O Echo Parou de Travar o Computador',
+        description: 'As animações de enfeite (molduras, brilhos, pulsos) rodavam na velocidade máxima do monitor e chegavam a ocupar dois núcleos do processador. Agora rodam a 30 quadros por segundo, com o mesmo movimento. O medidor de volume da transmissão também ficou mais leve.'
+      },
+      {
+        icon: '🛑',
+        badge: 'PRIVACIDADE',
+        title: 'Parar a Transmissão Para de Verdade',
+        description: 'Quem trocava de janela durante a transmissão e depois clicava em "Parar Transmissão" continuava com a tela antiga no ar. Agora parar encerra tudo o que estava sendo transmitido, e trocar de janela encerra a anterior.'
+      },
+      {
+        icon: '🎙️',
+        badge: 'CORREÇÃO',
+        title: 'Entrar na Chamada Não Falha Mais em Silêncio',
+        description: 'Se o microfone não abrir, você entra só ouvindo e o Echo explica o motivo. Qualquer outra falha ao entrar também mostra o que aconteceu, em vez de só tirar você da sala. A mesma conta em dois lugares não fica mais se derrubando.'
+      },
+      {
+        icon: '🌅',
+        badge: 'VISUAL',
+        title: 'Acabamento do Aurora',
+        description: 'Refinamentos no visual claro e escuro: topo, barra lateral, conversas, chamadas, loja e perfis. A chamada ganhou um painel flutuante, e o aviso que aparece durante a atualização agora tem o visual do Echo.'
+      },
+      {
+        icon: '♿',
+        badge: 'NOVO',
+        title: 'Acessibilidade',
+        description: 'Nova opção de movimento (automático, reduzir ou completo) em Configurações, melhor navegação pelo teclado e contraste revisto na cor de destaque.'
+      }
+    ]
+  },
+  {
     version: '0.60.0',
     title: 'Echo v0.60.0 - Aurora',
     date: '11 de Outubro de 2026',
     tagline: 'O Echo de cara nova: visual Aurora, barra lateral redesenhada e envio de arquivos completo.',
-    isLatest: true,
     highlights: [
       {
         icon: '🌅',
