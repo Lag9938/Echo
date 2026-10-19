@@ -208,7 +208,6 @@ function Echo({ user }: { user: User }) {
   const [presenceStatus, setPresenceStatus] = useState<'online' | 'idle' | 'dnd' | 'invisible'>(() => (localStorage.getItem('echo-presence-status') as any) || 'online')
   // O Echo abre na tela de amigos: quem chega vê logo quem está online e as conversas (ajuda a pessoa a voltar)
   const [page, setPage] = useState<Page>('Amigos')
-  const channelsSidebarCollapsed = useUIStore((s) => s.channelsSidebarCollapsed)
   useEffect(() => {
     useUIStore.getState().setPage(page)
   }, [page])
@@ -1802,8 +1801,7 @@ function Echo({ user }: { user: User }) {
         isConnected,
         activeVoiceChannelId,
         page,
-        selectedChannelId: selectedChannel?.id,
-        sidebarCollapsed: channelsSidebarCollapsed
+        selectedChannelId: selectedChannel?.id
       }) && (
         <FloatingCallPanel
           channelName={activeVoiceChannel.name}

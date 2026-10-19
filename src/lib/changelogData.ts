@@ -18,11 +18,31 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.62.1',
+    title: 'Echo v0.62.1 - Ajustes',
+    date: '19 de Outubro de 2026',
+    tagline: 'O painel da chamada volta a aparecer em todo lugar e o cartão de perfil fica mais limpo.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '📞',
+        badge: 'CORREÇÃO',
+        title: 'Painel da Chamada de Volta',
+        description: 'O painel flutuante da chamada (quem está na sala, microfone, fone e "Voltar à chamada") volta a aparecer sempre que você está numa chamada e não está olhando para ela, inclusive com a barra de canais aberta.'
+      },
+      {
+        icon: '🪪',
+        badge: 'VISUAL',
+        title: 'Cartão de Perfil Mais Limpo',
+        description: 'O rodapé do cartão de perfil não mostra mais os selos "Fundador do Espaço" e "Echo Pass"; fica só o bloquear, no perfil dos outros.'
+      }
+    ]
+  },
+  {
     version: '0.62.0',
     title: 'Echo v0.62.0 - Decorações em Movimento',
     date: '19 de Outubro de 2026',
     tagline: 'O Echo volta a ficar leve, abre na tela de amigos e a loja ganha a Coleção Estações, com decorações e efeitos de perfil em vídeo.',
-    isLatest: true,
     highlights: [
       {
         icon: '⚡',

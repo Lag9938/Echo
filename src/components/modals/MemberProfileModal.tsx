@@ -601,13 +601,9 @@ export function MemberProfileModal({
             </div>
           </div>
 
-          {/* 5. Rodapé Social Acolhedor */}
-          <div className="member-profile-footer">
-            <span className="member-footer-meta">
-              {isServerOwner ? '👑 Fundador do Espaço' : '🛡️ Membro Verificado Echo'}
-            </span>
-
-            {!isMe && onBlockUser && onUnblockUser ? (
+          {/* 5. Rodapé: só o bloquear/desbloquear (os selos "Fundador do Espaço" e "Echo Pass" saíram: não diziam nada) */}
+          {!isMe && onBlockUser && onUnblockUser && (
+            <div className="member-profile-footer" style={{ justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 className={`member-footer-block-link ${isBlocked ? 'unblock' : ''}`}
@@ -620,10 +616,8 @@ export function MemberProfileModal({
                 <BanIcon style={{ width: '11px', height: '11px' }} />
                 <span>{isBlocked ? 'Desbloquear' : 'Bloquear'}</span>
               </button>
-            ) : (
-              <span className="member-footer-meta">✨ Echo Pass</span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

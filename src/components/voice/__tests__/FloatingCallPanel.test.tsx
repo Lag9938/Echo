@@ -24,13 +24,12 @@ describe('shouldShowFloatingCall', () => {
     expect(shouldShowFloatingCall({ ...base, activeVoiceChannelId: null })).toBe(false)
   })
 
-  it('um canal de voz aberto em OUTRA sala não esconde o painel quando a barra está recolhida', () => {
-    expect(shouldShowFloatingCall({ ...base, page: 'Servidores', selectedChannelId: 'v2', sidebarCollapsed: true })).toBe(true)
+  it('um canal de voz aberto em OUTRA sala não esconde o painel (a chamada é a outra)', () => {
+    expect(shouldShowFloatingCall({ ...base, page: 'Servidores', selectedChannelId: 'v2' })).toBe(true)
   })
 
-  it('nos Servidores some quando a barra lateral está aberta (evita redundância tripla) e aparece quando recolhida', () => {
-    expect(shouldShowFloatingCall({ ...base, page: 'Servidores', selectedChannelId: 't1', sidebarCollapsed: false })).toBe(false)
-    expect(shouldShowFloatingCall({ ...base, page: 'Servidores', selectedChannelId: 't1', sidebarCollapsed: true })).toBe(true)
+  it('nos Servidores, num canal de texto, o painel aparece (com a barra de canais aberta ou não)', () => {
+    expect(shouldShowFloatingCall({ ...base, page: 'Servidores', selectedChannelId: 't1' })).toBe(true)
   })
 })
 
