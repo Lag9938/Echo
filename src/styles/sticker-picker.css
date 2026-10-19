@@ -478,7 +478,7 @@ body .composer .mention-picker-item:hover .mention-picker-role {
 body .composer .mention-picker-avatar {
   width: 34px;
   height: 34px;
-  border-radius: 12px;
+  border-radius: 50%;
   font-size: 14px;
   color: #fff;
   background: linear-gradient(135deg, color-mix(in srgb, var(--accent-fill) 80%, #fff), var(--accent-fill));

@@ -14,6 +14,10 @@ import { FriendsView } from '../views/FriendsView'
 import { SettingsView } from '../views/SettingsView'
 import { EchoShop } from '../components/EchoShop'
 import { UpdateBanner } from '../components/common/UpdateBanner'
+import { DecoratedAvatar } from '../components/DecoratedAvatar'
+import { AVATAR_DECORATIONS } from '../components/AvatarDecoration'
+import { ShopNewsModal } from '../components/ShopNewsModal'
+import { CURRENT_SHOP_DROP } from '../lib/shopDrops'
 import { useKeyboardActivation } from '../hooks/useKeyboardActivation'
 import { useModalAccessibility } from '../hooks/useModalAccessibility'
 import { FloatingCallPanel } from '../components/voice/FloatingCallPanel'
@@ -43,7 +47,7 @@ import {
 } from './fixtures'
 
 type ThemeKey = 'light' | 'dark'
-type ScreenKey = 'servidor' | 'voz' | 'amigos' | 'config' | 'loja' | 'inventario' | 'espaco' | 'perfil' | 'janelas' | 'atualizacao'
+type ScreenKey = 'servidor' | 'voz' | 'amigos' | 'config' | 'loja' | 'inventario' | 'espaco' | 'perfil' | 'janelas' | 'atualizacao' | 'decoracoes' | 'novidades'
 
 const SCREENS: Array<[ScreenKey, string]> = [
   ['servidor', 'Servidor'],
@@ -55,7 +59,9 @@ const SCREENS: Array<[ScreenKey, string]> = [
   ['espaco', 'Config. do espaço'],
   ['perfil', 'Perfil'],
   ['janelas', 'Janelas'],
-  ['atualizacao', 'Atualização']
+  ['atualizacao', 'Atualização'],
+  ['decoracoes', 'Decorações'],
+  ['novidades', 'Novo na loja']
 ]
 
 const THEME_BODY: Record<ThemeKey, string> = {
@@ -686,11 +692,13 @@ function SpaceStudioScreen() {
 
 function ProfileScreen() {
   const [open, setOpen] = useState(true)
+  const [fx, setFx] = useState(true)
   return (
     <Frame page="Servidores">
       <div className="preview-windows">
         <div className="preview-windows-actions">
           <button type="button" onClick={() => setOpen(true)}>Abrir perfil de membro</button>
+          <button type="button" onClick={() => setFx(v => !v)}>Jardim de Sakura: {fx ? 'ligado' : 'desligado'}</button>
         </div>
       </div>
       {open && (
@@ -700,7 +708,7 @@ function ProfileScreen() {
           user={ME}
           onlineUsers={ONLINE}
           participants={[]}
-          presenceData={PRESENCE}
+          presenceData={{ ...PRESENCE, u2: { ...PRESENCE.u2, profile_effect: fx ? 'sakura_garden' : null } }}
           presenceStatus="online"
           spaces={SPACES}
           expandedSpace="s1"
@@ -764,6 +772,63 @@ function UpdateScreen() {
   )
 }
 
+// Galeria das decorações de avatar: as seis novas do pacote (marcadas) e as que já existiam, em quatro tamanhos
+const NEW_DECORATIONS = new Set(['bunny_moon', 'sakura_bloom', 'arcane_circle', 'crystal_wings', 'pumpkin_night', 'frost_crystal'])
+function DecorationsScreen() {
+  const [only, setOnly] = useState<'novas' | 'antigas' | 'todas'>('novas')
+  const [big, setBig] = useState(false)
+  const list = AVATAR_DECORATIONS.filter(d => only === 'todas' || (only === 'novas') === NEW_DECORATIONS.has(d.id))
+  return (
+    <Frame page="Loja">
+      <div className="preview-page preview-decos">
+        <div className="preview-decos-head">
+          <h2>Decorações de avatar</h2>
+          <div className="preview-decos-filter" role="group" aria-label="Mostrar">
+            <button type="button" className={only === 'novas' ? 'on' : ''} onClick={() => setOnly('novas')}>Só as novas</button>
+            <button type="button" className={only === 'antigas' ? 'on' : ''} onClick={() => setOnly('antigas')}>As que já existiam</button>
+            <button type="button" className={only === 'todas' ? 'on' : ''} onClick={() => setOnly('todas')}>Todas</button>
+            <button type="button" className={big ? 'on' : ''} onClick={() => setBig(b => !b)}>Ampliado</button>
+          </div>
+        </div>
+        <div className="preview-decos-grid">
+          {list.map(d => (
+            <article key={d.id} className="preview-deco-card">
+              <header>
+                <strong>{d.name}</strong>
+                <span>{NEW_DECORATIONS.has(d.id) ? 'NOVA · ' : ''}{d.category}</span>
+              </header>
+              <div className="preview-deco-row">
+                {(big ? [210] : [32, 48, 72, 112]).map(size => (
+                  <div key={size} className="preview-deco-cell" style={{ width: size * 1.7, height: size * 1.7 }}>
+                    <DecoratedAvatar displayName="teste" decorationId={d.id} size={size} status={size >= 48 ? 'online' : undefined} />
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </Frame>
+  )
+}
+
+// Janela "Novo na Loja" por cima da tela de amigos (onde o app abre). Fechar ou "Ver na loja" só reabre aqui.
+function ShopNewsScreen() {
+  const [open, setOpen] = useState(true)
+  return (
+    <>
+      <FriendsScreen />
+      {open && CURRENT_SHOP_DROP ? (
+        <ShopNewsModal drop={CURRENT_SHOP_DROP} displayName="teste" onDismiss={() => setOpen(false)} onOpenShop={() => setOpen(false)} />
+      ) : (
+        <button type="button" className="echo-btn-secondary" style={{ position: 'fixed', right: 24, bottom: 24, zIndex: 5 }} onClick={() => setOpen(true)}>
+          Mostrar de novo
+        </button>
+      )}
+    </>
+  )
+}
+
 function Preview() {
   const [theme, setTheme] = useState<ThemeKey>(() => {
     const hash = window.location.hash.replace('#', '').split('/')[0]
@@ -793,6 +858,8 @@ function Preview() {
     screen === 'espaco' ? <SpaceStudioScreen /> :
     screen === 'perfil' ? <ProfileScreen /> :
     screen === 'atualizacao' ? <UpdateScreen /> :
+    screen === 'decoracoes' ? <DecorationsScreen /> :
+    screen === 'novidades' ? <ShopNewsScreen /> :
     <WindowsScreen />
 
   return (

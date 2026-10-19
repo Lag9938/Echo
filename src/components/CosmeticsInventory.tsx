@@ -675,7 +675,7 @@ export function CosmeticsInventory({
                         style={{
                           width: '54px',
                           height: '54px',
-                          borderRadius: '17px',
+                          borderRadius: '50%',
                           background: '#13151f',
                           display: 'flex',
                           alignItems: 'center',

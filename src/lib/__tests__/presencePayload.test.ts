@@ -56,21 +56,21 @@ describe('buildPresencePayload', () => {
 
   it('o valor salvo no aparelho vale mais que o do estado da tela; a chave antiga serve de reserva', () => {
     const storage = fakeStorage({
-      [`echo-avatar-decoration-${ME}`]: 'fire_storm',
+      [`echo-avatar-decoration-${ME}`]: 'quantum_vortex',
       'echo-profile-effect': 'efeito_antigo',
       [`echo-name-effect-${ME}`]: 'aurora',
       [`echo-banner-preset-${ME}`]: 'oceano'
     })
-    const payload = buildPresencePayload(base({ storage, avatarDecoration: 'cyber_hud', profileEffect: 'do_estado', nameEffect: 'do_estado' }))
-    expect(payload.avatar_decoration).toBe('fire_storm')
+    const payload = buildPresencePayload(base({ storage, avatarDecoration: 'crystal_wings', profileEffect: 'do_estado', nameEffect: 'do_estado' }))
+    expect(payload.avatar_decoration).toBe('quantum_vortex')
     expect(payload.profile_effect).toBe('efeito_antigo')
     expect(payload.name_effect).toBe('aurora')
     expect(payload.banner_preset).toBe('oceano')
   })
 
   it('sem valor salvo, usa o cosmético do estado da tela', () => {
-    const payload = buildPresencePayload(base({ avatarDecoration: 'cyber_hud', profileEffect: 'neve', nameEffect: 'aurora' }))
-    expect(payload.avatar_decoration).toBe('cyber_hud')
+    const payload = buildPresencePayload(base({ avatarDecoration: 'crystal_wings', profileEffect: 'neve', nameEffect: 'aurora' }))
+    expect(payload.avatar_decoration).toBe('crystal_wings')
     expect(payload.profile_effect).toBe('neve')
     expect(payload.name_effect).toBe('aurora')
   })
@@ -126,8 +126,8 @@ describe('buildPresencePayload', () => {
 
   it('armazenamento indisponível não derruba: cai nos padrões', () => {
     const broken = { getItem: () => { throw new Error('bloqueado') } }
-    const payload = buildPresencePayload(base({ storage: broken, avatarDecoration: 'cyber_hud' }))
-    expect(payload.avatar_decoration).toBe('cyber_hud')
+    const payload = buildPresencePayload(base({ storage: broken, avatarDecoration: 'crystal_wings' }))
+    expect(payload.avatar_decoration).toBe('crystal_wings')
     expect(payload.badge).toBe('owner')
   })
 })

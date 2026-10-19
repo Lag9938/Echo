@@ -29,18 +29,22 @@ const COLLAPSED_KEY = 'echo-call-panel-collapsed'
 const MAX_AVATARS = 5
 
 /**
- * Quando mostrar o painel: há uma chamada de voz conectada e a pessoa NÃO está olhando para ela agora.
- * "Olhando" = na área de servidores com o canal de voz da chamada aberto (aí a própria tela já mostra tudo).
+ * Quando mostrar o painel: há uma chamada de voz conectada, a pessoa NÃO está olhando para ela agora
+ * e a barra lateral de canais está recolhida (ou a pessoa está em uma página sem barra de canais, como EchoShop/Amigos/Configurações).
+ * Quando a barra lateral está aberta em Servidores, o rodapé de perfil + a CallStrip no topo já cumprem esse papel.
  */
 export function shouldShowFloatingCall(opts: {
   isConnected: boolean
   activeVoiceChannelId: string | null | undefined
   page: string
   selectedChannelId: string | null | undefined
+  sidebarCollapsed?: boolean
 }): boolean {
   if (!opts.isConnected || !opts.activeVoiceChannelId) return false
   const viewingCall = opts.page === 'Servidores' && opts.selectedChannelId === opts.activeVoiceChannelId
-  return !viewingCall
+  if (viewingCall) return false
+  if (opts.page === 'Servidores' && opts.sidebarCollapsed === false) return false
+  return true
 }
 
 function readCollapsed(): boolean {

@@ -80,7 +80,7 @@ export function EchoShop({
   })
 
   // Preview States
-  const [selectedDecoPreview, setSelectedDecoPreview] = useState<string>(currentDecoration || 'soundwave_orb')
+  const [selectedDecoPreview, setSelectedDecoPreview] = useState<string>(currentDecoration || AVATAR_DECORATIONS[0]?.id || '')
   const [selectedEffectPreview, setSelectedEffectPreview] = useState<string>(currentProfileEffect || 'echo_resonance')
   const [selectedAuraPreview, setSelectedAuraPreview] = useState<string>(currentAvatarFrame || 'aura-cyan')
   const [selectedFinishPreview, setSelectedFinishPreview] = useState<string>(currentCardFinish || 'holographic')
@@ -94,7 +94,7 @@ export function EchoShop({
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isEquipping, setIsEquipping] = useState(false)
 
-  const decoCategories = ['Todos', 'Aura', 'Fantasia', 'Cyber', 'Animais']
+  const decoCategories = ['Todos', 'Aura', 'Fantasia', 'Animais', 'Sazonal']
   const effectCategories = ['Todos', 'Áudio & Som', 'Fogo & Energia', 'Natureza', 'Sci-Fi', 'Místico', 'Prestígio']
   const nameCategories = ['Todos', 'Ressonância', 'Energia', 'Cyber', 'Cósmico', 'Prestígio']
 

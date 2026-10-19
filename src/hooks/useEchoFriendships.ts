@@ -69,13 +69,13 @@ export function useEchoFriendships({
         'friend-valkyrie': {
           presence_status: 'online',
           custom_status: 'Disponível',
-          avatar_decoration: 'cyber_hud'
+          avatar_decoration: 'crystal_wings'
         },
         'friend-gaming': {
           presence_status: 'online',
           custom_status: 'Jogando Cyberpunk 2077',
           current_game: { name: 'Cyberpunk 2077' },
-          avatar_decoration: 'fire_storm'
+          avatar_decoration: 'quantum_vortex'
         }
       }))
       return

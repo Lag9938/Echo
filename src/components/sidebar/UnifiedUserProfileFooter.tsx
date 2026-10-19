@@ -5,7 +5,6 @@ import { formatGameDuration } from '../../lib/formatters'
 import {
   SparklesIcon,
   SettingsIcon,
-  CheckIcon,
   MicIcon,
   MicOffIcon,
   HeadphonesIcon,
@@ -58,6 +57,13 @@ export interface UnifiedUserProfileFooterProps {
   call?: FooterCallControls | null
 }
 
+const STATUS_OPTIONS = [
+  ['online', 'Online'],
+  ['idle', 'Ausente'],
+  ['dnd', 'Não perturbe'],
+  ['invisible', 'Invisível']
+] as const
+
 export function UnifiedUserProfileFooter({
   displayName,
   avatarUrl,
@@ -71,22 +77,44 @@ export function UnifiedUserProfileFooter({
   avatarDecoration,
   call
 }: UnifiedUserProfileFooterProps) {
+  const handleSelectStatus = (status: 'online' | 'idle' | 'dnd' | 'invisible') => {
+    updatePresenceStatus(status)
+    setShowStatusMenu?.(false)
+  }
+
   return (
     <div className={`sidebar-profile-footer${call ? ' has-call' : ''}${showStatusMenu ? ' status-open' : ''}`}>
-      {call && <ProfileCallPopover call={call} presenceStatus={presenceStatus} onChangeStatus={updatePresenceStatus} />}
+      {call && (
+        <ProfileCallPopover
+          call={call}
+          presenceStatus={presenceStatus}
+          onChangeStatus={handleSelectStatus}
+        />
+      )}
+      {!call && showStatusMenu && (
+        <div
+          className="profile-status-inline-popover"
+          role="dialog"
+          aria-label="Status de presença"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="profile-call-card profile-status-only-card">
+            <ProfileStatusRow presenceStatus={presenceStatus} onChangeStatus={handleSelectStatus} />
+          </div>
+        </div>
+      )}
       <div className="profile-footer-card">
         <div className="profile-footer-top-row">
-          <div 
-            className="profile-footer-info" 
-            onClick={() => setShowStatusMenu?.(!showStatusMenu)} 
-            title="Alterar Status de Presença"
+          <div
+            className="profile-footer-info"
+            onClick={() => setShowStatusMenu?.(!showStatusMenu)}
             style={{ cursor: 'pointer' }}
-            tabIndex={call ? 0 : undefined}
+            tabIndex={0}
           >
             <div className="profile-footer-avatar-wrap" style={{ position: 'relative', width: '32px', height: '32px', flexShrink: 0 }}>
               <div className="profile-footer-avatar">
                 {avatarUrl ? (
-                   <img src={avatarUrl} alt={displayName} />
+                  <img src={avatarUrl} alt={displayName} />
                 ) : (
                   displayName.slice(0, 1).toUpperCase()
                 )}
@@ -99,7 +127,7 @@ export function UnifiedUserProfileFooter({
             <div className="profile-footer-names">
               <span className="profile-footer-display-name">{displayName}</span>
               {call ? (
-                <span className="profile-footer-sub-status in-call" title={`Na chamada · ${call.channelName}`}>
+                <span className="profile-footer-sub-status in-call">
                   <i className={`profile-call-dot${call.isReconnecting ? ' reconnecting' : ''}`} aria-hidden="true" />
                   {call.isReconnecting ? 'Reconectando…' : `Na chamada · ${call.channelName}`}
                 </span>
@@ -112,33 +140,6 @@ export function UnifiedUserProfileFooter({
                 </span>
               )}
             </div>
-            {showStatusMenu && (
-              <div className="status-picker-popover" onClick={(e) => e.stopPropagation()}>
-                <span className="status-picker-heading">Definir status</span>
-                {([
-                  ['online', 'Online', 'Disponível'],
-                  ['idle', 'Ausente', 'Inativo'],
-                  ['dnd', 'Não perturbe', 'Silenciar'],
-                  ['invisible', 'Invisível', 'Aparecer offline']
-                ] as const).map(([value, label, sub]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={`status-picker-option ${value}${presenceStatus === value ? ' selected' : ''}`}
-                    onClick={() => { updatePresenceStatus(value); setShowStatusMenu?.(false); }}
-                  >
-                    <span className="status-dot-bullet">
-                      <StatusGlyph status={value} size={16} withGlow={presenceStatus === value} />
-                    </span>
-                    <div className="status-meta">
-                      <strong>{label}</strong>
-                      <span>{sub}</span>
-                    </div>
-                    {presenceStatus === value && <CheckIcon className="status-picker-check" />}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           <div className="profile-footer-actions">
@@ -174,7 +175,38 @@ export function UnifiedUserProfileFooter({
   )
 }
 
-/** Painel que sobe sobre o rodapé quando o mouse (ou o teclado) chega nele: mutar, silenciar e sair da chamada. */
+function ProfileStatusRow({
+  presenceStatus,
+  onChangeStatus
+}: {
+  presenceStatus: string
+  onChangeStatus: (status: 'online' | 'idle' | 'dnd' | 'invisible') => void
+}) {
+  return (
+    <div className="profile-call-status" role="radiogroup" aria-label="Status de presença">
+      <div className="profile-call-status-options">
+        {STATUS_OPTIONS.map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={presenceStatus === value}
+            className={`profile-call-status-btn ${value}${presenceStatus === value ? ' selected' : ''}`}
+            title={label}
+            onClick={() => onChangeStatus(value)}
+          >
+            <StatusGlyph status={value} size={15} />
+          </button>
+        ))}
+      </div>
+      <span className="profile-call-status-current">
+        {STATUS_OPTIONS.find(([value]) => value === presenceStatus)?.[1] ?? 'Online'}
+      </span>
+    </div>
+  )
+}
+
+/** Painel que sobe sobre o rodapé quando o mouse (ou o teclado) chega nele: mutar, silenciar, status e sair da chamada. */
 function ProfileCallPopover({
   call,
   presenceStatus,
@@ -182,14 +214,8 @@ function ProfileCallPopover({
 }: {
   call: FooterCallControls
   presenceStatus: string
-  onChangeStatus: (status: any) => void
+  onChangeStatus: (status: 'online' | 'idle' | 'dnd' | 'invisible') => void
 }) {
-  const statusOptions = [
-    ['online', 'Online'],
-    ['idle', 'Ausente'],
-    ['dnd', 'Não perturbe'],
-    ['invisible', 'Invisível']
-  ] as const
   return (
     <div className="profile-call-popover" role="group" aria-label="Controles da chamada">
       <div className="profile-call-card">
@@ -201,7 +227,7 @@ function ProfileCallPopover({
         >
           <i className={`profile-call-dot${call.isReconnecting ? ' reconnecting' : ''}`} aria-hidden="true" />
           <span className="profile-call-title">
-            <strong title={call.channelName}>{call.channelName}</strong>
+            <strong>{call.channelName}</strong>
             <small>{call.isViewingCall ? 'Você está nesta sala' : 'Voltar à chamada ›'}</small>
           </span>
           <span className="profile-call-elapsed">{call.isReconnecting ? 'Reconectando…' : call.elapsed}</span>
@@ -248,27 +274,7 @@ function ProfileCallPopover({
           )}
         </div>
 
-        {/* Na chamada o rodapé mostra "Na chamada · sala" no lugar do status; este seletor deixa trocar o status sem sair dela */}
-        <div className="profile-call-status" role="radiogroup" aria-label="Status de presença">
-          <div className="profile-call-status-options">
-            {statusOptions.map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={presenceStatus === value}
-                className={`profile-call-status-btn ${value}${presenceStatus === value ? ' selected' : ''}`}
-                title={label}
-                onClick={() => onChangeStatus(value)}
-              >
-                <StatusGlyph status={value} size={16} />
-              </button>
-            ))}
-          </div>
-          <span className="profile-call-status-current">
-            {statusOptions.find(([value]) => value === presenceStatus)?.[1] ?? 'Online'}
-          </span>
-        </div>
+        <ProfileStatusRow presenceStatus={presenceStatus} onChangeStatus={onChangeStatus} />
 
         {call.pttLabel && (
           <div className={`profile-call-ptt${call.pttActive ? ' active' : ''}`}>{call.pttLabel}</div>
@@ -282,3 +288,4 @@ function ProfileCallPopover({
     </div>
   )
 }
+

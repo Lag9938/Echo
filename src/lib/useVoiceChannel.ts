@@ -318,6 +318,7 @@ export function useVoiceChannel(options?: {
   const [recordingDuration, setRecordingDuration] = useState(0)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordedChunksRef = useRef<Blob[]>([])
+  const recordingCtxRef = useRef<AudioContext | null>(null)
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const isMutedRef = useRef(false)
@@ -2567,17 +2568,18 @@ export function useVoiceChannel(options?: {
   const startCallRecording = useCallback(() => {
     try {
       recordedChunksRef.current = []
-      const mixedDest = new AudioContext().createMediaStreamDestination()
+      // Um contexto de áudio só para a mistura inteira, fechado ao parar. Antes era um por fonte: o navegador
+      // não liga nós de contextos diferentes (a gravação falhava logo aqui) e os contextos ficavam abertos.
+      recordingCtxRef.current?.close().catch(() => {})
+      const audioCtx = new AudioContext()
+      recordingCtxRef.current = audioCtx
+      const mixedDest = audioCtx.createMediaStreamDestination()
       if (localStreamRef.current) {
-        const audioCtx = new AudioContext()
-        const src = audioCtx.createMediaStreamSource(localStreamRef.current)
-        src.connect(mixedDest)
+        audioCtx.createMediaStreamSource(localStreamRef.current).connect(mixedDest)
       }
       audioElementsRef.current.forEach(audio => {
-        if (audio.srcObject instanceof MediaStream) {
-          const audioCtx = new AudioContext()
-          const src = audioCtx.createMediaStreamSource(audio.srcObject)
-          src.connect(mixedDest)
+        if (audio.srcObject instanceof MediaStream && audio.srcObject.getAudioTracks().length > 0) {
+          audioCtx.createMediaStreamSource(audio.srcObject).connect(mixedDest)
         }
       })
       const rec = new MediaRecorder(mixedDest.stream)
@@ -2591,6 +2593,8 @@ export function useVoiceChannel(options?: {
       recordingTimerRef.current = setInterval(() => setRecordingDuration(d => d + 1), 1000)
     } catch (err) {
       console.warn('Call recording error:', err)
+      recordingCtxRef.current?.close().catch(() => {})
+      recordingCtxRef.current = null
     }
   }, [])
 
@@ -2599,6 +2603,10 @@ export function useVoiceChannel(options?: {
       mediaRecorderRef.current.stop()
       mediaRecorderRef.current = null
     }
+    // Depois do último pedaço da gravação (o stop entrega o que faltava antes de o contexto fechar)
+    const recordingCtx = recordingCtxRef.current
+    recordingCtxRef.current = null
+    if (recordingCtx) setTimeout(() => { recordingCtx.close().catch(() => {}) }, 400)
     if (recordingTimerRef.current) {
       clearInterval(recordingTimerRef.current)
       recordingTimerRef.current = null

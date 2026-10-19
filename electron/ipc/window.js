@@ -1,5 +1,6 @@
 import { app, shell, desktopCapturer, Notification } from 'electron'
 import { applyStreamingPriority } from '../services/processPriority.js'
+import { setStreamingActive } from '../services/crashReports.js'
 import { getActiveCaptureMode, readCaptureMode, writeCaptureMode } from '../services/captureMode.js'
 import { downloadAttachment, wasDownloadedHere } from '../services/attachmentDownload.js'
 import fs from 'node:fs'
@@ -177,6 +178,8 @@ export function setupWindowIpc(safeHandle, getMainWindow, setIsQuitting, rootDir
 
   // Transmissão de tela: prioridade acima do normal enquanto transmite (services/processPriority.js)
   safeHandle('set-streaming-priority', (_event, boost) => {
+    // A mesma chamada marca que há transmissão: entra no registro de quedas (services/crashReports.js)
+    setStreamingActive(Boolean(boost))
     return applyStreamingPriority(Boolean(boost), { getAppMetrics: () => app.getAppMetrics() })
   })
 

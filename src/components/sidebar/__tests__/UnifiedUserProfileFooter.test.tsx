@@ -113,4 +113,32 @@ describe('rodapé do perfil com chamada', () => {
     expect(c.querySelector('.profile-footer-sub-status')?.textContent).toBe('Reconectando…')
     expect(c.querySelector('.profile-call-dot.reconnecting')).not.toBeNull()
   })
+
+  it('usa apenas a faixa horizontal de status (sem o antigo modal 2x2 duplicado nem tooltip nativo)', () => {
+    const updatePresenceStatus = vi.fn()
+    const setShowStatusMenu = vi.fn()
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    act(() => {
+      createRoot(container).render(
+        <UnifiedUserProfileFooter
+          displayName="Igor"
+          presenceStatus="online"
+          showStatusMenu={true}
+          setShowStatusMenu={setShowStatusMenu}
+          updatePresenceStatus={updatePresenceStatus}
+          call={null}
+        />
+      )
+    })
+
+    expect(container.querySelector('.status-picker-popover')).toBeNull()
+    expect(container.querySelector('.profile-footer-info')?.getAttribute('title')).toBeNull()
+    const radios = container.querySelectorAll('.profile-call-status-btn')
+    expect(radios).toHaveLength(4)
+    click(radios[2]) // dnd
+    expect(updatePresenceStatus).toHaveBeenCalledWith('dnd')
+    expect(setShowStatusMenu).toHaveBeenCalledWith(false)
+  })
 })
+

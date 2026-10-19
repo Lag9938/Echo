@@ -58,7 +58,7 @@ body.light-theme .space-studio-header {
 body.light-theme .space-studio-header-avatar {
   width: 56px;
   height: 56px;
-  border-radius: 18px;
+  border-radius: 50%;
   border: 2px solid #fff;
   box-shadow: 0 8px 20px -6px rgba(42, 31, 45, 0.35);
 }
@@ -518,7 +518,7 @@ body.light-theme .settings-member-item-full.selected {
 .settings-member-avatar-full {
   width: 42px;
   height: 42px;
-  border-radius: 14px;
+  border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
   display: grid;

@@ -1,4 +1,4 @@
-﻿/* ==========================================================================
+/* ==========================================================================
    SELETOR DE STATUS — "ondas do eco" (vale em todos os temas)
    Quatro cartões em grade 2×2. Cada status é um ponto de cor com anéis concêntricos em volta,
    como o eco de um som: o status ativo respira (os anéis pulsam), os outros ficam parados.
@@ -279,8 +279,14 @@ body .online-indicator.online {
 .profile-call-status {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 2px 4px;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 15px;
+  background: #22202a;
+}
+body.light-theme .profile-call-status {
+  background: #ede5e4;
 }
 .profile-call-status-label {
   font-size: 10.5px;
@@ -291,65 +297,161 @@ body .online-indicator.online {
 }
 .profile-call-status-options {
   display: flex;
+  align-items: center;
   gap: 6px;
 }
 .profile-call-status-btn {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  border: 1px solid transparent;
-  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border: 1.5px solid transparent;
+  background: transparent;
+  cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 .profile-call-status-btn:hover {
-  background: color-mix(in srgb, var(--text-primary) 12%, transparent);
-  transform: translateY(-1px);
+  background: #2a2834;
+  transform: scale(1.06);
+}
+body.light-theme .profile-call-status-btn:hover {
+  background: #e4d9d8;
 }
 .profile-call-status-btn.selected {
-  border-color: var(--text-muted);
-  background: color-mix(in srgb, var(--text-primary) 14%, transparent);
+  border-color: #94a3b8;
+  background: rgba(148, 163, 184, 0.15);
 }
-.profile-call-status-btn.online.selected { border-color: #22c55e; background: color-mix(in srgb, #22c55e 18%, transparent); }
-.profile-call-status-btn.idle.selected { border-color: #f59e0b; background: color-mix(in srgb, #f59e0b 18%, transparent); }
-.profile-call-status-btn.dnd.selected { border-color: #ef4444; background: color-mix(in srgb, #ef4444 18%, transparent); }
+.profile-call-status-btn.online.selected { border-color: #22c55e; background: rgba(34, 197, 94, 0.15); }
+.profile-call-status-btn.idle.selected { border-color: #f59e0b; background: rgba(245, 158, 11, 0.15); }
+.profile-call-status-btn.dnd.selected { border-color: #ef4444; background: rgba(239, 68, 68, 0.15); }
 .profile-call-status-current {
   margin-left: auto;
+  padding-right: 2px;
   font-size: 11.5px;
   font-weight: 700;
   color: var(--text-secondary);
 }
 
-/* ── Painel da chamada mais enxuto ──
-   Sem a linha de ping/jitter; mutar e silenciar viram botões baixos com ícone e texto lado a lado;
-   o status fica numa linha discreta e "Sair" mais fino. */
+/* ── Painel da chamada e rodapé (superfície fosca suave, sem reflexo de vidro) ── */
 body .profile-call-card {
-  gap: 8px;
-  padding: 12px 12px 12px;
+  gap: 10px;
+  padding: 13px;
+  border-radius: 22px;
+  background: #18171e !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.45) !important;
+}
+body .profile-call-card.profile-status-only-card {
+  padding: 8px;
+  border-radius: 18px;
+}
+body.light-theme .profile-call-card {
+  background: #f7f2f1 !important;
+  border-color: rgba(42, 31, 45, 0.09) !important;
+  box-shadow: 0 16px 36px -12px rgba(42, 31, 45, 0.22) !important;
+}
+body .profile-call-elapsed {
+  background: #22202a;
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+body.light-theme .profile-call-elapsed {
+  background: #ede5e4;
+  color: #4f4554;
 }
 body .profile-call-toggle {
-  flex-direction: row;
-  gap: 8px;
-  min-height: 0;
-  height: 40px;
-  padding: 0 10px;
-  border-radius: 14px;
-  font-size: 12px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 54px;
+  height: auto;
+  padding: 9px 4px;
+  border-radius: 15px;
+  border: 1px solid transparent;
+  background: #22202a;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+body.light-theme .profile-call-toggle {
+  background: #ede5e4;
+  color: #2a1f2d;
+}
+body .profile-call-toggle:hover {
+  background: #2a2834;
+  transform: translateY(-1px);
+}
+body.light-theme .profile-call-toggle:hover {
+  background: #e4d9d8;
 }
 body .profile-call-toggle svg {
   width: 17px;
   height: 17px;
+  flex-shrink: 0;
+}
+body .profile-call-toggle span {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body .profile-call-toggle.is-off {
+  background: rgba(223, 109, 93, 0.14);
+  border-color: rgba(223, 109, 93, 0.34);
+  color: #f4a99d;
+}
+body.light-theme .profile-call-toggle.is-off {
+  background: rgba(223, 109, 93, 0.14);
+  border-color: rgba(223, 109, 93, 0.38);
+  color: #a23d2c;
 }
 body .profile-call-status {
   justify-content: space-between;
-  padding: 2px 2px 0;
+  padding: 6px 10px;
+  border-radius: 15px;
+  background: #22202a;
+}
+body.light-theme .profile-call-status {
+  background: #ede5e4;
 }
 body .profile-call-status-btn {
   width: 26px;
   height: 26px;
 }
 body .profile-call-leave {
-  height: 38px;
+  height: 36px;
+  border-radius: 14px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  color: #fca5a5;
   font-size: 12.5px;
+  font-weight: 700;
+  box-shadow: none;
+}
+body .profile-call-leave svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+body .profile-call-leave:hover {
+  background: rgba(239, 68, 68, 0.2);
+  box-shadow: none;
+  transform: translateY(-1px);
+}
+body.light-theme .profile-call-leave {
+  background: rgba(220, 38, 38, 0.09);
+  border-color: rgba(220, 38, 38, 0.24);
+  color: #b91c1c;
+}
+body.light-theme .profile-call-leave:hover {
+  background: rgba(220, 38, 38, 0.15);
 }

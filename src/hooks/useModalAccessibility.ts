@@ -20,7 +20,8 @@ export const DIALOG_SELECTOR = [
   '.channel-invite-modal',
   '.space-studio-container',
   '.member-audio-modal',
-  '.soundboard-modal'
+  '.soundboard-modal',
+  '.shop-news-modal'
 ].join(',')
 
 const FOCUSABLE =

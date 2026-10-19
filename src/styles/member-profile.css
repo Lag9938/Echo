@@ -1,7 +1,7 @@
 /* ==========================================================================
-   PERFIL DE MEMBRO (MEMBER PROFILE MODAL) — REDESIGN AURORA
-   Janela modal com prestígio, banner dinâmico, cutucada divertida, nota privada
-   e ações rápidas no padrão de vidro fosco com cantos generosos (26px).
+   PERFIL DE MEMBRO (MEMBER PROFILE MODAL) — REDESIGN COZY MATTE & RETENÇÃO
+   Janela modal com superfície fosca aconchegante (#18171e / #f7f2f1),
+   fusão suave de banner, vitrine de cosméticos EchoShop e zero overflow.
    ========================================================================== */
 
 /* Fundo com desfoque e proteção contra arrasto do Electron */
@@ -13,127 +13,181 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(20, 12, 28, 0.42);
-  backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  background: rgba(12, 10, 18, 0.56);
+  backdrop-filter: blur(12px) saturate(135%);
+  -webkit-backdrop-filter: blur(12px) saturate(135%);
   -webkit-app-region: no-drag;
   animation: soundboardFade 0.18s ease both;
 }
 
-.member-profile-overlay * {
+.member-profile-overlay *,
+.member-profile-overlay *::before,
+.member-profile-overlay *::after {
   -webkit-app-region: no-drag;
+  box-sizing: border-box;
 }
 
 /* Cartão do Modal */
 .member-profile-card-modal {
-  width: min(440px, 100%);
+  width: min(400px, 100%);
   max-height: min(760px, calc(100vh - 40px));
   border-radius: 28px;
   overflow-y: auto;
   overflow-x: hidden;
-  background: color-mix(in srgb, var(--bg-secondary) 94%, transparent);
-  border: 1px solid color-mix(in srgb, var(--text-muted) 24%, transparent);
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(28px) saturate(170%);
-  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  background: #18171e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.62),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
   display: flex;
   flex-direction: column;
   position: relative;
   scrollbar-width: thin;
 }
 
-/* Banner superior */
+/* Protege os botões e a leitura do cartão contra efeitos de vídeo como Jardim de Sakura:
+   o efeito emoldura o banner e as bordas externas (z-index: 2), mas fica ATRÁS dos botões,
+   do avatar e da cápsula matte (.member-matte-well), sem nunca tampar os controles. */
+.member-profile-card-modal > .profile-video-effect,
+.member-profile-card-modal > .echo-profile-effect-layer {
+  z-index: 2 !important;
+  pointer-events: none !important;
+}
+
+/* 1. Banner superior com fusão suave em degradê (sem corte seco) */
 .member-profile-banner {
-  height: 124px;
+  height: 138px;
   position: relative;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   flex-shrink: 0;
+  z-index: 1;
+}
+
+.member-profile-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(15, 14, 20, 0.22) 0%,
+    rgba(24, 23, 30, 0) 42%,
+    #18171e 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+.member-profile-banner-topbar {
+  position: relative;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  width: 100%;
 }
 
 .member-profile-banner-badges {
-  position: absolute;
-  top: 12px;
-  left: 14px;
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  z-index: 3;
+  min-width: 0;
+  flex: 1;
 }
 
-.member-banner-badge {
+.member-cosmetic-banner-pill {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
+  gap: 6px;
+  padding: 5px 11px;
   border-radius: 999px;
+  background: rgba(18, 17, 24, 0.86);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #fce7f3;
   font-size: 11px;
   font-weight: 700;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(8px);
+  cursor: pointer;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.member-cosmetic-banner-pill:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 77, 141, 0.32);
+  border-color: rgba(255, 77, 141, 0.55);
 }
 
 .member-profile-close-btn {
-  position: absolute;
-  top: 12px;
-  right: 14px;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  border: 0;
-  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(18, 17, 24, 0.86);
   color: #fff;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  z-index: 3;
-  backdrop-filter: blur(8px);
+  flex-shrink: 0;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
   transition: background 0.15s ease, transform 0.15s ease;
 }
 
 .member-profile-close-btn:hover {
-  background: rgba(239, 68, 68, 0.7);
+  background: rgba(239, 68, 68, 0.85);
   transform: rotate(90deg);
 }
 
-/* Corpo do perfil */
+/* Corpo do perfil (acima da camada de vídeo para nunca tampar os botões) */
 .member-profile-body {
-  padding: 0 20px 22px;
+  padding: 0 16px 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
+  position: relative;
+  z-index: 10;
+  width: 100%;
 }
 
-/* Linha do avatar e cutucada */
+/* 2. Linha do Avatar + Ações Rápidas (protegida contra overflow) */
 .member-profile-avatar-row {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-top: -38px;
-  margin-bottom: 2px;
+  gap: 10px;
+  margin-top: -44px;
+  padding: 0 4px;
   position: relative;
-  z-index: 4;
+  z-index: 5;
+  width: 100%;
 }
 
 .member-profile-avatar-large {
-  width: 78px;
-  height: 78px;
+  width: 82px;
+  height: 82px;
   border-radius: 50%;
   position: relative;
-  background: var(--bg-primary);
-  border: 3.5px solid var(--bg-secondary);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  background: #22202a;
+  border: 4px solid #18171e;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
   display: grid;
   place-items: center;
-  font-size: 26px;
+  font-size: 27px;
   font-weight: 800;
   color: var(--text-primary);
+  flex-shrink: 0;
 }
 
 .member-profile-avatar-large img {
@@ -145,75 +199,193 @@
 
 .member-profile-status-ring {
   position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 18px;
-  height: 18px;
+  bottom: 1px;
+  right: 1px;
+  width: 19px;
+  height: 19px;
   border-radius: 50%;
-  border: 3px solid var(--bg-secondary);
+  border: 3.5px solid #18171e;
+  z-index: 3;
 }
 
-.member-profile-status-ring.online { background: #22c55e; box-shadow: 0 0 10px #22c55e; }
+.member-profile-status-ring.online { background: #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.55); }
 .member-profile-status-ring.idle { background: #f59e0b; }
 .member-profile-status-ring.dnd { background: #ef4444; }
 .member-profile-status-ring.offline { background: #64748b; }
 
-/* Botão interativo de cutucada */
-.member-profile-poke-trigger {
+/* Cluster de Ações Rápidas no Topo Direito */
+.member-profile-quick-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+  min-width: 0;
+  max-width: calc(100% - 92px);
+}
+
+.member-quick-icon-btn {
+  height: 36px;
+  min-width: 36px;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: #22202a;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.member-quick-icon-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: var(--accent-color, #ff4d8d);
+  background: rgba(255, 77, 141, 0.14);
+}
+
+.member-quick-icon-btn.poke {
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.member-quick-icon-btn.poke:hover {
+  background: rgba(245, 158, 11, 0.24);
+  border-color: rgba(245, 158, 11, 0.6);
+}
+
+.poke-counter-badge {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.member-quick-icon-btn.friend-add,
+.member-quick-icon-btn.friend-accept {
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.42);
+  background: rgba(16, 185, 129, 0.14);
+}
+
+.member-quick-icon-btn.friend-accepted {
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.08);
+  cursor: default;
+}
+
+.member-quick-icon-btn.friend-pending {
+  color: #facc15;
+  border-color: rgba(234, 179, 8, 0.35);
+  background: rgba(234, 179, 8, 0.1);
+  cursor: default;
+}
+
+.member-quick-pill-btn {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #22202a;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 14px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--warn-text, #fbbf24);
-  background: rgba(245, 158, 11, 0.15);
-  border: 1px solid rgba(245, 158, 11, 0.45);
   cursor: pointer;
-  transition: transform 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, border-color 0.15s ease;
 }
 
-.member-profile-poke-trigger:hover {
-  background: rgba(245, 158, 11, 0.28);
-  transform: translateY(-2px) scale(1.05);
+.member-quick-pill-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent-color, #ff4d8d);
 }
 
-.member-profile-poke-trigger:active {
-  transform: scale(0.94);
-}
-
-/* Identidade: Nome, @handle e status personalizado */
+/* 3. Identidade: Nome, Vitrine de Insígnias, @handle e Balão de Pensamento */
 .member-profile-header-info {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding: 2px 4px 0;
+  min-width: 0;
+}
+
+.member-profile-name-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.member-profile-name-cluster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .member-profile-display-name {
   margin: 0;
-  font-size: 19px;
+  font-size: 20px;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--text-primary);
+  word-break: break-word;
 }
+
+.member-badge-showcase {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.member-mini-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  cursor: default;
+}
+
+.member-mini-badge.pink { background: rgba(255, 77, 141, 0.16); }
+.member-mini-badge.cyan { background: rgba(56, 189, 248, 0.16); }
 
 .member-profile-handle-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12.5px;
 }
 
 .member-profile-handle-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: transparent;
   border: 0;
   padding: 0;
   cursor: pointer;
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   transition: color 0.15s ease;
 }
 
@@ -221,60 +393,288 @@
   color: var(--text-primary);
 }
 
-.member-profile-custom-status {
-  display: flex;
+.handle-copy-hint {
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+}
+
+.handle-copy-hint.copied {
+  color: #10b981;
+}
+
+.member-handle-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.member-presence-inline {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.member-presence-inline.online { color: #10b981; }
+.member-presence-inline.idle { color: #f59e0b; }
+.member-presence-inline.dnd { color: #ef4444; }
+
+/* Balão de pensamento contido dentro da largura do card */
+.member-profile-thought-bubble {
+  margin-top: 6px;
+  display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 6px 12px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
-  border: 1px solid color-mix(in srgb, var(--text-muted) 16%, transparent);
+  padding: 7px 12px;
+  border-radius: 14px 14px 14px 4px;
+  background: #22202a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 4px;
+  font-weight: 600;
+  color: var(--text-primary);
+  max-width: 100%;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+}
+
+.member-profile-thought-bubble .thought-icon {
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.member-profile-thought-bubble .thought-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 4. Cápsula Interna Matte — Protege leitura contra Efeitos de Vídeo */
+.member-matte-well {
+  padding: 14px;
+  border-radius: 20px;
+  background: rgba(20, 19, 26, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
 }
 
 /* Cartão de atividade (jogando ou em chamada) */
 .member-activity-card {
-  padding: 12px 14px;
-  border-radius: 18px;
-  border: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.member-activity-card.voice {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(56, 189, 248, 0.06));
+  border-color: rgba(16, 185, 129, 0.28);
 }
 
 .member-activity-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+.member-activity-live-pill {
+  font-size: 9.5px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-weight: 800;
+  border: 1px solid;
 }
 
 .member-activity-body {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  min-width: 0;
+}
+
+.member-activity-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.member-activity-icon-wrap.voice {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+}
+
+.member-activity-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.member-activity-voice-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #34d399;
 }
 
 .member-activity-name {
   margin: 0;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .member-activity-sub {
   margin: 2px 0 0;
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
-/* Nota pessoal privada */
+/* Vitrine de Cosméticos Equipados (Próprio Perfil) */
+.member-loadout-section {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.member-section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.member-section-link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-color, #ff4d8d);
+  cursor: pointer;
+}
+
+.member-section-link-btn:hover {
+  text-decoration: underline;
+}
+
+.member-loadout-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
+.member-loadout-item {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.member-loadout-item:hover {
+  border-color: rgba(255, 77, 141, 0.45);
+  transform: translateY(-1px);
+}
+
+.member-loadout-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  background: rgba(255, 77, 141, 0.15);
+  flex-shrink: 0;
+}
+
+.member-loadout-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.member-loadout-type {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.member-loadout-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Nota pessoal privada compacta sob demanda */
 .member-private-note-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.member-compact-note-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 11px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.member-compact-note-trigger:hover {
+  color: var(--text-secondary);
+  border-style: solid;
+  border-color: var(--accent-color, #ff4d8d);
+}
+
+.member-compact-note-add {
+  color: var(--accent-color, #ff4d8d);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.member-note-expanded {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -293,22 +693,21 @@
 
 .member-private-note-input {
   width: 100%;
-  padding: 9px 12px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
-  border: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
+  padding: 8px 11px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   color: var(--text-primary);
   font-size: 12px;
   line-height: 1.4;
+  font-family: inherit;
   outline: none;
-  resize: vertical;
-  transition: border-color 0.15s ease, background 0.15s ease;
-  box-sizing: border-box;
+  resize: none;
+  transition: border-color 0.15s ease;
 }
 
 .member-private-note-input:focus {
-  border-color: var(--accent-color);
-  background: color-mix(in srgb, var(--accent-color) 6%, transparent);
+  border-color: var(--accent-color, #ff4d8d);
 }
 
 /* Cargos */
@@ -333,7 +732,7 @@
 }
 
 .member-role-pill {
-  padding: 3px 10px;
+  padding: 4px 10px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
@@ -346,120 +745,153 @@
   border-radius: 50%;
 }
 
-/* Ações principais do perfil */
+/* Ação principal do perfil */
 .member-profile-actions {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .member-profile-action-btn {
+  width: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 18px;
-  border-radius: 999px;
+  padding: 11px 16px;
+  border-radius: 14px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
   border: 0;
   transition: transform 0.15s ease, filter 0.15s ease;
 }
 
 .member-profile-action-btn.primary {
-  background: linear-gradient(180deg, var(--accent-fill-top), var(--accent-fill));
+  background: linear-gradient(135deg, var(--accent-fill-top, #ff4d8d), var(--accent-fill, #d91b60));
   color: #fff;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -8px color-mix(in srgb, var(--accent-color) 80%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 10px 22px -8px color-mix(in srgb, var(--accent-color, #ff4d8d) 75%, transparent);
 }
 
 .member-profile-action-btn.primary:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   filter: brightness(1.05);
 }
 
-.member-profile-action-btn.secondary {
-  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
-  border: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
-  color: var(--text-secondary);
-}
-
-.member-profile-action-btn.secondary:hover {
-  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
-  color: var(--text-primary);
-  transform: translateY(-1px);
-}
-
+/* Rodapé social */
 .member-profile-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 8px;
-  border-top: 1px solid color-mix(in srgb, var(--text-muted) 16%, transparent);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  padding: 2px 6px 0;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--text-muted);
 }
 
+.member-footer-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.member-footer-block-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 0;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #f87171;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.member-footer-block-link:hover {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.member-footer-block-link.unblock {
+  color: #facc15;
+}
+
 /* ==========================================================================
-   AURORA LIGHT: VIDRO FOSCO E CONTRASTE NO MODAL DO PERFIL
+   AURORA LIGHT: SUPERFÍCIE MATTE CLARA (#f7f2f1) E ALTO CONTRASTE
    ========================================================================== */
 
-/* Fundo atrás do cartão: ameixa suave em vez do preto, para o cartão não parecer cinza */
 body.light-theme .member-profile-overlay,
 body.light-theme .screen-picker-overlay.member-profile-overlay {
   background: rgba(74, 53, 64, 0.42) !important;
 }
 
-body.light-theme .member-profile-poke-trigger {
+body.light-theme .member-profile-card-modal {
+  background: #f7f2f1 !important;
+  border: 1px solid rgba(42, 31, 45, 0.14) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 24px 60px rgba(42, 31, 45, 0.22) !important;
+}
+
+body.light-theme .member-profile-banner::after {
+  background: linear-gradient(
+    180deg,
+    rgba(24, 18, 26, 0.12) 0%,
+    rgba(247, 242, 241, 0) 42%,
+    #f7f2f1 100%
+  ) !important;
+}
+
+body.light-theme .member-profile-avatar-large {
+  border-color: #f7f2f1 !important;
+  background: #ebe3e2 !important;
+}
+
+body.light-theme .member-profile-status-ring {
+  border-color: #f7f2f1 !important;
+}
+
+body.light-theme .member-quick-icon-btn,
+body.light-theme .member-quick-pill-btn,
+body.light-theme .member-profile-thought-bubble {
+  background: #efe7e6 !important;
+  border-color: rgba(42, 31, 45, 0.14) !important;
+  color: var(--text-primary) !important;
+}
+
+body.light-theme .member-quick-icon-btn.poke {
   background: rgba(245, 158, 11, 0.14) !important;
-  border-color: rgba(180, 83, 9, 0.4) !important;
-  color: #92400e !important;
+  border-color: rgba(180, 83, 9, 0.35) !important;
+  color: #b45309 !important;
 }
 
-body.light-theme .member-profile-action-btn.secondary {
-  color: #15803d !important;
-  border-color: rgba(21, 128, 61, 0.3) !important;
-}
-
-body.light-theme .member-profile-friend-quick-trigger {
-  background: rgba(34, 197, 94, 0.12) !important;
+body.light-theme .member-quick-icon-btn.friend-add,
+body.light-theme .member-quick-icon-btn.friend-accept,
+body.light-theme .member-quick-icon-btn.friend-accepted {
+  background: rgba(16, 185, 129, 0.14) !important;
   border-color: rgba(21, 128, 61, 0.35) !important;
   color: #15803d !important;
 }
 
-body.light-theme .member-profile-card-modal {
-  background: rgba(255, 252, 251, 0.96) !important;
-  border: 1px solid rgba(255, 255, 255, 0.95) !important;
-  box-shadow: inset 0 1px 0 #fff, 0 24px 60px rgba(42, 31, 45, 0.22) !important;
-}
-
-body.light-theme .member-profile-avatar-large {
-  border-color: #fff !important;
-  background: #f1eaeb !important;
-}
-
-body.light-theme .member-profile-close-btn {
-  background: rgba(255, 255, 255, 0.7) !important;
-  color: var(--text-primary) !important;
-  border: 1px solid rgba(255, 255, 255, 0.95) !important;
-}
-
-body.light-theme .member-profile-custom-status,
-body.light-theme .member-activity-card {
-  background: rgba(255, 255, 255, 0.7) !important;
-  border-color: rgba(255, 255, 255, 0.9) !important;
+body.light-theme .member-matte-well {
+  background: rgba(255, 251, 250, 0.92) !important;
+  border-color: rgba(42, 31, 45, 0.09) !important;
   box-shadow: inset 0 1px 0 #fff !important;
 }
 
-body.light-theme .member-private-note-input {
-  background: rgba(255, 255, 255, 0.78) !important;
-  border-color: rgba(255, 255, 255, 0.95) !important;
+body.light-theme .member-loadout-item,
+body.light-theme .member-compact-note-trigger,
+body.light-theme .member-badge-showcase {
+  background: rgba(42, 31, 45, 0.045) !important;
+  border-color: rgba(42, 31, 45, 0.11) !important;
 }
 
-body.light-theme .member-private-note-input:focus {
+body.light-theme .member-private-note-input {
   background: #fff !important;
-  border-color: var(--accent-color) !important;
+  border-color: rgba(42, 31, 45, 0.16) !important;
+  color: var(--text-primary) !important;
 }
+

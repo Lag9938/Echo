@@ -1,49 +1,19 @@
 import { lazy, Suspense, type CSSProperties } from 'react'
+import { AvatarVideoDecoration } from './AvatarVideoDecoration'
+import { getAvatarVideoDecoration } from '../lib/avatarVideoDecorations'
 
 const HighTierDecorationRenderer = lazy(() => import('./HighTierDecorations'))
 
 export interface DecorationMetadata {
   id: string
   name: string
-  category: 'Aura' | 'Fantasia' | 'Cyber' | 'Animais'
+  category: 'Aura' | 'Fantasia' | 'Animais' | 'Sazonal'
   description: string
   badge: string
   themeColor: string
 }
 
 export const AVATAR_DECORATIONS: DecorationMetadata[] = [
-  {
-    id: 'soundwave_orb',
-    name: 'Orbe de Ressonância',
-    category: 'Aura',
-    description: 'Anel circular de frequências acústicas oscilando ao redor do avatar com satélites harmônicos.',
-    badge: 'ECHO ORIGIN',
-    themeColor: '#00f2fe'
-  },
-  {
-    id: 'fire_storm',
-    name: 'Labaredas de Plasma',
-    category: 'Aura',
-    description: 'Chamas vivas de plasma termonuclear com corona solar giratória e brasas ascendentes em física fluida.',
-    badge: 'LENDÁRIO',
-    themeColor: '#f97316'
-  },
-  {
-    id: 'prismatic_crown',
-    name: 'Coroa Prismática',
-    category: 'Fantasia',
-    description: 'Cristais poliédricos flutuantes que refratam luz e brilhos diamantados em arco-íris com refração especular.',
-    badge: 'VIP',
-    themeColor: '#fbbf24'
-  },
-  {
-    id: 'cyber_hud',
-    name: 'Visor Tático Neon',
-    category: 'Cyber',
-    description: 'Anéis de mira holográfica com retículo rotativo duplo e dados de telemetria sci-fi em tempo real.',
-    badge: 'SCI-FI',
-    themeColor: '#06b6d4'
-  },
   {
     id: 'quantum_vortex',
     name: 'Vórtice Quântico',
@@ -59,22 +29,6 @@ export const AVATAR_DECORATIONS: DecorationMetadata[] = [
     description: 'Auréola celestial dourada com feixes de glória divina e poeira estelar flutuando suavemente.',
     badge: 'DIVINO',
     themeColor: '#fde047'
-  },
-  {
-    id: 'hex_shield',
-    name: 'Escudo Hexagonal',
-    category: 'Cyber',
-    description: 'Campo de força de colmeia cintilante com pulsos de absorção energética em ciano e menta.',
-    badge: 'CYBER',
-    themeColor: '#34d399'
-  },
-  {
-    id: 'ghostfire',
-    name: 'Chamas Espectrais',
-    category: 'Aura',
-    description: 'Espirais entrelaçadas de fogo fátuo esmeralda e ametista envolvendo o avatar com névoa mística.',
-    badge: 'MÍTICO',
-    themeColor: '#c084fc'
   },
   {
     id: 'neko_cyber',
@@ -93,39 +47,103 @@ export const AVATAR_DECORATIONS: DecorationMetadata[] = [
     themeColor: '#ec4899'
   },
   {
-    id: 'astral_kitsune',
-    name: 'Raposa Astral',
+    id: 'bunny_moon',
+    name: 'Coelha Lunar',
     category: 'Animais',
-    description: 'Orelhas místicas translúcidas e caudas espirituais de Kitsune com energia celestial ondulando em magenta, violeta e luz estelar.',
-    badge: 'MÍTICO',
-    themeColor: '#ec4899'
+    description: 'Orelhinhas macias de coelha que balançam de leve, uma lua crescente flutuando e brilhos pastel em volta.',
+    badge: 'KAWAII',
+    themeColor: '#f9a8d4'
+  },
+  {
+    id: 'sakura_bloom',
+    name: 'Chuva de Sakura',
+    category: 'Sazonal',
+    description: 'Galhos de cerejeira em flor e pétalas que caem girando devagar, com um aro cor-de-rosa suave.',
+    badge: 'PRIMAVERA',
+    themeColor: '#fda4af'
+  },
+  {
+    id: 'arcane_circle',
+    name: 'Círculo Arcano',
+    category: 'Fantasia',
+    description: 'Anéis de runas girando em sentidos opostos, marcas de calibragem e orbes de energia em órbita.',
+    badge: 'MÍSTICO',
+    themeColor: '#8b5cf6'
+  },
+  {
+    id: 'crystal_wings',
+    name: 'Asas de Cristal',
+    category: 'Fantasia',
+    description: 'Asas de penas de vidro iridescente que batem devagar, com poeira de estrelas ao redor.',
+    badge: 'ASTRAL',
+    themeColor: '#67e8f9'
+  },
+  {
+    id: 'pumpkin_night',
+    name: 'Noite das Abóboras',
+    category: 'Sazonal',
+    description: 'Morcegos em órbita, uma teia com aranha e uma abóbora de rosto aceso sob um aro laranja e roxo.',
+    badge: 'HALLOWEEN',
+    themeColor: '#fb923c'
+  },
+  {
+    id: 'frost_crystal',
+    name: 'Geada Cristalina',
+    category: 'Sazonal',
+    description: 'Cristais de gelo cintilando em volta do avatar, flocos que giram e neve caindo bem de leve.',
+    badge: 'INVERNO',
+    themeColor: '#7dd3fc'
+  },
+  {
+    // Em vídeo (ver lib/avatarVideoDecorations.ts): o id precisa ser o mesmo do registro
+    id: 'sakura_ring',
+    name: 'Sakura Cinematográfico',
+    category: 'Sazonal',
+    description: 'Um anel de luz rosa com pétalas de cerejeira girando em volta do avatar, em vídeo animado.',
+    badge: 'CINEMA',
+    themeColor: '#f9a8d4'
+  },
+  {
+    // Em vídeo (ver lib/avatarVideoDecorations.ts): o id precisa ser o mesmo do registro
+    id: 'fox_spirit',
+    name: 'Espírito da Raposa',
+    category: 'Animais',
+    description: 'Um anel de fogo espectral violeta com orelhas de raposa e caudas ondulantes em volta do avatar, em vídeo animado.',
+    badge: 'ESPÍRITO',
+    themeColor: '#c084fc'
+  },
+  {
+    // Em vídeo (ver lib/avatarVideoDecorations.ts): o id precisa ser o mesmo do registro
+    id: 'frost_ring',
+    name: 'Anel de Gelo',
+    category: 'Sazonal',
+    description: 'Um anel de luz azul-gelo com névoa de geada girando e flocos de neve em volta do avatar, em vídeo animado.',
+    badge: 'GELO',
+    themeColor: '#7dd3fc'
+  },
+  {
+    // Em vídeo (ver lib/avatarVideoDecorations.ts): o id precisa ser o mesmo do registro
+    id: 'dragon_ring',
+    name: 'Dragão de Fogo',
+    category: 'Fantasia',
+    description: 'Um dragão de fogo dourado enrolado em volta do avatar, com chamas dançando e fagulhas subindo, em vídeo animado.',
+    badge: 'LENDÁRIO',
+    themeColor: '#f59e0b'
   }
 ]
-
 const DECORATION_ALIASES: Record<string, string> = {
-  kitsune: 'astral_kitsune',
-  fox_tails: 'astral_kitsune',
-  raposa_astral: 'astral_kitsune',
-  astral_fox: 'astral_kitsune',
-  solar_orbit: 'soundwave_orb',
-  fire_elemental: 'fire_storm',
-  rage_flame: 'fire_storm',
   butterflies: 'celestial_halo',
-  sakura_warrior: 'ghostfire',
+  sakura_warrior: 'sakura_bloom',
   ki_energy: 'quantum_vortex',
-  cybernetic: 'cyber_hud',
   cat_ears: 'neko_cyber',
   heartbloom: 'heart_harmony',
   in_tears: 'heart_harmony',
   radiating_energy: 'quantum_vortex',
-  royal_crown: 'prismatic_crown',
-  cyber_tactical: 'cyber_hud',
-  cyber_glow: 'cyber_hud',
-  flaming_sword: 'ghostfire',
-  glowing_rune: 'ghostfire',
+  flaming_sword: 'arcane_circle',
+  glowing_rune: 'arcane_circle',
   fairy_sprites: 'celestial_halo',
-  malefic_crown: 'ghostfire',
-  fallen_angel_wings: 'ghostfire',
+  malefic_crown: 'arcane_circle',
+  fallen_angel_wings: 'crystal_wings',
   angelic_wings: 'celestial_halo'
 }
 
@@ -182,6 +200,20 @@ export function AvatarDecoration({ decorationId, className = '', style }: Avatar
   }
 
   const normalizedId = DECORATION_ALIASES[decorationId] || decorationId
+
+  // Decoração em vídeo (anel animado com transparência): o vídeo é centrado e dimensionado pelo miolo do anel
+  const videoDeco = getAvatarVideoDecoration(normalizedId)
+  if (videoDeco) {
+    return (
+      <div
+        className={`echo-avatar-decoration-wrap deco-${normalizedId} ${className}`}
+        style={{ position: 'absolute', inset: '-28%', width: '156%', height: '156%', pointerEvents: 'none', zIndex: 2, overflow: 'visible', ...style }}
+        aria-hidden="true"
+      >
+        <AvatarVideoDecoration deco={videoDeco} />
+      </div>
+    )
+  }
 
   return (
     <div

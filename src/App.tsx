@@ -17,7 +17,7 @@ import {
 } from './lib/soundEffects'
 import { APP_CURRENT_VERSION } from './lib/version'
 import { startBackgroundSync } from './lib/backgroundSync'
-import { initAnalytics, identifyUser, resetUser, trackAppOpened } from './lib/analytics'
+import { initAnalytics, identifyUser, resetUser, trackAppOpened, startCrashReporting } from './lib/analytics'
 
 import { ModalManager } from './components/modals/ModalManager'
 import { useSpacesStore } from './stores/useSpacesStore'
@@ -51,6 +51,8 @@ const FriendsView = lazy(() => import('./views/FriendsView').then(m => ({ defaul
 const SettingsView = lazy(() => import('./views/SettingsView').then(m => ({ default: m.SettingsView })))
 const SubscriptionModal = lazy(() => import('./components/modals/SubscriptionModal').then(m => ({ default: m.SubscriptionModal })))
 const EchoShop = lazy(() => import('./components/EchoShop').then(m => ({ default: m.EchoShop })))
+const ShopNewsModal = lazy(() => import('./components/ShopNewsModal').then(m => ({ default: m.ShopNewsModal })))
+import { CURRENT_SHOP_DROP, markShopDropSeen, readSeenShopDrop, shouldShowShopDrop } from './lib/shopDrops'
 import { useEchoDirectCalls } from './hooks/useEchoDirectCalls'
 import { useEchoScreenShare } from './hooks/useEchoScreenShare'
 import { useEchoVoiceNotes } from './hooks/useEchoVoiceNotes'
@@ -151,6 +153,8 @@ function MainApp() {
   useEffect(() => {
     initAnalytics()
     trackAppOpened(APP_CURRENT_VERSION)
+    // Quedas de processo (tela, placa de vídeo…): as da abertura anterior e as que acontecerem agora
+    return startCrashReporting((window as any).electronAPI)
   }, [])
 
   useEffect(() => {
@@ -202,7 +206,9 @@ export default function App() {
 function Echo({ user }: { user: User }) {
   const displayName = (user.user_metadata.display_name as string | undefined) || user.email?.split('@')[0] || 'Você'
   const [presenceStatus, setPresenceStatus] = useState<'online' | 'idle' | 'dnd' | 'invisible'>(() => (localStorage.getItem('echo-presence-status') as any) || 'online')
-  const [page, setPage] = useState<Page>('Servidores')
+  // O Echo abre na tela de amigos: quem chega vê logo quem está online e as conversas (ajuda a pessoa a voltar)
+  const [page, setPage] = useState<Page>('Amigos')
+  const channelsSidebarCollapsed = useUIStore((s) => s.channelsSidebarCollapsed)
   useEffect(() => {
     useUIStore.getState().setPage(page)
   }, [page])
@@ -1015,6 +1021,24 @@ function Echo({ user }: { user: User }) {
     return seen !== APP_CURRENT_VERSION
   })
 
+  // Novo na Loja: uma vez por coleção, um pouco depois de abrir (o app desenha a tela primeiro). Se as novidades
+  // da versão estão na tela, a loja espera ela fechar e aparece em seguida (ver lib/shopDrops.ts)
+  const [showShopNews, setShowShopNews] = useState(false)
+  useEffect(() => {
+    const show = shouldShowShopDrop(CURRENT_SHOP_DROP, {
+      seenDropId: readSeenShopDrop(user.id),
+      now: new Date(),
+      whatsNewPending: showWhatsNewModal
+    })
+    if (!show) return
+    const timer = setTimeout(() => setShowShopNews(true), 1500)
+    return () => clearTimeout(timer)
+  }, [user.id, showWhatsNewModal])
+  const closeShopNews = useCallback(() => {
+    if (CURRENT_SHOP_DROP) markShopDropSeen(user.id, CURRENT_SHOP_DROP.id)
+    setShowShopNews(false)
+  }, [user.id])
+
   // Links de convite: colados no app, abertos pelo sistema (echo://) e os que chegam antes do login
   useEchoInviteLinks({ userId: user?.id, processSpaceInviteRef })
 
@@ -1773,12 +1797,13 @@ function Echo({ user }: { user: User }) {
         onCancel={cancelVoiceReconnect}
       />
 
-      {/* Painel flutuante: continua mostrando quem fala quando você sai da tela da chamada */}
+      {/* Painel flutuante: aparece quando a barra lateral de canais está recolhida ou em páginas sem barra de canais */}
       {activeVoiceChannel && shouldShowFloatingCall({
         isConnected,
         activeVoiceChannelId,
         page,
-        selectedChannelId: selectedChannel?.id
+        selectedChannelId: selectedChannel?.id,
+        sidebarCollapsed: channelsSidebarCollapsed
       }) && (
         <FloatingCallPanel
           channelName={activeVoiceChannel.name}
@@ -1826,10 +1851,9 @@ function Echo({ user }: { user: User }) {
         unreadDMs={unreadDMs}
         currentUserId={user.id}
       />
-      {/* A barra é "position: fixed" (veja topbar.css). Este espaço acompanha se ela está À VISTA agora
-          (fixada OU o mouse passou perto do topo) — não só se está fixada — para nunca cobrir o que tem
-          embaixo (o cabeçalho do canal, por exemplo) quando ela aparece por cima ao passar o mouse. */}
-      <div className={`topbar-spacer${isTopbarVisible ? '' : ' collapsed'}`} />
+      {/* A barra é "position: fixed" (veja topbar.css). Só reservamos os 52px no fluxo quando ela está
+          fixada (topbarPinned === true); quando desafixada, ela desliza por cima como overlay sem empurrar a tela. */}
+      <div className={`topbar-spacer${topbarPinned ? '' : ' collapsed'}`} />
 
       <section
         className="workspace"
@@ -2089,6 +2113,21 @@ function Echo({ user }: { user: User }) {
                     isScreenFullScreen={isScreenFullScreen}
                     toggleScreenFullScreen={toggleScreenFullScreen}
                     messages={messages}
+                    hasMoreMessages={hasMoreMessages}
+                    isLoadingMore={isLoadingMore}
+                    isLoadingMessages={isLoadingMessages}
+                    loadMoreMessages={loadMoreMessages}
+                    messagesContainerRef={messagesContainerRef}
+                    retrySendMessage={retrySendMessage}
+                    replyingToMessage={replyingToMessage}
+                    setReplyingToMessage={setReplyingToMessage}
+                    messageReactions={messageReactions}
+                    toggleReaction={toggleReaction}
+                    slowmodeCooldown={slowmodeCooldown}
+                    postChannelMessage={postChannelMessage}
+                    supabase={supabase}
+                    typingUsers={typingUsers}
+                    notifyTyping={notifyTyping}
                     send={send}
                     draft={draft}
                     setDraft={setDraft}
@@ -2342,6 +2381,21 @@ function Echo({ user }: { user: User }) {
           </Suspense>
         </ErrorBoundary>
       </div>
+
+      {showShopNews && CURRENT_SHOP_DROP && (
+        <Suspense fallback={null}>
+          <ShopNewsModal
+            drop={CURRENT_SHOP_DROP}
+            avatarUrl={profileAvatarUrl}
+            displayName={profileDisplayName || displayName}
+            onDismiss={closeShopNews}
+            onOpenShop={() => {
+              closeShopNews()
+              handleOpenShopFromSettings('decorations')
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* Centralized Modal Manager (Discord & Echo Modals) */}
       <ErrorBoundary name="Gerenciador de Modais">

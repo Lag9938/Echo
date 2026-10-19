@@ -442,7 +442,7 @@ body.light-theme .participant-card:hover {
 
 /* Avatar grande com cantos suaves e sombra macia */
 body.light-theme .participant-avatar-large {
-  border-radius: 26px !important;
+  border-radius: 50% !important;
   border: 3px solid rgba(255, 255, 255, 0.95);
   box-shadow: 0 10px 24px rgba(74, 53, 49, 0.15);
   transition: all 0.2s ease;

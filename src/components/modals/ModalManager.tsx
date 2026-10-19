@@ -623,6 +623,7 @@ export function ModalManager(props: ModalManagerProps) {
         blockedUserIds={blockedUserIds}
         onBlockUser={blockUser}
         onUnblockUser={unblockUser}
+        setPage={setPage}
       />
 
       {/* Member Hover Popover Card */}

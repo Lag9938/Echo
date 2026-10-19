@@ -2,7 +2,7 @@
 .participant-card.speaking .participant-avatar-large {
   box-shadow: 0 0 0 3px #23a55a, 0 0 12px rgba(35, 165, 90, 0.7);
   animation: speakingGlowPulse 1.2s infinite ease-in-out;
-  border-radius: 18px !important;
+  border-radius: 50% !important;
 }
 
 @keyframes speakingGlowPulse {

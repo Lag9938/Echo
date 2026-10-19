@@ -14,7 +14,8 @@ import { setupUpdatesIpc, checkForUpdatesFromTray } from './ipc/updates.js'
 import { setupAudioIpc, stopAudioCapture } from './ipc/audio.js'
 import { setupWindowIpc } from './ipc/window.js'
 import { appendUpdateLog } from './services/updateRelaunch.js'
-import { captureFeatures, readCaptureMode, setActiveCaptureMode } from './services/captureMode.js'
+import { captureFeatures, readCaptureMode, setActiveCaptureMode, getActiveCaptureMode } from './services/captureMode.js'
+import { takeCrashReports, watchProcessCrashes } from './services/crashReports.js'
 import { bringWindowToFront, detectVersionChange } from './services/postUpdate.js'
 import { SMOKE_PROBE, armSmokeDeadline, noteSmokeMainError, smokeTarget, startSmokeTest } from './services/smokeTest.js'
 import { markHealthy, takeRollbackNotice } from './services/rollback.js'
@@ -374,6 +375,10 @@ if (setupDeeplink(getMainWindow, createWindow)) {
 
     Menu.setApplicationMenu(null)
     ensureLocalLivekitServer(rootDir)
+    // Quedas de processo (tela, placa de vídeo…) guardadas para a telemetria (services/crashReports.js)
+    const crashFile = path.join(app.getPath('userData'), 'crash-reports.json')
+    if (!smokeFile) watchProcessCrashes({ app, file: crashFile, getWindow: getMainWindow, getCaptureMode: getActiveCaptureMode })
+    safeHandle('take-crash-reports', () => takeCrashReports(crashFile))
     // O atualizador é ligado ANTES da janela e não depende dela: se a janela falhar ao ser criada, o app ainda
     // busca, baixa e instala a correção (ipc/updates.js). No teste de fumaça o app não busca atualização.
     try {

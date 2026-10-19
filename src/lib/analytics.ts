@@ -143,6 +143,31 @@ export function trackScreenShareWatched(summary: WatchSessionSummary) {
   })
 }
 
+type CrashReport = Record<string, string | number | boolean | null>
+
+interface CrashReportSource {
+  takeCrashReports?: () => Promise<CrashReport[]>
+  onCrashReportsAvailable?: (callback: () => void) => () => void
+}
+
+/**
+ * Envia as quedas de processo que o processo principal guardou (electron/services/crashReports.js): as que
+ * aconteceram antes desta abertura e, enquanto o app estiver aberto, as de outros processos assim que caírem.
+ * Sem telemetria configurada, as quedas ficam guardadas para uma abertura em que ela exista.
+ */
+export function startCrashReporting(api: CrashReportSource | undefined): () => void {
+  if (!api?.takeCrashReports || !isInitialized) return () => {}
+  const send = () => {
+    api.takeCrashReports?.()
+      .then((reports) => {
+        for (const report of reports ?? []) trackEvent('app_process_crashed', report)
+      })
+      .catch(() => {})
+  }
+  send()
+  return api.onCrashReportsAvailable?.(send) ?? (() => {})
+}
+
 export function trackProModalOpened(source: string = 'unknown') {
   trackEvent('pro_modal_opened', {
     source

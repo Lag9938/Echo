@@ -1,16 +1,13 @@
-﻿import React, { useState, useCallback, useEffect, useRef, memo } from 'react'
+import React, { useState, useMemo, useCallback, useEffect, useRef, memo } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { VoiceParticipant } from '../lib/useVoiceChannel'
 import type { Space, Channel, Message, PinnedMessage, ServerEmoji, RolePermissions, ServerRole } from '../types'
 import { MembersSidebar } from '../components/sidebar/MembersSidebar'
 import { useHoverPeek } from '../hooks/useHoverPeek'
 import { PinnedMessagesDrawer } from '../components/chat/PinnedMessagesDrawer'
+import { MessageList } from '../components/chat/MessageList'
+import { MessageComposer } from '../components/chat/MessageComposer'
 import { StreamTile } from '../components/streaming/StreamTile'
-import { AvatarDecoration } from '../components/AvatarDecoration'
-import { ModernVoiceNotePlayer } from '../components/chat/ModernVoiceNotePlayer'
-import { ChatLinkEmbed } from '../components/chat/ChatLinkEmbed'
-import { formatMessageText } from '../lib/messageFormatter'
-import { CommunityBadge } from '../components/CommunityBadge'
 import {
   BrainIcon,
   GridIcon,
@@ -20,23 +17,18 @@ import {
   MicIcon,
   MicOffIcon,
   MusicIcon,
-  PaperclipIcon,
   PinIcon,
   PipIcon,
   PlayIcon,
   ScreenIcon,
   SearchIcon,
-  SendIcon,
   SoundboardIcon,
-  StarIcon,
   StopSquareIcon,
-  TrashIcon,
   UsersIcon,
   VideoCallIcon,
   VideoOffIcon,
   VolumeIcon
 } from '../components/icons'
-import { openExternalUrl } from '../lib/openExternal'
 import { useUIStore } from '../stores/useUIStore'
 import { useSpacesStore } from '../stores/useSpacesStore'
 import { useMusicBotStore } from '../stores/useMusicBotStore'
@@ -152,6 +144,21 @@ export interface VoiceChannelViewProps {
   isScreenFullScreen: boolean
   toggleScreenFullScreen: (force?: boolean) => void
   messages: Message[]
+  hasMoreMessages?: boolean
+  isLoadingMore?: boolean
+  isLoadingMessages?: boolean
+  loadMoreMessages?: (channelId: string) => Promise<void> | void
+  messagesContainerRef?: React.RefObject<HTMLDivElement | null>
+  retrySendMessage?: (msg: any) => void
+  replyingToMessage?: Message | null
+  setReplyingToMessage?: (msg: Message | null) => void
+  messageReactions?: Record<string, Record<string, string[]>>
+  toggleReaction?: (msgId: string, emoji: string) => void
+  slowmodeCooldown?: number
+  postChannelMessage?: (channelId: string, body: string, attachmentUrl?: string, attachmentType?: string, existingTempId?: string) => Promise<any> | void
+  supabase?: any
+  typingUsers?: string[]
+  notifyTyping?: () => void
   send: (e: React.FormEvent) => void
   draft: string
   setDraft: (val: string) => void
@@ -202,7 +209,7 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
     selectedChannel,
     user,
     profileDisplayName,
-    profileAvatarUrl,
+    profileAvatarUrl = '',
     avatarDecoration,
     presenceData,
     onlineUsers,
@@ -261,6 +268,21 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
     isScreenFullScreen,
     toggleScreenFullScreen,
     messages,
+    hasMoreMessages = false,
+    isLoadingMore = false,
+    isLoadingMessages = false,
+    loadMoreMessages,
+    messagesContainerRef,
+    retrySendMessage,
+    replyingToMessage: propReplyingToMessage,
+    setReplyingToMessage: propSetReplyingToMessage,
+    messageReactions = {},
+    toggleReaction,
+    slowmodeCooldown = 0,
+    postChannelMessage,
+    supabase,
+    typingUsers = [],
+    notifyTyping,
     send,
     draft,
     setDraft,
@@ -275,7 +297,7 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
     voiceNotePlaySpeed,
     handleChangeVoiceSpeed,
     voiceNoteAudioRef,
-    serverEmojis,
+    serverEmojis = [],
     pinnedMessages,
     togglePinMessage,
     messagesEndRef,
@@ -299,6 +321,132 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
   const [pendingVoicePastedFile, setPendingVoicePastedFile] = useState<File | null>(null)
   const [pendingVoiceImagePreview, setPendingVoiceImagePreview] = useState<string | null>(null)
   const [pendingVoiceImageSize, setPendingVoiceImageSize] = useState<'small' | 'medium' | 'large' | 'original'>('medium')
+
+  const [localReplyingToMessage, setLocalReplyingToMessage] = useState<Message | null>(null)
+  const replyingToMessage = propReplyingToMessage !== undefined ? propReplyingToMessage : localReplyingToMessage
+  const setReplyingToMessage = propSetReplyingToMessage ?? setLocalReplyingToMessage
+
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [emojiPickerTab, setEmojiPickerTab] = useState<'default' | 'server'>('default')
+  const [showGifPicker, setShowGifPicker] = useState(false)
+  const [gifSearchQuery, setGifSearchQuery] = useState('')
+  const [showStickerPicker, setShowStickerPicker] = useState(false)
+
+  const handleSendSticker = async (url: string, name?: string) => {
+    if (selectedChannel && postChannelMessage) {
+      await postChannelMessage(selectedChannel.id, name ? `[Sticker: ${name}]` : 'Sticker', url, 'sticker')
+      setShowStickerPicker(false)
+    }
+  }
+
+  // Mention Autocomplete State (@)
+  const [showMentionPicker, setShowMentionPicker] = useState(false)
+  const [mentionQuery, setMentionQuery] = useState('')
+  const [mentionStartIndex, setMentionStartIndex] = useState(-1)
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0)
+  const chatInputRef = useRef<HTMLInputElement | null>(null)
+
+  const mentionCandidates = useMemo(() => {
+    const list: { id: string; name: string; avatarUrl?: string; roleName?: string; roleColor?: string; isSpecial?: boolean }[] = []
+    const q = mentionQuery.toLowerCase().trim()
+
+    if (!q || 'todos'.includes(q) || 'everyone'.includes(q)) {
+      list.push({
+        id: 'everyone-mention',
+        name: 'todos',
+        roleName: 'Notificar todos no canal',
+        roleColor: '#f59e0b',
+        isSpecial: true
+      })
+    }
+
+    const seen = new Set<string>()
+    ;(spaceMembers || []).forEach(m => {
+      const u = m.user || m
+      if (!u || !u.id || seen.has(u.id)) return
+      seen.add(u.id)
+      const dName = u.display_name || u.name || 'Membro'
+      if (!q || dName.toLowerCase().includes(q)) {
+        const role = getUserHighestRole?.(currentSpace?.id || '', u.id)
+        list.push({
+          id: u.id,
+          name: dName,
+          avatarUrl: u.avatar_url,
+          roleName: role?.name,
+          roleColor: role?.color
+        })
+      }
+    })
+
+    return list.slice(0, 8)
+  }, [mentionQuery, spaceMembers, currentSpace?.id, getUserHighestRole])
+
+  const selectMention = useCallback((candidate: { name: string }) => {
+    if (!candidate || mentionStartIndex === -1) return
+    const input = chatInputRef.current
+    const cursorPos = input?.selectionStart ?? draft.length
+    const beforeAt = draft.slice(0, mentionStartIndex)
+    const afterCursor = draft.slice(cursorPos)
+    const mentionText = `@${candidate.name} `
+    const newDraft = beforeAt + mentionText + afterCursor
+    setDraft(newDraft)
+    setShowMentionPicker(false)
+    setMentionStartIndex(-1)
+
+    setTimeout(() => {
+      if (input) {
+        input.focus()
+        const newPos = beforeAt.length + mentionText.length
+        input.setSelectionRange(newPos, newPos)
+      }
+    }, 10)
+  }, [draft, mentionStartIndex, setDraft])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setDraft(val)
+    if (notifyTyping) notifyTyping()
+
+    const cursorPos = e.target.selectionStart ?? val.length
+    const textBeforeCursor = val.slice(0, cursorPos)
+    const match = textBeforeCursor.match(/(?:^|\s)@([a-zA-Z0-9_\u00C0-\u017F]*)$/)
+
+    if (match) {
+      const q = match[1]
+      const atIdx = textBeforeCursor.lastIndexOf('@')
+      setMentionQuery(q)
+      setMentionStartIndex(atIdx)
+      setSelectedMentionIndex(0)
+      setShowMentionPicker(true)
+    } else {
+      setShowMentionPicker(false)
+    }
+  }
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (showMentionPicker && mentionCandidates.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedMentionIndex(prev => (prev + 1) % mentionCandidates.length)
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedMentionIndex(prev => (prev - 1 + mentionCandidates.length) % mentionCandidates.length)
+        return
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        selectMention(mentionCandidates[selectedMentionIndex])
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setShowMentionPicker(false)
+        return
+      }
+    }
+  }
 
   const removePendingVoiceImage = useCallback(() => {
     setPendingVoicePastedFile(null)
@@ -792,10 +940,8 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                             {p.displayName.slice(0, 1).toUpperCase()}
                                           </span>
                                         )}
-                                        {!(p.isCameraOn && p.cameraStream) && (() => {
-                                          const deco = presenceData[p.userId]?.avatar_decoration || spaceMembers.find(m => (m.user?.id || m.id) === p.userId)?.user?.avatar_decoration || (p.userId === user.id ? avatarDecoration : null)
-                                          return deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null
-                                        })()}
+                                        {/* Sem decoração de avatar no cartão da chamada: é animação (às vezes vídeo) a mais
+                                            para cada pessoa na sala, e a chamada é onde o processador mais precisa sobrar */}
                                       </div>
                                       <div className="participant-card-bottom-info">
                                         <span className="participant-name">
@@ -997,235 +1143,97 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                             style={!voiceChatOpen ? { display: 'none' } : undefined}
                             {...chatPeek.panelProps}
                           >
-                            <div className="voice-chat-messages">
-                              {messages.length === 0 && (
-                                <div className="no-messages">
-                                  <div style={{ opacity: 0.6, marginBottom: "6px" }}><MessageSquareIcon style={{ width: "28px", height: "28px" }} /></div>
-                                  <p>Início do chat por texto da chamada.</p>
-                                </div>
-                              )}
-                              {messages.map((message) => {
-                                const isMentioned = message.author_id !== user.id && message.body.toLowerCase().includes(`@${profileDisplayName.toLowerCase()}`)
-                                const canManageMsg = currentSpace && (canUserDo(currentSpace.id, user.id, 'manageMessages') || currentSpace.creator_id === user.id)
-                                const isSelf = message.author_id === user.id
-                                const authorBadge = isSelf
-                                  ? (localStorage.getItem(`echo-show-badge-${user.id}`) !== 'false' ? (localStorage.getItem(`echo-badge-${user.id}`) || 'owner') : 'none')
-                                  : (presenceData[message.author_id]?.badge || localStorage.getItem(`echo-badge-${message.author_id}`) || null)
-                                const resolvedAuthorName = isSelf
-                                  ? (profileDisplayName || (user.user_metadata as any)?.display_name || message.profile?.display_name || 'Você')
-                                  : (presenceData[message.author_id]?.display_name || spaceMembers.find(m => (m?.user?.id === message.author_id || m?.id === message.author_id))?.user?.display_name || message.profile?.display_name || 'Membro')
+                            <MessageList
+                              variant="voice"
+                              messagesContainerRef={messagesContainerRef}
+                              messagesEndRef={messagesEndRef}
+                              selectedChannel={selectedChannel}
+                              currentSpace={currentSpace}
+                              filteredMessages={messages}
+                              hasMoreMessages={hasMoreMessages}
+                              isLoadingMore={isLoadingMore}
+                              isLoadingMessages={isLoadingMessages}
+                              loadMoreMessages={loadMoreMessages}
+                              searchQuery={searchQuery}
+                              user={user}
+                              profileDisplayName={profileDisplayName}
+                              profileAvatarUrl={profileAvatarUrl}
+                              avatarDecoration={avatarDecoration}
+                              nameEffect={nameEffect}
+                              presenceData={presenceData}
+                              serverRoles={serverRoles}
+                              memberRoleMap={memberRoleMap}
+                              serverEmojis={serverEmojis}
+                              spaceMembers={spaceMembers}
+                              canUserDo={canUserDo}
+                              getUserHighestRole={getUserHighestRole}
+                              setInspectedMember={setInspectedMember}
+                              toggleReaction={toggleReaction}
+                              setReplyingToMessage={setReplyingToMessage}
+                              isMessageSaved={isMessageSaved}
+                              toggleSaveMessage={toggleSaveMessage}
+                              pinnedMessages={pinnedMessages}
+                              togglePinMessage={togglePinMessage}
+                              handleDeleteMessage={handleDeleteMessage}
+                              openLightbox={openLightbox}
+                              activePlayingVoiceNote={activePlayingVoiceNote}
+                              handleToggleVoicePlay={handleToggleVoicePlay}
+                              voiceNotePlaySpeed={voiceNotePlaySpeed}
+                              handleChangeVoiceSpeed={handleChangeVoiceSpeed}
+                              voiceNoteAudioRef={voiceNoteAudioRef}
+                              retrySendMessage={retrySendMessage}
+                              messageReactions={messageReactions}
+                            />
 
-                                const resolvedAuthorAvatar = isSelf
-                                  ? (profileAvatarUrl || message.profile?.avatar_url)
-                                  : (presenceData[message.author_id]?.avatar_url || spaceMembers.find(m => (m?.user?.id === message.author_id || m?.id === message.author_id))?.user?.avatar_url || message.profile?.avatar_url)
-
-                                return (
-                                  <article className={`msg-card ${isSelf ? 'msg-own' : ''} ${message.attachment_type === 'audio' ? 'has-voice-note' : ''} ${isMentioned ? 'mention-highlight' : ''}`} key={message.id} style={{ position: 'relative' }}>
-                                    <div className="message-hover-actions">
-                                      <button 
-                                        type="button" 
-                                        className={`hover-action-btn star-btn ${isMessageSaved(message.id) ? 'active' : ''}`}
-                                        onClick={() => toggleSaveMessage(message, 'channel', {
-                                          sourceName: `#${selectedChannel.name} • ${currentSpace?.name || 'Servidor'}`,
-                                          spaceId: currentSpace?.id,
-                                          channelId: selectedChannel.id
-                                        })}
-                                        title={isMessageSaved(message.id) ? "Remover dos favoritos" : "Salvar mensagem com estrela (⭐)"}
-                                      >
-                                        <StarIcon style={{ width: '13px', height: '13px', color: isMessageSaved(message.id) ? '#ffc107' : 'inherit', fill: isMessageSaved(message.id) ? '#ffc107' : 'none' }} />
-                                      </button>
-                                      {(message.author_id === user.id || canManageMsg) && (
-                                        <button 
-                                          type="button" 
-                                          className="hover-action-btn delete-btn"
-                                          onClick={() => handleDeleteMessage(message.id)}
-                                          title="Excluir mensagem"
-                                        >
-                                          <TrashIcon style={{ width: '13px', height: '13px' }} />
-                                        </button>
-                                      )}
-                                    </div>
-                                    <div className={`msg-avatar ${isSelf ? 'avatar-self' : 'avatar-other'}`} style={{ position: 'relative', overflow: 'visible' }}>
-                                      <div style={{ width: '100%', height: '100%', borderRadius: 'inherit', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        {resolvedAuthorAvatar ? (
-                                          <img src={resolvedAuthorAvatar} alt={resolvedAuthorName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                        ) : (
-                                          (resolvedAuthorName ?? 'E').slice(0, 1).toUpperCase()
-                                        )}
-                                      </div>
-                                      {(() => {
-                                        const deco = presenceData[message.author_id]?.avatar_decoration || (message.profile as any)?.avatar_decoration || (isSelf ? avatarDecoration : null)
-                                        return deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null
-                                      })()}
-                                    </div>
-                                    <div className="msg-body">
-                                      <div className="msg-meta">
-                                        <strong>{resolvedAuthorName}</strong>
-                                        {authorBadge && authorBadge !== 'none' && (
-                                          <CommunityBadge badgeId={authorBadge} size={13} />
-                                        )}
-                                        <time className="msg-time" title={new Date(message.created_at).toLocaleString('pt-BR')}>
-                                          {new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                        </time>
-                                      </div>
-                                      {message.attachment_url && (message.attachment_type === 'image' || message.attachment_type?.startsWith('image')) ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                          <div className="msg-attachment-wrap">
-                                            <img
-                                              src={message.attachment_url}
-                                              alt="anexo"
-                                              className="msg-attachment-img"
-                                              loading="lazy"
-                                              decoding="async"
-                                              style={{
-                                                maxWidth: message.attachment_type === 'image:small' ? '240px' :
-                                                          message.attachment_type === 'image:large' ? '680px' :
-                                                          message.attachment_type === 'image:original' ? 'min(100%, 880px)' :
-                                                          'min(100%, 460px)',
-                                                maxHeight: message.attachment_type === 'image:small' ? '240px' :
-                                                           message.attachment_type === 'image:large' ? '540px' :
-                                                           message.attachment_type === 'image:original' ? '700px' :
-                                                           '400px'
-                                              }}
-                                              onLoad={(e) => e.currentTarget.parentElement?.classList.add('loaded')}
-                                              onClick={() => openLightbox(message.attachment_url!)}
-                                              title="Clique para ampliar"
-                                            />
-                                          </div>
-                                          {message.body && message.body !== 'Imagem' && !message.body.startsWith('http') && (
-                                            <p>{formatMessageText(message.body, profileDisplayName)}</p>
-                                          )}
-                                        </div>
-                                      ) : message.attachment_url && message.attachment_type === 'audio' ? (
-                                        <ModernVoiceNotePlayer
-                                          audioUrl={message.attachment_url}
-                                          messageId={message.id}
-                                          activePlayingId={activePlayingVoiceNote}
-                                          onTogglePlay={() => handleToggleVoicePlay(message.id, message.attachment_url!)}
-                                          speed={voiceNotePlaySpeed}
-                                          onChangeSpeed={handleChangeVoiceSpeed}
-                                          activeAudioRef={voiceNoteAudioRef}
-                                        />
-                                      ) : message.attachment_url && message.attachment_type !== 'image' ? (
-                                        <a
-                                          href={message.attachment_url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="msg-attachment-file"
-                                          onClick={(e) => {
-                                            e.preventDefault()
-                                            openExternalUrl(message.attachment_url)
-                                          }}
-                                        >
-                                          📎 {message.body}
-                                        </a>
-                                      ) : (
-                                        <>
-                                          <p>{formatMessageText(message.body, profileDisplayName)}</p>
-                                          <ChatLinkEmbed content={message.body} />
-                                        </>
-                                      )}
-                                    </div>
-                                  </article>
-                                )
-                              })}
-                              <div ref={messagesEndRef} />
-                            </div>
-                            {pendingVoicePastedFile && pendingVoiceImagePreview && (
-                              <div className="composer-image-staging voice-chat-image-staging" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
-                                  <div className="staging-thumb-wrap">
-                                    <img src={pendingVoiceImagePreview} alt="Foto para enviar" />
-                                  </div>
-                                  <div className="staging-info" style={{ flex: 1 }}>
-                                    <div className="staging-title-row">
-                                      <span className="staging-badge">Foto / Anexo</span>
-                                      <span className="staging-name">{pendingVoicePastedFile.name}</span>
-                                    </div>
-                                    <span className="staging-subtext">
-                                      {(pendingVoicePastedFile.size / 1024).toFixed(1)} KB • Enter para enviar
-                                    </span>
-                                  </div>
-                                  <button 
-                                    type="button" 
-                                    className="staging-remove-btn" 
-                                    onClick={removePendingVoiceImage}
-                                    title="Descartar foto (Esc)"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-
-                                {/* Seletor de Tamanho da Foto */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingTop: '4px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', flexWrap: 'wrap' }}>
-                                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    Tamanho:
-                                  </span>
-                                  <div style={{ display: 'flex', gap: '4px' }}>
-                                    {[
-                                      { id: 'small', label: 'Pequeno' },
-                                      { id: 'medium', label: 'Médio' },
-                                      { id: 'large', label: 'Grande' },
-                                      { id: 'original', label: 'Máximo' }
-                                    ].map(opt => (
-                                      <button
-                                        key={opt.id}
-                                        type="button"
-                                        onClick={() => setPendingVoiceImageSize(opt.id as any)}
-                                        style={{
-                                          padding: '2px 7px',
-                                          fontSize: '10.5px',
-                                          fontWeight: 600,
-                                          borderRadius: '5px',
-                                          cursor: 'pointer',
-                                          border: pendingVoiceImageSize === opt.id ? '1px solid #00f2fe' : '1px solid var(--border-color)',
-                                          background: pendingVoiceImageSize === opt.id ? 'rgba(0, 242, 254, 0.2)' : 'var(--bg-secondary)',
-                                          color: pendingVoiceImageSize === opt.id ? '#00f2fe' : 'var(--text-secondary)',
-                                          transition: 'all 0.15s ease'
-                                        }}
-                                      >
-                                        {opt.label}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                            <form className="voice-chat-composer" onSubmit={handleVoiceComposerSubmit}>
-                              <input 
-                                type="file" 
-                                id="voice-chat-file-input" 
-                                style={{ display: 'none' }} 
-                                onChange={(e) => { 
-                                  const f = e.target.files?.[0]
-                                  if (f) {
-                                    if (f.type.startsWith('image/')) {
-                                      setPendingVoiceImagePreview(prev => {
-                                        if (prev) URL.revokeObjectURL(prev)
-                                        return URL.createObjectURL(f)
-                                      })
-                                      setPendingVoicePastedFile(f)
-                                    } else {
-                                      handleChatFileUpload(f)
-                                    }
-                                  }
-                                  e.target.value = '' 
-                                }} 
-                              />
-                              <button type="button" className="dm-attach-btn" onClick={() => document.getElementById('voice-chat-file-input')?.click()} disabled={isUploading} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 8px 0 0' }}>
-                                {isUploading ? <span style={{ fontSize: '12px' }}>...</span> : <PaperclipIcon style={{ width: '15px', height: '15px' }} />}
-                              </button>
-                              <input 
-                                id="voice-chat-input"
-                                value={draft} 
-                                onChange={(e) => setDraft(e.target.value)} 
-                                onPaste={handleVoicePaste}
-                                placeholder="Conversar por texto com a call…" 
-                              />
-                              <button type="submit" className="send-btn" disabled={(!draft.trim() && !pendingVoicePastedFile) || isUploading}>
-                                <SendIcon style={{ width: "14px", height: "14px" }} />
-                              </button>
-                            </form>
+                            <MessageComposer
+                              variant="voice"
+                              selectedChannel={selectedChannel}
+                              currentSpace={currentSpace}
+                              canUserDo={canUserDo}
+                              user={user}
+                              profileDisplayName={profileDisplayName}
+                              spaceMembers={spaceMembers}
+                              presenceData={presenceData}
+                              replyingToMessage={replyingToMessage}
+                              setReplyingToMessage={setReplyingToMessage}
+                              typingUsers={typingUsers}
+                              pendingPastedFile={pendingVoicePastedFile}
+                              setPendingPastedFile={setPendingVoicePastedFile}
+                              pendingImagePreview={pendingVoiceImagePreview}
+                              setPendingImagePreview={setPendingVoiceImagePreview}
+                              pendingImageSize={pendingVoiceImageSize}
+                              setPendingImageSize={setPendingVoiceImageSize}
+                              removePendingImage={removePendingVoiceImage}
+                              handleComposerSubmit={handleVoiceComposerSubmit}
+                              handleChatFileUpload={handleChatFileUpload}
+                              isUploading={isUploading}
+                              draft={draft}
+                              setDraft={setDraft}
+                              chatInputRef={chatInputRef}
+                              handleInputChange={handleInputChange}
+                              handleInputKeyDown={handleInputKeyDown}
+                              handlePaste={handleVoicePaste}
+                              slowmodeCooldown={slowmodeCooldown}
+                              showMentionPicker={showMentionPicker}
+                              mentionCandidates={mentionCandidates}
+                              selectedMentionIndex={selectedMentionIndex}
+                              setSelectedMentionIndex={setSelectedMentionIndex}
+                              selectMention={selectMention}
+                              showGifPicker={showGifPicker}
+                              setShowGifPicker={setShowGifPicker}
+                              gifSearchQuery={gifSearchQuery}
+                              setGifSearchQuery={setGifSearchQuery}
+                              showStickerPicker={showStickerPicker}
+                              setShowStickerPicker={setShowStickerPicker}
+                              handleSendSticker={handleSendSticker}
+                              showEmojiPicker={showEmojiPicker}
+                              setShowEmojiPicker={setShowEmojiPicker}
+                              emojiPickerTab={emojiPickerTab}
+                              setEmojiPickerTab={setEmojiPickerTab}
+                              serverEmojis={serverEmojis}
+                              supabase={supabase}
+                              postChannelMessage={postChannelMessage}
+                            />
                           </div>
                         </div>
                     </div>

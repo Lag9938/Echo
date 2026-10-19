@@ -65,11 +65,20 @@
 /* Perfil de membro redesenhado em vidro Aurora */
 @import './styles/member-profile.css';
 
+/* Efeito de perfil em vídeo (mix-blend-mode: screen sobre o cartão) */
+@import './styles/profile-video-effect.css';
+
 /* Sala de voz, transmissão e grade de participantes redesenhadas */
 @import './styles/voice-aurora.css';
 
+/* Decorações de avatar do pacote novo */
+@import './styles/avatar-decorations-pack.css';
+
 /* Painel flutuante da chamada (quando você está em voz fora da tela da sala) */
 @import './styles/floating-call.css';
+
+/* Novo na Loja (janela ao abrir o app quando chega coleção nova) */
+@import './styles/shop-news.css';
 
 /* 7. Temas que sobrescrevem os demais (sempre por último) */
 @import './styles/aurora.css';

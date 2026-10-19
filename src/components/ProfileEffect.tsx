@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react'
 import { EchoCanvasEffect, type CanvasProfileEffectId } from './EchoCanvasEffect'
+import { ProfileVideoEffect } from './ProfileVideoEffect'
+import { getProfileVideoEffect } from '../lib/profileVideoEffects'
 
 export interface ProfileEffectMetadata {
   id: string
@@ -74,6 +76,15 @@ export const PROFILE_EFFECTS: ProfileEffectMetadata[] = [
     description: 'Pétalas de cerejeira em rotação 3D com correntes de vento suave e pólen estelar flutuante.',
     badge: 'DESTAQUE',
     themeColor: '#f472b6'
+  },
+  {
+    // Em vídeo (ver lib/profileVideoEffects.ts): o id precisa ser o mesmo do registro
+    id: 'sakura_garden',
+    name: 'Jardim de Sakura',
+    category: 'Natureza',
+    description: 'Galhos de cerejeira em flor nos cantos, uma fita de luz rosa ao vento e pétalas caindo por todo o cartão, em vídeo animado.',
+    badge: 'CINEMA',
+    themeColor: '#f9a8d4'
   }
 ]
 
@@ -99,6 +110,9 @@ interface ProfileEffectProps {
 export function ProfileEffect({ effectId, style, className = '' }: ProfileEffectProps) {
   if (!effectId || effectId === 'none') return null
   const normalizedId = (EFFECT_ALIASES[effectId] || effectId) as CanvasProfileEffectId
+  // Efeito em vídeo (.mp4 com mix-blend-mode: screen): o <video> vai direto no cartão
+  const videoEffect = getProfileVideoEffect(normalizedId) || getProfileVideoEffect(effectId)
+  if (videoEffect) return <ProfileVideoEffect effect={videoEffect} className={className} style={style} />
 
   return (
     <div

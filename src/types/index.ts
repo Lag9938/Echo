@@ -210,6 +210,7 @@ export interface MemberProfileModalProps {
   onBlockUser?: (targetId: string, targetName: string) => Promise<void>
   onUnblockUser?: (targetId: string, targetName: string) => Promise<void>
   blockedUserIds?: Set<string>
+  setPage?: (page: Page) => void
 }
 
 export type Page = 'Amigos' | 'Mensagens' | 'Servidores' | 'Descobrir' | 'Configurações' | 'Loja'

@@ -1,4 +1,4 @@
-﻿/* ==========================================================================
+/* ==========================================================================
    AURORA DARK — AJUSTES MANUAIS (vêm depois do aurora-dark.css gerado)
    O aurora-dark.css é produzido por scripts/gen-aurora-dark.mjs a partir do Aurora Light. Aqui ficam só as
    exceções que uma troca automática de cores não resolve.
@@ -33,3 +33,51 @@ body.theme-aurora-dark.echo-layout-glass .msg-card.msg-own .msg-body {
   background-image: linear-gradient(135deg, rgba(223, 109, 93, 0.36), rgba(168, 68, 86, 0.26)) !important;
   border-color: rgba(223, 109, 93, 0.5);
 }
+
+/* Rodapé de perfil e painel de chamada com superfície fosca suave (sem efeito de vidro reflexivo) */
+body .sidebar-profile-footer .profile-footer-card,
+body.echo-layout-glass .sidebar-profile-footer .profile-footer-card,
+body.theme-aurora-dark .channels-sidebar.echo-layout-glass .profile-footer-card,
+body.theme-aurora-dark.echo-layout-glass .settings-sidebar .profile-footer-card {
+  background: #18171e !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.28) !important;
+}
+
+body.light-theme .sidebar-profile-footer .profile-footer-card,
+body.light-theme .channels-sidebar.echo-layout-glass .profile-footer-card,
+body.light-theme.echo-layout-glass .settings-sidebar .profile-footer-card {
+  background: #f7f2f1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(42, 31, 45, 0.09) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 8px 22px -10px rgba(42, 31, 45, 0.18) !important;
+}
+
+body .sidebar-profile-footer .profile-footer-btn,
+body.theme-aurora-dark.echo-layout-glass .profile-footer-btn {
+  background: #22202a !important;
+  border: 1px solid transparent !important;
+}
+
+body .sidebar-profile-footer .profile-footer-btn:hover,
+body.theme-aurora-dark.echo-layout-glass .profile-footer-btn:hover {
+  background: #2a2834 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.light-theme .sidebar-profile-footer .profile-footer-btn {
+  background: #ede5e4 !important;
+  border: 1px solid transparent !important;
+  color: #4f4554 !important;
+}
+
+body.light-theme .sidebar-profile-footer .profile-footer-btn:hover {
+  background: #e4d9d8 !important;
+  border-color: rgba(42, 31, 45, 0.08) !important;
+}
+

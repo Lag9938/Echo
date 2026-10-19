@@ -55,12 +55,12 @@ export interface MessageComposerProps {
   presenceData: Record<string, any>
   replyingToMessage: Message | null
   setReplyingToMessage: (msg: Message | null) => void
-  isVoiceNoteRecording: boolean
+  isVoiceNoteRecording?: boolean
   voiceNoteTarget?: 'channel' | 'dm' | null
-  voiceNoteDuration: number
-  startVoiceNoteRecording: (target: 'channel' | 'dm') => void
-  stopVoiceNoteRecording: () => void
-  cancelVoiceNoteRecording: () => void
+  voiceNoteDuration?: number
+  startVoiceNoteRecording?: (target: 'channel' | 'dm') => void
+  stopVoiceNoteRecording?: () => void
+  cancelVoiceNoteRecording?: () => void
   typingUsers: string[]
   pendingPastedFile: File | null
   setPendingPastedFile: React.Dispatch<React.SetStateAction<File | null>>
@@ -73,7 +73,7 @@ export interface MessageComposerProps {
   handleChatFileUpload: (file: File, caption?: string, sizePreference?: string) => void
   isUploading: boolean
   draft: string
-  setDraft: React.Dispatch<React.SetStateAction<string>>
+  setDraft: (val: string) => void
   chatInputRef: React.RefObject<HTMLInputElement | null>
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   handleInputKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
@@ -96,8 +96,9 @@ export interface MessageComposerProps {
   emojiPickerTab: 'default' | 'server'
   setEmojiPickerTab: React.Dispatch<React.SetStateAction<'default' | 'server'>>
   serverEmojis?: ServerEmoji[]
-  supabase: any
-  postChannelMessage: (channelId: string, body: string, attachmentUrl?: string, attachmentType?: string, existingTempId?: string) => Promise<any> | void
+  supabase?: any
+  postChannelMessage?: (channelId: string, body: string, attachmentUrl?: string, attachmentType?: string, existingTempId?: string) => Promise<any> | void
+  variant?: 'channel' | 'voice'
 }
 
 export const MessageComposer = memo(function MessageComposer({
@@ -110,12 +111,12 @@ export const MessageComposer = memo(function MessageComposer({
   presenceData,
   replyingToMessage,
   setReplyingToMessage,
-  isVoiceNoteRecording,
+  isVoiceNoteRecording = false,
   voiceNoteTarget,
-  voiceNoteDuration,
-  startVoiceNoteRecording,
-  stopVoiceNoteRecording,
-  cancelVoiceNoteRecording,
+  voiceNoteDuration = 0,
+  startVoiceNoteRecording = () => {},
+  stopVoiceNoteRecording = () => {},
+  cancelVoiceNoteRecording = () => {},
   typingUsers,
   pendingPastedFile,
   setPendingPastedFile,
@@ -152,8 +153,12 @@ export const MessageComposer = memo(function MessageComposer({
   setEmojiPickerTab,
   serverEmojis = [],
   supabase,
-  postChannelMessage
+  postChannelMessage = () => {},
+  variant = 'channel'
 }: MessageComposerProps) {
+  const isVoiceChat = variant === 'voice'
+  const fileInputId = isVoiceChat ? 'voice-chat-file-input' : 'chat-file-input'
+  const textInputId = isVoiceChat ? 'voice-chat-input' : 'chat-input-field'
   // As janelas de GIF, figurinhas e emoji abrem rente ao botão que foi apertado (antes ficavam
   // coladas à direita, longe dos botões da esquerda). Guarda o ponto de ancoragem, em px, dentro do formulário.
   const [pickerLeft, setPickerLeft] = useState<number | null>(null)
@@ -328,13 +333,13 @@ export const MessageComposer = memo(function MessageComposer({
             </div>
           )}
           <form
-            className="composer"
+            className={`composer${isVoiceChat ? ' voice-chat-composer' : ''}`}
             onSubmit={handleComposerSubmit}
             style={{ position: 'relative', ...(pickerLeft !== null ? { ['--picker-left' as string]: `${pickerLeft}px` } : {}) } as React.CSSProperties}
           >
             <input 
               type="file" 
-              id="chat-file-input" 
+              id={fileInputId} 
               multiple
               style={{ display: 'none' }} 
               onChange={(e) => { 
@@ -359,19 +364,21 @@ export const MessageComposer = memo(function MessageComposer({
                 e.target.value = '' 
               }} 
             />
-            <button type="button" className="composer-action-btn" onClick={() => document.getElementById('chat-file-input')?.click()} disabled={isUploading} title="Enviar arquivo (até 25 MB) ou imagem">
+            <button type="button" className="composer-action-btn" onClick={() => document.getElementById(fileInputId)?.click()} disabled={isUploading} title="Enviar arquivo (até 25 MB) ou imagem">
               <PaperclipIcon style={{ width: '15px', height: '15px' }} />
             </button>
 
-            {/* Voice Note Button */}
-            <button 
-              type="button" 
-              className="composer-action-btn" 
-              onClick={() => startVoiceNoteRecording('channel')} 
-              title="Gravar Mensagem de Voz"
-            >
-              <VoiceMessageIcon style={{ width: '15px', height: '15px' }} />
-            </button>
+            {/* Voice Note Button (oculto no chat lateral da call, já que a pessoa já está em chamada de voz) */}
+            {!isVoiceChat && (
+              <button 
+                type="button" 
+                className="composer-action-btn" 
+                onClick={() => startVoiceNoteRecording('channel')} 
+                title="Gravar Mensagem de Voz"
+              >
+                <VoiceMessageIcon style={{ width: '15px', height: '15px' }} />
+              </button>
+            )}
 
             {/* GIF Picker Button */}
             <button 
@@ -465,12 +472,12 @@ export const MessageComposer = memo(function MessageComposer({
 
             <input 
               ref={chatInputRef}
-              id="chat-input-field"
+              id={textInputId}
               value={draft} 
               onChange={handleInputChange} 
               onKeyDown={handleInputKeyDown}
               onPaste={handlePaste}
-              placeholder={slowmodeCooldown > 0 ? `Modo Lento ativo: aguarde ${slowmodeCooldown}s para digitar…` : `Mensagem em #${selectedChannel.name}…`} 
+              placeholder={slowmodeCooldown > 0 ? `Modo Lento ativo: aguarde ${slowmodeCooldown}s para digitar…` : (isVoiceChat ? 'Conversar por texto com a call…' : `Mensagem em #${selectedChannel.name}…`)} 
               disabled={slowmodeCooldown > 0}
             />
 
@@ -544,7 +551,7 @@ export const MessageComposer = memo(function MessageComposer({
                           key={em} 
                           type="button" 
                           className="emoji-item-btn"
-                          onClick={() => { setDraft(prev => prev + em); setShowEmojiPicker(false) }}
+                          onClick={() => { setDraft(draft + em); setShowEmojiPicker(false) }}
                         >
                           {em}
                         </button>
@@ -557,7 +564,7 @@ export const MessageComposer = memo(function MessageComposer({
                           key={em.id} 
                           type="button" 
                           className="emoji-custom-item-btn"
-                          onClick={() => { setDraft(prev => prev + `:${em.name}: `); setShowEmojiPicker(false) }}
+                          onClick={() => { setDraft(draft + `:${em.name}: `); setShowEmojiPicker(false) }}
                           title={`:${em.name}:`}
                         >
                           <img src={em.url} alt={em.name} />

@@ -105,7 +105,7 @@ body.light-theme.echo-layout-glass .msg-card .msg-body {
 body.light-theme.echo-layout-glass .msg-card .msg-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 14px;
+  border-radius: 50%;
   margin-top: 2px;
 }
 
@@ -279,12 +279,12 @@ body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-node.has-use
   width: 28px !important;
   height: 28px !important;
   min-width: 28px !important;
-  border-radius: 10px !important;
+  border-radius: 50% !important;
   border: 1.5px solid #fff !important;
   box-shadow: 0 2px 6px rgba(42, 31, 45, 0.18) !important;
 }
 body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-node.has-users .sidebar-voice-avatar img {
-  border-radius: 9px !important;
+  border-radius: 50% !important;
 }
 body.light-theme .channels-sidebar.echo-layout-glass .voice-channel-node.has-users .sidebar-voice-user.speaking .sidebar-voice-avatar {
   border-color: #22c55e !important;

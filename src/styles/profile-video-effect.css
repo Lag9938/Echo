@@ -1,0 +1,28 @@
+/* ==========================================================================
+   EFEITO DE PERFIL EM VÍDEO
+   O vídeo tem fundo preto puro: com `mix-blend-mode: screen` o preto some e só as luzes aparecem por cima
+   do cartão (que precisa ser `position: relative`, como o .member-profile-card-modal).
+   ========================================================================== */
+.profile-video-effect {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  z-index: 30;
+  /* sem controles nem arrasto: é só decoração */
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* No tema claro o "screen" clareia ainda mais um cartão já claro e o efeito some. Invertemos o vídeo (preto vira
+   branco, luzes viram tons escuros do mesmo matiz) e usamos "multiply": o branco desaparece e as pétalas e luzes
+   ficam como pigmento sobre o papel. */
+body.light-theme .profile-video-effect {
+  mix-blend-mode: multiply;
+  filter: invert(1) hue-rotate(180deg) saturate(2.2) brightness(2.3) contrast(0.9);
+  opacity: 0.8;
+}

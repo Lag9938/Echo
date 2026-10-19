@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { GOVERNED_FPS, adoptDecorativeAnimations, releaseAnimations, startAnimationGovernor, stepAnimations } from '../animationGovernor'
+import { GOVERNED_FPS, adoptDecorativeAnimations, pruneAnimations, releaseAnimations, startAnimationGovernor, stepAnimations } from '../animationGovernor'
 
 function animation(options: { iterations?: number; state?: string; className?: string; connected?: boolean } = {}) {
   const target = document.createElement('span')
@@ -12,6 +12,19 @@ function animation(options: { iterations?: number; state?: string; className?: s
   }
   anim.pause = vi.fn(() => { anim.playState = 'paused' })
   anim.play = vi.fn(() => { anim.playState = 'running' })
+  const cancelListeners: Array<() => void> = []
+  anim.addEventListener = vi.fn((_type: string, fn: () => void) => { cancelListeners.push(fn) })
+  anim.cancel = vi.fn(() => { anim.playState = 'idle' })
+  // Como o Chromium: o CSS cancela a animação (elemento saiu ou foi escondido) e o evento chega depois
+  anim.cancelByBrowser = () => { anim.playState = 'idle' }
+  anim.dispatchCancel = () => { for (const fn of cancelListeners) fn() }
+  // Como o Chromium: escrever o tempo de uma animação cancelada a traz de volta, pausada
+  let time = 0
+  Object.defineProperty(anim, 'currentTime', {
+    get: () => time,
+    set: (value: number) => { time = value; if (anim.playState === 'idle') anim.playState = 'paused' },
+    configurable: true
+  })
   return anim
 }
 
@@ -22,10 +35,10 @@ describe('limitador das animações decorativas', () => {
     const spinner = animation({ className: 'loader' })
     const speaking = animation({ className: 'avatar is-speaking' })
     const nameEffect = animation({ className: 'member-name name-effect-celestial_gold' })
-    const governed = new Set<any>()
+    const governed = new Map<any, number>()
 
     adoptDecorativeAnimations([shimmer, entrance, spinner, speaking, nameEffect], governed)
-    expect([...governed]).toEqual([shimmer])
+    expect([...governed.keys()]).toEqual([shimmer])
     expect(shimmer.pause).toHaveBeenCalledTimes(1)
     // Aviso deslizando, "carregando" e "quem está falando" seguem na taxa normal; efeito de nome ninguém toca
     for (const free of [entrance, spinner, speaking, nameEffect]) expect(free.pause).not.toHaveBeenCalled()
@@ -37,21 +50,74 @@ describe('limitador das animações decorativas', () => {
 
   it('avança no relógio próprio e solta o que acabou ou saiu da tela', () => {
     const alive = animation()
+    alive.currentTime = 500
     const gone = animation({ connected: false })
     const resumedElsewhere = animation()
-    const governed = new Set<any>()
+    const governed = new Map<any, number>()
     adoptDecorativeAnimations([alive, gone, resumedElsewhere], governed)
     resumedElsewhere.playState = 'running'
 
     stepAnimations(governed, 33)
     stepAnimations(governed, 33)
-    expect(alive.currentTime).toBe(66)
-    expect([...governed]).toEqual([alive])
+    // Continua de onde a animação estava quando foi assumida
+    expect(alive.currentTime).toBe(566)
+    pruneAnimations(governed)
+    expect([...governed.keys()]).toEqual([alive])
+  })
+
+  it('o passo de 30/s só escreve: não lê nada da animação (ler força o navegador a recalcular os estilos)', () => {
+    const shimmer = animation()
+    const governed = new Map<any, number>()
+    adoptDecorativeAnimations([shimmer], governed)
+    let reads = 0
+    let time = 0
+    Object.defineProperty(shimmer, 'playState', { get: () => { reads++; return 'paused' } })
+    Object.defineProperty(shimmer, 'currentTime', { get: () => { reads++; return time }, set: (value: number) => { time = value } })
+
+    for (let i = 0; i < 30; i++) stepAnimations(governed, 1000 / 30)
+    expect(reads).toBe(0)
+    expect(Math.round(time)).toBe(1000)
+  })
+
+  it('animação cancelada pelo navegador não volta como zumbi (elemento que saiu da página ou foi escondido)', () => {
+    const shimmer = animation()
+    const governed = new Map<any, number>()
+    adoptDecorativeAnimations([shimmer], governed)
+
+    // O CSS cancela; antes de o evento chegar, o passo ainda escreve e ressuscita a animação
+    shimmer.cancelByBrowser()
+    stepAnimations(governed, 33)
+    expect(shimmer.playState).toBe('paused')
+
+    shimmer.dispatchCancel()
+    expect(governed.size).toBe(0)
+    expect(shimmer.playState).toBe('idle')
+    // Depois de solta, o passo não escreve mais nela
+    stepAnimations(governed, 33)
+    expect(shimmer.playState).toBe('idle')
+  })
+
+  it('o ouvinte de cancelamento é posto uma vez só, mesmo se a animação for assumida de novo', () => {
+    const shimmer = animation()
+    const governed = new Map<any, number>()
+    adoptDecorativeAnimations([shimmer], governed)
+    releaseAnimations(governed)
+    adoptDecorativeAnimations([shimmer], governed)
+    expect(shimmer.addEventListener).toHaveBeenCalledTimes(1)
+  })
+
+  it('elemento que saiu da página: a animação é cancelada, não só esquecida', () => {
+    const gone = animation({ connected: false })
+    const governed = new Map<any, number>()
+    adoptDecorativeAnimations([gone], governed)
+    pruneAnimations(governed)
+    expect(governed.size).toBe(0)
+    expect(gone.cancel).toHaveBeenCalledTimes(1)
   })
 
   it('desligar devolve as animações ao navegador', () => {
     const shimmer = animation()
-    const governed = new Set<any>()
+    const governed = new Map<any, number>()
     adoptDecorativeAnimations([shimmer], governed)
     releaseAnimations(governed)
     expect(shimmer.play).toHaveBeenCalledTimes(1)

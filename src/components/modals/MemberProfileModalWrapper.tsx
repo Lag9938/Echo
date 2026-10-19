@@ -26,6 +26,7 @@ export interface MemberProfileModalWrapperProps {
   onBlockUser?: (targetId: string, targetName: string) => Promise<void>
   onUnblockUser?: (targetId: string, targetName: string) => Promise<void>
   blockedUserIds?: Set<string>
+  setPage?: (page: any) => void
 }
 
 export function MemberProfileModalWrapper({
@@ -50,7 +51,8 @@ export function MemberProfileModalWrapper({
   setVolumeControlUser,
   onBlockUser,
   onUnblockUser,
-  blockedUserIds
+  blockedUserIds,
+  setPage
 }: MemberProfileModalWrapperProps) {
   if (!inspectedMember) return null
 
@@ -123,6 +125,7 @@ export function MemberProfileModalWrapper({
       onBlockUser={onBlockUser}
       onUnblockUser={onUnblockUser}
       blockedUserIds={blockedUserIds}
+      setPage={setPage}
     />
   )
 }

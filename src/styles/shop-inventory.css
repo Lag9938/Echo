@@ -794,6 +794,10 @@
   position: fixed;
   top: 72px;
   right: 28px;
+  /* effects.css também define bottom: 32px; sem isto o aviso estica da topo até o rodapé */
+  bottom: auto;
+  height: auto;
+  max-width: min(420px, calc(100vw - 56px));
   z-index: 99999;
   display: flex;
   align-items: center;

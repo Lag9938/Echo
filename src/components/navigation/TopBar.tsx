@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, memo } from 'react'
+import React, { useState, useRef, memo } from 'react'
 import type { Space, Channel, Page, SavedMessageItem } from '../../types'
 import { Brand } from './Brand'
 import { WindowControls } from './WindowControls'
@@ -121,7 +121,7 @@ export const TopBar = memo(function TopBar(props: TopBarProps) {
 
   return (
     <header 
-      className={`topbar ${isTopbarVisible ? 'visible' : 'auto-hidden'}`}
+      className={`topbar ${isTopbarVisible ? 'visible' : 'auto-hidden'} ${topbarPinned ? 'is-pinned' : 'is-overlay'}`}
       onMouseEnter={showTopbar}
       onMouseLeave={() => hideTopbar(800)}
     >

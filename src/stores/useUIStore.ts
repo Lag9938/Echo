@@ -6,6 +6,7 @@ export interface UIState {
   theme: string
   topbarPinned: boolean
   isTopbarVisible: boolean
+  channelsSidebarCollapsed: boolean
   presenceStatus: 'online' | 'idle' | 'dnd' | 'invisible'
   friendships: FriendshipRequest[]
   blockedUserIds: Set<string>
@@ -29,6 +30,7 @@ export interface UIState {
   setTheme: (theme: string) => void
   setTopbarPinned: (pinned: boolean) => void
   setIsTopbarVisible: (visible: boolean) => void
+  setChannelsSidebarCollapsed: (collapsed: boolean) => void
   setPresenceStatus: (status: 'online' | 'idle' | 'dnd' | 'invisible') => void
   setFriendships: (
     friendships:
@@ -57,6 +59,7 @@ export const useUIStore = create<UIState>((set) => ({
   theme: 'aurora-dark',
   topbarPinned: typeof window !== 'undefined' ? localStorage.getItem('echo-topbar-pinned') === 'true' : true,
   isTopbarVisible: true,
+  channelsSidebarCollapsed: typeof window !== 'undefined' ? localStorage.getItem('echo-channels-sidebar-collapsed') === 'true' : false,
   presenceStatus: typeof window !== 'undefined' ? ((localStorage.getItem('echo-presence-status') as any) || 'online') : 'online',
   friendships: [],
   blockedUserIds: new Set<string>(),
@@ -77,6 +80,12 @@ export const useUIStore = create<UIState>((set) => ({
   setTheme: (theme) => set({ theme }),
   setTopbarPinned: (topbarPinned) => set({ topbarPinned }),
   setIsTopbarVisible: (isTopbarVisible) => set({ isTopbarVisible }),
+  setChannelsSidebarCollapsed: (channelsSidebarCollapsed) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('echo-channels-sidebar-collapsed', String(channelsSidebarCollapsed))
+    }
+    set({ channelsSidebarCollapsed })
+  },
   setPresenceStatus: (presenceStatus) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('echo-presence-status', presenceStatus)

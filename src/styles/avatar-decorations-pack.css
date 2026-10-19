@@ -1,0 +1,299 @@
+/* ==========================================================================
+   DECORAÇÕES DE AVATAR — PACOTE (Coelha Lunar, Sakura, Círculo Arcano, Asas de Cristal,
+   Noite das Abóboras, Geada Cristalina). O desenho está em components/PackDecorations.tsx.
+   Só transform e opacity se animam. As animações de "reduzir movimento" (accessibility.css) as deixam
+   congeladas num quadro bonito.
+   ========================================================================== */
+
+/* Brilho por fora de cada decoração (uma sombra estática no contêiner, como nas outras) */
+.echo-avatar-decoration-wrap.deco-bunny_moon { filter: drop-shadow(0 0 5px rgba(249, 168, 212, 0.55)); }
+.echo-avatar-decoration-wrap.deco-sakura_bloom { filter: drop-shadow(0 0 5px rgba(253, 164, 175, 0.5)); }
+.echo-avatar-decoration-wrap.deco-arcane_circle { filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.65)); }
+.echo-avatar-decoration-wrap.deco-crystal_wings { filter: drop-shadow(0 0 6px rgba(125, 211, 252, 0.6)); }
+.echo-avatar-decoration-wrap.deco-pumpkin_night { filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.55)) drop-shadow(0 0 10px rgba(168, 85, 247, 0.35)); }
+.echo-avatar-decoration-wrap.deco-frost_crystal { filter: drop-shadow(0 0 6px rgba(125, 211, 252, 0.65)) drop-shadow(0 0 10px rgba(56, 189, 248, 0.35)); }
+
+/* Peças do SVG que se movem em torno de si mesmas */
+.pk-deco .pk-ear,
+.pk-deco .pk-wing,
+.pk-deco .pk-flap,
+.pk-deco .pk-upright,
+.pk-deco .pk-upright-22,
+.pk-deco .pk-bob,
+.pk-deco .pk-float,
+.pk-deco .pk-flake,
+.pk-deco .pk-twinkle,
+.pk-deco .pk-petal,
+.pk-deco .pk-shimmer,
+.pk-deco .pk-breathe,
+.pk-deco .pk-wisp {
+  transform-box: fill-box;
+}
+.pk-deco .pk-twinkle { transform-origin: center; animation: pkTwinkle 2.6s ease-in-out infinite; }
+.pk-deco .pk-shimmer { animation: pkShimmer 2.8s ease-in-out infinite; }
+.pk-deco .pk-breathe { transform-origin: center; animation: pkBreathe 3.4s ease-in-out infinite; }
+.pk-deco .pk-flicker { animation: pkFlicker 2.1s ease-in-out infinite; }
+
+/* Rotações lentas em torno do centro do avatar */
+.pk-deco .pk-spin-60 { transform-origin: 60px 60px; animation: pkSpin 60s linear infinite; }
+.pk-deco .pk-spin-40 { transform-origin: 60px 60px; animation: pkSpin 40s linear infinite; }
+.pk-deco .pk-spin-45r { transform-origin: 60px 60px; animation: pkSpin 45s linear infinite reverse; }
+.pk-deco .pk-spin-22r { transform-origin: 60px 60px; animation: pkSpin 22s linear infinite reverse; }
+.pk-deco .pk-spin-18 { transform-origin: 60px 60px; animation: pkSpin 18s linear infinite; }
+.pk-deco .pk-spin-16 { transform-origin: 60px 60px; animation: pkSpin 16s linear infinite; }
+/* O morcego gira de volta na mesma velocidade da órbita, para ficar sempre de pé */
+.pk-deco .pk-upright { transform-origin: center; animation: pkSpin 16s linear infinite reverse; }
+.pk-deco .pk-upright-22 { transform-origin: center; animation: pkSpin 22s linear infinite; }
+.pk-deco .pk-flap { transform-origin: center; animation: pkFlap 0.38s ease-in-out infinite alternate; }
+.pk-deco .pk-wisp { transform-origin: 50% 100%; animation: pkWisp 2.2s ease-in-out infinite alternate; }
+
+/* Coelha: as orelhas balançam de leve e dão um tique de vez em quando */
+.pk-deco .pk-ear { transform-origin: 50% 100%; }
+.pk-deco .pk-ear-l { animation: pkEarL 5.4s ease-in-out infinite; }
+.pk-deco .pk-ear-r { animation: pkEarR 5.4s ease-in-out infinite 0.7s; }
+.pk-deco .pk-float { transform-origin: center; animation: pkFloat 3.6s ease-in-out infinite alternate; }
+
+/* Sakura */
+.pk-deco .pk-sway { animation: pkSway 4.6s ease-in-out infinite alternate; }
+.pk-deco .pk-petal { transform-origin: center; animation: pkPetal 6s ease-in-out infinite; opacity: 0; }
+
+/* Asas: batem devagar, de leve, partindo da junta com o corpo */
+.pk-deco .pk-wing { transform-origin: 26px 62px; transform-box: view-box; }
+.pk-deco .pk-wing-l { animation: pkWingL 4.2s ease-in-out infinite alternate; }
+.pk-deco .pk-wing-r { animation: pkWingL 4.2s ease-in-out infinite alternate; }
+
+/* Abóboras */
+.pk-deco .pk-bob { transform-origin: center; animation: pkBob 2.6s ease-in-out infinite alternate; }
+.pk-deco .pk-dangle { animation: pkDangle 3.2s ease-in-out infinite alternate; }
+
+/* Geada */
+.pk-deco .pk-flake { transform-origin: center; animation: pkSpin 20s linear infinite; }
+.pk-deco .pk-snow { animation: pkSnow 5.5s linear infinite; opacity: 0; }
+
+@keyframes pkSpin { to { transform: rotate(360deg); } }
+@keyframes pkTwinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.6); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+@keyframes pkShimmer {
+  0%, 100% { opacity: 0.68; filter: brightness(0.95); }
+  50% { opacity: 1; filter: brightness(1.22); }
+}
+@keyframes pkBreathe {
+  0%, 100% { opacity: 0.25; transform: scale(0.985); }
+  50% { opacity: 0.7; transform: scale(1.02); }
+}
+@keyframes pkFlicker {
+  0%, 100% { opacity: 1; }
+  18% { opacity: 0.72; }
+  36% { opacity: 1; }
+  55% { opacity: 0.82; }
+  78% { opacity: 0.95; }
+}
+@keyframes pkFlap {
+  from { transform: scaleY(0.55) scaleX(0.92); }
+  to { transform: scaleY(1.05) scaleX(1.04); }
+}
+@keyframes pkWisp {
+  from { transform: scale(0.92, 0.88) rotate(-4deg); opacity: 0.75; }
+  to { transform: scale(1.06, 1.12) rotate(4deg); opacity: 1; }
+}
+@keyframes pkEarL {
+  0%, 62%, 100% { transform: rotate(0); }
+  68% { transform: rotate(-7deg); }
+  74% { transform: rotate(3deg); }
+  80% { transform: rotate(-3deg); }
+  86% { transform: rotate(0); }
+  30% { transform: rotate(1.6deg); }
+}
+@keyframes pkEarR {
+  0%, 62%, 100% { transform: rotate(0); }
+  68% { transform: rotate(6deg); }
+  74% { transform: rotate(-3deg); }
+  80% { transform: rotate(2deg); }
+  86% { transform: rotate(0); }
+  30% { transform: rotate(-1.6deg); }
+}
+@keyframes pkFloat {
+  from { transform: translateY(-1.8px) rotate(-4deg); }
+  to { transform: translateY(1.8px) rotate(4deg); }
+}
+@keyframes pkSway {
+  from { transform: rotate(-2.4deg); }
+  to { transform: rotate(2.4deg); }
+}
+/* A pétala cai balançando e girando, aparece e some suavemente */
+@keyframes pkPetal {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0); }
+  12% { opacity: 1; }
+  50% { transform: translate(calc(var(--dx, 8px) * 0.5), calc(var(--dy, 30px) * 0.5)) rotate(calc(var(--rot, 180deg) * 0.5)); }
+  88% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx, 8px), var(--dy, 30px)) rotate(var(--rot, 180deg)); }
+}
+@keyframes pkWingL {
+  from { transform: rotate(3.5deg); }
+  to { transform: rotate(-4deg); }
+}
+@keyframes pkBob {
+  from { transform: translateY(-0.8px) rotate(-2deg); }
+  to { transform: translateY(0.8px) rotate(2deg); }
+}
+@keyframes pkDangle {
+  from { transform: translateY(-1px) rotate(-3deg); }
+  to { transform: translateY(1.2px) rotate(3deg); }
+}
+@keyframes pkSnow {
+  0% { opacity: 0; transform: translate(0, 0); }
+  15% { opacity: 0.95; }
+  85% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(var(--dx, 5px), var(--dy, 28px)); }
+}
+
+/* ── Tema claro: um contorno fino de cada decoração, porque as peças brancas e pálidas (gelo, teia, pontinhos,
+      brilhos) somem sobre o fundo claro ── */
+body.light-theme .echo-avatar-decoration-wrap.deco-bunny_moon { filter: drop-shadow(0 0 0.7px #b94b86) drop-shadow(0 0 0.7px #b94b86) drop-shadow(0 0 5px rgba(249, 168, 212, 0.55)); }
+body.light-theme .echo-avatar-decoration-wrap.deco-sakura_bloom { filter: drop-shadow(0 0 0.7px #c0476a) drop-shadow(0 0 5px rgba(253, 164, 175, 0.5)); }
+body.light-theme .echo-avatar-decoration-wrap.deco-arcane_circle { filter: drop-shadow(0 0 0.7px #4c2f9a) drop-shadow(0 0 6px rgba(139, 92, 246, 0.55)); }
+body.light-theme .echo-avatar-decoration-wrap.deco-crystal_wings { filter: drop-shadow(0 0 0.8px #3f79b5) drop-shadow(0 0 0.8px #3f79b5) drop-shadow(0 0 6px rgba(125, 211, 252, 0.6)); }
+body.light-theme .echo-avatar-decoration-wrap.deco-pumpkin_night { filter: drop-shadow(0 0 0.7px #7a3410) drop-shadow(0 0 6px rgba(249, 115, 22, 0.5)); }
+body.light-theme .echo-avatar-decoration-wrap.deco-frost_crystal { filter: drop-shadow(0 0 0.8px #2f6fa3) drop-shadow(0 0 0.8px #2f6fa3) drop-shadow(0 0 6px rgba(56, 189, 248, 0.55)); }
+body.light-theme .pk-pumpkin .pk-web { stroke: #6d28d9; opacity: 0.8; }
+/* ── Redesenhos das decorações que já existiam ── */
+.pk-deco .pk-shine { animation: pkShine 4.2s ease-in-out infinite; }
+.pk-deco .pk-flame { transform-box: fill-box; transform-origin: 50% 100%; animation: pkFlame 1.5s ease-in-out infinite alternate; }
+.pk-deco .pk-ember { transform-box: fill-box; transform-origin: center; animation: pkEmber 3.6s ease-out infinite; opacity: 0; }
+.pk-deco .pk-eq { transform-box: fill-box; transform-origin: 50% 100%; animation: pkEq 0.9s ease-in-out infinite alternate; }
+.pk-deco .pk-beat { transform-box: fill-box; transform-origin: center; animation: pkBeat 1.6s ease-in-out infinite; }
+.pk-deco .pk-note { transform-box: fill-box; transform-origin: center; animation: pkNote 4.4s ease-out infinite; opacity: 0; }
+.pk-deco .pk-halo-float { transform-box: fill-box; transform-origin: center; animation: pkBob 3s ease-in-out infinite alternate; }
+.pk-deco .pk-swing { transform-box: fill-box; transform-origin: 50% 0%; animation: pkDangle 2.8s ease-in-out infinite alternate; }
+.pk-deco .pk-spin-30 { transform-origin: 60px 60px; animation: pkSpin 30s linear infinite; }
+
+@keyframes pkShine {
+  0%, 55% { transform: skewX(-20deg) translateX(0); opacity: 0; }
+  62% { opacity: 0.6; }
+  100% { transform: skewX(-20deg) translateX(190px); opacity: 0; }
+}
+@keyframes pkFlame {
+  0% { transform: scale(0.94, 0.86) skewX(-4deg); }
+  100% { transform: scale(1.04, 1.16) skewX(4deg); }
+}
+@keyframes pkEmber {
+  0% { opacity: 0; transform: translateY(0) scale(0.6); }
+  20% { opacity: 0.95; }
+  100% { opacity: 0; transform: translateY(-24px) scale(1.1); }
+}
+@keyframes pkEq {
+  from { transform: scaleY(0.25); }
+  to { transform: scaleY(1); }
+}
+@keyframes pkBeat {
+  0%, 100% { transform: scale(1); }
+  12% { transform: scale(1.14); }
+  24% { transform: scale(0.98); }
+  36% { transform: scale(1.08); }
+  50% { transform: scale(1); }
+}
+@keyframes pkNote {
+  0% { opacity: 0; transform: translate(0, 4px) rotate(-8deg); }
+  20% { opacity: 0.95; }
+  100% { opacity: 0; transform: translate(8px, -26px) rotate(10deg); }
+}
+
+.echo-avatar-decoration-wrap.deco-ghostfire { filter: drop-shadow(0 0 6px rgba(52, 211, 153, 0.55)) drop-shadow(0 0 8px rgba(168, 85, 247, 0.4)); }
+.echo-avatar-decoration-wrap.deco-neko_cyber { filter: drop-shadow(0 0 6px rgba(236, 72, 153, 0.55)) drop-shadow(0 0 8px rgba(34, 211, 238, 0.35)); }
+.echo-avatar-decoration-wrap.deco-heart_harmony { filter: drop-shadow(0 0 6px rgba(251, 113, 133, 0.55)); }
+.echo-avatar-decoration-wrap.deco-celestial_halo { filter: drop-shadow(0 0 6px rgba(253, 224, 71, 0.6)); }
+body.light-theme .echo-avatar-decoration-wrap.deco-ghostfire { filter: drop-shadow(0 0 0.7px #047857) drop-shadow(0 0 6px rgba(52, 211, 153, 0.45)); }
+body.light-theme .echo-avatar-decoration-wrap.deco-neko_cyber { filter: drop-shadow(0 0 0.7px #9d174d) drop-shadow(0 0 6px rgba(236, 72, 153, 0.45)); }
+body.light-theme .echo-avatar-decoration-wrap.deco-heart_harmony { filter: drop-shadow(0 0 0.7px #9f1239) drop-shadow(0 0 6px rgba(251, 113, 133, 0.5)); }
+body.light-theme .echo-avatar-decoration-wrap.deco-celestial_halo { filter: drop-shadow(0 0 0.8px #92400e) drop-shadow(0 0 6px rgba(253, 224, 71, 0.55)); }
+/* ── Segunda leva de redesenhos: Orbe, Labaredas, Visor, Vórtice e Escudo ── */
+.pk-deco .pk-ripple { transform-box: fill-box; transform-origin: center; animation: pkRipple 2.4s ease-out infinite; opacity: 0; }
+.pk-deco .pk-lock { transform-box: fill-box; transform-origin: center; animation: pkLock 3s ease-in-out infinite; }
+.pk-deco .pk-lockpulse { transform-box: fill-box; transform-origin: center; animation: pkLockPulse 1.4s ease-in-out infinite; }
+.pk-deco .pk-blink { animation: pkBlink 1.8s steps(2, end) infinite; }
+.pk-deco .pk-comet { stroke-dashoffset: 0; animation: pkComet 3.4s linear infinite; }
+.pk-deco .pk-suck { transform-box: fill-box; transform-origin: center; animation: pkSuck 3s ease-in infinite; opacity: 0; }
+.pk-deco .pk-cell { transform-box: fill-box; transform-origin: center; animation: pkCell 3s ease-in-out infinite; }
+.pk-deco .pk-spin-6 { transform-origin: 60px 60px; animation: pkSpin 6s linear infinite; }
+.pk-deco .pk-spin-24 { transform-origin: 60px 60px; animation: pkSpin 24s linear infinite; }
+.pk-deco .pk-spin-24r { transform-origin: 60px 60px; animation: pkSpin 24s linear infinite reverse; }
+.pk-deco .pk-spin-18r { transform-origin: 60px 60px; animation: pkSpin 18s linear infinite reverse; }
+
+@keyframes pkRipple {
+  0% { opacity: 0.7; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.34); }
+}
+@keyframes pkLock {
+  0%, 100% { transform: scale(1); opacity: 0.95; }
+  50% { transform: scale(0.965); opacity: 1; }
+}
+@keyframes pkLockPulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.35); opacity: 0.35; }
+}
+@keyframes pkBlink {
+  0% { opacity: 1; }
+  100% { opacity: 0.15; }
+}
+/* O cometa é um traço curto dentro de um tracejado longo: mexer no deslocamento o faz correr pelo caminho */
+@keyframes pkComet {
+  to { stroke-dashoffset: calc(var(--len, 300) * -1); }
+}
+@keyframes pkSuck {
+  0% { opacity: 0; transform: translate(0, 0) scale(1.1); }
+  25% { opacity: 0.95; }
+  100% { opacity: 0; transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(0.3); }
+}
+@keyframes pkCell {
+  0%, 100% { opacity: 0.35; transform: scale(0.9); }
+  40% { opacity: 1; transform: scale(1.08); }
+}
+
+.echo-avatar-decoration-wrap.deco-quantum_vortex { filter: drop-shadow(0 0 6px rgba(168, 85, 247, 0.6)); }
+body.light-theme .echo-avatar-decoration-wrap.deco-quantum_vortex { filter: drop-shadow(0 0 0.7px #4c1d95) drop-shadow(0 0 6px rgba(168, 85, 247, 0.5)); }
+/* ── Decorações de avatar em vídeo (anel com transparência) ── */
+.avatar-video-decoration {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: auto;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.echo-avatar-decoration-wrap.deco-sakura_ring { filter: drop-shadow(0 0 4px rgba(249, 168, 212, 0.5)); }
+body.light-theme .echo-avatar-decoration-wrap.deco-sakura_ring { filter: drop-shadow(0 0 0.7px #b94b86) drop-shadow(0 0 4px rgba(249, 168, 212, 0.55)); }
+.echo-avatar-decoration-wrap.deco-fox_spirit { filter: drop-shadow(0 0 5px rgba(192, 132, 252, 0.55)); }
+body.light-theme .echo-avatar-decoration-wrap.deco-fox_spirit { filter: drop-shadow(0 0 0.7px #6d28d9) drop-shadow(0 0 5px rgba(192, 132, 252, 0.5)); }
+.echo-avatar-decoration-wrap.deco-frost_ring { filter: drop-shadow(0 0 5px rgba(125, 211, 252, 0.55)); }
+body.light-theme .echo-avatar-decoration-wrap.deco-frost_ring { filter: drop-shadow(0 0 0.7px #0369a1) drop-shadow(0 0 5px rgba(56, 189, 248, 0.5)); }
+
+/* ── Versão leve para avatares pequenos (listas de membros, mensagens, chamadas) ──
+   Numa lista com dezenas de avatares, cada chama, brasa, faísca e pétala é uma animação separada: com 30 chamas por
+   decoração, 300 animações no total, medidas no app. Em avatares pequenos esse movimento miúdo mal se vê, então some;
+   o giro/pulso do conjunto continua, e na ficha de perfil e na loja (decoração grande) tudo anima como antes. */
+.echo-avatar-decoration-wrap { container-type: inline-size; }
+@container (max-width: 100px) {
+  .pk-deco .pk-flame,
+  .pk-deco .pk-ember,
+  .pk-deco .pk-twinkle,
+  .pk-deco .pk-petal,
+  .pk-deco .pk-snow,
+  .pk-deco .pk-note,
+  .pk-deco .pk-ripple,
+  .pk-deco .pk-suck,
+  .pk-deco .pk-cell,
+  .pk-deco .pk-shine,
+  .pk-deco .pk-shimmer,
+  .pk-deco .pk-flicker,
+  .pk-deco .pk-flake,
+  .pk-deco .pk-eq,
+  .pk-deco .pk-beat,
+  .pk-deco .pk-blink,
+  .pk-deco .pk-comet { animation: none; }
+}
+.echo-avatar-decoration-wrap.deco-dragon_ring { filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.6)); }
+body.light-theme .echo-avatar-decoration-wrap.deco-dragon_ring { filter: drop-shadow(0 0 0.7px #9a3412) drop-shadow(0 0 5px rgba(249, 115, 22, 0.5)); }

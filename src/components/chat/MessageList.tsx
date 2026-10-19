@@ -47,16 +47,16 @@ function renderRichEmbed(body: string) {
 }
 
 export interface MessageListProps {
-  messagesContainerRef: React.RefObject<HTMLDivElement | null>
+  messagesContainerRef?: React.RefObject<HTMLDivElement | null>
   messagesEndRef: React.RefObject<HTMLDivElement | null>
   selectedChannel: Channel
   currentSpace: Space | null
   filteredMessages: Message[]
-  hasMoreMessages: boolean
-  isLoadingMore: boolean
+  hasMoreMessages?: boolean
+  isLoadingMore?: boolean
   isLoadingMessages?: boolean
-  loadMoreMessages: (channelId: string) => Promise<void> | void
-  searchQuery: string
+  loadMoreMessages?: (channelId: string) => Promise<void> | void
+  searchQuery?: string
   user: User
   profileDisplayName: string
   profileAvatarUrl?: string
@@ -70,8 +70,8 @@ export interface MessageListProps {
   canUserDo: (spaceId: string, userId: string, perm: keyof RolePermissions) => boolean
   getUserHighestRole: (spaceId: string, userId: string) => ServerRole | null
   setInspectedMember: (val: any) => void
-  toggleReaction: (msgId: string, emoji: string) => void
-  setReplyingToMessage: (msg: Message | null) => void
+  toggleReaction?: (msgId: string, emoji: string) => void
+  setReplyingToMessage?: (msg: Message | null) => void
   isMessageSaved: (msgId: string) => boolean
   toggleSaveMessage: (msg: Message, type: 'channel' | 'dm', extra?: any) => void
   pinnedMessages: Record<string, PinnedMessage[]>
@@ -83,8 +83,8 @@ export interface MessageListProps {
   voiceNotePlaySpeed: number
   handleChangeVoiceSpeed: () => void
   voiceNoteAudioRef: React.RefObject<HTMLAudioElement | null>
-  retrySendMessage: (msg: any) => void
-  messageReactions: Record<string, Record<string, string[]>>
+  retrySendMessage?: (msg: any) => void
+  messageReactions?: Record<string, Record<string, string[]>>
   /** Eventos da chamada (entrou, saiu, o bot tocou) para intercalar com as mensagens pelo horário */
   voiceEvents?: VoiceFeedEvent[]
   /** Resumo dos tópicos do canal, por mensagem-raiz: mostra "3 respostas" embaixo da mensagem */
@@ -93,8 +93,8 @@ export interface MessageListProps {
   onOpenThread?: (message: Message) => void
   /** Tópicos com resposta nova ainda não vista (mensagem-raiz → canal) */
   unreadThreadRoots?: Record<string, string>
-  /** 'thread' = lista de respostas dentro do painel do tópico: sem boas-vindas e só com reagir e excluir */
-  variant?: 'channel' | 'thread'
+  /** 'thread' = lista de respostas dentro do painel do tópico; 'voice' = gaveta lateral do chat da sala de voz */
+  variant?: 'channel' | 'thread' | 'voice'
 }
 
 export const MessageList = memo(function MessageList({
@@ -103,11 +103,11 @@ export const MessageList = memo(function MessageList({
   selectedChannel,
   currentSpace,
   filteredMessages,
-  hasMoreMessages,
-  isLoadingMore,
+  hasMoreMessages = false,
+  isLoadingMore = false,
   isLoadingMessages = false,
-  loadMoreMessages,
-  searchQuery,
+  loadMoreMessages = () => {},
+  searchQuery = '',
   user,
   profileDisplayName,
   profileAvatarUrl = '',
@@ -121,21 +121,21 @@ export const MessageList = memo(function MessageList({
   canUserDo,
   getUserHighestRole,
   setInspectedMember,
-  toggleReaction,
-  setReplyingToMessage,
+  toggleReaction = () => {},
+  setReplyingToMessage = () => {},
   isMessageSaved,
   toggleSaveMessage,
   pinnedMessages,
   togglePinMessage,
   handleDeleteMessage,
-  openLightbox,
+  openLightbox = () => {},
   activePlayingVoiceNote,
   handleToggleVoicePlay,
   voiceNotePlaySpeed,
   handleChangeVoiceSpeed,
   voiceNoteAudioRef,
-  retrySendMessage,
-  messageReactions,
+  retrySendMessage = () => {},
+  messageReactions = {},
   voiceEvents = EMPTY_EVENTS,
   threadSummaries,
   onOpenThread,
@@ -143,6 +143,7 @@ export const MessageList = memo(function MessageList({
   variant = 'channel'
 }: MessageListProps) {
   const isThreadList = variant === 'thread'
+  const isVoiceChat = variant === 'voice'
   // Cada evento entra antes da primeira mensagem mais nova que ele; os mais recentes que tudo vão no fim.
   // Durante uma busca, ficam de fora (só resultados).
   const { eventsBefore, trailingEvents } = useMemo(() => {
@@ -160,7 +161,7 @@ export const MessageList = memo(function MessageList({
 
   return (
     <div
-      className="messages-area"
+      className={`messages-area${isVoiceChat ? ' voice-chat-messages' : ''}`}
       ref={messagesContainerRef}
       onScroll={(e) => {
         const target = e.currentTarget
@@ -177,8 +178,16 @@ export const MessageList = memo(function MessageList({
         </div>
       )}
 
+      {/* Estado inicial na gaveta da chamada de voz */}
+      {isVoiceChat && filteredMessages.length === 0 && !searchQuery.trim() && (
+        <div className="no-messages">
+          <div style={{ opacity: 0.6, marginBottom: '6px' }}><VolumeIcon style={{ width: '28px', height: '28px' }} /></div>
+          <p>Início do chat por texto da chamada.</p>
+        </div>
+      )}
+
       {/* Channel Welcome Hero (visível apenas ao alcançar o início histórico do canal) */}
-      {!isThreadList && !searchQuery.trim() && !hasMoreMessages && (
+      {!isThreadList && !isVoiceChat && !searchQuery.trim() && !hasMoreMessages && (
         <div className="channel-welcome-hero">
           <div className="channel-welcome-icon-box">
             {selectedChannel.is_announcement ? <MegaphoneIcon /> : <HashtagIcon />}

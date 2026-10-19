@@ -1,4 +1,4 @@
-﻿import React, { memo } from 'react'
+import React, { memo } from 'react'
 import { createPortal } from 'react-dom'
 import type { FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
@@ -6,6 +6,7 @@ import type { VoiceParticipant } from '../../lib/useVoiceChannel'
 import type { Space, Channel, Page, RolePermissions, ServerRole } from '../../types'
 import { UnifiedUserProfileFooter } from './UnifiedUserProfileFooter'
 import { useSpacesStore } from '../../stores/useSpacesStore'
+import { useUIStore } from '../../stores/useUIStore'
 import { SPACE_SETTINGS_PERMISSIONS } from '../../lib/permissions'
 import { isMusicBotIdentity } from '../../lib/musicBotState'
 import { SERVER_BANNER_PRESETS } from '../../lib/formatters'
@@ -292,11 +293,11 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
   const [isResizing, setIsResizing] = React.useState(false)
   // Recolher a barra de canais: sobra uma tirinha na borda. Passar o mouse nela espia a barra
   // (flutuando sobre o chat) e clicar fixa de novo. A escolha fica salva.
-  const [collapsed, setCollapsed] = React.useState<boolean>(() => localStorage.getItem('echo-channels-sidebar-collapsed') === 'true')
+  const collapsed = useUIStore((s) => s.channelsSidebarCollapsed)
+  const setChannelsSidebarCollapsed = useUIStore((s) => s.setChannelsSidebarCollapsed)
   const setSidebarOpen = React.useCallback((open: boolean) => {
-    setCollapsed(!open)
-    localStorage.setItem('echo-channels-sidebar-collapsed', String(!open))
-  }, [])
+    setChannelsSidebarCollapsed(!open)
+  }, [setChannelsSidebarCollapsed])
   const railPeek = useHoverPeek(!collapsed, setSidebarOpen, { openDelay: 120, closeDelay: 500 })
 
   const handleMouseDownResize = React.useCallback((e: React.MouseEvent) => {

@@ -6,6 +6,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startProcessAudioCapture: (sourceId) => ipcRenderer.invoke('start-process-audio-capture', sourceId),
   stopProcessAudioCapture: () => ipcRenderer.invoke('stop-process-audio-capture'),
   setStreamingPriority: (boost) => ipcRenderer.invoke('set-streaming-priority', boost),
+  // Quedas de processo guardadas pelo processo principal (electron/services/crashReports.js)
+  takeCrashReports: () => ipcRenderer.invoke('take-crash-reports'),
+  onCrashReportsAvailable: (callback) => {
+    const handler = () => callback()
+    ipcRenderer.on('crash-reports-available', handler)
+    return () => ipcRenderer.removeListener('crash-reports-available', handler)
+  },
   getCaptureMode: () => ipcRenderer.invoke('get-capture-mode'),
   setCaptureMode: (mode) => ipcRenderer.invoke('set-capture-mode', mode),
   onScreenshareAudioChunk: (callback) => {

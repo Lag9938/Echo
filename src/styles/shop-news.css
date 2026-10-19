@@ -1,0 +1,204 @@
+/* ── NOVO NA LOJA (janela ao abrir o app quando chega coleção nova; ver lib/shopDrops.ts) ──
+   Sem backdrop-filter de propósito: a janela aparece na abertura do app, por cima de tudo, e um desfoque de tela
+   inteira custaria um quadro caro a cada atualização do que está atrás. O fundo escuro opaco resolve. */
+
+.shop-news-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10040;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(6, 5, 8, 0.72);
+  -webkit-app-region: no-drag;
+  animation: shopNewsFade 0.22s ease-out;
+}
+
+.shop-news-modal {
+  position: relative;
+  width: min(100%, 440px);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  border-radius: 26px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 28px 70px -18px rgba(0, 0, 0, 0.6);
+  color: var(--text-primary);
+  animation: modalPop 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.shop-news-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.shop-news-close:hover { background: rgba(0, 0, 0, 0.55); }
+
+/* Palco: o avatar da pessoa com o item em destaque, num brilho da cor do item */
+.shop-news-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 26px 24px 22px;
+  background:
+    radial-gradient(circle at 50% 52%, color-mix(in srgb, var(--drop-color, #c64d3c) 34%, transparent) 0%, transparent 62%),
+    #0f0e12;
+  transition: background 0.5s ease;
+}
+
+.shop-news-kicker {
+  align-self: flex-start;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.shop-news-avatar {
+  margin: 22px 0 10px;
+}
+
+.shop-news-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+}
+.shop-news-item-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+.shop-news-item-badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.shop-news-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 24px 22px;
+}
+
+.shop-news-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.shop-news-tagline {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.shop-news-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.shop-news-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.shop-news-pick:hover,
+.shop-news-pick.is-active {
+  color: var(--text-primary);
+  border-color: var(--pick-color);
+}
+.shop-news-pick-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--pick-color);
+}
+
+.shop-news-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.shop-news-later,
+.shop-news-cta {
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.shop-news-later {
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+}
+.shop-news-later:hover { color: var(--text-primary); }
+.shop-news-cta {
+  border: 0;
+  background: var(--accent-fill);
+  color: #fff;
+}
+.shop-news-cta:hover { filter: brightness(1.08); }
+
+/* Aurora claro: palco claro e quente, texto escuro */
+body.light-theme .shop-news-overlay { background: rgba(42, 31, 45, 0.45); }
+body.light-theme .shop-news-modal { background: #f7f1f0; border-color: rgba(42, 31, 45, 0.1); box-shadow: 0 28px 70px -18px rgba(42, 31, 45, 0.35); }
+body.light-theme .shop-news-hero {
+  background:
+    radial-gradient(circle at 50% 52%, color-mix(in srgb, var(--drop-color, #c64d3c) 30%, transparent) 0%, transparent 62%),
+    #efe5e3;
+}
+body.light-theme .shop-news-kicker,
+body.light-theme .shop-news-item-badge { background: rgba(42, 31, 45, 0.08); color: #2a1f2d; }
+body.light-theme .shop-news-item { color: #2a1f2d; }
+body.light-theme .shop-news-close { background: rgba(42, 31, 45, 0.1); color: #2a1f2d; }
+body.light-theme .shop-news-pick { background: #fff; border-color: rgba(42, 31, 45, 0.12); }
+body.light-theme .shop-news-pick:hover,
+body.light-theme .shop-news-pick.is-active { border-color: var(--pick-color); box-shadow: inset 0 0 0 1px var(--pick-color); }
+
+@keyframes shopNewsFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shop-news-overlay,
+  .shop-news-modal { animation: none; }
+  .shop-news-hero { transition: none; }
+}
+body.reduce-motion .shop-news-overlay,
+body.reduce-motion .shop-news-modal { animation: none; }

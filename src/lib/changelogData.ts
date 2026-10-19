@@ -18,11 +18,55 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.62.0',
+    title: 'Echo v0.62.0 - Decorações em Movimento',
+    date: '19 de Outubro de 2026',
+    tagline: 'O Echo volta a ficar leve, abre na tela de amigos e a loja ganha a Coleção Estações, com decorações e efeitos de perfil em vídeo.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '⚡',
+        badge: 'DESEMPENHO',
+        title: 'Fim do Travamento com Muitas Decorações',
+        description: 'Na v0.61.0, com muitos perfis enfeitados na tela, o controle das animações acabava ocupando o processador inteiro e o Echo ficava lento. Agora ele usa uma fração mínima do processador, com o mesmo movimento. Decorações em vídeo têm limite (só algumas tocam ao mesmo tempo) e o cartão de cada pessoa na chamada ficou sem decoração, para sobrar processador para a voz e a transmissão.'
+      },
+      {
+        icon: '👋',
+        badge: 'NOVO',
+        title: 'O Echo Abre na Tela de Amigos',
+        description: 'Ao abrir o app você já vê quem está online e as suas conversas.'
+      },
+      {
+        icon: '🛍️',
+        badge: 'NOVO',
+        title: 'Coleção Estações na Loja',
+        description: 'Dragão de Fogo, Espírito da Raposa, Anel de Gelo e Sakura Cinematográfico em vídeo, mais Coelha Lunar, Chuva de Sakura, Círculo Arcano, Asas de Cristal, Noite das Abóboras e Geada Cristalina. Quando chega coleção nova, o Echo mostra as novidades no seu próprio avatar ao abrir.'
+      },
+      {
+        icon: '🌸',
+        badge: 'NOVO',
+        title: 'Efeitos de Perfil em Vídeo',
+        description: 'Os efeitos do cartão de perfil agora são vídeos animados, e chega o Jardim de Sakura. Eles só tocam quando o cartão está à vista.'
+      },
+      {
+        icon: '🎙️',
+        badge: 'CORREÇÃO',
+        title: 'Gravação de Chamada Volta a Funcionar',
+        description: 'A gravação de chamada falhava ao começar e deixava recursos de áudio abertos. Agora grava a mistura da chamada e libera tudo ao parar.'
+      },
+      {
+        icon: '🗂️',
+        badge: 'AVISO',
+        title: 'Decorações Antigas Saíram da Loja',
+        description: 'Orbe de Ressonância, Labaredas de Plasma, Coroa Prismática, Visor Tático Neon, Escudo Hexagonal e Raposa Astral não existem mais. Quem usava uma delas fica sem decoração até escolher outra.'
+      }
+    ]
+  },
+  {
     version: '0.61.0',
     title: 'Echo v0.61.0 - Mais Leve e Mais Seguro',
     date: '13 de Outubro de 2026',
     tagline: 'O Echo deixa de pesar no computador, a transmissão de tela para de verdade e o Aurora ganha acabamento.',
-    isLatest: true,
     highlights: [
       {
         icon: '⚡',

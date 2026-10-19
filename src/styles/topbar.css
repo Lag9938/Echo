@@ -1,4 +1,4 @@
-﻿/* ── Topbar Hover Sensor (Top Edge Proximity Detector) ── */
+/* ── Topbar Hover Sensor (Top Edge Proximity Detector) ── */
 .topbar-hover-sensor {
   position: fixed;
   top: 0;
@@ -71,18 +71,21 @@
               box-shadow 0.32s ease;
 }
 
-/* Reserva o lugar da barra no fluxo normal da página (ela mesma não ocupa mais espaço, por ser fixed).
-   Acompanha se a barra está à vista agora (fixada OU aparecida com o mouse), não só se está fixada —
-   por isso some/aparece na mesma velocidade que a barra desliza, para nunca cobrir o cabeçalho do canal
-   por baixo dela nem deixar um vão em branco no topo quando ela se esconde. */
+.topbar.is-overlay.visible {
+  backdrop-filter: blur(28px) saturate(185%);
+  -webkit-backdrop-filter: blur(28px) saturate(185%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 14px 36px rgba(0, 0, 0, 0.42);
+}
+
+/* Reserva os 52px no fluxo normal da página SOMENTE quando a barra está fixada (topbarPinned === true).
+   Quando desafixada (.collapsed), a altura fica fixa em 0 e a barra desliza por cima como overlay
+   (estilo menu bar fullscreen do macOS), sem recalcular a altura do workspace ao encostar o mouse no topo. */
 .topbar-spacer {
   flex-shrink: 0;
   height: 52px;
-  transition: height 0.32s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .topbar-spacer.collapsed {
   height: 0;
-  transition: height 0.44s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .topbar-left-zone,
