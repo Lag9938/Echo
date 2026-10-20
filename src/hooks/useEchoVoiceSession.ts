@@ -40,7 +40,7 @@ export interface UseEchoVoiceSessionOptions {
   setShowAfkPrompt?: (show: boolean) => void
   setShowAfkDisconnectedModal?: (show: boolean) => void
   onBeforeJoinVoice?: () => void
-  showToast?: (title: string, message: string, type?: any) => void
+  showToast?: (title: string, message: string, type?: any, onClick?: () => void) => void
   supabase: any
   presenceData?: Record<string, any>
 }
@@ -149,8 +149,8 @@ export function useEchoVoiceSession({
     onDisconnected: handleVoiceDisconnected,
     sfxVolume,
     noiseGate: { enabled: noiseGateEnabled, thresholdDb: noiseGateThreshold },
-    onReconnectMediaNotice: (title, message) => {
-      showToast?.(title, message, 'info')
+    onReconnectMediaNotice: (title, message, onClick) => {
+      showToast?.(title, message, 'info', onClick)
     },
     onServerMuted: () => {
       showToast?.('Silenciado no Servidor', 'Um moderador silenciou seu microfone.', 'info')

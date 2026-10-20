@@ -89,7 +89,15 @@ export const MESSAGES: Message[] = [
   msg('m6', 'u2', 'Kauê', 'Fechou, vou criar a sala agora e mando o link', [3, 8]),
   msg('m7', 'u3', 'Bia', 'Alguém sabe onde ficou o clipe da rodada 7?', [1, 30]),
   msg('m8', 'me', 'teste', 'Tá no canal de clipes, o do Kauê com o 4k', [1, 24]),
-  msg('m9', 'u4', 'Duda', 'kkkk esse clipe é muito bom', [0, 40])
+  msg('m9', 'u4', 'Duda', 'kkkk esse clipe é muito bom', [0, 40]),
+  msg('m10', 'me', 'teste', 'quente demais', [0, 30], {
+    body: '> @Duda: "kkkk esse clipe é muito bom"\nquente demais',
+    reply_to_message_id: 'm9'
+  }),
+  msg('m11', 'u3', 'Bia', 'manda o print do 4k pra gente ver', [0, 20], {
+    body: '> @teste: "screenshot_1792287248914.png"\nmanda o print do 4k pra gente ver',
+    reply_to_message_id: 'm8'
+  })
 ]
 
 export const REACTIONS: Record<string, Record<string, string[]>> = {

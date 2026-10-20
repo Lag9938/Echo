@@ -26,6 +26,7 @@ import { browserNoiseSuppression } from './audio/noiseSuppression'
 import { PeerBoost } from './audio/peerBoost'
 import { playJoinSound, playLeaveSound, playSoundboardEffect } from './soundEffects'
 import { trackVoiceJoined, trackVoiceLeft, trackVoiceJoinProblem, trackScreenShareStarted, trackScreenShareStopped, trackScreenShareWatched } from './analytics'
+import { OPEN_SCREEN_PICKER_EVENT, captureEndedNotice, type ScreenShareStopReason } from './screenShareStop'
 import { DUPLICATE_SESSION_NOTICE, describeMicrophoneError, describeVoiceJoinError } from './voiceJoinErrors'
 import { releaseAllScreenShare, stopCaptureStream } from './screenShareCleanup'
 import { installPresenceTrackThrottle } from './presenceThrottle'
@@ -240,7 +241,8 @@ export function useVoiceChannel(options?: {
   onServerMuted?: () => void;
   onKickedFromVoice?: () => void;
   onMovedToVoiceChannel?: (targetChannelId: string, targetChannelName?: string) => void;
-  onReconnectMediaNotice?: (title: string, message: string) => void;
+  /** `onClick`: o que fazer se a pessoa clicar no aviso (ex.: abrir a escolha de tela de novo) */
+  onReconnectMediaNotice?: (title: string, message: string, onClick?: () => void) => void;
   /** Portão de ruído das Configurações > Voz (aplicado ao vivo, sem reconectar) */
   noiseGate?: NoiseGateParams;
 }) {
@@ -359,6 +361,8 @@ export function useVoiceChannel(options?: {
   // Analytics timing refs
   const voiceJoinTimeRef = useRef<number | null>(null)
   const screenShareStartTimeRef = useRef<number | null>(null)
+  /** O que está sendo transmitido ("window:…" ou "screen:…"): diz o aviso e o tipo de fonte na análise de uso */
+  const screenShareSourceIdRef = useRef<string | null>(null)
   // Medições da transmissão em andamento, para o resumo de fluidez ao encerrar
   const streamSessionRef = useRef<StreamSession | null>(null)
   // O mesmo para cada transmissão que este app está assistindo (por id da faixa de vídeo)
@@ -749,6 +753,8 @@ export function useVoiceChannel(options?: {
     viewMode?: 'focus' | 'grid'
     isWatching?: boolean
     isCameraVisible?: boolean
+    compactCameras?: boolean
+    expandedCameraUserId?: string | null
   }>({ isWatching: true, viewMode: 'focus', isCameraVisible: true })
 
   const updateScreenSubscriptions = useCallback((opts?: {
@@ -756,6 +762,10 @@ export function useVoiceChannel(options?: {
     viewMode?: 'focus' | 'grid'
     isWatching?: boolean
     isCameraVisible?: boolean
+    /** Câmeras pequenas (fileira abaixo da transmissão): pede a camada mais baixa do simulcast */
+    compactCameras?: boolean
+    /** Câmera expandida no lugar da transmissão: essa vem na camada mais alta */
+    expandedCameraUserId?: string | null
   }) => {
     if (opts) {
       subscriptionOptionsRef.current = {
@@ -771,19 +781,23 @@ export function useVoiceChannel(options?: {
     const viewMode = currentOpts.viewMode ?? 'focus'
     const activeSharerId = currentOpts.activeSharerId
     const isCameraVisible = currentOpts.isCameraVisible ?? true
+    const compactCameras = currentOpts.compactCameras ?? false
+    const expandedCameraUserId = currentOpts.expandedCameraUserId ?? null
 
     room.remoteParticipants.forEach((rp) => {
-      // Câmeras: só são exibidas no grid de participantes e ficam ocultas enquanto o usuário assiste a uma
-      // transmissão, está em outro canal/página ou com a janela minimizada. setEnabled(false) pausa o
-      // encaminhamento no SFU (0 Kbps) sem desfazer a assinatura.
-      // O tamanho de cada tile depende de quantas pessoas dividem o grid, então a camada do simulcast
-      // acompanha: 720p com até 2 pessoas, 360p até 6 e 180p acima disso.
+      // Câmeras: aparecem no grid de participantes e, assistindo a uma transmissão, numa fileira pequena
+      // abaixo dela. Ficam ocultas com o usuário em outro canal/página ou com a janela minimizada.
+      // setEnabled(false) pausa o encaminhamento no SFU (0 Kbps) sem desfazer a assinatura.
+      // A camada do simulcast acompanha o tamanho do tile: no grid, 720p com até 2 pessoas, 360p até 6 e
+      // 180p acima disso; na fileira da transmissão, 180p (e 720p para a câmera expandida no lugar dela).
       const cameraPub = rp.getTrackPublication(Track.Source.Camera)
       if (cameraPub) {
         const tileCount = room.remoteParticipants.size + 1
         cameraPub.setEnabled(isCameraVisible)
         cameraPub.setVideoQuality(
-          tileCount <= 2 ? VideoQuality.HIGH : tileCount <= 6 ? VideoQuality.MEDIUM : VideoQuality.LOW
+          compactCameras
+            ? (expandedCameraUserId === rp.identity ? VideoQuality.HIGH : VideoQuality.LOW)
+            : tileCount <= 2 ? VideoQuality.HIGH : tileCount <= 6 ? VideoQuality.MEDIUM : VideoQuality.LOW
         )
       }
 
@@ -898,9 +912,36 @@ export function useVoiceChannel(options?: {
     }
   }, [isConnected])
 
+  // Fecha a sessão da transmissão para a análise de uso: duração, fluidez e o motivo do fim (lib/screenShareStop.ts).
+  // Devolve o resumo para quem chamou decidir o aviso.
+  const endStreamSession = useCallback((reason: ScreenShareStopReason) => {
+    if (!screenShareStartTimeRef.current) return null
+    const dur = (Date.now() - screenShareStartTimeRef.current) / 1000
+    const summary = streamSessionRef.current?.summary() ?? null
+    streamSessionRef.current = null
+    screenShareStartTimeRef.current = null
+    trackScreenShareStopped(dur, {
+      stop_reason: reason,
+      source_type: screenShareSourceIdRef.current?.startsWith('window:') ? 'window' : 'screen',
+      ...(summary ? {
+        target_fps: summary.targetFps,
+        avg_fps: summary.avgFps,
+        avg_capture_fps: summary.avgCaptureFps,
+        low_capture_pct: summary.lowCapturePct,
+        encoder_limited_pct: summary.encoderLimitedPct,
+        bandwidth_limited_pct: summary.bandwidthLimitedPct,
+        hardware_encoder: summary.hardware,
+        transport: summary.transport,
+        bottleneck: summary.bottleneck
+      } : {})
+    })
+    return summary
+  }, [])
+
   // Stop screen share
-  const stopScreenShare = useCallback(() => {
+  const stopScreenShare = useCallback((reason: ScreenShareStopReason = 'manual') => {
     const room = roomRef.current
+    const sourceId = screenShareSourceIdRef.current
     // Tira do ar TUDO que está publicado como tela, não só a última faixa lembrada (lib/screenShareCleanup.ts)
     releaseAllScreenShare(room?.localParticipant as any, [localScreenVideoTrackRef.current, localScreenAudioTrackRef.current])
     localScreenVideoTrackRef.current = null
@@ -916,31 +957,24 @@ export function useVoiceChannel(options?: {
     // Com a transmissão encerrada, o Echo volta à prioridade normal
     ;(window as any).electronAPI?.setStreamingPriority?.(false)?.catch?.(() => {})
 
-    if (screenShareStartTimeRef.current) {
-      const dur = (Date.now() - screenShareStartTimeRef.current) / 1000
-      // Resumo da fluidez: vai para a análise de uso e, se algo segurou a transmissão, quem transmitiu é avisado
-      const summary = streamSessionRef.current?.summary()
-      streamSessionRef.current = null
-      trackScreenShareStopped(dur, summary ? {
-        target_fps: summary.targetFps,
-        avg_fps: summary.avgFps,
-        avg_capture_fps: summary.avgCaptureFps,
-        low_capture_pct: summary.lowCapturePct,
-        encoder_limited_pct: summary.encoderLimitedPct,
-        bandwidth_limited_pct: summary.bandwidthLimitedPct,
-        hardware_encoder: summary.hardware,
-        transport: summary.transport,
-        bottleneck: summary.bottleneck
-      } : undefined)
-      const notice = summary ? describeStreamSummary(summary) : null
+    // Resumo da fluidez: vai para a análise de uso e, se algo segurou a transmissão, quem transmitiu é avisado
+    const summary = endStreamSession(reason)
+    screenShareSourceIdRef.current = null
+    if (reason === 'capture_ended') {
+      // A captura acabou sozinha: o aviso diz o porquê e, clicado, abre a escolha de tela de novo
+      const notice = captureEndedNotice(sourceId)
+      onReconnectMediaNoticeRef.current?.(notice.title, notice.message, () => {
+        window.dispatchEvent(new CustomEvent(OPEN_SCREEN_PICKER_EVENT))
+      })
+    } else if (summary) {
+      const notice = describeStreamSummary(summary)
       if (notice) onReconnectMediaNoticeRef.current?.(notice.title, notice.message)
-      screenShareStartTimeRef.current = null
     }
 
     sendVoicePresence('update', { hasScreen: false })
 
     syncParticipants()
-  }, [syncParticipants, sendVoicePresence])
+  }, [syncParticipants, sendVoicePresence, endStreamSession])
 
   // Stop local webcam (video call — MVP: apenas câmera, sem configurações extras por enquanto)
   const stopCamera = useCallback(() => {
@@ -1072,7 +1106,7 @@ export function useVoiceChannel(options?: {
     activeSpaceIdRef.current = null
 
     stopLocalVad()
-    stopScreenShare()
+    stopScreenShare('left_call')
     stopCamera()
     remoteScreenStreamsRef.current.clear()
     remoteCameraStreamsRef.current.clear()
@@ -1746,7 +1780,7 @@ export function useVoiceChannel(options?: {
       }
       if (isReconnectingRef.current) {
         stopLocalVad()
-        stopScreenShare()
+        stopScreenShare('connection_lost')
         const r = roomRef.current
         if (r) {
           try { r.disconnect() } catch (e) {}
@@ -1778,7 +1812,7 @@ export function useVoiceChannel(options?: {
         }
       }
       if (localCameraStreamRef.current) stopCamera()
-      if (localScreenStreamRef.current) stopScreenShare()
+      if (localScreenStreamRef.current) stopScreenShare('connection_lost')
 
       if (roomRef.current) {
         try { roomRef.current.disconnect() } catch (e) {}
@@ -1980,6 +2014,8 @@ export function useVoiceChannel(options?: {
     try {
       // Já havia uma transmissão ("Mudar de Janela"): encerra a anterior antes de capturar a nova. Sem isto a
       // antiga ficava publicada para sempre, mesmo depois de "Parar Transmissão".
+      endStreamSession('replaced')
+      screenShareSourceIdRef.current = sourceId || 'screen:0:0'
       releaseAllScreenShare(room.localParticipant as any, [localScreenVideoTrackRef.current, localScreenAudioTrackRef.current])
       localScreenVideoTrackRef.current = null
       localScreenAudioTrackRef.current = null
@@ -2270,8 +2306,10 @@ export function useVoiceChannel(options?: {
       localScreenStreamRef.current = previewStream
       setLocalScreenStream(previewStream)
 
+      // O Windows/Chromium encerrou a captura (a janela fechou ou deixou de existir). Só vale para a transmissão
+      // atual: uma anterior trocada por "Mudar de janela" não derruba a nova.
       videoTrack.onended = () => {
-        stopScreenShare()
+        if (localScreenStreamRef.current === previewStream) stopScreenShare('capture_ended')
       }
 
       // 4. Publica no SFU LiveKit
@@ -2341,7 +2379,7 @@ export function useVoiceChannel(options?: {
     } catch (err) {
       console.error('[LiveKit] Falha ao iniciar transmissão:', err)
     }
-  }, [stopScreenShare, syncParticipants, sendVoicePresence])
+  }, [stopScreenShare, syncParticipants, sendVoicePresence, endStreamSession])
 
   // Change input microphone device
   const changeInputDevice = useCallback(async (deviceId: string, noiseSuppression = true, echoCancellation = true) => {

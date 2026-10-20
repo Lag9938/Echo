@@ -18,11 +18,37 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.62.2',
+    title: 'Echo v0.62.2 - Câmeras na Transmissão',
+    date: '20 de Outubro de 2026',
+    tagline: 'Assista à transmissão e às câmeras ao mesmo tempo, e respostas que levam à mensagem original.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎥',
+        badge: 'NOVO',
+        title: 'Câmeras Durante a Transmissão',
+        description: 'Assistindo a uma transmissão, quem está com a câmera ligada aparece numa fileira logo abaixo dela. Clique numa câmera para expandi-la no lugar da transmissão; a transmissão fica na fileira e um clique nela volta.'
+      },
+      {
+        icon: '↩️',
+        badge: 'NOVO',
+        title: 'Respostas Mais Claras',
+        description: 'A resposta a uma mensagem mostra o avatar e o nome de quem foi respondido, e clicar nela leva até a mensagem original.'
+      },
+      {
+        icon: '🖥️',
+        badge: 'CORREÇÃO',
+        title: 'Transmissão Não Some Mais em Silêncio',
+        description: 'Se a janela transmitida fechar ou for trocada (um jogo no navegador pode abrir em outra janela), o Echo avisa o que aconteceu, e um clique no aviso abre a escolha de tela para continuar.'
+      }
+    ]
+  },
+  {
     version: '0.62.1',
     title: 'Echo v0.62.1 - Ajustes',
     date: '19 de Outubro de 2026',
     tagline: 'O painel da chamada volta a aparecer em todo lugar e o cartão de perfil fica mais limpo.',
-    isLatest: true,
     highlights: [
       {
         icon: '📞',

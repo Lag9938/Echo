@@ -1082,17 +1082,103 @@ body.light-theme .channel-header-action-btn:hover {
   margin-bottom: -4px;
 }
 
-.reply-preview-in-message {
+/* "Respondeu a…" no alto da mensagem: avatar + nome de quem foi respondido + trecho; clicar leva à original */
+.reply-reference {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
-  color: var(--text-muted);
-  border-left: 2px solid var(--accent-color);
-  padding-left: 8px;
-  margin-bottom: 4px;
-  cursor: pointer;
+  gap: 7px;
+  max-width: min(100%, 460px);
+  margin: 0 0 6px;
+  padding: 3px 12px 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--accent-color) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 22%, transparent);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
+.reply-reference.is-interactive { cursor: pointer; }
+.reply-reference.is-interactive:hover,
+.reply-reference.is-interactive:focus-visible {
+  background: color-mix(in srgb, var(--accent-color) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color) 45%, transparent);
+  color: var(--text-primary);
+}
+/* cotovelo: a linha que sai de quem respondeu e aponta para a mensagem respondida */
+.reply-reference-curve {
+  flex: none;
+  width: 12px;
+  height: 8px;
+  margin-top: 6px;
+  border-left: 2px solid var(--accent-text, var(--accent-color));
+  border-top: 2px solid var(--accent-text, var(--accent-color));
+  border-top-left-radius: 7px;
+  opacity: 0.8;
+}
+.reply-reference-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #4b5563, #1f2937);
+}
+.reply-reference-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.reply-reference-name {
+  flex: none;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+  color: var(--accent-text, var(--accent-color));
+}
+.reply-reference-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reply-reference-go {
+  flex: none;
+  font-size: 12px;
+  opacity: 0;
+  transform: translate(-2px, 2px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  color: var(--accent-text, var(--accent-color));
+}
+.reply-reference.is-interactive:hover .reply-reference-go,
+.reply-reference.is-interactive:focus-visible .reply-reference-go { opacity: 1; transform: none; }
+
+/* nas minhas mensagens o balão é escuro nos dois temas: o resumo usa tons claros (senão some no claro) */
+.msg-card.msg-own .reply-reference {
+  color: rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+.msg-card.msg-own .reply-reference.is-interactive:hover,
+.msg-card.msg-own .reply-reference.is-interactive:focus-visible {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+.msg-card.msg-own .reply-reference-name,
+.msg-card.msg-own .reply-reference-go { color: #ffd9d1; }
+.msg-card.msg-own .reply-reference-curve { border-color: rgba(255, 255, 255, 0.7); }
+
+/* a mensagem original, ao chegar pelo clique na resposta */
+.msg-jump-highlight { animation: msgJumpFlash 1.8s ease-out; }
+@keyframes msgJumpFlash {
+  0%, 35% { background-color: color-mix(in srgb, var(--accent-color) 22%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 55%, transparent); }
+  100% { background-color: transparent; box-shadow: 0 0 0 2px transparent; }
+}
+body.reduce-motion .msg-jump-highlight { animation: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 55%, transparent); }
 
 /* ── RICH EMBEDS & GIF PICKER ───────────────────────── */
 .link-embed-card {

@@ -21,6 +21,8 @@ export interface UIState {
   showSubscriptionModal: boolean
   showCommandPalette: boolean
   lightboxImageUrl: string | null
+  /** Assistindo a uma transmissão: a câmera de quem está expandida no lugar dela (null = a transmissão) */
+  expandedCameraUserId: string | null
 
   // Toasts
   toasts: Toast[]
@@ -50,6 +52,7 @@ export interface UIState {
   setShowCommandPalette: (show: boolean) => void
   openLightbox: (url: string) => void
   closeLightbox: () => void
+  setExpandedCameraUserId: (userId: string | null) => void
   addToast: (toast: Toast) => void
   removeToast: (id: string) => void
 }
@@ -73,6 +76,7 @@ export const useUIStore = create<UIState>((set) => ({
   showSubscriptionModal: false,
   showCommandPalette: false,
   lightboxImageUrl: null,
+  expandedCameraUserId: null,
 
   toasts: [],
 
@@ -116,6 +120,7 @@ export const useUIStore = create<UIState>((set) => ({
   setShowCommandPalette: (showCommandPalette) => set({ showCommandPalette }),
   openLightbox: (lightboxImageUrl) => set({ lightboxImageUrl }),
   closeLightbox: () => set({ lightboxImageUrl: null }),
+  setExpandedCameraUserId: (expandedCameraUserId) => set({ expandedCameraUserId }),
   addToast: (toast) => set((state) => ({ toasts: [...state.toasts, toast] })),
   removeToast: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
 }))

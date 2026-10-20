@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { effectiveShareFps } from '../lib/screenShareQuality'
+import { OPEN_SCREEN_PICKER_EVENT, type ScreenShareStopReason } from '../lib/screenShareStop'
 
 export interface UseEchoScreenShareOptions {
   user: User
   localScreenStream: any
   sfxVolume: number
   startScreenShare: (sourceId?: string, width?: number, height?: number, fps?: number) => Promise<void>
-  stopScreenShare: () => Promise<void> | void
+  stopScreenShare: (reason?: ScreenShareStopReason) => Promise<void> | void
   changeScreenShareSettings: (width?: number, height?: number, fps?: number) => Promise<void>
   setIsWatchingStreams: (val: boolean) => void
   setSelectedScreenSharerUserId: (userId: string | null) => void
@@ -128,8 +129,18 @@ export function useEchoScreenShare({
   const handleStopScreenShare = useCallback(async () => {
     playScreenStopSound(sfxVolume)
     setActiveSharingSource(null)
-    await stopScreenShare()
+    await stopScreenShare('manual')
   }, [playScreenStopSound, sfxVolume, stopScreenShare])
+
+  // O aviso "Transmissão encerrada" (a captura acabou sozinha) abre a escolha de tela quando clicado
+  useEffect(() => {
+    const open = () => {
+      setActiveSharingSource(null)
+      void forceOpenScreenPicker()
+    }
+    window.addEventListener(OPEN_SCREEN_PICKER_EVENT, open)
+    return () => window.removeEventListener(OPEN_SCREEN_PICKER_EVENT, open)
+  }, [forceOpenScreenPicker])
 
   const openScreenPicker = useCallback(async () => {
     if (localScreenStream) {

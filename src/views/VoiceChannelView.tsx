@@ -316,6 +316,13 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
   } = props
   const openLightbox = useUIStore((s) => s.openLightbox)
   const setShowMusicBotModal = useUIStore((s) => s.setShowMusicBotModal)
+  // Câmera expandida no lugar da transmissão (clique numa câmera da fileira); sai da tela da transmissão, volta ao normal
+  const expandedCameraUserId = useUIStore((s) => s.expandedCameraUserId)
+  const setExpandedCameraUserId = useUIStore((s) => s.setExpandedCameraUserId)
+  const isViewingStreams = activeScreenSharers.length > 0 && isWatchingStreams
+  useEffect(() => {
+    if (!isViewingStreams && expandedCameraUserId) setExpandedCameraUserId(null)
+  }, [isViewingStreams, expandedCameraUserId, setExpandedCameraUserId])
   const myBotAvatar = useMusicBotStore((s) => s.myAvatar)
   const [isMusicBotAvatarPickerOpen, setIsMusicBotAvatarPickerOpen] = useState(false)
   const [pendingVoicePastedFile, setPendingVoicePastedFile] = useState<File | null>(null)
@@ -656,13 +663,33 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                 })
                               }
                               const callMembersList = Array.from(callMembersMap.values())
+                              // Câmeras ligadas (para a fileira abaixo da transmissão) e a que está expandida, se houver
+                              const streamCameras = callMembersList.filter(p => p.isCameraOn && p.cameraStream && !isMusicBotIdentity(p.userId))
+                              const expandedCamera = streamCameras.find(p => p.userId === expandedCameraUserId) ?? null
 
                               return (
                                 <>
                                   {activeScreenSharers.length > 0 && isWatchingStreams ? (
                                     <div className="voice-streams-container">
 
-                                {screenShareViewMode === 'grid' && activeScreenSharers.length > 1 ? (
+                                {expandedCamera ? (
+                                  <div className="stream-camera-expanded">
+                                    <CameraVideoTile stream={expandedCamera.cameraStream!} mirrored={expandedCamera.userId === user.id} />
+                                    <span className="stream-camera-name stream-camera-name-lg">
+                                      {expandedCamera.isMuted && <MicOffIcon className="stream-camera-muted" />}
+                                      {expandedCamera.displayName}{expandedCamera.userId === user.id ? ' (Você)' : ''}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      className="stream-camera-collapse"
+                                      onClick={() => setExpandedCameraUserId(null)}
+                                      title="Voltar para a transmissão"
+                                    >
+                                      <ScreenIcon style={{ width: '14px', height: '14px' }} />
+                                      <span>Voltar à transmissão</span>
+                                    </button>
+                                  </div>
+                                ) : screenShareViewMode === 'grid' && activeScreenSharers.length > 1 ? (
                                   <div className="streams-multi-grid" style={{ gridTemplateColumns: `repeat(${Math.min(activeScreenSharers.length, 2)}, 1fr)` }}>
                                     {activeScreenSharers.map(sharer => (
                                       <StreamTile
@@ -708,6 +735,48 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                     />
                                   </div>
                                 ) : null}
+
+                                {/* Câmeras de quem está com ela ligada, numa fileira abaixo da transmissão (dá para ver
+                                    as duas coisas ao mesmo tempo, como no Discord). Vêm em 180p: o tile é pequeno. */}
+                                {(() => {
+                                  if (streamCameras.length === 0) return null
+                                  // Com uma câmera expandida, a transmissão entra na fileira (clicar nela volta)
+                                  const sharerForThumb = expandedCamera ? activeScreenSharer : null
+                                  return (
+                                    <div className="stream-camera-row" role="group" aria-label="Câmeras">
+                                      {sharerForThumb?.screenStream && (
+                                        <button
+                                          type="button"
+                                          className="stream-camera-tile is-stream"
+                                          title={`Voltar para a transmissão de ${sharerForThumb.displayName}`}
+                                          onClick={() => setExpandedCameraUserId(null)}
+                                        >
+                                          <CameraVideoTile stream={sharerForThumb.screenStream} />
+                                          <span className="stream-camera-name">
+                                            <ScreenIcon className="stream-camera-live" />
+                                            {sharerForThumb.displayName}
+                                          </span>
+                                        </button>
+                                      )}
+                                      {streamCameras.filter(p => p.userId !== expandedCamera?.userId).map(p => (
+                                        <button
+                                          type="button"
+                                          key={p.userId}
+                                          className={`stream-camera-tile ${p.isSpeaking ? 'speaking' : ''}`}
+                                          title={`Expandir a câmera de ${p.userId === user.id ? 'você' : p.displayName}`}
+                                          onClick={() => setExpandedCameraUserId(p.userId)}
+                                        >
+                                          <CameraVideoTile stream={p.cameraStream!} mirrored={p.userId === user.id} />
+                                          <span className="stream-camera-name">
+                                            {p.isMuted && <MicOffIcon className="stream-camera-muted" />}
+                                            {p.displayName}{p.userId === user.id ? ' (Você)' : ''}
+                                          </span>
+                                          <span className="stream-camera-expand" aria-hidden="true">⤢</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )
+                                })()}
 
                                 {/* Dock flutuante centralizado de participantes & controles na transmissão */}
                                 <div className="stream-participants-strip-wrap">

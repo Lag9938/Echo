@@ -46,6 +46,74 @@ function renderRichEmbed(body: string) {
   return <ChatLinkEmbed content={body} />
 }
 
+/** "@Nome: "trecho"" (como a resposta é gravada no corpo da mensagem) → nome e trecho */
+export function parseReplyQuote(text: string): { author: string; snippet: string } {
+  const match = text.match(/^@(.*?): "([\s\S]*)"$/)
+  return match ? { author: match[1], snippet: match[2] } : { author: '', snippet: text.replace(/^@/, '') }
+}
+
+/** O que mostrar da mensagem respondida: o texto, ou um rótulo quando ela era só uma foto, figurinha ou áudio */
+export function replySnippetLabel(original: Message | undefined, quoted: string): string {
+  if (original) {
+    if (original.attachment_type === 'audio') return '🎤 Mensagem de voz'
+    if (original.attachment_type === 'sticker') return '✨ Figurinha'
+    if (original.attachment_url && (original.attachment_type === 'image' || !original.attachment_type)) {
+      if (isAutoImageCaption(original.body)) return '📷 Foto'
+    }
+    if (original.attachment_url && isAutoImageCaption(original.body)) return '📎 Anexo'
+    if (original.body.trim()) return original.body.trim().replace(/\s+/g, ' ')
+  }
+  // Sem a original (mensagem antiga, fora do que está carregado): o trecho gravado; nome de arquivo vira "Anexo"
+  if (/\.(png|jpe?g|gif|webp|bmp)$/i.test(quoted.trim())) return '📷 Foto'
+  if (/\.[a-z0-9]{2,5}$/i.test(quoted.trim()) && !/\s/.test(quoted.trim())) return '📎 Anexo'
+  return quoted
+}
+
+/** Rola até a mensagem e a destaca por um instante */
+export function jumpToMessage(messageId: string): boolean {
+  const el = document.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`)
+  if (!el) return false
+  el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  el.classList.remove('msg-jump-highlight')
+  void el.offsetWidth // reinicia a animação se já estava destacada
+  el.classList.add('msg-jump-highlight')
+  window.setTimeout(() => el.classList.remove('msg-jump-highlight'), 1800)
+  return true
+}
+
+/**
+ * A "resposta a..." no alto da mensagem: avatar e nome de quem foi respondido, um trecho do que ele disse e uma
+ * linha curva ligando ao avatar de quem respondeu. Clicar (ou Enter) leva até a mensagem original.
+ */
+function ReplyReference({ quote, original, canJump }: { quote: string; original?: Message; canJump: boolean }) {
+  const parsed = parseReplyQuote(quote)
+  const name = original?.profile?.display_name || parsed.author || 'Membro'
+  const avatar = original?.profile?.avatar_url
+  const label = replySnippetLabel(original, parsed.snippet)
+  const jump = () => {
+    if (original) jumpToMessage(original.id)
+  }
+  const interactive = canJump && !!original
+  return (
+    <div
+      className={`reply-reference ${interactive ? 'is-interactive' : ''}`}
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      title={interactive ? 'Ir para a mensagem original' : 'A mensagem original não está carregada'}
+      onClick={interactive ? jump : undefined}
+      onKeyDown={interactive ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jump() } } : undefined}
+    >
+      <span className="reply-reference-curve" aria-hidden="true" />
+      <span className="reply-reference-avatar" aria-hidden="true">
+        {avatar ? <img src={avatar} alt="" /> : name.slice(0, 1).toUpperCase()}
+      </span>
+      <span className="reply-reference-name">@{name}</span>
+      <span className="reply-reference-text">{label}</span>
+      {interactive && <span className="reply-reference-go" aria-hidden="true">↗</span>}
+    </div>
+  )
+}
+
 export interface MessageListProps {
   messagesContainerRef?: React.RefObject<HTMLDivElement | null>
   messagesEndRef: React.RefObject<HTMLDivElement | null>
@@ -297,7 +365,8 @@ export const MessageList = memo(function MessageList({
                 </div>
               )}
 
-              <article 
+              <article
+                data-message-id={message.id}
                 className={`msg-card ${isConsecutive ? 'msg-consecutive' : ''} ${message.attachment_type === 'audio' ? 'has-voice-note' : ''} ${message.author_id === user.id ? 'msg-own' : ''} ${isMentioned ? 'mention-highlight' : ''} ${message.status === 'sending' ? 'msg-sending' : ''} ${message.status === 'failed' ? 'msg-failed' : ''}`} 
                 style={{ position: 'relative' }}
               >
@@ -440,10 +509,11 @@ export const MessageList = memo(function MessageList({
                       {!isConsecutive && (
                         <>
                           {replyQuoteText && (
-                            <div className="reply-preview-in-message">
-                              <span>↩️</span>
-                              <em>{replyQuoteText}</em>
-                            </div>
+                            <ReplyReference
+                              quote={replyQuoteText}
+                              original={message.reply_to_message_id ? filteredMessages.find((m) => m.id === message.reply_to_message_id) : undefined}
+                              canJump
+                            />
                           )}
 
                           <div className="msg-meta">

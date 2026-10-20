@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { VoiceParticipant } from '../lib/useVoiceChannel'
 import type { Channel } from '../types'
+import { useUIStore } from '../stores/useUIStore'
 
 export interface UseEchoDesktopShellOptions {
   channelSearchInputRef: React.MutableRefObject<HTMLInputElement | null>
@@ -12,7 +13,7 @@ export interface UseEchoDesktopShellOptions {
   selectedChannel: Channel | null
   activeVoiceChannelId: string | null
   page: string
-  updateScreenSubscriptions: (options: { activeSharerId: string | null; viewMode: 'focus' | 'grid'; isWatching: boolean; isCameraVisible?: boolean }) => void
+  updateScreenSubscriptions: (options: { activeSharerId: string | null; viewMode: 'focus' | 'grid'; isWatching: boolean; isCameraVisible?: boolean; compactCameras?: boolean; expandedCameraUserId?: string | null }) => void
 }
 
 export function useEchoDesktopShell({
@@ -183,20 +184,24 @@ export function useEchoDesktopShell({
   }, [isConnected, activeScreenSharers.length, isScreenFullScreen, toggleScreenFullScreen])
 
   // ── Otimização Discord: Assinatura Dinâmica de Vídeo (Economia de Banda Oracle Cloud) ──
+  const expandedCameraUserId = useUIStore((s) => s.expandedCameraUserId)
   useEffect(() => {
     const isVoiceChannelSelected = selectedChannel?.id === activeVoiceChannelId
     const isPageActive = page === 'Servidores'
     const isDocVisible = typeof document !== 'undefined' ? document.visibilityState === 'visible' : true
 
     const shouldWatch = isWatchingStreams && isVoiceChannelSelected && isPageActive && isDocVisible
-    // Os tiles de câmera só são renderizados no grid de participantes, nunca junto da visualização de transmissão
+    // Assistindo a uma transmissão, as câmeras continuam na tela, pequenas, numa fileira abaixo dela: vêm na
+    // camada mais baixa do simulcast (o tile tem ~170 px de largura, não precisa de mais)
     const isViewingStream = hasActiveScreenSharers && isWatchingStreams
 
     updateScreenSubscriptions({
       activeSharerId: selectedScreenSharerUserId,
       viewMode: screenShareViewMode,
       isWatching: shouldWatch,
-      isCameraVisible: isVoiceChannelSelected && isPageActive && isDocVisible && !isViewingStream
+      isCameraVisible: isVoiceChannelSelected && isPageActive && isDocVisible,
+      compactCameras: isViewingStream,
+      expandedCameraUserId: isViewingStream ? expandedCameraUserId : null
     })
 
     const handleVisibilityChange = () => {
@@ -205,7 +210,9 @@ export function useEchoDesktopShell({
         activeSharerId: selectedScreenSharerUserId,
         viewMode: screenShareViewMode,
         isWatching: isWatchingStreams && isVoiceChannelSelected && isPageActive && nowVisible,
-        isCameraVisible: isVoiceChannelSelected && isPageActive && nowVisible && !isViewingStream
+        isCameraVisible: isVoiceChannelSelected && isPageActive && nowVisible,
+        compactCameras: isViewingStream,
+        expandedCameraUserId: isViewingStream ? expandedCameraUserId : null
       })
     }
 
@@ -221,6 +228,7 @@ export function useEchoDesktopShell({
     selectedChannel?.id,
     activeVoiceChannelId,
     page,
+    expandedCameraUserId,
     updateScreenSubscriptions
   ])
 

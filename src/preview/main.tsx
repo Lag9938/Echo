@@ -47,7 +47,7 @@ import {
 } from './fixtures'
 
 type ThemeKey = 'light' | 'dark'
-type ScreenKey = 'servidor' | 'voz' | 'amigos' | 'config' | 'loja' | 'inventario' | 'espaco' | 'perfil' | 'janelas' | 'atualizacao' | 'decoracoes' | 'novidades'
+type ScreenKey = 'servidor' | 'voz' | 'amigos' | 'config' | 'loja' | 'inventario' | 'espaco' | 'perfil' | 'janelas' | 'atualizacao' | 'decoracoes' | 'novidades' | 'transmissao'
 
 const SCREENS: Array<[ScreenKey, string]> = [
   ['servidor', 'Servidor'],
@@ -61,7 +61,8 @@ const SCREENS: Array<[ScreenKey, string]> = [
   ['janelas', 'Janelas'],
   ['atualizacao', 'Atualização'],
   ['decoracoes', 'Decorações'],
-  ['novidades', 'Novo na loja']
+  ['novidades', 'Novo na loja'],
+  ['transmissao', 'Transmissão + câmeras']
 ]
 
 const THEME_BODY: Record<ThemeKey, string> = {
@@ -322,8 +323,36 @@ function ServerScreen() {
   )
 }
 
-function VoiceScreen() {
+// Vídeo de mentira para a prévia (transmissão e câmeras): um canvas animado virando MediaStream
+function fakeVideoStream(label: string, hue: number, width: number, height: number): MediaStream {
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')!
+  const draw = (t: number) => {
+    ctx.fillStyle = `hsl(${hue} 45% 22%)`
+    ctx.fillRect(0, 0, width, height)
+    ctx.fillStyle = `hsl(${hue} 70% 55%)`
+    ctx.beginPath()
+    ctx.arc(width / 2 + Math.sin(t / 900) * width * 0.2, height / 2, height * 0.22, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#fff'
+    ctx.font = `700 ${Math.round(height / 9)}px Inter, sans-serif`
+    ctx.fillText(label, 16, height - 18)
+    requestAnimationFrame(draw)
+  }
+  requestAnimationFrame(draw)
+  return canvas.captureStream(15)
+}
+
+function VoiceScreen({ withStream = false }: { withStream?: boolean }) {
   const { selected, sidebarProps, space } = useServerShell('v1')
+  const streams = useMemo(() => withStream ? {
+    screen: fakeVideoStream('Tela do Kauê — VALORANT', 220, 1280, 720),
+    camKaue: fakeVideoStream('Kauê', 30, 320, 180),
+    camBia: fakeVideoStream('Bia', 300, 320, 180),
+    camMe: fakeVideoStream('Você', 150, 320, 180)
+  } : null, [withStream])
   const [showChat, setShowChat] = useState(true)
   const [showMembers, setShowMembers] = useState(false)
   const [muted, setMuted] = useState(false)
@@ -332,12 +361,13 @@ function VoiceScreen() {
   const hoverRef = useRef<any>(null)
   const screenRef = useRef<HTMLDivElement | null>(null)
 
-  const participants = [
-    { userId: 'me', displayName: 'teste', isSpeaking: false, isMuted: muted },
-    { userId: 'u2', displayName: 'Kauê', isSpeaking: true, isMuted: false },
-    { userId: 'u3', displayName: 'Bia', isSpeaking: false, isMuted: true },
+  const participants: any[] = [
+    { userId: 'me', displayName: 'teste', isSpeaking: false, isMuted: muted, ...(streams ? { cameraStream: streams.camMe, isCameraOn: true } : {}) },
+    { userId: 'u2', displayName: 'Kauê', isSpeaking: true, isMuted: false, ...(streams ? { screenStream: streams.screen, isScreenSharing: true, screenFps: 60, cameraStream: streams.camKaue, isCameraOn: true } : {}) },
+    { userId: 'u3', displayName: 'Bia', isSpeaking: false, isMuted: true, ...(streams ? { cameraStream: streams.camBia, isCameraOn: true } : {}) },
     { userId: 'u4', displayName: 'Duda', isSpeaking: false, isMuted: false }
   ]
+  const sharer = streams ? participants[1] : null
 
   const props: any = {
     currentSpace: space,
@@ -378,12 +408,12 @@ function VoiceScreen() {
     stopCallRecording: noop,
     recordingDuration: 0,
     setVolumeControlUser: noop,
-    activeScreenSharers: [],
-    activeScreenSharer: null,
+    activeScreenSharers: sharer ? [sharer] : [],
+    activeScreenSharer: sharer,
     setSelectedScreenSharerUserId: noop,
     screenShareViewMode: 'focus',
     setScreenShareViewMode: noop,
-    isWatchingStreams: false,
+    isWatchingStreams: Boolean(sharer),
     setIsWatchingStreams: noop,
     isPiPActive: false,
     setIsPiPActive: noop,
@@ -391,7 +421,7 @@ function VoiceScreen() {
     handleStopScreenShare: noop,
     openScreenPicker: noop,
     forceOpenScreenPicker: noop,
-    localCameraStream: null,
+    localCameraStream: streams ? streams.camMe : null,
     handleToggleCamera: noop,
     screenQuality: '1080p',
     handleQualityChange: noop,
@@ -860,6 +890,7 @@ function Preview() {
     screen === 'atualizacao' ? <UpdateScreen /> :
     screen === 'decoracoes' ? <DecorationsScreen /> :
     screen === 'novidades' ? <ShopNewsScreen /> :
+    screen === 'transmissao' ? <VoiceScreen withStream /> :
     <WindowsScreen />
 
   return (
