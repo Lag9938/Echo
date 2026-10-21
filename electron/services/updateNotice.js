@@ -13,11 +13,12 @@
  *
  * Devolve as linhas do script. Quem usa define `$form`, depois chama `Say 'título' 'subtítulo' ['busy'|'error']`.
  */
-export function buildNoticeWindowScript({ width = 420, height = 128, title = '', subtitle = '' } = {}) {
+export function buildNoticeWindowScript({ width = 420, height = 128, title = '', subtitle = '', theme = 'dark' } = {}) {
+  const light = theme === 'light'
   const q = (text) => String(text ?? '').replace(/'/g, "''")
   return [
     '$form = $null',
-    `$script:notice = @{ Title = '${q(title)}'; Sub = '${q(subtitle)}'; Mode = 'busy'; Clock = [Diagnostics.Stopwatch]::StartNew(); W = ${width}; H = ${height}; Scale = 1.0 }`,
+    `$script:notice = @{ Title = '${q(title)}'; Sub = '${q(subtitle)}'; Mode = 'busy'; Light = ${light ? '$true' : '$false'}; Clock = [Diagnostics.Stopwatch]::StartNew(); W = ${width}; H = ${height}; Scale = 1.0 }`,
     'function RoundRect($x, $y, $w, $h, $r) {',
     '  $p = New-Object System.Drawing.Drawing2D.GraphicsPath',
     '  $d = $r * 2',
@@ -30,15 +31,15 @@ export function buildNoticeWindowScript({ width = 420, height = 128, title = '',
     '  $n = $script:notice; $w = $n.W; $h = $n.H; $t = $n.Clock.Elapsed.TotalSeconds',
     "  $g.SmoothingMode = 'AntiAlias'; $g.TextRenderingHint = 'ClearTypeGridFit'; $g.ScaleTransform($n.Scale, $n.Scale)",
     '  $err = ($n.Mode -eq "error")',
-    '  $coral = if ($err) { [System.Drawing.Color]::FromArgb(248, 113, 113) } else { [System.Drawing.Color]::FromArgb(223, 109, 93) }',
-    // fundo grafite em degradê + brilho da cor de destaque no canto
-    '  $bg = New-Object System.Drawing.Drawing2D.LinearGradientBrush((New-Object System.Drawing.Rectangle(0, 0, $w, $h)), [System.Drawing.Color]::FromArgb(30, 28, 34), [System.Drawing.Color]::FromArgb(12, 11, 13), 90)',
-    '  $g.FillRectangle($bg, 0, 0, $w, $h); $bg.Dispose()',
-    '  $glow = New-Object System.Drawing.Drawing2D.GraphicsPath; $glow.AddEllipse(-60, -70, 260, 200)',
-    '  $gb = New-Object System.Drawing.Drawing2D.PathGradientBrush($glow); $gb.CenterColor = [System.Drawing.Color]::FromArgb(54, $coral); $gb.SurroundColors = @([System.Drawing.Color]::FromArgb(0, $coral))',
-    '  $g.FillPath($gb, $glow); $gb.Dispose(); $glow.Dispose()',
-    // borda fina clara
-    '  $bp = RoundRect 0.5 0.5 ($w - 1) ($h - 1) 22; $pen = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(48, 255, 255, 255), 1); $g.DrawPath($pen, $bp); $pen.Dispose(); $bp.Dispose()',
+    '  $L = $n.Light',
+    // no claro a cor de destaque é a versão escura (a mesma do app) para ter contraste sobre o papel
+    '  $coral = if ($err) { if ($L) { [System.Drawing.Color]::FromArgb(192, 57, 43) } else { [System.Drawing.Color]::FromArgb(248, 113, 113) } } else { if ($L) { [System.Drawing.Color]::FromArgb(191, 71, 54) } else { [System.Drawing.Color]::FromArgb(223, 109, 93) } }',
+    // fundo chapado (sem degradê nem brilho colorido): grafite no escuro, papel quente no claro
+    '  $bgc = if ($L) { [System.Drawing.Color]::FromArgb(251, 250, 247) } else { [System.Drawing.Color]::FromArgb(22, 22, 24) }',
+    '  $bg = New-Object System.Drawing.SolidBrush($bgc); $g.FillRectangle($bg, 0, 0, $w, $h); $bg.Dispose()',
+    // borda fina
+    '  $linec = if ($L) { [System.Drawing.Color]::FromArgb(220, 216, 205) } else { [System.Drawing.Color]::FromArgb(42, 42, 46) }',
+    '  $bp = RoundRect 0.5 0.5 ($w - 1) ($h - 1) 22; $pen = New-Object System.Drawing.Pen($linec, 1); $g.DrawPath($pen, $bp); $pen.Dispose(); $bp.Dispose()',
     // o "medalhão" à esquerda
     '  $cx = 56; $cy = $h / 2 - 2',
     '  $disc = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(34, $coral)); $g.FillEllipse($disc, $cx - 27, $cy - 27, 54, 54); $disc.Dispose()',
@@ -53,7 +54,8 @@ export function buildNoticeWindowScript({ width = 420, height = 128, title = '',
     '    $a2 = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(110, $coral), 2); $a2.StartCap = "Round"; $a2.EndCap = "Round"',
     '    $g.DrawArc($a2, $cx - 33, $cy - 33, 66, 66, 360 - (($t * 150) % 360), 70); $a2.Dispose()',
     // o átomo do Echo no centro: três órbitas e o núcleo
-    '    $ap = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(235, 255, 255, 255), 1.6)',
+    '    $ink = if ($L) { [System.Drawing.Color]::FromArgb(220, 30, 30, 33) } else { [System.Drawing.Color]::FromArgb(235, 255, 255, 255) }',
+    '    $ap = New-Object System.Drawing.Pen($ink, 1.6)',
     '    foreach ($deg in 0, 60, 120) { $g.TranslateTransform($cx, $cy); $g.RotateTransform($deg + ($t * 18)); $g.DrawEllipse($ap, -13, -5.5, 26, 11); $g.ResetTransform(); $g.ScaleTransform($n.Scale, $n.Scale) }',
     '    $ap.Dispose(); $core = New-Object System.Drawing.SolidBrush($coral); $g.FillEllipse($core, $cx - 3.2, $cy - 3.2, 6.4, 6.4); $core.Dispose()',
     '  }',
@@ -61,7 +63,9 @@ export function buildNoticeWindowScript({ width = 420, height = 128, title = '',
     '  $sf2 = New-Object System.Drawing.StringFormat; $sf2.Trimming = "EllipsisWord"',
     '  $tf = New-Object System.Drawing.Font("Segoe UI Semibold", 18, [System.Drawing.FontStyle]::Regular, [System.Drawing.GraphicsUnit]::Pixel)',
     '  $sb = New-Object System.Drawing.Font("Segoe UI", 13, [System.Drawing.FontStyle]::Regular, [System.Drawing.GraphicsUnit]::Pixel)',
-    '  $white = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(242, 237, 239)); $muted = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(189, 182, 187))',
+    '  $titlec = if ($L) { [System.Drawing.Color]::FromArgb(30, 30, 33) } else { [System.Drawing.Color]::FromArgb(242, 237, 239) }',
+    '  $mutedc = if ($L) { [System.Drawing.Color]::FromArgb(95, 95, 102) } else { [System.Drawing.Color]::FromArgb(189, 182, 187) }',
+    '  $white = New-Object System.Drawing.SolidBrush($titlec); $muted = New-Object System.Drawing.SolidBrush($mutedc)',
     '  $tx = 104; $tw = $w - $tx - 26',
     '  $titleTop = if ($err) { 26 } else { 24 }',
     '  $g.DrawString($n.Title, $tf, $white, (New-Object System.Drawing.RectangleF($tx, $titleTop, $tw, 26)), $sf2)',
@@ -70,7 +74,7 @@ export function buildNoticeWindowScript({ width = 420, height = 128, title = '',
     // barra que vai e volta (só no aviso normal): não sabemos quanto falta, só que está andando
     '  if (-not $err) {',
     '    $bx = $tx; $by = $h - 28; $bw = $tw; $bh = 5',
-    '    $track = RoundRect $bx $by $bw $bh 2.5; $tb2 = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(36, 255, 255, 255)); $g.FillPath($tb2, $track); $tb2.Dispose()',
+    '    $track = RoundRect $bx $by $bw $bh 2.5; $trackc = if ($L) { [System.Drawing.Color]::FromArgb(30, 0, 0, 0) } else { [System.Drawing.Color]::FromArgb(36, 255, 255, 255) }; $tb2 = New-Object System.Drawing.SolidBrush($trackc); $g.FillPath($tb2, $track); $tb2.Dispose()',
     '    $g.SetClip($track); $ph = ($t * 0.75) % 1.4; $sx = $bx + ($ph - 0.4) * $bw; $sw = $bw * 0.4',
     '    $seg = New-Object System.Drawing.Drawing2D.LinearGradientBrush((New-Object System.Drawing.RectangleF($sx, $by, $sw, $bh)), [System.Drawing.Color]::FromArgb(240, 128, 112), $coral, 0)',
     '    $g.FillRectangle($seg, $sx, $by, $sw, $bh); $seg.Dispose(); $g.ResetClip(); $track.Dispose()',
@@ -86,7 +90,7 @@ export function buildNoticeWindowScript({ width = 420, height = 128, title = '',
     '  $form = New-Object System.Windows.Forms.Form',
     "  $form.Text = 'Echo'; $form.FormBorderStyle = 'None'; $form.StartPosition = 'CenterScreen'",
     '  $form.Size = New-Object System.Drawing.Size($pw, $ph0); $form.TopMost = $true; $form.ShowInTaskbar = $false',
-    '  $form.BackColor = [System.Drawing.Color]::FromArgb(12, 11, 13)',
+    light ? '  $form.BackColor = [System.Drawing.Color]::FromArgb(251, 250, 247)' : '  $form.BackColor = [System.Drawing.Color]::FromArgb(22, 22, 24)',
     "  [System.Windows.Forms.Form].GetProperty('DoubleBuffered', [Reflection.BindingFlags]'Instance,NonPublic').SetValue($form, $true, $null)",
     '  $rp0 = RoundRect 0 0 $pw $ph0 ([int](22 * $script:notice.Scale)); $form.Region = New-Object System.Drawing.Region($rp0); $rp0.Dispose()',
     '  $form.Add_Paint({ param($s, $e) try { Paint-Notice $e.Graphics } catch {} })',

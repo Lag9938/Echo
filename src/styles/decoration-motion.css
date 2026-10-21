@@ -1,0 +1,53 @@
+/* Decorações de avatar pequenas (listas) ficam paradas e só animam com o mouse em cima: lib/decorationMotion.ts.
+   A caixa da decoração vira um "container" e, abaixo de 100 px de largura (avatar de ~64 px), as animações de dentro
+   pausam. Passar o mouse no avatar (ou até 3 níveis acima: a linha do membro, a mensagem) solta de novo. */
+
+.echo-avatar-decoration-wrap {
+  container-type: inline-size;
+}
+
+/* GIF/WebP animado pequeno (avatar, ícone, emoji): fica no primeiro quadro com o app em uso (lib/backgroundImages.ts
+   troca a imagem exibida por `content`) e volta a animar com o mouse em cima dele, da linha dele ou do cartão */
+:hover > img[data-echo-gif-frozen],
+:hover > * > img[data-echo-gif-frozen],
+:hover > * > * > img[data-echo-gif-frozen],
+:hover > * > * > * > img[data-echo-gif-frozen],
+:is(.echo-shop-card, .echo-inv-card):hover img[data-echo-gif-frozen] {
+  content: normal !important;
+}
+
+/* Cartões das grades da Loja e do Inventário (lib/decorationMotion.ts, SHOWCASE_CARD_SELECTOR): a decoração do
+   cartão só anima com o mouse em cima dele; a prévia grande do item escolhido continua animando */
+:is(.echo-shop-card, .echo-inv-card) .echo-avatar-decoration-wrap *,
+:is(.echo-shop-card, .echo-inv-card) .echo-avatar-decoration-wrap *::before,
+:is(.echo-shop-card, .echo-inv-card) .echo-avatar-decoration-wrap *::after {
+  animation-play-state: paused !important;
+}
+:is(.echo-shop-card, .echo-inv-card):hover .echo-avatar-decoration-wrap *,
+:is(.echo-shop-card, .echo-inv-card):hover .echo-avatar-decoration-wrap *::before,
+:is(.echo-shop-card, .echo-inv-card):hover .echo-avatar-decoration-wrap *::after {
+  animation-play-state: running !important;
+}
+
+@container (max-width: 99.98px) {
+  .echo-avatar-decoration-wrap *,
+  .echo-avatar-decoration-wrap *::before,
+  .echo-avatar-decoration-wrap *::after {
+    animation-play-state: paused !important;
+  }
+}
+
+:hover > .echo-avatar-decoration-wrap *,
+:hover > .echo-avatar-decoration-wrap *::before,
+:hover > .echo-avatar-decoration-wrap *::after,
+:hover > * > .echo-avatar-decoration-wrap *,
+:hover > * > .echo-avatar-decoration-wrap *::before,
+:hover > * > .echo-avatar-decoration-wrap *::after,
+:hover > * > * > .echo-avatar-decoration-wrap *,
+:hover > * > * > .echo-avatar-decoration-wrap *::before,
+:hover > * > * > .echo-avatar-decoration-wrap *::after,
+:hover > * > * > * > .echo-avatar-decoration-wrap *,
+:hover > * > * > * > .echo-avatar-decoration-wrap *::before,
+:hover > * > * > * > .echo-avatar-decoration-wrap *::after {
+  animation-play-state: running !important;
+}

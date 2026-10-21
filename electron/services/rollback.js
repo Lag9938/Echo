@@ -3,6 +3,7 @@ import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { buildWatchdogSpawn } from './updateRelaunch.js'
 import { buildNoticeWindowScript } from './updateNotice.js'
+import { readStoredTheme } from './themeProbe.js'
 
 // Volta automática para a versão anterior quando uma atualização não abre.
 //
@@ -163,7 +164,7 @@ const quote = (text) => String(text ?? '').replace(/'/g, "''")
  * Script (PowerShell) que desfaz a atualização: espera o Echo fechar, mostra um aviso, pega o instalador da
  * versão anterior (cópia local ou download), instala em silêncio e reabre o app. Tudo vai para o update.log.
  */
-export function buildRollbackScript({ exePath, installerPath, downloadUrl, logFile, badVersion, goodVersion }) {
+export function buildRollbackScript({ exePath, installerPath, downloadUrl, logFile, badVersion, goodVersion, theme = 'dark' }) {
   return [
     "$ErrorActionPreference = 'Stop'",
     `$exe = '${quote(exePath)}'`,
@@ -173,7 +174,7 @@ export function buildRollbackScript({ exePath, installerPath, downloadUrl, logFi
     'function Log($m) { if ($logFile) { try { [IO.File]::AppendAllText($logFile, (Get-Date).ToUniversalTime().ToString("o") + " volta: " + $m + "`n", (New-Object Text.UTF8Encoding($false))) } catch {} } }',
     `Log "iniciada: desfazendo a ${quote(badVersion)} e voltando para a ${quote(goodVersion)}"`,
     // O visual do aviso (janela desenhada à mão, com Say/Tick/Pump) está em updateNotice.js
-    ...buildNoticeWindowScript({ width: 540, height: 132, title: 'Voltando para a versão anterior…', subtitle: '' }),
+    ...buildNoticeWindowScript({ width: 540, height: 132, title: 'Voltando para a versão anterior…', subtitle: '', theme }),
     `Say 'A versão nova não abriu direito' 'Voltando para a versão ${quote(goodVersion)} do Echo…'`,
     '$name = [IO.Path]::GetFileNameWithoutExtension($exe)',
     '$deadline = (Get-Date).AddSeconds(30)',
@@ -226,7 +227,8 @@ export function startRollback({ dir, exePath, record, logFile, reason, spawnProc
       downloadUrl: record.downloadUrl || releaseInstallerUrl(record.fromVersion),
       logFile,
       badVersion: record.toVersion,
-      goodVersion: record.fromVersion
+      goodVersion: record.fromVersion,
+      theme: readStoredTheme(dir)
     }), 'utf8')
     const { command, args, options } = buildWatchdogSpawn(scriptFile)
     const child = spawnProcess(command, args, options)

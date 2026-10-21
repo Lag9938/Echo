@@ -1,6 +1,7 @@
 import { useEffect, useRef, type CSSProperties } from 'react'
 import type { ProfileVideoEffect as ProfileVideoEffectDef } from '../lib/profileVideoEffects'
 import { useMotionReduced } from '../hooks/useMotionReduced'
+import { showcaseCardOf } from '../lib/decorationMotion'
 
 interface ProfileVideoEffectProps {
   effect: ProfileVideoEffectDef
@@ -22,9 +23,17 @@ export function ProfileVideoEffect({ effect, className = '', style }: ProfileVid
     if (!video || reduced) return
     // Só toca com o cartão realmente visível: um cartão escondido (0×0) ou fora da área rolável não decodifica vídeo à toa
     let visible = true
+    // Num cartão das grades da Loja/Inventário, só toca com o mouse em cima do cartão (eram ~10 vídeos juntos na grade;
+    // lib/decorationMotion.ts). No perfil e na prévia grande, toca normalmente.
+    const card = showcaseCardOf(video)
+    let hovered = false
+    const onEnter = () => { hovered = true; sync() }
+    const onLeave = () => { hovered = false; sync() }
+    card?.addEventListener('mouseenter', onEnter)
+    card?.addEventListener('mouseleave', onLeave)
     const sync = () => {
       // O autoplay pode ser recusado (política do navegador); sem vídeo o cartão continua inteiro
-      if (visible && !document.hidden) video.play().catch(() => {})
+      if (visible && !document.hidden && (!card || hovered)) video.play().catch(() => {})
       else video.pause()
     }
     const observer = typeof IntersectionObserver !== 'undefined'
@@ -39,6 +48,8 @@ export function ProfileVideoEffect({ effect, className = '', style }: ProfileVid
     return () => {
       observer?.disconnect()
       document.removeEventListener('visibilitychange', sync)
+      card?.removeEventListener('mouseenter', onEnter)
+      card?.removeEventListener('mouseleave', onLeave)
     }
   }, [reduced, effect.src])
 

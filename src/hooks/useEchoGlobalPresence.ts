@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { installPresenceTrackThrottle } from '../lib/presenceThrottle'
 import { buildPresencePayload } from '../lib/presencePayload'
+import { rememberNameFont } from '../lib/nameFonts'
 
 export interface UseEchoGlobalPresenceOptions {
   user: User
@@ -64,6 +65,7 @@ export function useEchoGlobalPresence({
           }
         }
         const uid = merged.user_id || key
+        rememberNameFont(uid, merged.name_font)
         pData[key] = merged
         pData[uid] = merged
         if (merged.presence_status !== 'invisible') {
@@ -112,6 +114,7 @@ export function useEchoGlobalPresence({
             oldP.banner_custom !== newP?.banner_custom ||
             oldP.banner_preset !== newP?.banner_preset ||
             oldP.name_effect !== newP?.name_effect ||
+            oldP.name_font !== newP?.name_font ||
             oldP.badge !== newP?.badge ||
             oldGameName !== newGameName ||
             oldGameStart !== newGameStart

@@ -519,114 +519,103 @@ export function EchoCanvasEffect({ effectId, className = '' }: EchoCanvasEffectP
       // 3. PLASMA OVERDRIVE (Núcleo de Plasma — Multi-Layer Organic Fire, Solar Arcs & Ember Trails)
       // ─────────────────────────────────────────────────────────────
       else if (effectId === 'plasma_overdrive' || effectId === 'inferno_flames') {
-        const minDim = Math.min(w, h)
+        // Reator de plasma: um núcleo incandescente no canto de baixo, com anéis girando em volta, filamentos de
+        // energia que serpenteiam para fora e faíscas que sobem. O canto de cima à esquerda (onde fica o avatar) fica livre.
+        const u = Math.min(w, h) / 180
+        const cx = w * 0.76
+        const cy = h * 0.74
+        const reach = Math.max(w, h)
+        const pulse = 0.5 + 0.5 * Math.sin(t * 2.2)
         ctx.save()
         ctx.globalCompositeOperation = 'lighter'
 
-        // Intense Volumetric Reactor Core Glow at Bottom
-        const baseBloom = ctx.createRadialGradient(w * 0.5, h * 1.05, 0, w * 0.5, h, Math.max(w, h) * 0.78)
-        baseBloom.addColorStop(0, 'rgba(254, 240, 138, 0.55)')
-        baseBloom.addColorStop(0.28, 'rgba(255, 107, 0, 0.42)')
-        baseBloom.addColorStop(0.62, 'rgba(220, 38, 38, 0.18)')
-        baseBloom.addColorStop(1, 'rgba(0, 0, 0, 0)')
-        ctx.fillStyle = baseBloom
+        // Brilho quente de ambiente, baixo e largo (não encobre o conteúdo do cartão)
+        const amb = ctx.createRadialGradient(cx, cy, 0, cx, cy, reach * 0.85)
+        amb.addColorStop(0, `rgba(255, 120, 30, ${0.2 + pulse * 0.06})`)
+        amb.addColorStop(0.5, 'rgba(190, 40, 20, 0.08)')
+        amb.addColorStop(1, 'rgba(0, 0, 0, 0)')
+        ctx.fillStyle = amb
         ctx.fillRect(0, 0, w, h)
 
-        // 3 Depth Layers of Organic S-Curve Flame Tongues (Back Crimson -> Mid Orange -> Front White-Gold)
-        const layers = [
-          { count: 9, maxH: 0.58, speed: 3.2, wScale: 0.14, c0: 'rgba(185, 28, 28, 0.42)', c1: 'rgba(239, 68, 68, 0.22)' },
-          { count: 11, maxH: 0.44, speed: 4.4, wScale: 0.11, c0: 'rgba(249, 115, 22, 0.52)', c1: 'rgba(251, 191, 36, 0.26)' },
-          { count: 8, maxH: 0.29, speed: 5.6, wScale: 0.08, c0: 'rgba(254, 249, 195, 0.68)', c1: 'rgba(251, 146, 60, 0.28)' }
-        ]
+        // Núcleo: branco-quente no centro, âmbar e depois brasa
+        const coreR = (19 + pulse * 4) * u
+        const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 3.4)
+        core.addColorStop(0, 'rgba(255, 250, 228, 0.95)')
+        core.addColorStop(0.16, 'rgba(255, 214, 120, 0.85)')
+        core.addColorStop(0.42, 'rgba(255, 112, 32, 0.38)')
+        core.addColorStop(1, 'rgba(0, 0, 0, 0)')
+        ctx.fillStyle = core
+        ctx.beginPath()
+        ctx.arc(cx, cy, coreR * 3.4, 0, Math.PI * 2)
+        ctx.fill()
 
-        layers.forEach((layer, lIdx) => {
-          for (let i = 0; i < layer.count; i++) {
-            const normX = (i + 0.5) / layer.count
-            const baseX = normX * w + Math.sin(i * 2.3 + lIdx) * (w * 0.03)
-            const sway1 = Math.sin(t * layer.speed + i * 1.4 + lIdx) * (w * 0.045)
-            const sway2 = Math.cos(t * (layer.speed * 1.3) - i * 0.9) * (w * 0.03)
-            const env = 0.72 + Math.sin(normX * Math.PI) * 0.35
-            const flameH = (layer.maxH * 0.7 + Math.sin(t * 3.8 + i * 1.7 + lIdx) * (layer.maxH * 0.3)) * h * env
-            const halfW = w * layer.wScale
-
-            const tipX = baseX + sway1 + sway2
-            const tipY = h - flameH
-
-            ctx.beginPath()
-            ctx.moveTo(baseX - halfW, h + 4)
-            ctx.bezierCurveTo(
-              baseX - halfW * 0.6 + sway1 * 0.4,
-              h - flameH * 0.35,
-              tipX - halfW * 0.35 - sway2 * 0.5,
-              h - flameH * 0.72,
-              tipX,
-              tipY
-            )
-            ctx.bezierCurveTo(
-              tipX + halfW * 0.35 - sway2 * 0.5,
-              h - flameH * 0.72,
-              baseX + halfW * 0.6 + sway1 * 0.4,
-              h - flameH * 0.35,
-              baseX + halfW,
-              h + 4
-            )
-            ctx.closePath()
-
-            const fg = ctx.createLinearGradient(0, h, 0, tipY)
-            fg.addColorStop(0, layer.c0)
-            fg.addColorStop(0.65, layer.c1)
-            fg.addColorStop(1, 'rgba(255, 100, 0, 0)')
-            ctx.fillStyle = fg
-            ctx.fill()
-          }
-        })
-
-        // Thermonuclear Plasma Lightning Arcs along the bottom
-        for (let a = 0; a < 2; a++) {
+        // Dois anéis de plasma tracejados, inclinados e girando em sentidos opostos
+        for (let k = 0; k < 2; k++) {
+          ctx.save()
+          ctx.translate(cx, cy)
+          ctx.rotate(t * (0.7 + k * 0.5) * (k ? -1 : 1) + k * 1.2)
+          ctx.scale(1, 0.36 + k * 0.1)
+          ctx.setLineDash([coreR * 0.9, coreR * 0.5])
+          ctx.lineDashOffset = -t * 40 * u
           ctx.beginPath()
-          const startX = w * (0.15 + a * 0.35)
-          const endX = startX + w * 0.35
-          const steps = 10
-          for (let s = 0; s <= steps; s++) {
-            const px = startX + ((endX - startX) * s) / steps
-            const jitter = s === 0 || s === steps ? 0 : Math.sin(t * 18 + s * 4.1 + a * 3) * (h * 0.045)
-            const py = h - h * 0.08 - Math.sin((s / steps) * Math.PI) * (h * 0.09) + jitter
-            if (s === 0) ctx.moveTo(px, py)
-            else ctx.lineTo(px, py)
-          }
-          ctx.strokeStyle = a === 0 ? 'rgba(254, 240, 138, 0.65)' : 'rgba(251, 146, 60, 0.55)'
-          ctx.lineWidth = 1.4 * (minDim / 180)
+          ctx.arc(0, 0, coreR * (2.1 + k * 0.9), 0, Math.PI * 2)
+          ctx.strokeStyle = `rgba(255, 170, 70, ${0.55 - k * 0.15})`
+          ctx.lineWidth = 1.6 * u
           ctx.stroke()
+          ctx.restore()
+        }
+        ctx.setLineDash([])
+
+        // Filamentos de energia: do núcleo para fora, serpenteando; três traços (halo, corpo e fio branco)
+        const filaments = 7
+        ctx.lineJoin = 'round'
+        ctx.lineCap = 'round'
+        for (let i = 0; i < filaments; i++) {
+          const ang = (i / filaments) * Math.PI * 2 + t * 0.25 + Math.sin(t * 0.7 + i) * 0.4
+          const dist = reach * (0.3 + 0.16 * Math.sin(t * 0.6 + i * 1.7))
+          const ex = cx + Math.cos(ang) * dist
+          const ey = cy + Math.sin(ang) * dist * 0.8
+          const steps = 18
+          const amp = 13 * u
+          const pts: Array<[number, number]> = []
+          for (let s = 0; s <= steps; s++) {
+            const f = s / steps
+            const bend = Math.sin(f * Math.PI) * amp * (Math.sin(t * 5 + i * 3 + f * 9) * 0.6 + Math.sin(t * 9.5 + i + f * 17) * 0.4)
+            const nx = -(ey - cy)
+            const ny = ex - cx
+            const nl = Math.hypot(nx, ny) || 1
+            pts.push([cx + (ex - cx) * f + (nx / nl) * bend, cy + (ey - cy) * f + (ny / nl) * bend])
+          }
+          const flick = 0.55 + 0.45 * Math.pow(Math.sin(t * 3 + i * 1.9), 2)
+          const passes: Array<[number, string]> = [
+            [10 * u, `rgba(255, 90, 20, ${0.09 * flick})`],
+            [3.6 * u, `rgba(255, 160, 60, ${0.24 * flick})`],
+            [1.1 * u, `rgba(255, 245, 210, ${0.85 * flick})`]
+          ]
+          for (const [lw, color] of passes) {
+            ctx.beginPath()
+            pts.forEach(([px, py], n) => (n === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)))
+            ctx.strokeStyle = color
+            ctx.lineWidth = lw
+            ctx.stroke()
+          }
         }
 
-        // Swirling Convection Sparks & Elongated Ember Streaks
+        // Faíscas: saem do núcleo em espiral, sobem e se apagam
         particles.forEach((p, idx) => {
-          const vy = 0.0045 + p.extra2 * 0.0035
-          const vx = Math.sin(t * 4.5 + p.extra) * 0.0022
-          p.y -= vy
-          p.x += vx
-          if (p.y < -0.05) {
-            p.y = 1.02
-            p.x = Math.random()
+          p.life += 0.012 + p.extra2 * 0.01
+          if (p.life > 1) {
+            p.life = 0
+            p.extra = Math.random() * Math.PI * 2
+            p.extra2 = Math.random()
           }
-
-          const px = p.x * w
-          const py = p.y * h
-          const alpha = Math.min(1, p.y * 1.25) * (Math.sin(t * 7 + p.extra) * 0.3 + 0.7)
-          const r = p.size * (minDim / 180) * 1.15
-
-          // Glowing ember trail
+          const r = p.life * reach * 0.5 * (0.4 + p.extra2)
+          const px = cx + Math.cos(p.extra + p.life * 1.5) * r
+          const py = cy + Math.sin(p.extra + p.life * 1.5) * r * 0.8 - p.life * h * 0.12
+          const alpha = (1 - p.life) * (Math.sin(t * 7 + p.extra) * 0.25 + 0.75)
           ctx.beginPath()
-          ctx.moveTo(px, py)
-          ctx.lineTo(px - vx * w * 3.2, py + vy * h * 3.2)
-          ctx.strokeStyle = idx % 3 === 0 ? `rgba(255, 255, 255, ${alpha})` : `rgba(251, 146, 60, ${alpha * 0.85})`
-          ctx.lineWidth = r * 1.4
-          ctx.lineCap = 'round'
-          ctx.stroke()
-
-          ctx.beginPath()
-          ctx.arc(px, py, r, 0, Math.PI * 2)
-          ctx.fillStyle = idx % 2 === 0 ? `rgba(254, 249, 195, ${alpha})` : `rgba(255, 130, 20, ${alpha})`
+          ctx.arc(px, py, p.size * u * 0.7 * (1 - p.life * 0.5), 0, Math.PI * 2)
+          ctx.fillStyle = idx % 3 === 0 ? `rgba(255, 250, 225, ${alpha})` : `rgba(255, 140, 40, ${alpha})`
           ctx.fill()
         })
         ctx.restore()

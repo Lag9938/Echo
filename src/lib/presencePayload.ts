@@ -20,6 +20,7 @@ export interface PresencePayloadInput {
   avatarDecoration?: string | null
   profileEffect?: string | null
   nameEffect?: string | null
+  nameFont?: string | null
   /** Banner recém-alterado; sem isso, vale o salvo */
   bannerUrl?: string
   bannerPreset?: string
@@ -41,6 +42,7 @@ export interface PresencePayload {
   avatar_decoration: string
   profile_effect: string
   name_effect: string
+  name_font: string
   badge: string
   banner_custom: string
   banner_preset: string
@@ -86,6 +88,7 @@ export function buildPresencePayload(input: PresencePayloadInput): PresencePaylo
     avatar_decoration: read(`echo-avatar-decoration-${uid}`) || read('echo-avatar-decoration') || input.avatarDecoration || '',
     profile_effect: read(`echo-profile-effect-${uid}`) || read('echo-profile-effect') || input.profileEffect || '',
     name_effect: read(`echo-name-effect-${uid}`) || input.nameEffect || 'resonance_cyan',
+    name_font: read(`echo-name-font-${uid}`) || input.nameFont || '',
     badge: showBadge ? (read(`echo-badge-${uid}`) || 'owner') : 'none',
     banner_custom: banner,
     banner_preset: input.bannerPreset || read(`echo-banner-preset-${uid}`) || read('echo-banner-preset') || 'synthwave',

@@ -30,6 +30,8 @@ import {
   VolumeIcon
 } from '../components/icons'
 import { useUIStore } from '../stores/useUIStore'
+import { useNameFontStore } from '../stores/useNameFontStore'
+import { nameFontStyle, resolveNameFontId } from '../lib/nameFonts'
 import { useSpacesStore } from '../stores/useSpacesStore'
 import { useMusicBotStore } from '../stores/useMusicBotStore'
 import { isMusicBotIdentity } from '../lib/musicBotState'
@@ -193,6 +195,7 @@ export interface VoiceChannelViewProps {
 }
 
 export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChannelViewProps) {
+  const myNameFont = useNameFontStore((s) => s.fontId)
   const storeSpaceMembers = useSpacesStore((s) => s.spaceMembers)
   const storeSpaceChannels = useSpacesStore((s) => s.spaceChannels)
   const storeSpaceVoiceUsers = useSpacesStore((s) => s.spaceVoiceUsers)
@@ -1017,7 +1020,7 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                           {/* Mutado/ensurdecido ficam no rótulo do nome (com câmera, o selo do topo já mostra) */}
                                           {!hasCam && p.isMuted && <MicOffIcon className="participant-name-state" />}
                                           {!hasCam && p.isDeafened && <HeadphonesOffIcon className="participant-name-state" />}
-                                          <span className="participant-name-text">
+                                          <span className="participant-name-text" style={nameFontStyle(resolveNameFontId(p.userId, user.id, myNameFont, presenceData))}>
                                             {p.displayName}
                                             {p.userId === user.id && " (Você)"}
                                           </span>

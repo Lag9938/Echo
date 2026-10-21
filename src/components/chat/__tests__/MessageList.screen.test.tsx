@@ -1,7 +1,5 @@
 /// <reference types="node" />
 import { describe, it, expect, vi } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { render, fireEvent } from '@testing-library/react'
 import { MessageList } from '../MessageList'
 
@@ -150,19 +148,5 @@ describe('Tela do chat (lista de mensagens)', () => {
 
     expect(container.querySelector('.msg-meta strong')?.textContent).toBe('Ana Real')
     expect(container.querySelector('.msg-avatar img')?.getAttribute('src')).toBe('https://x.test/ana.png')
-  })
-})
-
-describe('Animações dentro do chat', () => {
-  // Bug real: as barrinhas do efeito de nome animavam `height`, cada mensagem crescia e encolhia uma fração
-  // de pixel sem parar e o chat inteiro tremia. Dentro da lista, animação só pode usar transform e opacity.
-  it('as barrinhas do efeito de nome não animam propriedades que mexem no layout', () => {
-    // Lido do disco: o vitest não entrega o conteúdo de arquivos .css importados
-    const css = readFileSync(resolve(process.cwd(), 'src/styles/calls.css'), 'utf8')
-    const keyframes = css.match(/@keyframes soundwaveBar\s*\{([\s\S]*?\})\s*\}/)
-    expect(keyframes).not.toBeNull()
-    const animated = [...keyframes![1].matchAll(/([a-z-]+)\s*:/g)].map((m) => m[1])
-    expect(animated.length).toBeGreaterThan(0)
-    expect(animated.filter((prop) => !['transform', 'opacity'].includes(prop))).toEqual([])
   })
 })

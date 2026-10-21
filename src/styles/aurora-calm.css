@@ -1,0 +1,626 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   AURORA CALMO — menos "efeito", mais superfície.
+
+   O visual de vidro (painéis translúcidos com desfoque, bordas brilhantes, sombras de 44 px, manchas de cor no fundo
+   e botões em degradê) dava ao app um ar artificial. Esta camada, carregada depois de todo o resto do Aurora,
+   troca isso por superfícies sólidas, bordas finas, cantos moderados e UMA cor de destaque. O layout não muda.
+
+   Regras do projeto respeitadas: os efeitos de nome (.name-effect-*) não são tocados; os dois temas (escuro =
+   grafite quase preto; claro = papel quente) mantêm contraste legível. Para voltar ao vidro, tire o import em App.css.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+body.echo-layout-glass.theme-aurora-dark {
+  --calm-bg: #0e0e10;
+  --calm-panel: #161618;
+  --calm-raised: #1d1d20;
+  --calm-hover: #232327;
+  --calm-active: #2a2a2f;
+  --calm-line: #2a2a2e;
+  --calm-radius: 14px;
+}
+body.echo-layout-glass.light-theme.theme-aurora {
+  --calm-bg: #f1efea;
+  --calm-panel: #fbfaf7;
+  --calm-raised: #ffffff;
+  --calm-hover: #f0ede6;
+  --calm-active: #e8e4db;
+  --calm-line: #dcd8cd;
+  --calm-radius: 14px;
+}
+
+/* Fundo: cor chapada, sem manchas coloridas */
+body.echo-layout-glass.theme-aurora,
+body.echo-layout-glass.theme-aurora .workspace,
+body.echo-layout-glass.theme-aurora .echo-app,
+body.echo-layout-glass.theme-aurora #root {
+  background: var(--calm-bg) !important;
+  background-image: none !important;
+}
+
+/* Painéis grandes: sólidos, borda fina, sem desfoque nem sombra */
+body.echo-layout-glass.theme-aurora .channels-sidebar,
+body.echo-layout-glass.theme-aurora .members-sidebar,
+body.echo-layout-glass.theme-aurora .main-content,
+body.echo-layout-glass.theme-aurora .composer,
+body.echo-layout-glass.theme-aurora .friends-sidebar,
+body.echo-layout-glass.theme-aurora .friends-content,
+body.echo-layout-glass.theme-aurora .dm-full-chat,
+body.echo-layout-glass.theme-aurora .settings-sidebar,
+body.echo-layout-glass.theme-aurora .settings-content,
+body.echo-layout-glass.theme-aurora .voice-chat-pane,
+body.echo-layout-glass.theme-aurora .space-studio-container {
+  background: var(--calm-panel) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border: 1px solid var(--calm-line) !important;
+  border-radius: var(--calm-radius) !important;
+  box-shadow: none !important;
+}
+body.echo-layout-glass.theme-aurora .composer { border-radius: 12px !important; }
+
+/* Barra do topo: chapada, só uma linha embaixo */
+body.echo-layout-glass.theme-aurora .topbar {
+  background: var(--calm-bg) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border-bottom: 1px solid var(--calm-line) !important;
+  box-shadow: none !important;
+}
+
+/* Cabeçalho do servidor: sem o degradê/banner colorido */
+body.echo-layout-glass.theme-aurora .server-header-card {
+  background: var(--calm-raised) !important;
+  background-image: none !important;
+  border: 1px solid var(--calm-line) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+
+/* Cartões e blocos: superfície elevada simples */
+body.echo-layout-glass.theme-aurora .participant-card,
+body.echo-layout-glass.theme-aurora .friend-card-modern,
+body.echo-layout-glass.theme-aurora .friends-search-row,
+body.echo-layout-glass.theme-aurora .echo-shop-card,
+body.echo-layout-glass.theme-aurora .echo-shop-showcase-card,
+body.echo-layout-glass.theme-aurora .echo-inv-card,
+body.echo-layout-glass.theme-aurora .echo-inventory-header-card,
+body.echo-layout-glass.theme-aurora .echo-inventory-stage-card,
+body.echo-layout-glass.theme-aurora .profile-card,
+body.echo-layout-glass.theme-aurora .profile-section-card,
+body.echo-layout-glass.theme-aurora .profile-preview-card,
+body.echo-layout-glass.theme-aurora .echo-palette-card,
+body.echo-layout-glass.theme-aurora .echo-density-card,
+body.echo-layout-glass.theme-aurora .echo-performance-card,
+body.echo-layout-glass.theme-aurora .echo-audio-card,
+body.echo-layout-glass.theme-aurora .echo-transmit-card,
+body.echo-layout-glass.theme-aurora .echo-audio-hotkeys-card,
+body.echo-layout-glass.theme-aurora .echo-glass-toggle-card,
+body.echo-layout-glass.theme-aurora .mic-test-panel,
+body.echo-layout-glass.theme-aurora .voice-join-panel {
+  background: var(--calm-raised) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border: 1px solid var(--calm-line) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+
+/* Botões de ação principais: uma cor só, chapada */
+body.echo-layout-glass.theme-aurora .friends-add-btn,
+body.echo-layout-glass.theme-aurora .composer .send-btn,
+body.echo-layout-glass.theme-aurora .send-btn,
+body.echo-layout-glass.theme-aurora .dm-send-btn,
+body.echo-layout-glass.theme-aurora .echo-shop-action-btn.acquire,
+body.echo-layout-glass.theme-aurora .echo-shop-action-btn.primary,
+body.echo-layout-glass.theme-aurora .echo-shop-equip-btn.acquire-btn,
+body.echo-layout-glass.theme-aurora .echo-stage-btn-equip,
+body.echo-layout-glass.theme-aurora .friends-hero-btn-primary,
+body.echo-layout-glass.theme-aurora .friends-empty-calm-btn.primary,
+body.echo-layout-glass.theme-aurora .invite-primary-btn,
+body.echo-layout-glass.theme-aurora .member-profile-action-btn.primary,
+body.echo-layout-glass.theme-aurora .update-restart-btn,
+body.echo-layout-glass.theme-aurora .whats-new-confirm-btn,
+body.echo-layout-glass.theme-aurora .music-bot-icon-btn.primary,
+body.echo-layout-glass.theme-aurora .picker-go-live-btn,
+body.echo-layout-glass.theme-aurora .voice-join-submit-btn,
+body.echo-layout-glass.theme-aurora .hover-popover-btn.primary,
+body.echo-layout-glass.theme-aurora .add-friend-submit-btn,
+body.echo-layout-glass.theme-aurora .fcp-return-btn,
+body.echo-layout-glass.theme-aurora .floating-save-btn,
+body.echo-layout-glass.theme-aurora .pending-banner-action-btn,
+body.echo-layout-glass.theme-aurora .modern-record-send-btn {
+  background: var(--accent-fill) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* Abas, pílulas e opções ativas: superfície mais clara + texto normal, sem degradê nem brilho */
+body.echo-layout-glass.theme-aurora .friends-tab-pill.active,
+body.echo-layout-glass.theme-aurora .friends-sidebar-home-btn.active,
+body.echo-layout-glass.theme-aurora .friends-tab-pill.add-friend.active,
+body.echo-layout-glass.theme-aurora .echo-shop-main-tab.active,
+body.echo-layout-glass.theme-aurora .echo-shop-cat-btn.active,
+body.echo-layout-glass.theme-aurora .echo-inv-tab.active,
+body.echo-layout-glass.theme-aurora .echo-editor-tab-btn.active,
+body.echo-layout-glass.theme-aurora .music-bot-tab.active,
+body.echo-layout-glass.theme-aurora .stream-tab-btn.active,
+body.echo-layout-glass.theme-aurora .screen-picker-tab-btn.active,
+body.echo-layout-glass.theme-aurora .saved-tab-btn.active,
+body.echo-layout-glass.theme-aurora .emoji-tab-btn.active,
+body.echo-layout-glass.theme-aurora .composer-action-btn.active,
+body.echo-layout-glass.theme-aurora .echo-presence-option.active,
+body.echo-layout-glass.theme-aurora .picker-config-chip.active {
+  background: var(--calm-active) !important;
+  background-image: none !important;
+  color: var(--text-primary) !important;
+  border-color: var(--calm-line) !important;
+  box-shadow: none !important;
+}
+
+/* Cabeçalhos, faixas e controles do chat */
+body.echo-layout-glass.theme-aurora .content-header,
+body.echo-layout-glass.theme-aurora .members-sidebar-top {
+  background: transparent !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid var(--calm-line) !important;
+}
+body.echo-layout-glass.theme-aurora .chat-date-pill,
+body.echo-layout-glass.theme-aurora .channels-search-box,
+body.echo-layout-glass.theme-aurora .profile-footer-card,
+body.echo-layout-glass.theme-aurora .topbar-server-item-wrap.has-name,
+body.echo-layout-glass.theme-aurora .message-hover-actions {
+  background: var(--calm-raised) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  border: 1px solid var(--calm-line) !important;
+}
+body.echo-layout-glass.theme-aurora .topbar-server-btn.selected {
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+/* Menus flutuantes continuam legíveis: sólidos, com uma sombra curta */
+body.echo-layout-glass.theme-aurora .msg-react-pop,
+body.echo-layout-glass.theme-aurora .msg-more-pop {
+  background: var(--calm-raised) !important;
+  background-image: none !important;
+  border: 1px solid var(--calm-line) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28) !important;
+}
+
+/* Canais: o selecionado é só uma superfície mais clara (sem contorno nem brilho colorido) */
+body.echo-layout-glass.theme-aurora .channel-item {
+  box-shadow: none !important;
+}
+body.echo-layout-glass.theme-aurora .channel-item.active {
+  background: var(--calm-active) !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  color: var(--text-primary) !important;
+}
+body.echo-layout-glass.theme-aurora .channel-item.voice-item {
+  background: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+}
+body.echo-layout-glass.theme-aurora .channel-item:hover { background: var(--calm-hover) !important; }
+
+/* Mensagens: balões chapados. As dos outros em superfície elevada; as minhas num tom suave do destaque */
+body.echo-layout-glass.theme-aurora .msg-card .msg-body {
+  background: var(--calm-raised) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border: 1px solid var(--calm-line) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  color: var(--text-primary) !important;
+}
+body.echo-layout-glass.theme-aurora .msg-card.msg-own .msg-body {
+  background: color-mix(in srgb, var(--accent-fill) 16%, var(--calm-panel)) !important;
+  border-color: color-mix(in srgb, var(--accent-fill) 32%, var(--calm-line)) !important;
+}
+body.echo-layout-glass.theme-aurora .msg-card.msg-own .reply-reference {
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--accent-fill) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent-fill) 24%, transparent);
+}
+body.echo-layout-glass.theme-aurora .msg-card.msg-own .reply-reference-name,
+body.echo-layout-glass.theme-aurora .msg-card.msg-own .reply-reference-go { color: var(--accent-text); }
+body.echo-layout-glass.theme-aurora .msg-card.msg-own .reply-reference-curve { border-color: var(--accent-text); }
+body.echo-layout-glass.theme-aurora .members-quick-invite-btn {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border: 1px solid var(--calm-line) !important;
+  color: var(--accent-text) !important;
+}
+
+/* Os "brilhos" desenhados por pseudo-elementos (manchas radiais de cor no canto de cada painel) */
+body.echo-layout-glass.theme-aurora .topbar::before,
+body.echo-layout-glass.theme-aurora .channels-sidebar::before,
+body.echo-layout-glass.theme-aurora .members-sidebar::before,
+body.echo-layout-glass.theme-aurora .main-content::before,
+body.echo-layout-glass.theme-aurora .composer::before,
+body.echo-layout-glass.theme-aurora .content-header::before,
+body.echo-layout-glass.theme-aurora .friends-sidebar::before,
+body.echo-layout-glass.theme-aurora .friends-content::before,
+body.echo-layout-glass.theme-aurora .dm-full-chat::before,
+body.echo-layout-glass.theme-aurora .settings-sidebar::before,
+body.echo-layout-glass.theme-aurora .settings-content::before,
+body.echo-layout-glass.theme-aurora .voice-chat-pane::before,
+body.echo-layout-glass.theme-aurora .server-header-card::before,
+body.echo-layout-glass.theme-aurora .profile-footer-card::before {
+  background: none !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+body.echo-layout-glass.theme-aurora .channels-sidebar .channel-item.active,
+body.echo-layout-glass.theme-aurora .channels-sidebar .channel-item.active:hover {
+  background: var(--calm-active) !important;
+  background-image: none !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  color: var(--text-primary) !important;
+}
+
+/* (maior especificidade: o item ativo tem regras antigas com muitos seletores) */
+body.echo-layout-glass.theme-aurora.theme-aurora .channels-sidebar .channel-item.channel-item.active.active,
+body.echo-layout-glass.theme-aurora.theme-aurora .channels-sidebar .channel-item.channel-item.active.active:hover {
+  background: var(--calm-active) !important;
+  background-image: none !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  color: var(--text-primary) !important;
+}
+
+body.echo-layout-glass.theme-aurora.theme-aurora .channels-sidebar .channel-item.channel-item.voice-item,
+body.echo-layout-glass.theme-aurora.theme-aurora .profile-footer-card.profile-footer-card,
+body.echo-layout-glass.theme-aurora.theme-aurora .msg-card .msg-avatar.msg-avatar {
+  box-shadow: none !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .channels-sidebar .channel-item.channel-item.voice-item { border-color: transparent !important; }
+
+/* Texto do balão: cor normal do tema (no claro o balão antigo era escuro e o texto branco) */
+body.echo-layout-glass.theme-aurora.theme-aurora .msg-card.msg-card .msg-body.msg-body,
+body.echo-layout-glass.theme-aurora.theme-aurora .msg-card.msg-card.msg-own .msg-body.msg-body,
+body.echo-layout-glass.theme-aurora.theme-aurora .msg-card.msg-card.msg-own .msg-body.msg-body > div:not([class*="name-effect"]):not(.msg-meta) {
+  color: var(--text-primary) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .msg-card.msg-card.msg-own .msg-body.msg-body {
+  background-color: color-mix(in srgb, var(--accent-fill) 16%, var(--calm-panel)) !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .msg-card.msg-card.msg-own .msg-body.msg-body p {
+  color: var(--text-primary) !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .msg-card.msg-card.msg-own .msg-body.msg-body p span:not([class]) {
+  color: inherit !important;
+}
+
+/* Configurações, perfil e formulários */
+body.echo-layout-glass.theme-aurora.theme-aurora .settings-workspace {
+  background: var(--calm-bg) !important;
+  background-image: none !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .menu-item.menu-item.active {
+  background: var(--calm-active) !important;
+  background-image: none !important;
+  color: var(--text-primary) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-editor-card,
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-hero-showcase,
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-presence-option,
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-presence-option.active {
+  background: var(--calm-raised) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border: 1px solid var(--calm-line) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-presence-option.active {
+  border-color: var(--accent-fill) !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-text-input,
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-textarea-input {
+  background: var(--calm-panel) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  border: 1px solid var(--calm-line) !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .menu-item.menu-item.active svg,
+body.echo-layout-glass.theme-aurora.theme-aurora .menu-item.menu-item.active .menu-item-icon {
+  color: var(--accent-text) !important;
+  stroke: currentColor !important;
+}
+
+/* Busca no canal: o anel de foco fica no campo inteiro (e não num retângulo colado no texto) */
+.channel-search-field:focus-within {
+  border-color: var(--accent-fill) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-fill) 35%, transparent);
+}
+.channel-search-field input:focus,
+.channel-search-field input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Loja e inventário */
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-header-btn,
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-main-tabs,
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-cat-btn,
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-inv-tab,
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-inventory-shop-btn {
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-main-tabs {
+  background: var(--calm-raised) !important;
+  border: 1px solid var(--calm-line) !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-header-btn,
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-cat-btn:not(.active) {
+  background: var(--calm-raised) !important;
+  border: 1px solid var(--calm-line) !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-badge-icon {
+  background: var(--calm-raised) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  border: 1px solid var(--calm-line) !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-card.selected,
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-inv-card.selected,
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-card:hover {
+  box-shadow: none !important;
+  border-color: var(--accent-fill) !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-preview-bubble { box-shadow: none !important; }
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-inventory-nav-bar,
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-stage-preview-card,
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-stage-controls {
+  background: var(--calm-raised) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  border: 1px solid var(--calm-line) !important;
+  border-radius: 12px !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-inv-equipped-pill,
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-stage-avatar-squircle {
+  box-shadow: none !important;
+}
+
+/* ───────── Modais: janela sólida; o fundo atrás só escurece (sem desfoque) ───────── */
+body.echo-layout-glass.theme-aurora.theme-aurora .modal-backdrop,
+body.echo-layout-glass.theme-aurora.theme-aurora .invite-backdrop,
+body.echo-layout-glass.theme-aurora.theme-aurora .member-profile-overlay,
+body.echo-layout-glass.theme-aurora.theme-aurora .screen-picker-overlay,
+body.echo-layout-glass.theme-aurora.theme-aurora .saved-messages-backdrop,
+body.echo-layout-glass.theme-aurora.theme-aurora .soundboard-backdrop,
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-channel-modal-overlay,
+body.echo-layout-glass.theme-aurora.theme-aurora .update-applying-overlay,
+body.echo-layout-glass.theme-aurora.theme-aurora .incoming-call-overlay {
+  background-image: none !important;
+  background-color: rgba(0, 0, 0, 0.55) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .invite-modal,
+body.echo-layout-glass.theme-aurora.theme-aurora .screen-picker-modal,
+body.echo-layout-glass.theme-aurora.theme-aurora .saved-messages-modal,
+body.echo-layout-glass.theme-aurora.theme-aurora .music-bot-modal,
+body.echo-layout-glass.theme-aurora.theme-aurora .soundboard-modal,
+body.echo-layout-glass.theme-aurora.theme-aurora .update-applying-modal,
+body.echo-layout-glass.theme-aurora.theme-aurora .member-profile-card-modal,
+body.echo-layout-glass.theme-aurora.theme-aurora .whats-new-banner {
+  background: var(--calm-panel) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border: 1px solid var(--calm-line) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32) !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .saved-messages-header,
+body.echo-layout-glass.theme-aurora.theme-aurora .saved-search-wrap,
+body.echo-layout-glass.theme-aurora.theme-aurora .saved-message-item,
+body.echo-layout-glass.theme-aurora.theme-aurora .music-bot-search,
+body.echo-layout-glass.theme-aurora.theme-aurora .music-bot-tabs,
+body.echo-layout-glass.theme-aurora.theme-aurora .screen-picker-tabs,
+body.echo-layout-glass.theme-aurora.theme-aurora .screen-picker-quality-box,
+body.echo-layout-glass.theme-aurora.theme-aurora .source-card,
+body.echo-layout-glass.theme-aurora.theme-aurora .member-activity-card,
+body.echo-layout-glass.theme-aurora.theme-aurora .member-matte-well {
+  background: var(--calm-raised) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  border-color: var(--calm-line) !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .source-card.selected { border-color: var(--accent-fill) !important; }
+
+/* ───────── Sala de voz e transmissão ───────── */
+body.echo-layout-glass.theme-aurora.theme-aurora .voice-controls-capsule,
+body.echo-layout-glass.theme-aurora.theme-aurora .stream-participants-strip,
+body.echo-layout-glass.theme-aurora.theme-aurora .stream-unified-glass-bar,
+body.echo-layout-glass.theme-aurora.theme-aurora .streams-switcher-bar,
+body.echo-layout-glass.theme-aurora.theme-aurora .local-stream-placeholder,
+body.echo-layout-glass.theme-aurora.theme-aurora .voice-reconnecting-banner,
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-pip-header,
+body.echo-layout-glass.theme-aurora.theme-aurora .echo-pip-hover-bar {
+  background: var(--calm-raised) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border: 1px solid var(--calm-line) !important;
+  box-shadow: none !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .screen-share-dropdown,
+body.echo-layout-glass.theme-aurora.theme-aurora .connection-stats-tooltip,
+body.echo-layout-glass.theme-aurora.theme-aurora .status-picker-popover {
+  background: var(--calm-raised) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border: 1px solid var(--calm-line) !important;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3) !important;
+}
+/* faixas que ficam por cima do vídeo: continuam escuras para o texto ler, mas sem desfoque */
+body.echo-layout-glass.theme-aurora.theme-aurora .stream-stats-hud-overlay,
+body.echo-layout-glass.theme-aurora.theme-aurora .participant-card.has-camera .participant-card-bottom-info,
+body.echo-layout-glass.theme-aurora.theme-aurora .picker-game-fullscreen-hint {
+  background-color: rgba(0, 0, 0, 0.62) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+/* botão de sair da chamada: vermelho chapado (a supressão de ruído mantém o visual original: ligada ela fica bem destacada) */
+body.echo-layout-glass.theme-aurora.theme-aurora .voice-controls-bar .control-btn.leave-btn,
+body.echo-layout-glass.theme-aurora.theme-aurora .voice-controls-bar .control-btn.leave-btn:hover {
+  background: var(--danger-fill, #c0392b) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+body.echo-layout-glass.theme-aurora.theme-aurora .participant-card.has-live-screen,
+body.echo-layout-glass.theme-aurora.theme-aurora .participant-card.music-bot-card {
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* ───────── Tema claro: textos dos blocos que eram escuros (e tinham letra branca) e agora são claros ───────── */
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .server-header-card .server-title,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .channel-welcome-title,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .echo-inventory-shop-btn,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .space-studio-hero-title-group h3,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .call-strip-avatar {
+  color: var(--text-primary) !important;
+}
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .space-studio-hero-title-group p,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .channel-welcome-hero p,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .profile-footer-sub-status,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .profile-footer-sub-status *,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .tab-pill-badge,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-tab-count,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .echo-inv-tab-count {
+  color: var(--text-secondary) !important;
+}
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .friends-tab-pill.active,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .friends-tab-pill.active span:not(.tab-pill-badge),
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .friends-sidebar-home-btn.active,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .friends-sidebar-home-btn.active span,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-main-tab.active,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .echo-inv-tab.active,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-cat-btn.active {
+  color: var(--text-primary) !important;
+}
+/* o servidor selecionado na barra do topo: botão com a cor de destaque e iniciais brancas */
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .topbar-server-btn.selected {
+  background: var(--accent-fill) !important;
+}
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .reply-reference-name { color: color-mix(in srgb, var(--accent-text) 82%, #000); }
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .member-presence-inline.online { color: var(--ok-text, #1f6b3a) !important; }
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .member-compact-note-add { color: var(--accent-text) !important; }
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .tab-pill-badge:not(.pending),
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-tab-count,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .echo-inv-tab-count {
+  color: var(--text-primary) !important;
+  background: rgba(0, 0, 0, 0.07) !important;
+}
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .tab-pill-badge.pending,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .home-pending-badge {
+  color: #fff !important;
+}
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .participant-name { background: var(--accent-fill) !important; }
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .space-studio-badge { color: var(--accent-text) !important; }
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .member-activity-live-pill { color: #b3202e !important; }
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .friends-sidebar-home-btn.active .home-pending-badge,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .friends-tab-pill .tab-pill-badge.pending { color: #fff !important; }
+
+/* Loja no claro: as abas/chips/botões antigos eram escuros com letra branca */
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-cat-btn.echo-shop-cat-btn,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-header-btn.echo-shop-header-btn,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-main-tab.echo-shop-main-tab {
+  background: transparent !important;
+  background-image: none !important;
+  color: var(--text-secondary) !important;
+  border: 1px solid var(--calm-line) !important;
+  box-shadow: none !important;
+}
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-header-btn.echo-shop-header-btn {
+  background: var(--calm-raised) !important;
+  color: var(--text-primary) !important;
+}
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-main-tab.echo-shop-main-tab { border-color: transparent !important; }
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-cat-btn.echo-shop-cat-btn.active,
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-main-tab.echo-shop-main-tab.active {
+  background: var(--calm-active) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--calm-line) !important;
+}
+body.light-theme.echo-layout-glass.theme-aurora.theme-aurora .echo-shop-main-tab.echo-shop-main-tab span:not(.echo-shop-tab-count) { color: inherit !important; }
+
+/* ───────── Fotos de perfil sempre redondas ─────────
+   Rede de segurança: a foto dentro de qualquer moldura de avatar é cortada em círculo e preenche a moldura
+   (object-fit: cover), mesmo onde o componente esqueceu o arredondamento. Ícones de servidor/espaço (que são
+   quadrados arredondados de propósito) ficam de fora. */
+body.echo-layout-glass [class*="avatar" i]:not([class*="server" i]):not([class*="space" i]):not([class*="guild" i]):not([class*="deco" i]) > img,
+body.echo-layout-glass [class*="avatar" i]:not([class*="server" i]):not([class*="space" i]):not([class*="guild" i]):not([class*="deco" i]) > div > img,
+body.echo-layout-glass [class*="avatar" i]:not([class*="server" i]):not([class*="space" i]):not([class*="guild" i]):not([class*="deco" i]) > picture > img {
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  aspect-ratio: 1 / 1;
+}
+/* A moldura em si e o miolo que guarda a foto também cortam em círculo */
+body.echo-layout-glass .echo-avatar-core,
+body.echo-layout-glass .echo-hero-avatar-inner,
+body.echo-layout-glass .mock-card-avatar-inner,
+body.echo-layout-glass .echo-stage-avatar-inner,
+body.echo-layout-glass .member-profile-avatar,
+body.echo-layout-glass .profile-footer-avatar,
+body.echo-layout-glass .member-avatar,
+body.echo-layout-glass .hover-popover-avatar {
+  border-radius: 50% !important;
+  overflow: hidden;
+}
+
+/* Chamada de voz: a busca fica logo ao lado do nome da sala (como no chat de texto), e o resto dos botões à direita.
+   Só CSS: o grupo da direita vira "invisível" para o layout e cada botão é reposicionado pela ordem. */
+.voice-room .content-header { gap: 8px; }
+.voice-room .content-header .channel-header-actions { display: contents !important; }
+.voice-room .content-header .header-info { order: 0; }
+.voice-room .content-header .channel-search-box-wrapper { order: 1; }
+.voice-room .content-header .channel-header-actions > :not(.channel-search-box-wrapper) { order: 2; }
+.voice-room .content-header .channel-header-actions > button:first-of-type { margin-left: auto; }
+/* Janela "Criar canal" (e outras abertas de dentro da barra lateral): a barra lateral forma um contexto de empilhamento
+   próprio (z-index 1), então peças do chat com z-index 1, como a data "27 DE SETEMBRO", passavam POR CIMA da janela
+   mesmo ela tendo z-index 20000. Enquanto a janela está aberta, a barra lateral sobe acima do resto da tela. */
+.sidebar-scrollable:has(.echo-channel-modal-overlay),
+.channels-sidebar:has(.echo-channel-modal-overlay) {
+  z-index: 20000 !important;
+}

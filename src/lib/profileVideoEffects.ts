@@ -1,7 +1,6 @@
 import sakuraCardSrc from '../assets/effects/sakura-card.mp4'
 import echoResonanceSrc from '../assets/effects/echo-resonance-card.mp4'
 import quantumSingularitySrc from '../assets/effects/quantum-singularity-card.mp4'
-import plasmaOverdriveSrc from '../assets/effects/plasma-overdrive-card.mp4'
 import cyberMatrixSrc from '../assets/effects/cyber-matrix-card.mp4'
 import glacialAuroraSrc from '../assets/effects/glacial-aurora-card.mp4'
 import voidAbyssSrc from '../assets/effects/void-abyss-card.mp4'
@@ -40,12 +39,6 @@ const REGISTRY: Record<string, ProfileVideoEffect> = {
     name: 'Singularidade Quântica',
     src: quantumSingularitySrc,
     position: 'center top'
-  },
-  plasma_overdrive: {
-    id: 'plasma_overdrive',
-    name: 'Núcleo de Plasma',
-    src: plasmaOverdriveSrc,
-    position: 'center bottom'
   },
   cyber_matrix: {
     id: 'cyber_matrix',

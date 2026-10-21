@@ -73,6 +73,8 @@
 
 /* Decorações de avatar do pacote novo */
 @import './styles/avatar-decorations-pack.css';
+/* Decorações pequenas (listas) paradas até passar o mouse (lib/decorationMotion.ts) */
+@import './styles/decoration-motion.css';
 
 /* Painel flutuante da chamada (quando você está em voz fora da tela da sala) */
 @import './styles/floating-call.css';
@@ -84,6 +86,8 @@
 @import './styles/aurora.css';
 @import './styles/aurora-dark.css';
 @import './styles/aurora-dark-overrides.css';
+@import './styles/name-fonts.css';
+@import './styles/aurora-calm.css';
 
 /* 8. Acessibilidade: foco visível, movimento reduzido e contraste (por último, vale sobre tudo) */
 @import './styles/accessibility.css';

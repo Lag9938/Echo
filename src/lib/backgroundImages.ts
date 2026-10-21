@@ -85,7 +85,7 @@ export interface ImageFreezer {
  * Guarda o que foi congelado para devolver exatamente como estava. `isActive` é conferido depois de cada
  * espera: se o app voltou para a frente enquanto a imagem era lida, ela não é congelada.
  */
-export function createImageFreezer(makeStill: StillMaker, isActive: () => boolean): ImageFreezer {
+export function createImageFreezer(makeStill: StillMaker, isActive: () => boolean, markAttribute?: string): ImageFreezer {
   const stills = new Map<string, Promise<string | null>>()
   const frozen = new Map<HTMLImageElement, FrozenImage>()
   const frozenBackgrounds = new Map<HTMLElement, FrozenBackground>()
@@ -104,7 +104,10 @@ export function createImageFreezer(makeStill: StillMaker, isActive: () => boolea
     const entry = frozen.get(img)
     if (!entry) return
     frozen.delete(img)
-    try { img.style.content = entry.previousContent } catch { /* a imagem saiu da tela */ }
+    try {
+      img.style.content = entry.previousContent
+      if (markAttribute) img.removeAttribute(markAttribute)
+    } catch { /* a imagem saiu da tela */ }
   }
 
   return {
@@ -120,6 +123,8 @@ export function createImageFreezer(makeStill: StillMaker, isActive: () => boolea
         if (!still || !img.isConnected || (img.currentSrc || img.src) !== url || frozen.has(img)) continue
         frozen.set(img, { url, previousContent: img.style.content })
         img.style.content = `url("${still}")`
+        // Marca para o CSS soltar a animação com o mouse em cima (styles/decoration-motion.css)
+        if (markAttribute) img.setAttribute(markAttribute, '')
       }
       // Quem saiu da tela não precisa mais ser lembrado
       for (const img of [...frozen.keys()]) if (!img.isConnected) frozen.delete(img)
@@ -172,9 +177,29 @@ export function createImageFreezer(makeStill: StillMaker, isActive: () => boolea
  * Liga a economia: congela ao ir para segundo plano, devolve ao voltar. Enquanto está em segundo plano,
  * confere de tempos em tempos as imagens que apareceram depois. Devolve a função que desliga tudo.
  */
+/** Imagem animada exibida até este tamanho (avatar, ícone, emoji) fica parada em uso e anima só com o mouse em cima */
+export const HOVER_ONLY_IMAGE_PX = 128
+/** Atributo das imagens paradas "até passar o mouse" (o CSS solta a animação no :hover) */
+export const HOVER_FROZEN_ATTR = 'data-echo-gif-frozen'
+
+/** Das imagens do documento, as pequenas que devem ficar paradas com o app em uso */
+export function hoverOnlyImages(images: Iterable<HTMLImageElement>): HTMLImageElement[] {
+  const out: HTMLImageElement[] = []
+  for (const img of images) {
+    const width = img.clientWidth
+    if (width > 0 && width <= HOVER_ONLY_IMAGE_PX) out.push(img)
+  }
+  return out
+}
+
 export function startBackgroundImageFreezer(doc: Document = document, win: Window = window): () => void {
   if (typeof (globalThis as any).ImageDecoder !== 'function') return () => {}
   const freezer = createImageFreezer(makeStillFrame, () => isAppInBackground(doc))
+  // Em uso: GIF de avatar/ícone/emoji parado no primeiro quadro, animando só com o mouse em cima (como no Discord).
+  // Medido na Loja: o próprio avatar em GIF aparecia em 16 cartões, os 16 animando juntos o tempo todo.
+  const hoverFreezer = createImageFreezer(makeStillFrame, () => !isAppInBackground(doc), HOVER_FROZEN_ATTR)
+  const freezeSmallNow = () => { void hoverFreezer.freeze(hoverOnlyImages(Array.from(doc.images))).catch(() => {}) }
+  let foregroundTimer: ReturnType<typeof setInterval> | null = null
   let timer: ReturnType<typeof setInterval> | null = null
 
   // Os fundos exigem olhar o estilo calculado de cada elemento, o que custa mais: só a cada 5 conferências
@@ -190,6 +215,10 @@ export function startBackgroundImageFreezer(doc: Document = document, win: Windo
 
   const update = () => {
     if (isAppInBackground(doc)) {
+      if (foregroundTimer) {
+        clearInterval(foregroundTimer)
+        foregroundTimer = null
+      }
       scans = 0
       freezeNow()
       if (!timer) timer = setInterval(freezeNow, RESCAN_INTERVAL_MS)
@@ -199,6 +228,8 @@ export function startBackgroundImageFreezer(doc: Document = document, win: Windo
         timer = null
       }
       freezer.restore()
+      freezeSmallNow()
+      if (!foregroundTimer) foregroundTimer = setInterval(freezeSmallNow, RESCAN_INTERVAL_MS)
     }
   }
 
@@ -212,6 +243,8 @@ export function startBackgroundImageFreezer(doc: Document = document, win: Windo
     win.removeEventListener('blur', update)
     win.removeEventListener('focus', update)
     if (timer) clearInterval(timer)
+    if (foregroundTimer) clearInterval(foregroundTimer)
     freezer.restore()
+    hoverFreezer.restore()
   }
 }

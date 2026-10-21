@@ -1,15 +1,6 @@
 import { AVATAR_DECORATIONS, type DecorationMetadata } from '../components/AvatarDecoration'
 import { PROFILE_EFFECTS, type ProfileEffectMetadata } from '../components/ProfileEffect'
 
-export interface AuraMetadata {
-  id: string
-  name: string
-  color: string
-  category: string
-  description: string
-  badge: string
-}
-
 export interface CardFinishMetadata {
   id: 'none' | 'holographic' | 'glass' | 'carbon'
   name: string
@@ -17,49 +8,6 @@ export interface CardFinishMetadata {
   description: string
   previewClass: string
 }
-
-export const NEON_AURAS: AuraMetadata[] = [
-  {
-    id: 'aura-cyan',
-    name: 'Ciano Elétrico',
-    color: '#00f2fe',
-    category: 'Aura',
-    description: 'Borda incandescente com pulso de alta frequência em ciano neon puro.',
-    badge: 'ORIGIN'
-  },
-  {
-    id: 'aura-purple',
-    name: 'Ametista Neon',
-    color: '#a855f7',
-    category: 'Místico',
-    description: 'Brilho profundo de ametista ultravioleta com atmosfera cósmica.',
-    badge: 'CÓSMICO'
-  },
-  {
-    id: 'aura-crimson',
-    name: 'Carmesim Surge',
-    color: '#ff4655',
-    category: 'Energia',
-    description: 'Anel térmico agressivo em vermelho rubi com glow de sobrecarga.',
-    badge: 'SURGE'
-  },
-  {
-    id: 'aura-gold',
-    name: 'Solar Dourado',
-    color: '#fbbf24',
-    category: 'Prestígio',
-    description: 'Resplendor dourado imperial com iluminação nobre de 24 quilates.',
-    badge: 'VIP'
-  },
-  {
-    id: 'aura-stealth',
-    name: 'Monocromático',
-    color: '#ffffff',
-    category: 'Minimalista',
-    description: 'Contorno de luz branca suave e minimalista para perfis discretos.',
-    badge: 'CLEAN'
-  }
-]
 
 export const CARD_FINISHES: CardFinishMetadata[] = [
   {
@@ -187,17 +135,17 @@ export const NAME_EFFECTS: NameEffectMetadata[] = [
 export interface UserInventory {
   decorations: string[]
   effects: string[]
-  auras: string[]
   finishes: string[]
   name_effects: string[]
+  name_fonts: string[]
 }
 
 const DEFAULT_INVENTORY: UserInventory = {
   decorations: [],
   effects: ['echo_resonance'],
-  auras: ['aura-cyan'],
   finishes: ['none'],
-  name_effects: ['resonance_cyan']
+  name_effects: ['resonance_cyan'],
+  name_fonts: []
 }
 
 export function getUserInventory(userId: string): UserInventory {
@@ -205,22 +153,22 @@ export function getUserInventory(userId: string): UserInventory {
   try {
     const rawDecos = localStorage.getItem(`echo-inventory-decorations-${userId}`)
     const rawEffects = localStorage.getItem(`echo-inventory-effects-${userId}`)
-    const rawAuras = localStorage.getItem(`echo-inventory-auras-${userId}`)
     const rawFinishes = localStorage.getItem(`echo-inventory-finishes-${userId}`)
     const rawNameEffects = localStorage.getItem(`echo-inventory-name_effects-${userId}`)
+    const rawNameFonts = localStorage.getItem(`echo-inventory-name_fonts-${userId}`)
 
     const decorations = rawDecos ? JSON.parse(rawDecos) : []
     const effects = rawEffects ? JSON.parse(rawEffects) : ['echo_resonance']
-    const auras = rawAuras ? JSON.parse(rawAuras) : ['aura-cyan']
     const finishes = rawFinishes ? JSON.parse(rawFinishes) : ['none']
     const nameEffects = rawNameEffects ? JSON.parse(rawNameEffects) : ['resonance_cyan']
+    const nameFonts = rawNameFonts ? JSON.parse(rawNameFonts) : []
 
     return {
       decorations: Array.from(new Set<string>(decorations)),
       effects: Array.from(new Set(['echo_resonance', ...effects])),
-      auras: Array.from(new Set(['aura-cyan', ...auras])),
       finishes: Array.from(new Set(['none', ...finishes])),
-      name_effects: Array.from(new Set(['resonance_cyan', ...nameEffects]))
+      name_effects: Array.from(new Set(['resonance_cyan', ...nameEffects])),
+      name_fonts: Array.from(new Set<string>(nameFonts))
     }
   } catch (e) {
     return DEFAULT_INVENTORY
@@ -229,7 +177,7 @@ export function getUserInventory(userId: string): UserInventory {
 
 export function hasUserAcquired(
   userId: string,
-  category: 'decorations' | 'effects' | 'auras' | 'finishes' | 'name_effects',
+  category: 'decorations' | 'effects' | 'finishes' | 'name_effects' | 'name_fonts',
   itemId: string
 ): boolean {
   if (!itemId || itemId === 'none') return true
@@ -239,7 +187,7 @@ export function hasUserAcquired(
 
 export function acquireCosmetic(
   userId: string,
-  category: 'decorations' | 'effects' | 'auras' | 'finishes' | 'name_effects',
+  category: 'decorations' | 'effects' | 'finishes' | 'name_effects' | 'name_fonts',
   itemId: string
 ): UserInventory {
   const inv = getUserInventory(userId)

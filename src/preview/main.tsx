@@ -596,7 +596,6 @@ function ShopScreen() {
           currentDecoration="none"
           onEquipDecoration={noop}
           onEquipProfileEffect={noop}
-          onEquipAvatarFrame={noop}
           onEquipCardFinish={noop}
           onEquipNameEffect={noop}
           onOpenInventory={noop}
@@ -616,13 +615,11 @@ function InventoryScreen() {
           avatarUrl={null}
           currentDecoration="none"
           currentProfileEffect="none"
-          currentAvatarFrame="none"
           currentCardFinish="none"
           currentNameEffect="celestial_gold"
           bio="Jogador ativo no Echo • Pronto para squad e clutch."
           onEquipDecoration={noop}
           onEquipProfileEffect={noop}
-          onEquipAvatarFrame={noop}
           onEquipCardFinish={noop}
           onEquipNameEffect={noop}
           onOpenShop={noop}

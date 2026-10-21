@@ -14,20 +14,9 @@ export interface AppearanceTabProps {
   onPerformanceModeChange?: (val: boolean) => void
   motionPreference?: MotionPreference
   onMotionPreferenceChange?: (value: MotionPreference) => void
-  sidebarLayout?: 'glass' | 'classic'
-  onSidebarLayoutChange?: (layout: 'glass' | 'classic') => void
 }
 
 /* ── Minimalist Clean SVG Icons (Zero cartoon emojis) ── */
-function GlassLayersIcon({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="12 2 2 7 12 12 22 7 12 2" />
-      <polyline points="2 17 12 22 22 17" />
-      <polyline points="2 12 12 17 22 12" />
-    </svg>
-  )
-}
 
 function PaletteIcon({ size = 18 }: { size?: number }) {
   return (
@@ -131,8 +120,6 @@ export function AppearanceTab({
   onPerformanceModeChange,
   motionPreference = 'system',
   onMotionPreferenceChange,
-  sidebarLayout = 'glass',
-  onSidebarLayoutChange,
 }: AppearanceTabProps) {
   const activeTheme = THEMES.find((t) => t.id === theme) || THEMES[0]
   const activeAccent = customAccentColor || activeTheme.accentColor
@@ -155,48 +142,6 @@ export function AppearanceTab({
       <div className="echo-appearance-header">
         <h2>Aparência</h2>
         <p>Personalize o visual do Echo com temas exclusivos. Assinantes premium têm acesso a temas personalizados.</p>
-      </div>
-
-      {/* ── Seletor de Superfície: Efeito Glass vs Clássico Sólido (Garantia de Reversão) ── */}
-      <div className="echo-glass-toggle-card">
-        <div style={{ maxWidth: '580px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ color: 'var(--accent-color)', display: 'flex', alignItems: 'center' }}>
-              <GlassLayersIcon size={18} />
-            </span>
-            <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>
-              Efeito de Vidro Fosco (Glass)
-            </span>
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: 700,
-                padding: '2px 8px',
-                borderRadius: '12px',
-                background: sidebarLayout === 'glass' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.08)',
-                color: sidebarLayout === 'glass' ? 'var(--accent-color)' : 'var(--text-muted)',
-                border: sidebarLayout === 'glass' ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid var(--border-color)',
-                transition: 'all 0.2s',
-              }}
-            >
-              {sidebarLayout === 'glass' ? 'Ativado (Translúcido)' : 'Desativado (Sólido Clássico)'}
-            </span>
-          </div>
-          <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.45' }}>
-            Aplica translucidez e desfoque suave de profundidade nos menus e painéis. Desative a qualquer momento para voltar ao modo clássico sólido com 100% de opacidade e economia de GPU.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          role="switch"
-          aria-checked={sidebarLayout === 'glass'}
-          onClick={() => onSidebarLayoutChange?.(sidebarLayout === 'glass' ? 'classic' : 'glass')}
-          className={`echo-switch-btn ${sidebarLayout === 'glass' ? 'active' : ''}`}
-          title="Alternar efeito vidro fosco"
-        >
-          <span className="echo-switch-knob" />
-        </button>
       </div>
 
       {/* ── OPÇÃO 3: Palco Único de Demonstração em Tempo Real ── */}

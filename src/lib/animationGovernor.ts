@@ -31,6 +31,7 @@
 // ela já tiver voltado, cancela de novo.
 
 import { isAppInBackground, isDecorativeLoop } from './backgroundAnimations'
+import { isSmallDecorationBox, showcaseCardOf } from './decorationMotion'
 
 export const GOVERNED_FPS = 30
 const ADOPT_INTERVAL_MS = 1000
@@ -56,7 +57,13 @@ const UNTOUCHED_SELECTOR = '[class*="name-effect-"]'
 
 function isUntouched(animation: GovernedAnimation): boolean {
   const target = animation.effect?.target
-  return Boolean(target && typeof target.closest === 'function' && target.closest(UNTOUCHED_SELECTOR))
+  if (!target || typeof target.closest !== 'function') return false
+  if (target.closest(UNTOUCHED_SELECTOR)) return true
+  // Decoração pequena (lista): parada pelo CSS e solta só com o mouse em cima (lib/decorationMotion.ts). Se o
+  // limitador a assumisse durante o mouse em cima, ela seguiria andando depois que o mouse saísse.
+  const wrap = target.closest('.echo-avatar-decoration-wrap') as HTMLElement | null
+  // Idem para a decoração de um cartão das grades da Loja/Inventário (só anima com o mouse no cartão)
+  return Boolean(wrap && (isSmallDecorationBox(wrap.clientWidth) || showcaseCardOf(wrap)))
 }
 
 /**
@@ -148,6 +155,10 @@ export function releaseAnimations(governed: GovernedAnimations): void {
 /** Liga o limitador. Devolve a função que desliga e devolve tudo ao normal. */
 export function startAnimationGovernor(doc: Document = document, win: Window = window, now: () => number = () => performance.now()): () => void {
   if (typeof doc.getAnimations !== 'function') return () => {}
+  // Um limitador só por janela. No desenvolvimento, cada recarga a quente deste arquivo ligava mais um sem desligar o
+  // anterior: medido no app aberto, 3 deles juntos davam 89 passos por segundo nas decorações (em vez de 30).
+  const slot = win as Window & { __echoAnimationGovernorStop?: () => void }
+  slot.__echoAnimationGovernorStop?.()
   const governed: GovernedAnimations = new Map()
   let stepTimer: ReturnType<typeof setInterval> | null = null
   let adoptTimer: ReturnType<typeof setInterval> | null = null
@@ -186,12 +197,17 @@ export function startAnimationGovernor(doc: Document = document, win: Window = w
   win.addEventListener('focus', update)
   update()
 
-  return () => {
+  const stop = () => {
     doc.removeEventListener('visibilitychange', update)
     win.removeEventListener('blur', update)
     win.removeEventListener('focus', update)
     if (stepTimer) clearInterval(stepTimer)
     if (adoptTimer) clearInterval(adoptTimer)
+    stepTimer = null
+    adoptTimer = null
     releaseAnimations(governed)
+    if (slot.__echoAnimationGovernorStop === stop) delete slot.__echoAnimationGovernorStop
   }
+  slot.__echoAnimationGovernorStop = stop
+  return stop
 }

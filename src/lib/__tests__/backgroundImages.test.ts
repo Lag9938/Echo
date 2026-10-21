@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { backgroundUrls, createImageFreezer, isFreezeCandidate } from '../backgroundImages'
+import { HOVER_FROZEN_ATTR, backgroundUrls, createImageFreezer, hoverOnlyImages, isFreezeCandidate } from '../backgroundImages'
 
 function image(src: string) {
   const img = document.createElement('img')
@@ -34,6 +34,21 @@ describe('imagens animadas em segundo plano', () => {
     freezer.restore()
     expect(img.style.content).toBe('')
     expect(freezer.frozenCount()).toBe(0)
+  })
+
+  it('em uso: congela marcando a imagem (o CSS solta a animação com o mouse em cima) e desmarca ao devolver', async () => {
+    const freezer = createImageFreezer(async () => 'blob:parado', () => true, HOVER_FROZEN_ATTR)
+    const img = image(GIF)
+    await freezer.freeze([img])
+    expect(img.hasAttribute(HOVER_FROZEN_ATTR)).toBe(true)
+    freezer.restore()
+    expect(img.hasAttribute(HOVER_FROZEN_ATTR)).toBe(false)
+  })
+
+  it('em uso, só as pequenas ficam paradas (avatar, ícone, emoji); GIF grande do chat continua animando', () => {
+    const sized = (width: number) => { const img = image(GIF); Object.defineProperty(img, 'clientWidth', { value: width }); return img }
+    const avatar = sized(64), icon = sized(34), chatGif = sized(400), hidden = sized(0)
+    expect(hoverOnlyImages([avatar, icon, chatGif, hidden])).toEqual([avatar, icon])
   })
 
   it('a mesma imagem em vários lugares é lida uma vez só', async () => {

@@ -115,6 +115,23 @@ describe('limitador das animações decorativas', () => {
     expect(gone.cancel).toHaveBeenCalledTimes(1)
   })
 
+  it('decoração pequena (lista) não é assumida: o CSS a deixa parada e só o mouse a solta', () => {
+    const decoAnimation = (boxWidth: number) => {
+      const wrap = document.createElement('div')
+      wrap.className = 'echo-avatar-decoration-wrap'
+      Object.defineProperty(wrap, 'clientWidth', { value: boxWidth })
+      const anim = animation()
+      wrap.appendChild(anim.effect.target)
+      return anim
+    }
+    const small = decoAnimation(50) // avatar de 32 px numa lista
+    const large = decoAnimation(170) // avatar de 112 px num perfil
+    const governed = new Map<any, number>()
+    adoptDecorativeAnimations([small, large], governed)
+    expect(small.pause).not.toHaveBeenCalled()
+    expect([...governed.keys()]).toEqual([large])
+  })
+
   it('desligar devolve as animações ao navegador', () => {
     const shimmer = animation()
     const governed = new Map<any, number>()
@@ -178,6 +195,20 @@ describe('limitador das animações decorativas', () => {
       listeners.focus()
       clock += 34; vi.advanceTimersByTime(34)
       expect(shimmer.currentTime - before).toBeLessThan(100)
+      stop()
+    })
+
+    it('ligar de novo desliga o anterior: nunca dois limitadores andando juntos (recarga a quente no desenvolvimento)', () => {
+      const shimmer = animation()
+      const state = { hidden: false, focused: true }
+      const { doc, win } = fakeDocument([shimmer], state)
+      let clock = 0
+      startAnimationGovernor(doc, win, () => clock)
+      const stop = startAnimationGovernor(doc, win, () => clock)
+      const tick = 1000 / GOVERNED_FPS
+      for (let i = 0; i < GOVERNED_FPS; i++) { clock += tick; vi.advanceTimersByTime(tick) }
+      // Um segundo de relógio = um segundo de animação (com dois limitadores seriam dois)
+      expect(Math.round(shimmer.currentTime)).toBe(1000)
       stop()
     })
 

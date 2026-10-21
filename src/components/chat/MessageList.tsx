@@ -6,7 +6,8 @@ import { AvatarDecoration } from '../AvatarDecoration'
 import { ModernVoiceNotePlayer } from './ModernVoiceNotePlayer'
 import { ChatLinkEmbed } from './ChatLinkEmbed'
 import { formatChatDateDivider, formatMessageText } from '../../lib/messageFormatter'
-import { NAME_EFFECTS } from '../../lib/cosmeticsData'
+import { nameFontStyle, resolveNameFontId } from '../../lib/nameFonts'
+import { useNameFontStore } from '../../stores/useNameFontStore'
 import { CommunityBadge } from '../CommunityBadge'
 import {
   HashtagIcon,
@@ -212,6 +213,7 @@ export const MessageList = memo(function MessageList({
 }: MessageListProps) {
   const isThreadList = variant === 'thread'
   const isVoiceChat = variant === 'voice'
+  const myNameFont = useNameFontStore((s) => s.fontId)
   // Cada evento entra antes da primeira mensagem mais nova que ele; os mais recentes que tudo vão no fim.
   // Durante uma busca, ficam de fora (só resultados).
   const { eventsBefore, trailingEvents } = useMemo(() => {
@@ -519,12 +521,12 @@ export const MessageList = memo(function MessageList({
                           <div className="msg-meta">
                             {(() => {
                               const authorNameEffect = message.author_id === user.id ? (nameEffect || 'resonance_cyan') : (presenceData[message.author_id]?.name_effect || localStorage.getItem(`echo-name-effect-${message.author_id}`) || 'none')
-                              const authorNameMeta = NAME_EFFECTS.find(n => n.id === authorNameEffect)
+                              const authorFont = nameFontStyle(resolveNameFontId(message.author_id, user.id, myNameFont, presenceData))
                               return (
                                 <>
                                   <strong 
                                     className={authorNameEffect && authorNameEffect !== 'none' ? `name-effect-${authorNameEffect}` : ''}
-                                    style={{ color: (authorNameEffect && authorNameEffect !== 'none') ? undefined : roleInk(msgRole?.color), cursor: 'pointer' }}
+                                    style={{ color: (authorNameEffect && authorNameEffect !== 'none') ? undefined : roleInk(msgRole?.color), cursor: 'pointer', ...authorFont }}
                                     onClick={() => {
                                       if (currentSpace) {
                                         const memRoles = memberRoleMap[message.author_id] || []
@@ -544,13 +546,6 @@ export const MessageList = memo(function MessageList({
                                   >
                                     {resolvedAuthorName}
                                   </strong>
-                                  {authorNameEffect && authorNameEffect !== 'none' && (
-                                    <span className="name-soundwave-indicator" title={authorNameMeta?.name || 'Aura Sonora'}>
-                                      <span className="name-soundwave-bar" style={{ background: authorNameMeta?.themeColor || '#00f2fe' }} />
-                                      <span className="name-soundwave-bar" style={{ background: authorNameMeta?.themeColor || '#00f2fe' }} />
-                                      <span className="name-soundwave-bar" style={{ background: authorNameMeta?.themeColor || '#00f2fe' }} />
-                                    </span>
-                                  )}
                                 </>
                               )
                             })()}

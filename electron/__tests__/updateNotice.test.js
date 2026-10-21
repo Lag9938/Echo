@@ -35,3 +35,23 @@ describe('buildNoticeWindowScript', () => {
     expect(script).toContain('[int]($seconds * 30)')
   })
 })
+
+describe('aviso do atualizador por tema', () => {
+  const script = (theme) => buildNoticeWindowScript({ title: 'T', subtitle: 'S', theme }).join('\n')
+
+  it('o padrão é o tema escuro (grafite chapado, sem brilho colorido)', () => {
+    const s = script(undefined)
+    expect(s).toContain('Light = $false')
+    expect(s).toContain('FromArgb(22, 22, 24)')
+    expect(s).not.toContain('PathGradientBrush')
+  })
+
+  it('o tema claro usa papel quente, texto escuro e fundo da janela claro', () => {
+    const s = script('light')
+    expect(s).toContain('Light = $true')
+    expect(s).toContain('FromArgb(251, 250, 247)')
+    expect(s).toContain("$form.BackColor = [System.Drawing.Color]::FromArgb(251, 250, 247)")
+    // texto principal escuro no claro
+    expect(s).toContain('if ($L) { [System.Drawing.Color]::FromArgb(30, 30, 33) }')
+  })
+})

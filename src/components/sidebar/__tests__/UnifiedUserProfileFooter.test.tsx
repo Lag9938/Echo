@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { act } from 'react'
+import { act, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { UnifiedUserProfileFooter } from '../UnifiedUserProfileFooter'
 import type { FooterCallControls } from '../UnifiedUserProfileFooter'
@@ -142,3 +142,41 @@ describe('rodapé do perfil com chamada', () => {
   })
 })
 
+describe('fechar o painel da chamada clicando no perfil', () => {
+  function Stateful({ call }: { call: FooterCallControls }) {
+    const [open, setOpen] = useState(false)
+    return (
+      <UnifiedUserProfileFooter
+        displayName="Igor"
+        presenceStatus="online"
+        updatePresenceStatus={() => {}}
+        call={call}
+        showStatusMenu={open}
+        setShowStatusMenu={setOpen}
+      />
+    )
+  }
+
+  it('o segundo clique fecha e o painel fica fechado mesmo com o mouse em cima, até o mouse sair', () => {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    act(() => { createRoot(container).render(<Stateful call={makeCall()} />) })
+    const footer = () => container.querySelector('.sidebar-profile-footer')!
+    const profile = container.querySelector('.profile-footer-info')!
+
+    click(profile)
+    expect(footer().classList.contains('status-open')).toBe(true)
+
+    click(profile)
+    expect(footer().classList.contains('status-open')).toBe(false)
+    // :hover e :focus-within continuariam abrindo o painel; esta classe o mantém fechado
+    expect(footer().classList.contains('call-dismissed')).toBe(true)
+
+    act(() => { footer().dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body })) })
+    expect(footer().classList.contains('call-dismissed')).toBe(false)
+
+    // Abrir de novo funciona normalmente
+    click(profile)
+    expect(footer().classList.contains('status-open')).toBe(true)
+  })
+})

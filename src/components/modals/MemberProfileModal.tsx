@@ -21,6 +21,8 @@ import {
 } from '../icons'
 import { CommunityBadge } from '../CommunityBadge'
 import { useUIStore } from '../../stores/useUIStore'
+import { useNameFontStore } from '../../stores/useNameFontStore'
+import { nameFontStyle, readStoredNameFont } from '../../lib/nameFonts'
 import type { MemberProfileModalProps } from '../../types'
 
 export function MemberProfileModal({
@@ -56,6 +58,7 @@ export function MemberProfileModal({
   const [pokeCount, setPokeCount] = useState(0)
   const [isPoking, setIsPoking] = useState(false)
   const [copiedHandle, setCopiedHandle] = useState(false)
+  const myNameFont = useNameFontStore((s) => s.fontId)
 
   const memberId = inspectedMember.user.id
   const isMe = currentUser?.id === memberId
@@ -315,7 +318,7 @@ export function MemberProfileModal({
           <div className="member-profile-header-info">
             <div className="member-profile-name-line">
               <div className="member-profile-name-cluster">
-                <h3 className="member-profile-display-name">{inspectedMember.user.display_name}</h3>
+                <h3 className="member-profile-display-name" style={nameFontStyle(isMe ? myNameFont : readStoredNameFont(memberId))}>{inspectedMember.user.display_name}</h3>
                 {memberClanTag && (
                   <span
                     className="member-clan-tag"

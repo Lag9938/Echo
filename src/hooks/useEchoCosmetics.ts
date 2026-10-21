@@ -4,6 +4,8 @@ import { THEMES, DEFAULT_THEME_ID } from '../lib/themes'
 import { accentVariants } from '../lib/accentContrast'
 import { readMotionPreference, type MotionPreference } from '../lib/motionPreference'
 import { buildPresencePayload } from '../lib/presencePayload'
+import { storeNameFont } from '../lib/nameFonts'
+import { useNameFontStore } from '../stores/useNameFontStore'
 
 export interface UseEchoCosmeticsOptions {
   user: User
@@ -36,10 +38,12 @@ export function useEchoCosmetics({
     return localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || ''
   })
 
-  const [avatarFrame, setAvatarFrame] = useState(() => localStorage.getItem(`echo-avatar-frame-${user.id}`) || 'aura-cyan')
   const [cardFinish, setCardFinish] = useState<'none' | 'holographic' | 'glass' | 'carbon'>(() => (localStorage.getItem(`echo-card-finish-${user.id}`) as any) || 'none')
   const [nameEffect, setNameEffect] = useState<string>(() => localStorage.getItem(`echo-name-effect-${user.id}`) || 'resonance_cyan')
-  const [shopInitialTab, setShopInitialTab] = useState<'decorations' | 'profile_effects' | 'auras' | 'finishes' | 'name_effects'>('decorations')
+  // Fonte do meu nome (fica numa store: mensagens, membros e cartão mudam na hora ao equipar)
+  const nameFont = useNameFontStore((s) => s.fontId)
+  useEffect(() => { useNameFontStore.getState().load(user.id) }, [user.id])
+  const [shopInitialTab, setShopInitialTab] = useState<'decorations' | 'profile_effects' | 'finishes' | 'name_effects' | 'name_fonts'>('decorations')
   const [settingsInitialTab, setSettingsInitialTab] = useState<'profile' | 'subscription' | 'inventory' | 'audio' | 'appearance' | 'windows' | 'changelog'>('profile')
 
   // Theme & Appearance States
@@ -56,7 +60,10 @@ export function useEchoCosmetics({
   const [customAccentColor, setCustomAccentColor] = useState<string>(() => localStorage.getItem('echo-custom-accent') || '')
   const [chatDensity, setChatDensity] = useState<'cozy' | 'compact'>(() => (localStorage.getItem('echo-chat-density') as any) || 'cozy')
   const [performanceMode, setPerformanceMode] = useState<boolean>(() => localStorage.getItem('echo-performance-mode') === 'true')
-  const [sidebarLayout, setSidebarLayout] = useState<'glass' | 'classic'>(() => (localStorage.getItem('echo-sidebar-layout') as 'glass' | 'classic') || 'glass')
+  // Sempre o visual Aurora atual: as regras dele (styles/aurora-calm.css e cia.) dependem da classe echo-layout-glass.
+  // O botão "Efeito de Vidro Fosco" saiu de Aparência; quem o tinha desligado ("classic", salvo no aparelho) volta
+  // ao visual atual em vez de ficar preso num modo antigo que não acompanha o Aurora.
+  const [sidebarLayout, setSidebarLayout] = useState<'glass' | 'classic'>('glass')
 
   // Apply Theme class
   useEffect(() => {
@@ -192,6 +199,7 @@ export function useEchoCosmetics({
       avatarDecoration,
       profileEffect,
       nameEffect,
+      nameFont,
       voiceChannelId: activeVoiceChannelIdRef?.current,
       voiceSpaceId: activeVoiceSpaceIdRef?.current
     }),
@@ -240,11 +248,6 @@ export function useEchoCosmetics({
     }
   }
 
-  const handleEquipAvatarFrame = (frameId: string) => {
-    setAvatarFrame(frameId)
-    localStorage.setItem(`echo-avatar-frame-${user.id}`, frameId)
-  }
-
   const handleEquipCardFinish = (finishId: string) => {
     setCardFinish(finishId as any)
     localStorage.setItem(`echo-card-finish-${user.id}`, finishId)
@@ -259,6 +262,17 @@ export function useEchoCosmetics({
         presenceChannelRef.current.track(buildFullPresencePayload({ name_effect: effId })).catch(() => {})
       }
     } catch (error) { console.warn('[Cosméticos] Falha ao salvar o efeito de nome:', error) }
+  }
+
+  const handleEquipNameFont = (fontId: string) => {
+    const val = fontId === 'none' ? '' : fontId
+    useNameFontStore.getState().set(val)
+    storeNameFont(user.id, val)
+    try {
+      if (presenceChannelRef.current) {
+        presenceChannelRef.current.track(buildFullPresencePayload({ name_font: val })).catch(() => {})
+      }
+    } catch (error) { console.warn('[Cosméticos] Falha ao avisar a presença sobre a fonte do nome:', error) }
   }
 
   function selectTheme(themeId: string) {
@@ -339,12 +353,11 @@ export function useEchoCosmetics({
     setAvatarDecoration,
     profileEffect,
     setProfileEffect,
-    avatarFrame,
-    setAvatarFrame,
     cardFinish,
     setCardFinish,
     nameEffect,
     setNameEffect,
+    nameFont,
     shopInitialTab,
     setShopInitialTab,
     settingsInitialTab,
@@ -369,9 +382,9 @@ export function useEchoCosmetics({
     setSidebarLayout,
     handleEquipDecoration,
     handleEquipProfileEffect,
-    handleEquipAvatarFrame,
     handleEquipCardFinish,
     handleEquipNameEffect,
+    handleEquipNameFont,
     selectTheme,
     toggleTheme,
     handleSimulateSubscription,

@@ -3,7 +3,7 @@
   "description": "Comunidades e conversas em tempo real.",
   "author": "Echo Lobby",
   "private": true,
-  "version": "0.62.2",
+  "version": "0.62.3",
   "main": "electron-main.js",
   "type": "module",
   "scripts": {
@@ -22,6 +22,12 @@
     "aurora:dark": "node scripts/gen-aurora-dark.mjs"
   },
   "dependencies": {
+    "@fontsource/caveat": "^5.3.0",
+    "@fontsource/cormorant-garamond": "^5.3.0",
+    "@fontsource/dancing-script": "^5.3.0",
+    "@fontsource/great-vibes": "^5.3.0",
+    "@fontsource/orbitron": "^5.3.0",
+    "@fontsource/pacifico": "^5.3.0",
     "@sapphi-red/web-noise-suppressor": "^0.4.0",
     "@supabase/supabase-js": "^2.112.4",
     "@tanstack/react-virtual": "^3.14.11",

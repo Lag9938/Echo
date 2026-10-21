@@ -4,6 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import type { Space, Channel, ServerAuditLog, FriendshipRequest, RolePermissions } from '../types'
 import { getPublicInviteUrl } from '../lib/invite'
 import { getOrCreateSpaceInvite } from '../lib/spaceInvites'
+import { gifUploadProblem, prepareImageUpload } from '../lib/imageUpload'
 
 export interface UseEchoSpaceSettingsOptions {
   user: User
@@ -188,10 +189,17 @@ export function useEchoSpaceSettings({
     }
   }, [supabase])
 
-  const handleSpaceIconUpload = useCallback(async (file: File) => {
+  const handleSpaceIconUpload = useCallback(async (original: File) => {
     if (!editingSpace) return
+    // Todo mundo do espaço baixa o ícone: nunca sobe no tamanho original (lib/imageUpload.ts)
+    const gifProblem = gifUploadProblem(original)
+    if (gifProblem) {
+      showToast('Imagem grande demais', gifProblem, 'info')
+      return
+    }
     setUploadingSpaceIcon(true)
     try {
+      const file = await prepareImageUpload(original, 'spaceIcon')
       if (supabase) {
         const ext = file.name.split('.').pop()
         const path = `spaces/${editingSpace.id}/icon_${Date.now()}.${ext}`
@@ -222,10 +230,16 @@ export function useEchoSpaceSettings({
     if (editingSpace) addAuditLog(editingSpace.id, 'Removeu o ícone do espaço')
   }, [editingSpace, addAuditLog])
 
-  const handleSpaceBannerUpload = useCallback(async (file: File) => {
+  const handleSpaceBannerUpload = useCallback(async (original: File) => {
     if (!editingSpace) return
+    const gifProblem = gifUploadProblem(original)
+    if (gifProblem) {
+      showToast('Imagem grande demais', gifProblem, 'info')
+      return
+    }
     setUploadingSpaceBanner(true)
     try {
+      const file = await prepareImageUpload(original, 'spaceBanner')
       if (supabase) {
         const ext = file.name.split('.').pop()
         const path = `spaces/${editingSpace.id}/banner_${Date.now()}.${ext}`

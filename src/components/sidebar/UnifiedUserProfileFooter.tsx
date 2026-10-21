@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { AvatarDecoration } from '../AvatarDecoration'
 import { GameLogo } from '../GameLogos'
 import { formatGameDuration } from '../../lib/formatters'
@@ -82,8 +82,24 @@ export function UnifiedUserProfileFooter({
     setShowStatusMenu?.(false)
   }
 
+  // O painel da chamada também abre com o mouse em cima e com o foco: fechado pelo clique, ele fica fechado até o
+  // mouse sair do rodapé (senão o segundo clique no perfil não fechava nada)
+  const [callDismissed, setCallDismissed] = useState(false)
+  const handleProfileClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (call && showStatusMenu) {
+      setCallDismissed(true)
+      event.currentTarget.blur()
+    } else {
+      setCallDismissed(false)
+    }
+    setShowStatusMenu?.(!showStatusMenu)
+  }
+
   return (
-    <div className={`sidebar-profile-footer${call ? ' has-call' : ''}${showStatusMenu ? ' status-open' : ''}`}>
+    <div
+      className={`sidebar-profile-footer${call ? ' has-call' : ''}${showStatusMenu ? ' status-open' : ''}${callDismissed ? ' call-dismissed' : ''}`}
+      onMouseLeave={() => setCallDismissed(false)}
+    >
       {call && (
         <ProfileCallPopover
           call={call}
@@ -107,7 +123,7 @@ export function UnifiedUserProfileFooter({
         <div className="profile-footer-top-row">
           <div
             className="profile-footer-info"
-            onClick={() => setShowStatusMenu?.(!showStatusMenu)}
+            onClick={handleProfileClick}
             style={{ cursor: 'pointer' }}
             tabIndex={0}
           >

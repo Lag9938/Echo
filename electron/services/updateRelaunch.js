@@ -16,7 +16,7 @@ const escapeSingleQuoted = (text) => String(text).replace(/'/g, "''")
  *
  * Cada decisão vai para o update.log. Se a instalação falhar, quem volta é a versão antiga, que ainda está instalada.
  */
-export function buildRelaunchScript(execPath, updaterDirName, logFile) {
+export function buildRelaunchScript(execPath, updaterDirName, logFile, theme = 'dark') {
   const exe = escapeSingleQuoted(execPath)
   const updaterPattern = escapeSingleQuoted(`*\\${updaterDirName}\\*`)
   const log = escapeSingleQuoted(logFile || '')
@@ -32,7 +32,7 @@ export function buildRelaunchScript(execPath, updaterDirName, logFile) {
     // Aviso na tela enquanto o instalador (silencioso) trabalha: sem ele eram 20 a 70 segundos sem nada
     // aparecendo, e parecia que o Echo tinha fechado de vez. Se a janela não puder ser criada, o vigia segue igual.
     // O visual (e o fato de a janela ser desenhada à mão) está em updateNotice.js.
-    ...buildNoticeWindowScript({ width: 420, height: 128, title: 'Atualizando o Echo', subtitle: 'Ele reabre sozinho em instantes.' }),
+    ...buildNoticeWindowScript({ width: 420, height: 128, title: 'Atualizando o Echo', subtitle: 'Ele reabre sozinho em instantes.', theme }),
     'if ($form) { Log "aviso de atualização na tela" } else { Log ("aviso de atualização não pôde ser mostrado: " + $script:noticeError) }',
     // Espera 1 s mantendo o aviso vivo e animado (uma janela que não processa eventos aparece como "não respondendo")
     'function Wait1 { Pump 1 }',
@@ -82,10 +82,10 @@ export function buildWatchdogSpawn(scriptFile) {
  * Inicia o vigia em segundo plano. Só no Windows, onde o instalador NSIS é quem reabre o app.
  * O script vai para um arquivo .ps1 (em vez de -EncodedCommand, que antivírus costumam bloquear).
  */
-export function startRelaunchWatchdog({ execPath, updaterDirName, logFile, scriptFile }) {
+export function startRelaunchWatchdog({ execPath, updaterDirName, logFile, scriptFile, theme = 'dark' }) {
   if (process.platform !== 'win32') return false
   try {
-    fs.writeFileSync(scriptFile, '\ufeff' + buildRelaunchScript(execPath, updaterDirName, logFile), 'utf8')
+    fs.writeFileSync(scriptFile, '\ufeff' + buildRelaunchScript(execPath, updaterDirName, logFile, theme), 'utf8')
     const { command, args, options } = buildWatchdogSpawn(scriptFile)
     const child = spawn(command, args, options)
     child.on('error', (err) => appendUpdateLog(logFile, `vigia de reabertura falhou ao iniciar: ${err.message}`))

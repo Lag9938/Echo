@@ -6,6 +6,7 @@ import { appendUpdateLog, startRelaunchWatchdog } from '../services/updateRelaun
 import { isVersionBlocked, keepInstallerCopy, recordPendingUpdate } from '../services/rollback.js'
 import { createUpdateState, isRendererHealthy, runReadyFallback } from '../services/updateFallback.js'
 import { isWithinRollout, rolloutOf } from '../services/rollout.js'
+import { probeTheme, readStoredTheme } from '../services/themeProbe.js'
 
 /** Tempo para a tela mostrar (e confirmar) o aviso antes de o processo principal assumir */
 const FALLBACK_DELAY_MS = 30000
@@ -20,6 +21,10 @@ let beforeInstall = () => {}
 // A busca em andamento foi pedida pela pessoa (menu da bandeja)? Quem pede na mão recebe a versão mesmo
 // fora do grupo da liberação gradual (services/rollout.js)
 let manualCheck = false
+// Tema (claro/escuro) em uso na tela, para as janelinhas do atualizador, que rodam com o app fechado
+let lastTheme = null
+let themeWindow = () => null
+const rememberTheme = () => probeTheme(themeWindow(), app.getPath('userData')).then((theme) => { lastTheme = theme; return theme })
 
 /** Instala a atualização já baixada e reabre o app. Usado pela tela, pela bandeja e pela conferência automática. */
 export function installDownloadedUpdate(reason = 'pedido pela tela') {
@@ -33,7 +38,8 @@ export function installDownloadedUpdate(reason = 'pedido pela tela') {
       execPath: process.execPath,
       updaterDirName: `${app.getName().toLowerCase()}-updater`,
       logFile: logFile(),
-      scriptFile: path.join(app.getPath('userData'), 'update-relaunch.ps1')
+      scriptFile: path.join(app.getPath('userData'), 'update-relaunch.ps1'),
+      theme: lastTheme || readStoredTheme(app.getPath('userData'))
     })
   }
   beforeInstall()
@@ -93,7 +99,9 @@ export function setupUpdatesIpc(safeHandle, isDevelopment, onInstallUpdate, getM
     if (win && !win.isDestroyed()) win.webContents.send(channel, payload)
   }
 
-  ipcMain.on('install-update', () => installDownloadedUpdate('pedido pela tela'))
+  themeWindow = getMainWindow
+  // Antes de instalar, confere o tema na tela (leva milissegundos; sem resposta, vale o último guardado)
+  ipcMain.on('install-update', () => { rememberTheme().catch(() => {}).finally(() => installDownloadedUpdate('pedido pela tela')) })
   // A tela avisa que mostrou "Nova versão pronta": o caminho normal está funcionando
   ipcMain.on('update-ready-ack', (_event, version) => { if (typeof version === 'string') state.acknowledged = version })
   // A tela pode ter carregado depois de a atualização ficar pronta: ela pergunta o estado ao abrir
@@ -169,6 +177,7 @@ export function setupUpdatesIpc(safeHandle, isDevelopment, onInstallUpdate, getM
         .catch(() => {})
     }
     state.status = 'ready'; state.version = info.version; state.percent = 100
+    rememberTheme().catch(() => {})
     send('update-ready', { version: info.version })
 
     // Uma conferência por versão: se a tela não deu sinal de vida, o processo principal assume

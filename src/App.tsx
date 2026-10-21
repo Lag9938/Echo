@@ -531,7 +531,6 @@ function Echo({ user }: { user: User }) {
     setAvatarDecoration,
     profileEffect,
     setProfileEffect,
-    avatarFrame,
     cardFinish,
     nameEffect,
     shopInitialTab,
@@ -555,9 +554,10 @@ function Echo({ user }: { user: User }) {
     setSidebarLayout,
     handleEquipDecoration,
     handleEquipProfileEffect,
-    handleEquipAvatarFrame,
     handleEquipCardFinish,
     handleEquipNameEffect,
+    handleEquipNameFont,
+    nameFont,
     selectTheme,
     toggleTheme,
     handleSimulateSubscription,
@@ -2267,14 +2267,13 @@ function Echo({ user }: { user: User }) {
             currentAvatarUrl={profileAvatarUrl}
             avatarDecoration={avatarDecoration}
             profileEffect={profileEffect}
-            avatarFrame={avatarFrame}
             cardFinish={cardFinish}
             nameEffect={nameEffect}
             onEquipDecoration={handleEquipDecoration}
             onEquipProfileEffect={handleEquipProfileEffect}
-            onEquipAvatarFrame={handleEquipAvatarFrame}
             onEquipCardFinish={handleEquipCardFinish}
             onEquipNameEffect={handleEquipNameEffect}
+            onEquipNameFont={handleEquipNameFont}
             initialTab={settingsInitialTab}
             onOpenShop={handleOpenShopFromSettings}
             customStatus={customStatus}
@@ -2361,14 +2360,15 @@ function Echo({ user }: { user: User }) {
               avatarUrl={profileAvatarUrl}
               currentDecoration={avatarDecoration}
               currentProfileEffect={profileEffect}
-              currentAvatarFrame={avatarFrame}
               currentCardFinish={cardFinish}
               currentNameEffect={nameEffect}
+              currentNameFont={nameFont}
+              isPremiumUser={isPremiumUser}
               onEquipDecoration={handleEquipDecoration}
               onEquipProfileEffect={handleEquipProfileEffect}
-              onEquipAvatarFrame={handleEquipAvatarFrame}
               onEquipCardFinish={handleEquipCardFinish}
               onEquipNameEffect={handleEquipNameEffect}
+              onEquipNameFont={handleEquipNameFont}
               initialTab={shopInitialTab}
               onOpenInventory={() => {
                 setSettingsInitialTab('inventory')

@@ -6,7 +6,8 @@ import { UserPlusIcon, CrownIcon, VolumeIcon, SearchIcon, ChevronDownIcon } from
 import { GameLogo, getGameBrandColor } from '../GameLogos'
 import { AvatarDecoration } from '../AvatarDecoration'
 import { formatGameDuration } from '../../lib/formatters'
-import { NAME_EFFECTS } from '../../lib/cosmeticsData'
+import { nameFontStyle, resolveNameFontId } from '../../lib/nameFonts'
+import { useNameFontStore } from '../../stores/useNameFontStore'
 import { CommunityBadge } from '../CommunityBadge'
 import { useSpacesStore } from '../../stores/useSpacesStore'
 import { getHoistedRole, sortRoles } from '../../lib/permissions'
@@ -92,6 +93,7 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
   spaceVoiceUsers: Record<string, any[]>
 }) {
 
+  const myNameFont = useNameFontStore((s) => s.fontId)
   const [searchQuery, setSearchQuery] = React.useState('')
   const [isSearchOpen, setIsSearchOpen] = React.useState(false)
   const searchInputRef = React.useRef<HTMLInputElement | null>(null)
@@ -203,7 +205,6 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
     const memberRole = getUserHighestRole(currentSpace.id, member.user.id)
     const memberDeco = member.user.id === user.id ? (avatarDecoration || null) : (presenceData[member.user.id]?.avatar_decoration || member.user?.avatar_decoration || null)
     const memberNameEffect = member.user.id === user.id ? (nameEffect || 'resonance_cyan') : (presenceData[member.user.id]?.name_effect || localStorage.getItem(`echo-name-effect-${member.user.id}`) || 'none')
-    const memberNameMeta = NAME_EFFECTS.find(n => n.id === memberNameEffect)
 
     const memberClanTag = localStorage.getItem(`echo-clan-tag-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-${user.id}`) : null)
     const memberClanTagColor = localStorage.getItem(`echo-clan-tag-color-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-color-${user.id}`) : '#00f2fe') || '#00f2fe'
@@ -244,12 +245,7 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
 
     return (
       <div 
-        className={`member-card ${memberNameEffect && memberNameEffect !== 'none' ? 'has-name-effect' : ''}`}
-        style={memberNameMeta ? {
-          '--member-aura-border': `${memberNameMeta.themeColor}55`,
-          '--member-aura-bg': `${memberNameMeta.themeColor}12`,
-          '--member-aura-shadow': `${memberNameMeta.themeColor}22`
-        } as React.CSSProperties : undefined}
+        className="member-card"
         key={member.user.id}
         onClick={() => {
           if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
@@ -329,7 +325,7 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
             <span
               className={`member-name ${memberNameEffect && memberNameEffect !== 'none' ? `name-effect-${memberNameEffect}` : ''}`}
               title={member.user.display_name}
-              style={{ color: (memberNameEffect && memberNameEffect !== 'none') ? undefined : (memberRole?.color || (isCreator ? '#f59e0b' : 'var(--text-primary)')) }}
+              style={{ color: (memberNameEffect && memberNameEffect !== 'none') ? undefined : (memberRole?.color || (isCreator ? '#f59e0b' : 'var(--text-primary)')), ...nameFontStyle(resolveNameFontId(member.user.id, user.id, myNameFont, presenceData)) }}
             >
               {member.user.display_name}
             </span>
@@ -338,13 +334,6 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
               <CommunityBadge badgeId={memberBadge} size={14} />
             )}
 
-            {memberNameEffect && memberNameEffect !== 'none' && (
-              <span className="name-soundwave-indicator" title={memberNameMeta?.name || 'Aura Sonora'}>
-                <span className="name-soundwave-bar" style={{ background: memberNameMeta?.themeColor || '#00f2fe' }} />
-                <span className="name-soundwave-bar" style={{ background: memberNameMeta?.themeColor || '#00f2fe' }} />
-                <span className="name-soundwave-bar" style={{ background: memberNameMeta?.themeColor || '#00f2fe' }} />
-              </span>
-            )}
 
             {memberClanTag && (
               <span 

@@ -2,13 +2,14 @@ import { useState, useEffect, useMemo, type CSSProperties } from 'react'
 import {
   AVATAR_DECORATIONS,
   PROFILE_EFFECTS,
-  NEON_AURAS,
   CARD_FINISHES,
   NAME_EFFECTS,
   getUserInventory,
   hasUserAcquired,
   type UserInventory
 } from '../lib/cosmeticsData'
+import { NAME_FONTS, getNameFont, nameFontStyle } from '../lib/nameFonts'
+import { useNameFontStore } from '../stores/useNameFontStore'
 import { DecoratedAvatar } from './DecoratedAvatar'
 import { ProfileEffect } from './ProfileEffect'
 import { AvatarDecoration } from './AvatarDecoration'
@@ -20,7 +21,6 @@ export interface CosmeticsInventoryProps {
   avatarUrl?: string | null
   currentDecoration: string
   currentProfileEffect: string
-  currentAvatarFrame: string
   currentCardFinish: string
   currentNameEffect?: string
   clanTag?: string
@@ -30,13 +30,13 @@ export interface CosmeticsInventoryProps {
   bannerCustom?: string
   onEquipDecoration: (id: string) => Promise<void> | void
   onEquipProfileEffect: (id: string) => Promise<void> | void
-  onEquipAvatarFrame: (id: string) => void
   onEquipCardFinish: (id: string) => void
   onEquipNameEffect?: (id: string) => void
-  onOpenShop: (initialTab?: 'decorations' | 'profile_effects' | 'auras' | 'finishes' | 'name_effects') => void
+  onEquipNameFont?: (id: string) => void
+  onOpenShop: (initialTab?: 'decorations' | 'profile_effects' | 'finishes' | 'name_effects' | 'name_fonts') => void
 }
 
-type InventoryTab = 'decorations' | 'effects' | 'auras' | 'finishes' | 'name_effects'
+type InventoryTab = 'decorations' | 'effects' | 'finishes' | 'name_effects' | 'name_fonts'
 
 export function CosmeticsInventory({
   userId,
@@ -44,7 +44,6 @@ export function CosmeticsInventory({
   avatarUrl,
   currentDecoration,
   currentProfileEffect,
-  currentAvatarFrame,
   currentCardFinish,
   currentNameEffect = 'none',
   clanTag,
@@ -54,11 +53,13 @@ export function CosmeticsInventory({
   bannerCustom,
   onEquipDecoration,
   onEquipProfileEffect,
-  onEquipAvatarFrame,
   onEquipCardFinish,
   onEquipNameEffect,
+  onEquipNameFont,
   onOpenShop
 }: CosmeticsInventoryProps) {
+  // A fonte do meu nome vem da store (a mesma que desenha o nome nas mensagens e na lista de membros)
+  const currentNameFont = useNameFontStore((s) => s.fontId)
   const [activeTab, setActiveTab] = useState<InventoryTab>('decorations')
   const [inventory, setInventory] = useState<UserInventory>(() => getUserInventory(userId))
   const [filterOnlyAcquired, setFilterOnlyAcquired] = useState<boolean>(false)
@@ -67,9 +68,9 @@ export function CosmeticsInventory({
   // Live Stage Preview States
   const [previewDeco, setPreviewDeco] = useState<string>(currentDecoration || 'none')
   const [previewEffect, setPreviewEffect] = useState<string>(currentProfileEffect || 'none')
-  const [previewAura, setPreviewAura] = useState<string>(currentAvatarFrame || 'aura-cyan')
   const [previewFinish, setPreviewFinish] = useState<string>(currentCardFinish || 'none')
   const [previewNameEffect, setPreviewNameEffect] = useState<string>(currentNameEffect || 'none')
+  const [previewNameFont, setPreviewNameFont] = useState<string>(currentNameFont || 'none')
 
   // Keep preview in sync with incoming props when equipped externally
   useEffect(() => {
@@ -81,16 +82,16 @@ export function CosmeticsInventory({
   }, [currentProfileEffect])
 
   useEffect(() => {
-    setPreviewAura(currentAvatarFrame || 'aura-cyan')
-  }, [currentAvatarFrame])
-
-  useEffect(() => {
     setPreviewFinish(currentCardFinish || 'none')
   }, [currentCardFinish])
 
   useEffect(() => {
     setPreviewNameEffect(currentNameEffect || 'none')
   }, [currentNameEffect])
+
+  useEffect(() => {
+    setPreviewNameFont(currentNameFont || 'none')
+  }, [currentNameFont])
 
   // Sync inventory
   useEffect(() => {
@@ -109,9 +110,9 @@ export function CosmeticsInventory({
     return {
       decorations: AVATAR_DECORATIONS.filter(d => inventory.decorations.includes(d.id)).length,
       effects: PROFILE_EFFECTS.filter(e => inventory.effects.includes(e.id)).length,
-      auras: NEON_AURAS.filter(a => inventory.auras.includes(a.id)).length,
       finishes: CARD_FINISHES.filter(f => inventory.finishes.includes(f.id)).length,
-      name_effects: NAME_EFFECTS.filter(n => (inventory.name_effects || []).includes(n.id)).length
+      name_effects: NAME_EFFECTS.filter(n => (inventory.name_effects || []).includes(n.id)).length,
+      name_fonts: NAME_FONTS.filter(f => (inventory.name_fonts || []).includes(f.id)).length
     }
   }, [inventory])
 
@@ -126,10 +127,6 @@ export function CosmeticsInventory({
         setPreviewEffect(itemId)
         await onEquipProfileEffect(itemId)
         showToast(itemId === 'none' ? 'Efeito de perfil desequipado.' : 'Efeito de Perfil equipado!')
-      } else if (category === 'auras') {
-        setPreviewAura(itemId)
-        onEquipAvatarFrame(itemId)
-        showToast('Moldura & Aura Neon equipada!')
       } else if (category === 'finishes') {
         setPreviewFinish(itemId)
         onEquipCardFinish(itemId)
@@ -138,6 +135,10 @@ export function CosmeticsInventory({
         setPreviewNameEffect(itemId)
         onEquipNameEffect?.(itemId)
         showToast(itemId === 'none' ? 'Efeito de nome desequipado.' : 'Efeito de Nome equipado!')
+      } else if (category === 'name_fonts') {
+        setPreviewNameFont(itemId)
+        onEquipNameFont?.(itemId)
+        showToast(itemId === 'none' ? 'Fonte do nome removida.' : 'Fonte do nome equipada!')
       }
     } catch (e) {
       console.error('Error equipping cosmetic:', e)
@@ -150,12 +151,12 @@ export function CosmeticsInventory({
       await handleEquipItem('decorations', 'none')
     } else if (category === 'effects') {
       await handleEquipItem('effects', 'none')
-    } else if (category === 'auras') {
-      await handleEquipItem('auras', 'aura-cyan')
     } else if (category === 'finishes') {
       await handleEquipItem('finishes', 'none')
     } else if (category === 'name_effects') {
       await handleEquipItem('name_effects', 'none')
+    } else if (category === 'name_fonts') {
+      await handleEquipItem('name_fonts', 'none')
     }
   }
 
@@ -250,17 +251,20 @@ export function CosmeticsInventory({
 
             <button
               type="button"
-              className={`echo-inv-tab ${activeTab === 'auras' ? 'active' : ''}`}
-              onClick={() => setActiveTab('auras')}
+              className={`echo-inv-tab ${activeTab === 'name_fonts' ? 'active' : ''}`}
+              onClick={() => setActiveTab('name_fonts')}
             >
               <svg className="echo-inv-tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="12 2 20 7 20 17 12 22 4 17 4 7 12 2" />
+                <polyline points="4 7 4 4 20 4 20 7" />
+                <line x1="9" x2="15" y1="20" y2="20" />
+                <line x1="12" x2="12" y1="4" y2="20" />
               </svg>
-              <span>Auras</span>
+              <span>Fonte</span>
               <span className="echo-inv-tab-count">
-                {ownedCounts.auras}/{NEON_AURAS.length}
+                {ownedCounts.name_fonts}/{NAME_FONTS.length}
               </span>
             </button>
+
 
             <button
               type="button"
@@ -334,8 +338,8 @@ export function CosmeticsInventory({
               {/* Avatar & Identity details */}
               <div className="echo-stage-card-body">
                 <div className="echo-stage-avatar-row">
-                  {/* Avatar squircle with neon aura & animated decoration */}
-                  <div className={`echo-stage-avatar-squircle ${previewAura}`}>
+                  {/* Avatar squircle with animated decoration */}
+                  <div className={`echo-stage-avatar-squircle`}>
                     <div className="echo-stage-avatar-inner">
                       {avatarUrl ? (
                         <img src={avatarUrl} alt={displayName} />
@@ -389,7 +393,7 @@ export function CosmeticsInventory({
                   {activeTab === 'decorations' && (AVATAR_DECORATIONS.find(d => d.id === previewDeco)?.name || 'Sem Decoração')}
                   {activeTab === 'effects' && (PROFILE_EFFECTS.find(e => e.id === previewEffect)?.name || 'Sem Efeito')}
                   {activeTab === 'name_effects' && (NAME_EFFECTS.find(n => n.id === previewNameEffect)?.name || 'Sem Efeito de Nome')}
-                  {activeTab === 'auras' && (NEON_AURAS.find(a => a.id === previewAura)?.name || 'Ciano Elétrico')}
+                  {activeTab === 'name_fonts' && (getNameFont(previewNameFont)?.name || 'Fonte padrão')}
                   {activeTab === 'finishes' && (CARD_FINISHES.find(f => f.id === previewFinish)?.name || 'Minimalista Fosco')}
                 </span>
               </div>
@@ -402,7 +406,7 @@ export function CosmeticsInventory({
                     if (activeTab === 'decorations') handleEquipItem('decorations', previewDeco)
                     if (activeTab === 'effects') handleEquipItem('effects', previewEffect)
                     if (activeTab === 'name_effects') handleEquipItem('name_effects', previewNameEffect)
-                    if (activeTab === 'auras') handleEquipItem('auras', previewAura)
+                    if (activeTab === 'name_fonts') handleEquipItem('name_fonts', previewNameFont)
                     if (activeTab === 'finishes') handleEquipItem('finishes', previewFinish)
                   }}
                 >
@@ -416,7 +420,7 @@ export function CosmeticsInventory({
                     setPreviewDeco(currentDecoration || 'none')
                     setPreviewEffect(currentProfileEffect || 'none')
                     setPreviewNameEffect(currentNameEffect || 'none')
-                    setPreviewAura(currentAvatarFrame || 'aura-cyan')
+                    setPreviewNameFont(currentNameFont || 'none')
                     setPreviewFinish(currentCardFinish || 'none')
                   }}
                   title="Restaurar visual atual do perfil"
@@ -653,81 +657,6 @@ export function CosmeticsInventory({
             </div>
           )}
 
-          {/* TAB 3: MOLDURAS & AURAS NEON */}
-          {activeTab === 'auras' && (
-            <div className="echo-inv-grid">
-              {NEON_AURAS.map(aura => {
-                const isAcquired = hasUserAcquired(userId, 'auras', aura.id)
-                if (filterOnlyAcquired && !isAcquired) return null
-                const isEquipped = currentAvatarFrame === aura.id
-                const isPreviewing = previewAura === aura.id
-
-                return (
-                  <div
-                    key={aura.id}
-                    className={`echo-inv-card aura-card ${isPreviewing ? 'previewing' : ''} ${isEquipped ? 'is-active' : ''} ${!isAcquired ? 'locked' : ''}`}
-                    onClick={() => setPreviewAura(aura.id)}
-                    style={{ '--item-theme': aura.color } as CSSProperties}
-                  >
-                    <div className="echo-inv-card-preview-box aura-box">
-                      <div
-                        className={`echo-hero-avatar-squircle ${aura.id}`}
-                        style={{
-                          width: '54px',
-                          height: '54px',
-                          borderRadius: '50%',
-                          background: '#13151f',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        <DecoratedAvatar avatarUrl={avatarUrl} displayName={displayName} size={48} status="online" />
-                      </div>
-                      {isAcquired ? (
-                        <span className="echo-inv-owned-tag">✓ No Inventário</span>
-                      ) : (
-                        <span className="echo-inv-store-tag">Na Loja</span>
-                      )}
-                    </div>
-
-                    <div className="echo-inv-card-body">
-                      <div className="echo-inv-card-title-row">
-                        <h4>{aura.name}</h4>
-                        <span className="echo-inv-badge-aura" style={{ color: aura.color, borderColor: `${aura.color}40`, backgroundColor: `${aura.color}15` }}>
-                          {aura.badge}
-                        </span>
-                      </div>
-                      <p>{aura.description}</p>
-                    </div>
-
-                    <div className="echo-inv-card-actions" onClick={e => e.stopPropagation()}>
-                      {isEquipped ? (
-                        <span className="echo-inv-equipped-pill">✓ Equipado</span>
-                      ) : isAcquired ? (
-                        <button
-                          type="button"
-                          className="echo-inv-equip-btn"
-                          onClick={() => handleEquipItem('auras', aura.id)}
-                        >
-                          Equipar
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="echo-inv-shop-link-btn"
-                          onClick={handleOpenStore}
-                        >
-                          <span>Obter na Loja</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
           {/* TAB 4: ACABAMENTOS DE CARTÃO */}
           {activeTab === 'finishes' && (
             <div className="echo-inv-grid">
@@ -801,7 +730,7 @@ export function CosmeticsInventory({
             </div>
           )}
 
-          {/* TAB 5: NAME EFFECTS & SOUND AURAS */}
+          {/* TAB 5: CORES DE NOME */}
           {activeTab === 'name_effects' && (
             <div className="echo-inv-grid">
               {NAME_EFFECTS.map(effect => {
@@ -822,11 +751,6 @@ export function CosmeticsInventory({
                         {displayName || 'Jogador'}
                       </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '6px' }}>
-                        <span className="name-soundwave-indicator">
-                          <span className="name-soundwave-bar" style={{ background: effect.themeColor }} />
-                          <span className="name-soundwave-bar" style={{ background: effect.themeColor }} />
-                          <span className="name-soundwave-bar" style={{ background: effect.themeColor }} />
-                        </span>
                         <span className="name-effect-badge-tag" style={{ backgroundColor: `${effect.themeColor}20`, color: effect.themeColor, border: `1px solid ${effect.themeColor}50`, fontSize: '8.5px' }}>
                           {effect.badge}
                         </span>
@@ -857,6 +781,68 @@ export function CosmeticsInventory({
                           type="button"
                           className="echo-inv-equip-btn"
                           onClick={() => handleEquipItem('name_effects', effect.id)}
+                        >
+                          Equipar
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="echo-inv-shop-link-btn"
+                          onClick={handleOpenStore}
+                        >
+                          <span>Obter na Loja</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* TAB 6: FONTES DE NOME */}
+          {activeTab === 'name_fonts' && (
+            <div className="echo-inv-grid">
+              {NAME_FONTS.map(font => {
+                const isAcquired = (inventory.name_fonts || []).includes(font.id)
+                if (filterOnlyAcquired && !isAcquired) return null
+                const isEquipped = currentNameFont === font.id
+                const isPreviewing = previewNameFont === font.id
+
+                return (
+                  <div
+                    key={font.id}
+                    className={`echo-inv-card ${isEquipped ? 'equipped' : ''} ${isPreviewing ? 'previewing' : ''}`}
+                    onClick={() => setPreviewNameFont(font.id)}
+                  >
+                    <div className="echo-inv-card-stage" style={{ minHeight: '90px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+                      <span style={{ display: 'inline-block', color: 'var(--text-primary)', ...nameFontStyle(font.id), fontSize: `${22 * font.scale}px` }}>
+                        {displayName || 'Jogador'}
+                      </span>
+                      {isEquipped && (
+                        <span className="echo-inv-equipped-pill">● Ativa</span>
+                      )}
+                      {!isAcquired && (
+                        <span className="echo-inv-store-tag">Na Loja</span>
+                      )}
+                    </div>
+
+                    <div className="echo-inv-card-body">
+                      <div className="echo-inv-card-title-row">
+                        <h4>{font.name}</h4>
+                        <span className="echo-inv-badge-finish">{font.category}</span>
+                      </div>
+                      <p>{font.description}</p>
+                    </div>
+
+                    <div className="echo-inv-card-actions" onClick={e => e.stopPropagation()}>
+                      {isEquipped ? (
+                        <span className="echo-inv-equipped-pill">✓ Equipada</span>
+                      ) : isAcquired ? (
+                        <button
+                          type="button"
+                          className="echo-inv-equip-btn"
+                          onClick={() => handleEquipItem('name_fonts', font.id)}
                         >
                           Equipar
                         </button>

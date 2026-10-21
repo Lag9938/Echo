@@ -1,4 +1,4 @@
-﻿import React, { memo } from 'react'
+import React, { memo } from 'react'
 import type { Space, Channel } from '../../types'
 import {
   ClockIcon,
@@ -58,6 +58,36 @@ export const ChannelHeader = memo(function ChannelHeader({
             </span> 
             {selectedChannel.name}
           </h1>
+
+          {/* Buscar no canal: logo ao lado do nome do canal */}
+          <div className="channel-search-box-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            {showSearchInput ? (
+              <div className="channel-search-field" style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)', padding: '2px 8px' }}>
+                <SearchIcon style={{ width: '13px', height: '13px', color: 'var(--text-muted)' }} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar mensagens ou de:@autor"
+                  autoFocus
+                  style={{ border: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: '12px', padding: '4px 6px', outline: 'none', width: 'min(260px, 34vw)' }}
+                />
+                {searchQuery && (
+                  <button type="button" onClick={() => setSearchQuery('')} style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '11px', padding: '0 2px' }}>✕</button>
+                )}
+                <button type="button" onClick={() => { setShowSearchInput(false); setSearchQuery('') }} style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '12px', marginLeft: '4px' }}>✕</button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="channel-header-action-btn"
+                onClick={() => setShowSearchInput(true)}
+                title="Buscar no canal"
+              >
+                <SearchIcon style={{ width: '15px', height: '15px' }} />
+              </button>
+            )}
+          </div>
           {selectedChannel.topic && (
             <>
               <span style={{ color: 'var(--border-color)', margin: '0 4px' }}>|</span>
@@ -75,36 +105,6 @@ export const ChannelHeader = memo(function ChannelHeader({
             <span>{selectedChannel.slowmode_seconds}s</span>
           </span>
         ) : null}
-
-        {/* Search messages in channel */}
-        <div className="channel-search-box-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          {showSearchInput ? (
-            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)', padding: '2px 8px' }}>
-              <SearchIcon style={{ width: '13px', height: '13px', color: 'var(--text-muted)' }} />
-              <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar mensagens ou de:@autor..."
-                autoFocus
-                style={{ border: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: '12px', padding: '4px 6px', outline: 'none', width: '160px' }}
-              />
-              {searchQuery && (
-                <button type="button" onClick={() => setSearchQuery('')} style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '11px', padding: '0 2px' }}>✕</button>
-              )}
-              <button type="button" onClick={() => { setShowSearchInput(false); setSearchQuery('') }} style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '12px', marginLeft: '4px' }}>✕</button>
-            </div>
-          ) : (
-            <button 
-              type="button" 
-              className="channel-header-action-btn" 
-              onClick={() => setShowSearchInput(true)} 
-              title="Buscar no canal"
-            >
-              <SearchIcon style={{ width: '15px', height: '15px' }} />
-            </button>
-          )}
-        </div>
 
         {/* Pinned Messages Button */}
         <button 

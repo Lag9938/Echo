@@ -30,6 +30,7 @@ describe('buildPresencePayload', () => {
       avatar_decoration: '',
       profile_effect: '',
       name_effect: 'resonance_cyan',
+      name_font: '',
       badge: 'owner',
       banner_custom: '',
       banner_preset: 'synthwave',
@@ -43,7 +44,7 @@ describe('buildPresencePayload', () => {
     const keys = Object.keys(buildPresencePayload(base({ avatarUrl: 'https://x.test/a.png' }))).sort()
     expect(keys).toEqual([
       'avatar_decoration', 'avatar_url', 'badge', 'banner_custom', 'banner_preset', 'banner_url', 'current_game',
-      'custom_status', 'display_name', 'game_presence', 'name_effect', 'online_at', 'presence_status',
+      'custom_status', 'display_name', 'game_presence', 'name_effect', 'name_font', 'online_at', 'presence_status',
       'profile_effect', 'user_id', 'voice_channel_id', 'voice_space_id'
     ])
   })

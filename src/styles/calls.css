@@ -1438,9 +1438,6 @@
   z-index: 2;
 }
 
-.echo-inv-card-preview-box.aura-box {
-  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.3) 70%);
-}
 
 .echo-inv-owned-tag {
   position: absolute;
@@ -2132,20 +2129,6 @@ body.echo-layout-glass .echo-inv-equipped-pill {
   }
 }
 
-/* Anima com transform (scaleY), nunca com height: a altura da barra entrava no cálculo da linha do nome, e
-   cada mensagem com efeito de nome crescia e encolhia uma fração de pixel sem parar. Somando todas, o chat
-   inteiro subia e descia alguns pixels o tempo todo (as letras "vibravam"). O transform não mexe no layout. */
-@keyframes soundwaveBar {
-  0% {
-    transform: scaleY(0.3);
-    opacity: 0.4;
-  }
-  100% {
-    transform: scaleY(1);
-    opacity: 1;
-  }
-}
-
 /* Base effect styles */
 .name-effect-resonance_cyan {
   background: linear-gradient(90deg, #00f2fe 0%, #38bdf8 45%, #7dd3fc 70%, #00f2fe 100%) !important;
@@ -2207,44 +2190,7 @@ body.echo-layout-glass .echo-inv-equipped-pill {
   font-weight: 700 !important;
 }
 
-/* Soundwave micro-equalizer pill */
-.name-soundwave-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  height: 12px;
-  margin-left: 4px;
-  vertical-align: middle;
-}
-.name-soundwave-bar {
-  width: 2px;
-  height: 10px;
-  border-radius: 1px;
-  transform-origin: center;
-  animation: soundwaveBar 1.2s ease-in-out infinite alternate;
-}
-.name-soundwave-bar:nth-child(1) {
-  animation-delay: 0s;
-}
-.name-soundwave-bar:nth-child(2) {
-  animation-delay: 0.25s;
-}
-.name-soundwave-bar:nth-child(3) {
-  animation-delay: 0.5s;
-}
-
-/* Member card aura interaction */
-.member-card.has-name-effect {
-  position: relative;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.member-card.has-name-effect:hover {
-  border-color: var(--member-aura-border, rgba(0, 242, 254, 0.35)) !important;
-  background: linear-gradient(90deg, var(--member-aura-bg, rgba(0, 242, 254, 0.08)), rgba(255, 255, 255, 0.02)) !important;
-  box-shadow: 0 2px 14px var(--member-aura-shadow, rgba(0, 242, 254, 0.12));
-}
-
-/* Sound Aura Badge in Shop & Member Card */
+/* Selo do efeito de nome (loja e inventario) */
 .name-effect-badge-tag {
   display: inline-flex;
   align-items: center;

@@ -36,6 +36,8 @@ import {
   VolumeIcon
 } from '../icons'
 import { AvatarDecoration } from '../AvatarDecoration'
+import { nameFontStyle, resolveNameFontId } from '../../lib/nameFonts'
+import { useNameFontStore } from '../../stores/useNameFontStore'
 import { CallElapsed } from '../voice/CallHeaderMeta'
 
 export interface ChannelsSidebarProps {
@@ -132,6 +134,7 @@ export interface ChannelsSidebarProps {
 }
 
 export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSidebarProps) {
+  const myNameFont = useNameFontStore((s) => s.fontId)
   const storeSpaces = useSpacesStore((s) => s.spaces)
   const storeExpandedSpace = useSpacesStore((s) => s.expandedSpace)
   const storeSpaceChannels = useSpacesStore((s) => s.spaceChannels)
@@ -634,7 +637,7 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                               p.displayName.slice(0, 1).toUpperCase()
                             )}
                           </div>
-                          <span className="sidebar-voice-name">{p.displayName}</span>
+                          <span className="sidebar-voice-name" style={nameFontStyle(resolveNameFontId(p.userId, user?.id ?? '', myNameFont, props.presenceData))}>{p.displayName}</span>
                           {p.isSpeaking && (
                             <span className="voice-speaking-bars" title="Falando...">
                               <span /><span /><span /><span /><span />

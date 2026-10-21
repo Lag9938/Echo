@@ -18,11 +18,49 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.62.3',
+    title: 'Echo v0.62.3 - Mais Leve e Mais Calmo',
+    date: '21 de Outubro de 2026',
+    tagline: 'O Echo gasta bem menos processador, ganha um visual mais limpo e fontes para o seu nome na Loja.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '⚡',
+        badge: 'DESEMPENHO',
+        title: 'Bem Menos Processador',
+        description: 'Decorações, GIFs de avatar e vídeos da Loja que aparecem várias vezes na tela agora ficam parados e animam quando você passa o mouse, como no Discord. Os destaques (seu perfil, a prévia da Loja) continuam animando. Medido: a Loja passou de 7,7% para cerca de 2% do processador.'
+      },
+      {
+        icon: '🌙',
+        badge: 'VISUAL',
+        title: 'Visual Mais Calmo',
+        description: 'Superfícies sólidas, bordas finas e uma cor de destaque só, no lugar do vidro translúcido. A opção "Efeito de Vidro Fosco" saiu de Aparência: o visual novo vale para todo mundo.'
+      },
+      {
+        icon: '✒️',
+        badge: 'NOVO',
+        title: 'Fontes para o Seu Nome',
+        description: 'A Loja ganhou fontes para o nome: escolha um estilo e ele aparece nas mensagens, na lista de membros e no seu cartão.'
+      },
+      {
+        icon: '🖼️',
+        badge: 'MELHORIA',
+        title: 'Fotos Mais Leves',
+        description: 'Avatar, capa e ícone de espaço são reduzidos ao tamanho que o app mostra antes de enviar, e GIFs animados podem ter até 3 MB. Quem mostra a sua foto gasta menos memória.'
+      },
+      {
+        icon: '📞',
+        badge: 'CORREÇÃO',
+        title: 'Painel da Chamada Fecha no Clique',
+        description: 'Clicar de novo no seu perfil fecha o painel da chamada no rodapé, mesmo com o mouse em cima.'
+      }
+    ]
+  },
+  {
     version: '0.62.2',
     title: 'Echo v0.62.2 - Câmeras na Transmissão',
     date: '20 de Outubro de 2026',
     tagline: 'Assista à transmissão e às câmeras ao mesmo tempo, e respostas que levam à mensagem original.',
-    isLatest: true,
     highlights: [
       {
         icon: '🎥',

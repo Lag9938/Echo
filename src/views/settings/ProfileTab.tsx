@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { AvatarDecoration } from '../../components/AvatarDecoration'
 import { ProfileEffect } from '../../components/ProfileEffect'
 import { PhotoAdjustModal } from '../../components/modals/PhotoAdjustModal'
+import { gifUploadProblem, prepareImageUpload } from '../../lib/imageUpload'
 import { StatusGlyph } from '../../components/StatusGlyph'
 import {
   BadgeCrownIcon,
@@ -33,15 +34,13 @@ export interface ProfileTabProps {
   customStatus: string
   avatarDecoration?: string | null
   profileEffect?: string | null
-  avatarFrame?: string
   cardFinish?: 'none' | 'holographic' | 'glass' | 'carbon'
   nameEffect?: string
   onEquipDecoration?: (id: string) => Promise<void> | void
   onEquipProfileEffect?: (id: string) => Promise<void> | void
-  onEquipAvatarFrame?: (id: string) => void
   onEquipCardFinish?: (id: string) => void
   onEquipNameEffect?: (id: string) => void
-  onOpenShop?: (targetTab?: 'decorations' | 'profile_effects' | 'auras' | 'finishes' | 'name_effects') => void
+  onOpenShop?: (targetTab?: 'decorations' | 'profile_effects' | 'finishes' | 'name_effects') => void
   onProfileUpdate: (name: string, avatar: string, bannerUrl?: string, bannerPreset?: string) => void
   onCustomStatusUpdate: (status: string) => void
   /** Status de presença de verdade do app (o mesmo do rodapé) e a função que o troca para todo mundo */
@@ -59,12 +58,10 @@ export const ProfileTab = memo(function ProfileTab({
   customStatus,
   avatarDecoration,
   profileEffect,
-  avatarFrame: _avatarFrame = 'aura-cyan',
   cardFinish: _cardFinish = 'none',
   nameEffect: _nameEffect = 'resonance_cyan',
   onEquipDecoration: _onEquipDecoration,
   onEquipProfileEffect: _onEquipProfileEffect,
-  onEquipAvatarFrame: _onEquipAvatarFrame,
   onEquipCardFinish: _onEquipCardFinish,
   onEquipNameEffect: _onEquipNameEffect,
   onOpenShop: _onOpenShop,
@@ -84,7 +81,6 @@ export const ProfileTab = memo(function ProfileTab({
   const [localPronouns, setLocalPronouns] = useState(() => localStorage.getItem(`echo-pronouns-${userId}`) || 'ele/dele')
   const [localBannerPreset, setLocalBannerPreset] = useState(() => localStorage.getItem(`echo-banner-preset-${userId}`) || 'synthwave')
   const [localBannerCustom, setLocalBannerCustom] = useState(() => localStorage.getItem(`echo-banner-custom-${userId}`) || '')
-  const [localAvatarFrame, setLocalAvatarFrame] = useState(() => localStorage.getItem(`echo-avatar-frame-${userId}`) || 'aura-cyan')
   const [localBadge, setLocalBadge] = useState(() => localStorage.getItem(`echo-badge-${userId}`) || 'owner')
   const [localPresenceStatus, setLocalPresenceStatus] = useState<'online' | 'idle' | 'dnd' | 'offline'>(appPresence)
   const [localShowBadge, setLocalShowBadge] = useState<boolean>(() => localStorage.getItem(`echo-show-badge-${userId}`) !== 'false')
@@ -210,7 +206,6 @@ export const ProfileTab = memo(function ProfileTab({
     pronouns: localStorage.getItem(`echo-pronouns-${userId}`) || 'ele/dele',
     bannerPreset: localStorage.getItem(`echo-banner-preset-${userId}`) || 'synthwave',
     bannerCustom: localStorage.getItem(`echo-banner-custom-${userId}`) || '',
-    avatarFrame: localStorage.getItem(`echo-avatar-frame-${userId}`) || 'aura-cyan',
     badge: localStorage.getItem(`echo-badge-${userId}`) || 'owner',
     presenceStatus: appPresence,
     showBadge: localStorage.getItem(`echo-show-badge-${userId}`) !== 'false',
@@ -235,7 +230,6 @@ export const ProfileTab = memo(function ProfileTab({
     localPronouns !== savedValues.pronouns ||
     localBannerPreset !== savedValues.bannerPreset ||
     localBannerCustom !== savedValues.bannerCustom ||
-    localAvatarFrame !== savedValues.avatarFrame ||
     localBadge !== savedValues.badge ||
     localPresenceStatus !== savedValues.presenceStatus ||
     localShowBadge !== savedValues.showBadge ||
@@ -254,7 +248,6 @@ export const ProfileTab = memo(function ProfileTab({
     setLocalPronouns(savedValues.pronouns)
     setLocalBannerPreset(savedValues.bannerPreset)
     setLocalBannerCustom(savedValues.bannerCustom)
-    setLocalAvatarFrame(savedValues.avatarFrame)
     setLocalBadge(savedValues.badge)
     setLocalPresenceStatus(savedValues.presenceStatus)
     setLocalShowBadge(savedValues.showBadge)
@@ -267,9 +260,16 @@ export const ProfileTab = memo(function ProfileTab({
 
   // A foto é salva NA HORA (não espera o botão "Salvar"): antes ela só mudava na sua tela e, se você fechasse
   // sem salvar, ninguém via a troca. O resto do perfil continua como rascunho até você salvar.
-  async function handleAvatarUpload(file: File) {
+  async function handleAvatarUpload(original: File) {
     if (!supabase) return
+    // Nunca sobe foto gigante: todo mundo que vê o seu avatar baixa e decodifica a imagem inteira (lib/imageUpload.ts)
+    const gifProblem = gifUploadProblem(original)
+    if (gifProblem) {
+      alert(gifProblem)
+      return
+    }
     setUploadingAvatar(true)
+    const file = await prepareImageUpload(original, 'avatar')
 
     // Prévia imediata enquanto envia
     const previousAvatar = savedValues.avatarUrl
@@ -305,9 +305,15 @@ export const ProfileTab = memo(function ProfileTab({
     }
   }
 
-  async function handleBannerUpload(file: File) {
+  async function handleBannerUpload(original: File) {
+    const gifProblem = gifUploadProblem(original)
+    if (gifProblem) {
+      alert(gifProblem)
+      return
+    }
     setUploadingBanner(true)
     try {
+      const file = await prepareImageUpload(original, 'banner')
       if (supabase) {
         const ext = file.name.split('.').pop() || 'png'
         const path = `banners/${userId}/${Date.now()}.${ext}`
@@ -367,7 +373,6 @@ export const ProfileTab = memo(function ProfileTab({
       localStorage.setItem(`echo-banner-custom-${userId}`, localBannerCustom)
       localStorage.setItem('echo-banner-preset', localBannerPreset)
       localStorage.setItem('echo-banner-custom', localBannerCustom)
-      localStorage.setItem(`echo-avatar-frame-${userId}`, localAvatarFrame)
       localStorage.setItem(`echo-badge-${userId}`, localBadge)
       localStorage.setItem(`echo-presence-status-${userId}`, localPresenceStatus)
       localStorage.setItem(`echo-show-badge-${userId}`, JSON.stringify(localShowBadge))
@@ -397,7 +402,6 @@ export const ProfileTab = memo(function ProfileTab({
         pronouns: localPronouns,
         bannerPreset: localBannerPreset,
         bannerCustom: localBannerCustom,
-        avatarFrame: localAvatarFrame,
         badge: localBadge,
         presenceStatus: localPresenceStatus,
         showBadge: localShowBadge,
@@ -493,7 +497,7 @@ export const ProfileTab = memo(function ProfileTab({
               <div className="echo-hero-info-section">
                 <div className="echo-hero-avatar-wrap">
                   <div 
-                    className={`echo-hero-avatar-squircle ${localAvatarFrame}`}
+                    className={`echo-hero-avatar-squircle`}
                     onClick={() => avatarFileInputRef.current?.click()}
                     title="Clique para trocar foto de perfil"
                     style={{ position: 'relative', borderRadius: '50%' }}

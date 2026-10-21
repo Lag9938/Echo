@@ -20,16 +20,15 @@ export interface SettingsViewProps {
   customStatus: string
   avatarDecoration?: string | null
   profileEffect?: string | null
-  avatarFrame?: string
   cardFinish?: 'none' | 'holographic' | 'glass' | 'carbon'
   nameEffect?: string
   onEquipDecoration?: (id: string) => Promise<void> | void
   onEquipProfileEffect?: (id: string) => Promise<void> | void
-  onEquipAvatarFrame?: (id: string) => void
   onEquipCardFinish?: (id: string) => void
   onEquipNameEffect?: (id: string) => void
+  onEquipNameFont?: (id: string) => void
   initialTab?: SettingsTab
-  onOpenShop?: (targetTab?: 'decorations' | 'profile_effects' | 'auras' | 'finishes' | 'name_effects') => void
+  onOpenShop?: (targetTab?: 'decorations' | 'profile_effects' | 'finishes' | 'name_effects' | 'name_fonts') => void
   onProfileUpdate: (name: string, avatar: string, bannerUrl?: string, bannerPreset?: string) => void
   onCustomStatusUpdate: (status: string) => void
   audioInputs: MediaDeviceInfo[]
@@ -77,6 +76,7 @@ export interface SettingsViewProps {
   onPerformanceModeChange?: (val: boolean) => void
   motionPreference?: MotionPreference
   onMotionPreferenceChange?: (value: MotionPreference) => void
+  /** Sem uso: o botão de vidro saiu de Aparência (o visual atual vale sempre). Fica para quem ainda passa a opção. */
   sidebarLayout?: 'glass' | 'classic'
   onSidebarLayoutChange?: (layout: 'glass' | 'classic') => void
   pttModeSetting?: boolean
@@ -106,14 +106,13 @@ export function SettingsView({
   customStatus,
   avatarDecoration,
   profileEffect,
-  avatarFrame,
   cardFinish,
   nameEffect,
   onEquipDecoration,
   onEquipProfileEffect,
-  onEquipAvatarFrame,
   onEquipCardFinish,
   onEquipNameEffect,
+  onEquipNameFont,
   initialTab,
   onOpenShop,
   onProfileUpdate,
@@ -163,8 +162,6 @@ export function SettingsView({
   onPerformanceModeChange,
   motionPreference = 'system',
   onMotionPreferenceChange,
-  sidebarLayout = 'glass',
-  onSidebarLayoutChange,
   pttModeSetting,
   onPttModeChange,
   pttKey,
@@ -223,12 +220,10 @@ export function SettingsView({
             customStatus={customStatus}
             avatarDecoration={avatarDecoration}
             profileEffect={profileEffect}
-            avatarFrame={avatarFrame}
             cardFinish={cardFinish}
             nameEffect={nameEffect}
             onEquipDecoration={onEquipDecoration}
             onEquipProfileEffect={onEquipProfileEffect}
-            onEquipAvatarFrame={onEquipAvatarFrame}
             onEquipCardFinish={onEquipCardFinish}
             onEquipNameEffect={onEquipNameEffect}
             onOpenShop={onOpenShop}
@@ -248,7 +243,6 @@ export function SettingsView({
                 avatarUrl={profileAvatarUrl || currentAvatarUrl}
                 currentDecoration={avatarDecoration || ''}
                 currentProfileEffect={profileEffect || ''}
-                currentAvatarFrame={avatarFrame || 'aura-cyan'}
                 currentCardFinish={cardFinish || 'none'}
                 clanTag={localStorage.getItem(`echo-clan-tag-${userId}`) || ''}
                 clanTagColor={localStorage.getItem(`echo-clan-tag-color-${userId}`) || '#00f2fe'}
@@ -261,15 +255,12 @@ export function SettingsView({
                 onEquipProfileEffect={async (id) => {
                   if (onEquipProfileEffect) await onEquipProfileEffect(id)
                 }}
-                onEquipAvatarFrame={(id) => {
-                  if (onEquipAvatarFrame) onEquipAvatarFrame(id)
-                  localStorage.setItem(`echo-avatar-frame-${userId}`, id)
-                }}
                 onEquipCardFinish={(id) => {
                   if (onEquipCardFinish) onEquipCardFinish(id)
                   localStorage.setItem(`echo-card-finish-${userId}`, id)
                 }}
                 currentNameEffect={nameEffect || 'resonance_cyan'}
+                onEquipNameFont={onEquipNameFont}
                 onEquipNameEffect={(id) => {
                   if (onEquipNameEffect) onEquipNameEffect(id)
                 }}
@@ -357,8 +348,6 @@ export function SettingsView({
             onPerformanceModeChange={onPerformanceModeChange}
             motionPreference={motionPreference}
             onMotionPreferenceChange={onMotionPreferenceChange}
-            sidebarLayout={sidebarLayout}
-            onSidebarLayoutChange={onSidebarLayoutChange}
           />
         )}
 

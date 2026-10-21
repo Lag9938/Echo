@@ -2,7 +2,6 @@ import { useState, type CSSProperties } from 'react'
 import {
   AVATAR_DECORATIONS,
   PROFILE_EFFECTS,
-  NEON_AURAS,
   CARD_FINISHES,
   NAME_EFFECTS,
   getUserInventory,
@@ -10,11 +9,11 @@ import {
   acquireCosmetic,
   type DecorationMetadata,
   type ProfileEffectMetadata,
-  type AuraMetadata,
   type CardFinishMetadata,
   type NameEffectMetadata,
   type UserInventory
 } from '../lib/cosmeticsData'
+import { NAME_FONTS, NAME_FONT_CATEGORIES, nameFontStyle, getNameFont } from '../lib/nameFonts'
 import { ProfileEffect } from './ProfileEffect'
 import { badgeStyle } from '../lib/accentContrast'
 import { DecoratedAvatar } from './DecoratedAvatar'
@@ -24,7 +23,6 @@ import {
   ColoredBackpackIcon,
   ColoredMaskIcon,
   ColoredSparklesIcon,
-  ColoredLightningIcon,
   ColoredGemIcon,
   ColoredGamepadIcon,
   ColoredSoundwaveIcon
@@ -36,20 +34,22 @@ interface EchoShopProps {
   avatarUrl?: string | null
   currentDecoration: string
   currentProfileEffect?: string
-  currentAvatarFrame?: string
   currentCardFinish?: string
   currentNameEffect?: string
+  currentNameFont?: string
+  /** Só quem tem o Echo VIP pode equipar as fontes marcadas como VIP */
+  isPremiumUser?: boolean
   onEquipDecoration: (decorationId: string) => Promise<void> | void
   onEquipProfileEffect?: (effectId: string) => Promise<void> | void
-  onEquipAvatarFrame?: (frameId: string) => void
   onEquipCardFinish?: (finishId: string) => void
   onEquipNameEffect?: (nameEffectId: string) => void
+  onEquipNameFont?: (fontId: string) => void
   initialTab?: ShopTab
   onOpenInventory?: () => void
   onClose?: () => void
 }
 
-type ShopTab = 'decorations' | 'profile_effects' | 'auras' | 'finishes' | 'name_effects'
+type ShopTab = 'decorations' | 'profile_effects' | 'finishes' | 'name_effects' | 'name_fonts'
 
 export function EchoShop({
   userId,
@@ -57,14 +57,15 @@ export function EchoShop({
   avatarUrl,
   currentDecoration,
   currentProfileEffect = '',
-  currentAvatarFrame = 'aura-cyan',
   currentCardFinish = 'none',
   currentNameEffect = 'resonance_cyan',
+  currentNameFont = '',
+  isPremiumUser = false,
   onEquipDecoration,
   onEquipProfileEffect,
-  onEquipAvatarFrame,
   onEquipCardFinish,
   onEquipNameEffect,
+  onEquipNameFont,
   initialTab,
   onOpenInventory,
   onClose
@@ -82,21 +83,22 @@ export function EchoShop({
   // Preview States
   const [selectedDecoPreview, setSelectedDecoPreview] = useState<string>(currentDecoration || AVATAR_DECORATIONS[0]?.id || '')
   const [selectedEffectPreview, setSelectedEffectPreview] = useState<string>(currentProfileEffect || 'echo_resonance')
-  const [selectedAuraPreview, setSelectedAuraPreview] = useState<string>(currentAvatarFrame || 'aura-cyan')
   const [selectedFinishPreview, setSelectedFinishPreview] = useState<string>(currentCardFinish || 'holographic')
   const [selectedNamePreview, setSelectedNamePreview] = useState<string>(currentNameEffect || 'resonance_cyan')
+  const [selectedFontPreview, setSelectedFontPreview] = useState<string>(currentNameFont || NAME_FONTS[0]?.id || '')
 
   // Categories Filter
   const [activeDecoCategory, setActiveDecoCategory] = useState<string>('Todos')
   const [activeEffectCategory, setActiveEffectCategory] = useState<string>('Todos')
   const [activeNameCategory, setActiveNameCategory] = useState<string>('Todos')
+  const [activeFontCategory, setActiveFontCategory] = useState<string>('Todos')
 
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isEquipping, setIsEquipping] = useState(false)
 
   const decoCategories = ['Todos', 'Aura', 'Fantasia', 'Animais', 'Sazonal']
-  const effectCategories = ['Todos', 'Áudio & Som', 'Fogo & Energia', 'Natureza', 'Sci-Fi', 'Místico', 'Prestígio']
   const nameCategories = ['Todos', 'Ressonância', 'Energia', 'Cyber', 'Cósmico', 'Prestígio']
+  const effectCategories = ['Todos', 'Áudio & Som', 'Fogo & Energia', 'Natureza', 'Sci-Fi', 'Místico', 'Prestígio']
 
   const filteredDecos = activeDecoCategory === 'Todos'
     ? AVATAR_DECORATIONS
@@ -110,11 +112,15 @@ export function EchoShop({
     ? NAME_EFFECTS
     : NAME_EFFECTS.filter(item => item.category === activeNameCategory)
 
+  const filteredFonts = activeFontCategory === 'Todos'
+    ? NAME_FONTS
+    : NAME_FONTS.filter(item => item.category === activeFontCategory)
+
   const previewDecoMeta: DecorationMetadata | undefined = AVATAR_DECORATIONS.find(d => d.id === selectedDecoPreview)
   const previewEffectMeta: ProfileEffectMetadata | undefined = PROFILE_EFFECTS.find(e => e.id === selectedEffectPreview)
-  const previewAuraMeta: AuraMetadata | undefined = NEON_AURAS.find(a => a.id === selectedAuraPreview)
   const previewFinishMeta: CardFinishMetadata | undefined = CARD_FINISHES.find(f => f.id === selectedFinishPreview)
   const previewNameMeta: NameEffectMetadata | undefined = NAME_EFFECTS.find(n => n.id === selectedNamePreview)
+  const previewFont = getNameFont(selectedFontPreview) ?? NAME_FONTS[0]
 
   const showToast = (msg: string) => {
     setToastMessage(msg)
@@ -122,7 +128,7 @@ export function EchoShop({
   }
 
   // Acquisition Handlers
-  const handleAcquireItem = (category: 'decorations' | 'effects' | 'auras' | 'finishes' | 'name_effects', itemId: string, itemName: string) => {
+  const handleAcquireItem = (category: 'decorations' | 'effects' | 'finishes' | 'name_effects' | 'name_fonts', itemId: string, itemName: string) => {
     const updated = acquireCosmetic(userId, category, itemId)
     setUserInventory({ ...updated })
     showToast(`Parabéns! "${itemName}" foi adicionado ao seu Inventário.`)
@@ -152,13 +158,6 @@ export function EchoShop({
     }
   }
 
-  const handleEquipAura = (auraId: string) => {
-    if (!onEquipAvatarFrame) return
-    onEquipAvatarFrame(auraId)
-    setSelectedAuraPreview(auraId)
-    showToast('Aura neon equipada com sucesso!')
-  }
-
   const handleEquipFinish = (finishId: string) => {
     if (!onEquipCardFinish) return
     onEquipCardFinish(finishId)
@@ -171,6 +170,13 @@ export function EchoShop({
     onEquipNameEffect(nameId)
     setSelectedNamePreview(nameId)
     showToast(nameId === 'none' ? 'Efeito de nome desequipado.' : 'Efeito de nome equipado com sucesso!')
+  }
+
+  const handleEquipFont = (fontId: string) => {
+    if (!onEquipNameFont) return
+    onEquipNameFont(fontId)
+    if (fontId !== 'none') setSelectedFontPreview(fontId)
+    showToast(fontId === 'none' ? 'Fonte do nome removida.' : 'Fonte equipada no seu nome!')
   }
 
   return (
@@ -244,23 +250,24 @@ export function EchoShop({
 
         <button
           type="button"
-          className={`echo-shop-main-tab ${shopSection === 'name_effects' ? 'active' : ''}`}
-          onClick={() => setShopSection('name_effects')}
+          className={`echo-shop-main-tab ${shopSection === 'name_fonts' ? 'active' : ''}`}
+          onClick={() => setShopSection('name_fonts')}
         >
           <span className="tab-icon"><ColoredSoundwaveIcon size={18} /></span>
-          <span>Efeitos de Nome & Auras</span>
-          <span className="echo-shop-tab-count">{NAME_EFFECTS.length}</span>
+          <span>Fontes de Nome</span>
+          <span className="echo-shop-tab-count">{NAME_FONTS.length}</span>
         </button>
 
         <button
           type="button"
-          className={`echo-shop-main-tab ${shopSection === 'auras' ? 'active' : ''}`}
-          onClick={() => setShopSection('auras')}
+          className={`echo-shop-main-tab ${shopSection === 'name_effects' ? 'active' : ''}`}
+          onClick={() => setShopSection('name_effects')}
         >
-          <span className="tab-icon"><ColoredLightningIcon size={18} /></span>
-          <span>Molduras & Auras Neon</span>
-          <span className="echo-shop-tab-count">{NEON_AURAS.length}</span>
+          <span className="tab-icon"><ColoredSoundwaveIcon size={18} /></span>
+          <span>Cores de Nome</span>
+          <span className="echo-shop-tab-count">{NAME_EFFECTS.length}</span>
         </button>
+
 
         <button
           type="button"
@@ -428,7 +435,7 @@ export function EchoShop({
                 <div className="mock-card-banner" />
                 <div className="mock-card-body">
                   <div className="mock-card-avatar-row">
-                    <div className={`mock-card-avatar-squircle ${currentAvatarFrame || 'aura-cyan'}`}>
+                    <div className={`mock-card-avatar-squircle`}>
                       <div className="mock-card-avatar-inner">
                         {avatarUrl ? (
                           <img src={avatarUrl} alt={displayName} />
@@ -573,133 +580,6 @@ export function EchoShop({
         </>
       )}
 
-      {/* ── SECTION 3: NEON AURAS & FRAMES (MIGRATED FROM SETTINGS) ─── */}
-      {shopSection === 'auras' && (
-        <>
-          <div className="echo-shop-showcase-card">
-            <div className="echo-shop-preview-side">
-              <div className="echo-shop-preview-bubble">
-                <div
-                  className={`echo-hero-avatar-squircle ${selectedAuraPreview}`}
-                  style={{ width: '96px', height: '96px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <DecoratedAvatar
-                    avatarUrl={avatarUrl}
-                    displayName={displayName}
-                    decorationId={currentDecoration}
-                    size={80}
-                    status="online"
-                  />
-                </div>
-              </div>
-              <div className="echo-shop-preview-info">
-                <span className="echo-shop-preview-tag">PROVADOR DE AURA NEON</span>
-                <h2 className="echo-shop-preview-name">{previewAuraMeta?.name || 'Aura Padrão'}</h2>
-                <p className="echo-shop-preview-desc">
-                  {previewAuraMeta?.description || 'Moldura circular com brilho incandescente contínuo.'}
-                </p>
-                <div className="echo-shop-preview-meta">
-                  <span className="echo-shop-pill-category" style={{ borderColor: previewAuraMeta?.color || '#00f2fe' }}>
-                    {previewAuraMeta?.category || 'Aura'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="echo-shop-preview-actions">
-              {currentAvatarFrame === selectedAuraPreview ? (
-                <button className="echo-shop-action-btn active" disabled>
-                  ✓ Ativa no Avatar
-                </button>
-              ) : hasUserAcquired(userId, 'auras', selectedAuraPreview) ? (
-                <button
-                  className="echo-shop-action-btn primary"
-                  onClick={() => handleEquipAura(selectedAuraPreview)}
-                >
-                  Equipar Esta Aura
-                </button>
-              ) : (
-                <button
-                  className="echo-shop-action-btn acquire"
-                  onClick={() => handleAcquireItem('auras', selectedAuraPreview, previewAuraMeta?.name || 'Aura')}
-                >
-                  <ColoredBackpackIcon size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Adquirir Cosmético (Grátis)
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="echo-shop-grid">
-            {NEON_AURAS.map(aura => {
-              const isEquipped = currentAvatarFrame === aura.id
-              const isAcquired = hasUserAcquired(userId, 'auras', aura.id)
-              const isSelectedInPreview = selectedAuraPreview === aura.id
-
-              return (
-                <div
-                  key={aura.id}
-                  className={`echo-shop-card ${isSelectedInPreview ? 'selected' : ''} ${isEquipped ? 'equipped' : ''}`}
-                  onClick={() => setSelectedAuraPreview(aura.id)}
-                  style={{ '--item-theme': aura.color } as CSSProperties}
-                >
-                  <div className="echo-shop-card-visualizer">
-                    <div className="echo-shop-card-avatar-stage">
-                      <div
-                        className={`echo-hero-avatar-squircle ${aura.id}`}
-                        style={{ width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        <DecoratedAvatar
-                          avatarUrl={avatarUrl}
-                          displayName={displayName}
-                          size={54}
-                          status="online"
-                        />
-                      </div>
-                    </div>
-                    <div className="echo-shop-card-badge" style={badgeStyle(aura.color)}>
-                      {aura.badge}
-                    </div>
-                    {isAcquired && (
-                      <span className="echo-shop-owned-badge">✓ No Inventário</span>
-                    )}
-                  </div>
-
-                  <div className="echo-shop-card-content">
-                    <div className="echo-shop-card-header">
-                      <h3 className="echo-shop-card-title">{aura.name}</h3>
-                      <span className="echo-shop-card-cat">{aura.category}</span>
-                    </div>
-                    <p className="echo-shop-card-desc">{aura.description}</p>
-                  </div>
-
-                  <div className="echo-shop-card-footer" onClick={e => e.stopPropagation()}>
-                    {isEquipped ? (
-                      <button className="echo-shop-equip-btn equipped" disabled>
-                        ✓ Ativa
-                      </button>
-                    ) : isAcquired ? (
-                      <button
-                        className="echo-shop-equip-btn"
-                        onClick={() => handleEquipAura(aura.id)}
-                      >
-                        Equipar
-                      </button>
-                    ) : (
-                      <button
-                        className="echo-shop-equip-btn acquire-btn"
-                        onClick={() => handleAcquireItem('auras', aura.id, aura.name)}
-                      >
-                        Adquirir (Grátis)
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </>
-      )}
-
       {/* ── SECTION 4: CARD FINISHES (FOIL & SHIMMER) ───────────────── */}
       {shopSection === 'finishes' && (
         <>
@@ -827,19 +707,164 @@ export function EchoShop({
         </>
       )}
 
-      {/* ── SECTION 5: NAME EFFECTS & SOUND AURAS ──────────────────────── */}
+      {/* ── SECTION 5: FONTES DE NOME ──────────────────────────────────── */}
+      {shopSection === 'name_fonts' && (
+        <>
+          <div className="echo-shop-showcase-card">
+            <div className="echo-shop-showcase-body">
+              <div className="echo-shop-preview-side" style={{ minWidth: '320px' }}>
+                <div className="echo-shop-name-stage member-card">
+                  <DecoratedAvatar
+                    avatarUrl={avatarUrl}
+                    displayName={displayName}
+                    decorationId={currentDecoration}
+                    size={46}
+                    status="online"
+                  />
+                  <div className="member-info">
+                    <div className="member-name-row">
+                      <span className="echo-shop-name-preview-text" style={{ display: 'inline-block', ...nameFontStyle(previewFont?.id), fontSize: `${18 * (previewFont?.scale ?? 1)}px` }}>
+                        {displayName}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Membro do Servidor • Online</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="echo-shop-preview-info">
+                <span className="echo-shop-preview-tag">PROVADOR DE FONTE</span>
+                <h2 className="echo-shop-preview-name">{previewFont?.name}</h2>
+                <p className="echo-shop-preview-desc">
+                  {previewFont?.description} Só o seu nome de exibição muda; o @usuário e as mensagens continuam na fonte padrão.
+                </p>
+                <div className="echo-shop-preview-meta">
+                  <span className="echo-shop-pill-category">{previewFont?.category}</span>
+                  {previewFont?.vip && <span className="echo-shop-pill-category">VIP</span>}
+                </div>
+              </div>
+            </div>
+
+            <div className="echo-shop-preview-actions">
+              {currentNameFont === selectedFontPreview ? (
+                <button className="echo-shop-action-btn active" disabled>
+                  ✓ Equipada no Nome
+                </button>
+              ) : previewFont?.vip && !isPremiumUser ? (
+                <button className="echo-shop-action-btn" disabled title="Disponível para quem tem o Echo VIP">
+                  Exclusiva do Echo VIP
+                </button>
+              ) : hasUserAcquired(userId, 'name_fonts', selectedFontPreview) ? (
+                <button
+                  className="echo-shop-action-btn primary"
+                  onClick={() => handleEquipFont(selectedFontPreview)}
+                >
+                  Equipar no Meu Nome
+                </button>
+              ) : (
+                <button
+                  className="echo-shop-action-btn acquire"
+                  onClick={() => handleAcquireItem('name_fonts', selectedFontPreview, previewFont?.name || 'Fonte')}
+                >
+                  <ColoredBackpackIcon size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Adquirir Fonte (Grátis)
+                </button>
+              )}
+
+              {currentNameFont && (
+                <button
+                  className="echo-shop-action-btn secondary"
+                  onClick={() => handleEquipFont('none')}
+                >
+                  Remover Fonte
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="echo-shop-category-bar">
+            {NAME_FONT_CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                type="button"
+                className={`echo-shop-cat-btn ${activeFontCategory === cat ? 'active' : ''}`}
+                onClick={() => setActiveFontCategory(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          <div className="echo-shop-grid">
+            {filteredFonts.map(item => {
+              const isEquipped = currentNameFont === item.id
+              const isAcquired = hasUserAcquired(userId, 'name_fonts', item.id)
+              const isLocked = item.vip && !isPremiumUser
+              const isSelectedInPreview = selectedFontPreview === item.id
+
+              return (
+                <div
+                  key={item.id}
+                  className={`echo-shop-card ${isSelectedInPreview ? 'selected' : ''} ${isEquipped ? 'equipped' : ''}`}
+                  onClick={() => setSelectedFontPreview(item.id)}
+                >
+                  <div className="echo-shop-card-visualizer" style={{ padding: '20px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '95px' }}>
+                    <span className="echo-shop-name-preview-text" style={{ display: 'inline-block', fontSize: '30px', ...nameFontStyle(item.id), ...(item.scale ? { fontSize: `${30 * item.scale}px` } : null) }}>
+                      {displayName}
+                    </span>
+                    {item.vip && <span className="echo-shop-owned-badge" style={{ left: 10, right: 'auto' }}>VIP</span>}
+                    {isAcquired && (
+                      <span className="echo-shop-owned-badge">✓ No Inventário</span>
+                    )}
+                  </div>
+
+                  <div className="echo-shop-card-content">
+                    <div className="echo-shop-card-header">
+                      <h3 className="echo-shop-card-title">{item.name}</h3>
+                      <span className="echo-shop-card-cat">{item.category}</span>
+                    </div>
+                    <p className="echo-shop-card-desc">{item.description}</p>
+                  </div>
+
+                  <div className="echo-shop-card-footer" onClick={e => e.stopPropagation()}>
+                    {isEquipped ? (
+                      <button className="echo-shop-equip-btn equipped" disabled>
+                        ✓ Ativa
+                      </button>
+                    ) : isLocked ? (
+                      <button className="echo-shop-equip-btn" disabled title="Disponível para quem tem o Echo VIP">
+                        Exclusiva VIP
+                      </button>
+                    ) : isAcquired ? (
+                      <button
+                        className="echo-shop-equip-btn"
+                        onClick={() => handleEquipFont(item.id)}
+                      >
+                        Equipar
+                      </button>
+                    ) : (
+                      <button
+                        className="echo-shop-equip-btn acquire-btn"
+                        onClick={() => handleAcquireItem('name_fonts', item.id, item.name)}
+                      >
+                        Adquirir (Grátis)
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
+
+      {/* ── SECTION 6: CORES DE NOME ──────────────────────── */}
       {shopSection === 'name_effects' && (
         <>
           <div className="echo-shop-showcase-card">
             <div className="echo-shop-showcase-body">
               <div className="echo-shop-preview-side" style={{ minWidth: '320px' }}>
                 <div
-                  className="echo-shop-name-stage member-card has-name-effect"
-                  style={{
-                    '--member-aura-border': `${previewNameMeta?.themeColor || '#00f2fe'}55`,
-                    '--member-aura-bg': `${previewNameMeta?.themeColor || '#00f2fe'}15`,
-                    '--member-aura-shadow': `${previewNameMeta?.themeColor || '#00f2fe'}33`
-                  } as CSSProperties}
+                  className="echo-shop-name-stage member-card"
                 >
                   <DecoratedAvatar
                     avatarUrl={avatarUrl}
@@ -852,11 +877,6 @@ export function EchoShop({
                     <div className="member-name-row">
                       <span className={`echo-shop-name-preview-text name-effect-${previewNameMeta?.id || 'none'}`}>
                         {displayName}
-                      </span>
-                      <span className="name-soundwave-indicator">
-                        <span className="name-soundwave-bar" style={{ background: previewNameMeta?.themeColor || '#00f2fe' }} />
-                        <span className="name-soundwave-bar" style={{ background: previewNameMeta?.themeColor || '#00f2fe' }} />
-                        <span className="name-soundwave-bar" style={{ background: previewNameMeta?.themeColor || '#00f2fe' }} />
                       </span>
                       <span
                         className="name-effect-badge-tag"
@@ -875,7 +895,7 @@ export function EchoShop({
               </div>
 
               <div className="echo-shop-preview-info">
-                <span className="echo-shop-preview-tag">PROVADOR DE NOME & AURA</span>
+                <span className="echo-shop-preview-tag">PROVADOR DE COR DE NOME</span>
                 <h2 className="echo-shop-preview-name">{previewNameMeta?.name || 'Pulso Ressonante'}</h2>
                 <p className="echo-shop-preview-desc">
                   {previewNameMeta?.description || 'Destaque visual exclusivo para seu nome na lista de membros e no chat em tempo real.'}
@@ -883,9 +903,6 @@ export function EchoShop({
                 <div className="echo-shop-preview-meta">
                   <span className="echo-shop-pill-category" style={{ borderColor: previewNameMeta?.themeColor || '#00f2fe' }}>
                     {previewNameMeta?.category || 'Ressonância'}
-                  </span>
-                  <span className="echo-shop-pill-fps" style={{ fontSize: '11px', color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <ColoredSoundwaveIcon size={14} style={{ verticalAlign: 'middle' }} /> Onda Harmônica
                   </span>
                 </div>
               </div>
@@ -954,11 +971,6 @@ export function EchoShop({
                       {displayName}
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '6px' }}>
-                      <span className="name-soundwave-indicator">
-                        <span className="name-soundwave-bar" style={{ background: item.themeColor }} />
-                        <span className="name-soundwave-bar" style={{ background: item.themeColor }} />
-                        <span className="name-soundwave-bar" style={{ background: item.themeColor }} />
-                      </span>
                       <span className="name-effect-badge-tag" style={{ backgroundColor: `${item.themeColor}20`, color: item.themeColor, border: `1px solid ${item.themeColor}50`, fontSize: '8.5px' }}>
                         {item.badge}
                       </span>
