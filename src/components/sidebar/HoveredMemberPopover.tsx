@@ -24,6 +24,8 @@ export interface HoveredMemberPopoverData {
   isCreator?: boolean
   bio?: string | null
   pronouns?: string | null
+  avatarDecoration?: string | null
+  profileEffect?: string | null
   isVoiceUser?: boolean
   userPresenceStatus?: 'online' | 'idle' | 'dnd' | 'offline' | string
   clanTag?: string | null
@@ -72,12 +74,12 @@ export function HoveredMemberPopover({
   const isCurrentUser = targetUserId === currentUserId
 
   const hoveredEffect = isCurrentUser
-    ? currentUserProfileEffect
-    : (presenceData[targetUserId]?.profile_effect || (hoveredMemberPopover.user as any).profile_effect || null)
+    ? (currentUserProfileEffect || hoveredMemberPopover.profileEffect || (hoveredMemberPopover.user as any)?.profile_effect || localStorage.getItem(`echo-profile-effect-${currentUserId}`) || localStorage.getItem('echo-profile-effect') || null)
+    : (hoveredMemberPopover.profileEffect || presenceData[targetUserId]?.profile_effect || (hoveredMemberPopover.user as any)?.profile_effect || localStorage.getItem(`echo-profile-effect-${targetUserId}`) || null)
 
   const deco = isCurrentUser
-    ? currentUserAvatarDecoration
-    : (presenceData[targetUserId]?.avatar_decoration || (hoveredMemberPopover.user as any).avatar_decoration || null)
+    ? (currentUserAvatarDecoration || (hoveredMemberPopover.user as any)?.avatar_decoration || hoveredMemberPopover.avatarDecoration || localStorage.getItem(`echo-avatar-decoration-${currentUserId}`) || localStorage.getItem('echo-avatar-decoration') || null)
+    : (hoveredMemberPopover.avatarDecoration || presenceData[targetUserId]?.avatar_decoration || (hoveredMemberPopover.user as any)?.avatar_decoration || localStorage.getItem(`echo-avatar-decoration-${targetUserId}`) || null)
 
   const rawBannerCustom = isCurrentUser
     ? ((hoveredMemberPopover.user as any)?.banner_url || hoveredMemberPopover.bannerCustom || localStorage.getItem(`echo-banner-custom-${currentUserId}`) || localStorage.getItem('echo-banner-custom') || null)
@@ -166,8 +168,8 @@ export function HoveredMemberPopover({
               ) : (
                 hoveredMemberPopover.user.display_name.slice(0, 1).toUpperCase()
               )}
-              {deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null}
             </div>
+            {deco && deco !== 'none' ? <AvatarDecoration decorationId={deco} /> : null}
             <span className={`member-status-dot ${hoveredMemberPopover.isVoiceUser ? 'voice-active' : status}`} />
           </div>
 

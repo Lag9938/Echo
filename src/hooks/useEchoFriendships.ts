@@ -299,12 +299,12 @@ export function useEchoFriendships({
     if (data.targetUserId === user.id) {
       if (data.type === 'friend-request-sent') {
         playFriendRequestSound(sfxVolume)
-        showToast('Nova Solicitação de Amizade', `🎮 @${data.senderName} enviou uma solicitação de amizade!`, 'friend')
+        showToast('Nova Solicitação de Amizade', `@${data.senderName} enviou uma solicitação de amizade.`, 'friend', { type: 'friend', senderName: data.senderName, senderId: data.senderId, avatarUrl: data.senderAvatar, badgeLabel: 'AMIZADE' })
         triggerDesktopNotification('Solicitação de Amizade', `@${data.senderName} enviou um pedido de amizade.`)
         loadFriendships()
       } else if (data.type === 'friend-request-accepted') {
         playFriendAcceptSound(sfxVolume)
-        showToast('Amizade Aceita!', `🎉 @${data.senderName} aceitou sua solicitação de amizade!`, 'friend')
+        showToast('Amizade Aceita!', `@${data.senderName} aceitou sua solicitação de amizade.`, 'friend', { type: 'friend', senderName: data.senderName, senderId: data.senderId, avatarUrl: data.senderAvatar, badgeLabel: 'AMIZADE' })
         triggerDesktopNotification('Amizade Aceita!', `@${data.senderName} agora é seu amigo no Echo.`)
         loadFriendships()
       } else if (data.type === 'friend-removed') {

@@ -204,6 +204,9 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
     const isVoiceUser = isOnline && isVoiceUserRaw
     const memberRole = getUserHighestRole(currentSpace.id, member.user.id)
     const memberDeco = member.user.id === user.id ? (avatarDecoration || null) : (presenceData[member.user.id]?.avatar_decoration || member.user?.avatar_decoration || null)
+    const memberEffect = member.user.id === user.id
+      ? (presenceData[user.id]?.profile_effect || localStorage.getItem(`echo-profile-effect-${user.id}`) || localStorage.getItem('echo-profile-effect') || null)
+      : (presenceData[member.user.id]?.profile_effect || member.user?.profile_effect || null)
     const memberNameEffect = member.user.id === user.id ? (nameEffect || 'resonance_cyan') : (presenceData[member.user.id]?.name_effect || localStorage.getItem(`echo-name-effect-${member.user.id}`) || 'none')
 
     const memberClanTag = localStorage.getItem(`echo-clan-tag-${member.user.id}`) || (member.user.id === user.id ? localStorage.getItem(`echo-clan-tag-${user.id}`) : null)
@@ -269,6 +272,8 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
           hoverTimeoutRef.current = setTimeout(() => {
             setHoveredMemberPopover({
               user: member.user,
+              avatarDecoration: memberDeco,
+              profileEffect: memberEffect,
               roleName: memberRole?.name,
               roleColor: memberRole?.color,
               roles: matchingRoles,

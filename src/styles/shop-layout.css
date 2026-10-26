@@ -1,0 +1,427 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   LOJA — layout fluido de largura total (100% da tela, sem espaço preto vazio)
+   Categorias à esquerda, catálogo no centro expandido e "Seu visual" à direita.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* O container da loja aproveita 100% do espaço da janela sem ficar preso no centro */
+.echo-shop-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 24px 32px 48px !important;
+  box-sizing: border-box !important;
+}
+
+.echo-shop-header-row {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.shop-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 300px;
+  gap: 20px;
+  align-items: start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* barra de categorias na lateral esquerda */
+.shop-rail {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px;
+  border-radius: 14px;
+  background: var(--calm-panel, var(--bg-secondary));
+  border: 1px solid var(--calm-line, var(--border-color));
+}
+
+.shop-rail-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 9px;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.shop-rail-btn:hover {
+  background: var(--calm-hover, var(--bg-tertiary));
+  color: var(--text-primary);
+}
+
+.shop-rail-btn.active {
+  background: var(--calm-active, var(--bg-tertiary));
+  color: var(--text-primary);
+}
+
+.shop-rail-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  flex: none;
+}
+
+.shop-rail-count {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* miolo central: expande fluidamente para exibir mais colunas de cartões */
+.shop-main {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+/* busca, filtro e ordenação */
+.shop-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.shop-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 240px;
+  max-width: 420px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: var(--calm-raised, var(--bg-secondary));
+  border: 1px solid var(--calm-line, var(--border-color));
+  color: var(--text-muted);
+}
+
+.shop-search:focus-within {
+  border-color: var(--accent-fill, var(--accent-color));
+}
+
+.shop-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  outline: none;
+  color: var(--text-primary);
+  font: inherit;
+}
+
+/* Botão / Chip toggle moderno "Só o que ainda não tenho" */
+.shop-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  border-radius: 10px;
+  background: var(--calm-raised, var(--bg-secondary));
+  border: 1px solid var(--calm-line, var(--border-color));
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.16s ease;
+}
+
+.shop-toggle:hover {
+  background: var(--calm-hover, var(--bg-tertiary));
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--accent-fill, var(--accent-color)) 40%, var(--calm-line, var(--border-color)));
+}
+
+.shop-toggle.active {
+  background: color-mix(in srgb, var(--accent-fill, var(--accent-color)) 12%, var(--calm-raised, var(--bg-secondary)));
+  border-color: color-mix(in srgb, var(--accent-fill, var(--accent-color)) 50%, transparent);
+  color: var(--text-primary);
+}
+
+.shop-toggle-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.shop-toggle-box {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.26);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+  color: #fff;
+}
+
+body.light-theme .shop-toggle-box {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(74, 53, 49, 0.28);
+}
+
+.shop-toggle:hover .shop-toggle-box {
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+body.light-theme .shop-toggle:hover .shop-toggle-box {
+  border-color: rgba(74, 53, 49, 0.5);
+}
+
+.shop-toggle-box.checked {
+  background: var(--accent-fill, var(--accent-color, #df6d5d)) !important;
+  border-color: var(--accent-fill, var(--accent-color, #df6d5d)) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-fill, var(--accent-color, #df6d5d)) 40%, transparent);
+}
+
+.shop-toggle:focus-within {
+  outline: 2px solid var(--accent-fill, var(--accent-color));
+  outline-offset: 1px;
+}
+
+.shop-toggle-label {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.shop-sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.shop-sort select {
+  padding: 7px 12px;
+  border-radius: 10px;
+  background: var(--calm-raised, var(--bg-secondary));
+  color: var(--text-primary);
+  border: 1px solid var(--calm-line, var(--border-color));
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.16s ease;
+}
+
+.shop-sort select:hover {
+  background: var(--calm-hover, var(--bg-tertiary));
+  border-color: color-mix(in srgb, var(--accent-fill, var(--accent-color)) 40%, var(--calm-line, var(--border-color)));
+}
+
+.shop-sort select:focus {
+  border-color: var(--accent-fill, var(--accent-color));
+}
+
+/* cartão do provador da seção: ocupa a largura total da coluna central */
+.shop-main .echo-shop-showcase-card {
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* grade de cartões: preenche fluidamente com quantas colunas couberem */
+.shop-main .echo-shop-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+/* painel lateral direito "Seu visual" */
+.shop-look {
+  position: sticky;
+  top: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--calm-panel, var(--bg-secondary));
+  border: 1px solid var(--calm-line, var(--border-color));
+}
+
+.shop-look-banner {
+  height: 70px;
+  background: linear-gradient(120deg, #2b6c86, #7a3b78);
+}
+
+.shop-look-body {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.shop-look-avatar {
+  margin-top: -38px;
+  margin-bottom: 14px;
+  align-self: flex-start;
+}
+
+.shop-look-name {
+  font-size: 24px;
+  line-height: 1.25;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.shop-look-handle {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  margin-bottom: 10px;
+}
+
+.shop-look-title {
+  margin: 10px 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.shop-look-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px solid var(--calm-line, var(--border-color));
+  font-size: 13px;
+}
+
+.shop-look-row b {
+  display: block;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.shop-look-row small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.shop-look-row button {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: var(--accent-text, var(--accent-color));
+  font: inherit;
+  font-weight: 600;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.shop-look-trial {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--calm-line, var(--border-color));
+}
+
+.shop-look-trial-label {
+  font-size: 12.5px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.shop-look-trial-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.shop-look-trial-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.shop-look-btn {
+  flex: 1;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--calm-line, var(--border-color));
+  background: var(--calm-raised, var(--bg-secondary));
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.shop-look-btn.primary {
+  background: var(--accent-fill, var(--accent-color));
+  color: #fff;
+  border-color: transparent;
+}
+
+.shop-look-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* a antiga fileira de abas sobrepostas fica oculta */
+.echo-shop-main-tabs {
+  display: none !important;
+}
+
+/* Telas médias: oculta o painel direito para não espremer os cartões */
+@media (max-width: 1240px) {
+  .shop-layout {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+  .shop-look {
+    display: none;
+  }
+}
+
+/* Telas compactas: barra de categorias vira horizontal e tudo flui em 1 coluna */
+@media (max-width: 768px) {
+  .echo-shop-container {
+    padding: 16px 16px 36px !important;
+  }
+  .shop-layout {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .shop-rail {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 6px;
+    gap: 6px;
+  }
+  .shop-rail-btn {
+    width: auto;
+    white-space: nowrap;
+    padding: 8px 12px;
+  }
+}

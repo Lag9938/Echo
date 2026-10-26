@@ -225,7 +225,7 @@ export function useEchoGroupChats({
 
       if (mErr) throw mErr
 
-      showToast('🎉 Grupo criado!', `"${name}" foi criado com ${allMemberIds.length} membros.`, 'friend')
+      showToast('Grupo criado com sucesso', `"${name}" foi criado com ${allMemberIds.length} membros.`, 'friend')
 
       await loadGroupChats()
       setSelectedGroupId(group.id)
@@ -260,7 +260,7 @@ export function useEchoGroupChats({
         setSelectedGroupId(null)
       }
 
-      showToast('👋 Saiu do grupo', 'Você saiu do grupo.', 'info')
+      showToast('Você saiu do grupo', 'Você saiu do grupo.', 'info')
     } catch (err) {
       console.error('[GroupChats] Failed to leave:', err)
     }
@@ -296,9 +296,9 @@ export function useEchoGroupChats({
       setUnreadGroups(prev => ({ ...prev, [groupId]: (prev[groupId] || 0) + 1 }))
 
       const groupName = groupChats.find(g => g.id === groupId)?.name || 'Grupo'
-      const notifBody = attachmentType === 'sticker' ? '🖼️ Sticker' : (body || '📎 Anexo')
+      const notifBody = attachmentType === 'sticker' ? 'Sticker' : (body || 'Anexo');
 
-      showToast(`💬 ${groupName}`, `${senderName}: ${notifBody}`, 'message', { type: 'group', groupId })
+      showToast(groupName, `${senderName}: ${notifBody}`, 'message', { type: 'group', groupId, senderName, groupName, badgeLabel: 'GRUPO' })
       playDmNotificationSound(sfxVolume)
       triggerDesktopNotification(`${senderName} em ${groupName}`, notifBody, { type: 'group', groupId })
     }

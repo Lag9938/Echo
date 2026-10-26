@@ -29,6 +29,7 @@ import { useEchoToasts } from './hooks/useEchoToasts'
 import { useEchoSavedMessages } from './hooks/useEchoSavedMessages'
 import { useEchoAudioDevices } from './hooks/useEchoAudioDevices'
 import { ToastContainer } from './components/common/ToastContainer'
+import { ActivityInboxModal } from './components/modals/ActivityInboxModal'
 import { useEchoPtt } from './hooks/useEchoPtt'
 import { useEchoGamePresence } from './hooks/useEchoGamePresence'
 import { UpdateBanner } from './components/common/UpdateBanner'
@@ -219,7 +220,17 @@ function Echo({ user }: { user: User }) {
   }, [error])
   const [addSpaceModalTab, setAddSpaceModalTab] = useState<'options' | 'create' | 'join'>('options')
 
-  const { toasts, showToast, removeToast } = useEchoToasts()
+  const {
+    toasts,
+    showToast,
+    removeToast,
+    notificationHistory,
+    unreadNotificationsCount,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    clearNotificationHistory
+  } = useEchoToasts()
+  const [showActivityInboxModal, setShowActivityInboxModal] = useState(false)
   const [knownProfiles, setKnownProfiles] = useState<Record<string, { id: string; display_name: string; avatar_url?: string }>>({})
   useEffect(() => {
     useSpacesStore.getState().setKnownProfiles(knownProfiles)
@@ -1446,9 +1457,29 @@ function Echo({ user }: { user: User }) {
           ;(window as any).electronAPI.flashFrame(true)
         }
 
-        if (isMentioned) {
+                if (isMentioned) {
           playDmNotificationSound(sfxVolumeRef.current)
         }
+      }
+
+      if (isMentioned && (!isCurrentChannel || !isAppFocused)) {
+        const chObj = Object.values(spaceChannelsRef.current).flat().find(c => c.id === newMsg.channel_id)
+        const chName = chObj?.name ? `#${chObj.name}` : 'canal'
+        const authorProfile = knownProfiles[newMsg.author_id]
+        const author = authorProfile?.display_name || 'Alguém'
+        showToast(
+          author,
+          newMsg.body || '',
+          'mention',
+          {
+            type: 'channel',
+            channelId: newMsg.channel_id,
+            authorName: author,
+            channelName: chName,
+            avatarUrl: authorProfile?.avatar_url,
+            badgeLabel: `MENÇÃO EM ${chName}`
+          }
+        )
       }
     })
   }, [])
@@ -1756,6 +1787,71 @@ function Echo({ user }: { user: User }) {
     changePeerPan
   })
 
+  const handleToastQuickReply = useCallback(async (toast: Toast, text: string) => {
+    const trimmed = text.trim()
+    if (!trimmed || !supabase || !user) return false
+
+    if (toast.data?.type === 'dm' && toast.data.senderId) {
+      const { error: dmErr } = await supabase.from('direct_messages').insert({
+        sender_id: user.id,
+        receiver_id: toast.data.senderId,
+        body: trimmed
+      })
+      if (dmErr) {
+        showToast('Erro ao responder', dmErr.message, 'info')
+        return false
+      }
+      return true
+    } else if (toast.data?.type === 'channel' && toast.data.channelId) {
+      const { error: chErr } = await supabase.from('messages').insert({
+        sender_id: user.id,
+        channel_id: toast.data.channelId,
+        body: trimmed
+      })
+      if (chErr) {
+        showToast('Erro ao responder', chErr.message, 'info')
+        return false
+      }
+      return true
+    } else if (toast.data?.type === 'group' && toast.data.groupId) {
+      const { error: grpErr } = await supabase.from('group_messages').insert({
+        sender_id: user.id,
+        group_chat_id: toast.data.groupId,
+        body: trimmed
+      })
+      if (grpErr) {
+        showToast('Erro ao responder', grpErr.message, 'info')
+        return false
+      }
+      return true
+    }
+    return false
+  }, [supabase, user, showToast])
+
+  const handleNotificationNavigation = useCallback((targetData: any) => {
+    if (!targetData) return
+    if (targetData.type === 'dm' && targetData.senderId) {
+      handleOpenDirectChat(targetData.senderId)
+      setPage('Amigos')
+    } else if (targetData.type === 'group' && targetData.groupId) {
+      handleOpenGroup(targetData.groupId)
+      setPage('Amigos')
+    } else if (targetData.type === 'channel' && targetData.channelId) {
+      const allChannels = Object.values(spaceChannelsRef.current).flat()
+      const targetCh = allChannels.find(c => c.id === targetData.channelId)
+      if (targetCh) {
+        if (targetCh.space_id) {
+          const sp = spaces.find(s => s.id === targetCh.space_id)
+          if (sp) setExpandedSpace(sp.id)
+        }
+        setSelectedChannel(targetCh)
+        setPage('Servidores')
+      }
+    } else if (targetData.type === 'friend') {
+      setPage('Amigos')
+    }
+  }, [handleOpenDirectChat, handleOpenGroup, spaces])
+
   return (
     <main className="echo-app">
       <UpdateBanner
@@ -1842,6 +1938,8 @@ function Echo({ user }: { user: User }) {
         setShowAddSpaceModal={setShowAddSpaceModal}
         savedMessages={savedMessages}
         setShowSavedMessagesModal={setShowSavedMessagesModal}
+        unreadNotificationsCount={unreadNotificationsCount}
+        onOpenInbox={() => setShowActivityInboxModal(true)}
         topbarPinned={topbarPinned}
         setTopbarPinned={_setTopbarPinned}
         isTopbarVisible={isTopbarVisible}
@@ -2580,26 +2678,23 @@ function Echo({ user }: { user: User }) {
       <ToastContainer
         toasts={toasts}
         onRemoveToast={removeToast}
+        onQuickReply={handleToastQuickReply}
         onToastClick={(toast) => {
-          if (toast.data?.type === 'dm' && toast.data.senderId) {
-            handleOpenDirectChat(toast.data.senderId)
-            setPage('Amigos')
-          } else if (toast.data?.type === 'group' && toast.data.groupId) {
-            handleOpenGroup(toast.data.groupId)
-            setPage('Amigos')
-          } else if (toast.data?.type === 'channel' && toast.data.channelId) {
-            const allChannels = Object.values(spaceChannelsRef.current).flat()
-            const targetCh = allChannels.find(c => c.id === toast.data.channelId)
-            if (targetCh) {
-              if (targetCh.space_id) {
-                const sp = spaces.find(s => s.id === targetCh.space_id)
-                if (sp) setExpandedSpace(sp.id)
-              }
-              setSelectedChannel(targetCh)
-              setPage('Servidores')
-            }
-          }
+          handleNotificationNavigation(toast.data)
         }}
+      />
+
+      {/* Central de Notificações / Inbox Modal */}
+      <ActivityInboxModal
+        isOpen={showActivityInboxModal}
+        onClose={() => setShowActivityInboxModal(false)}
+        notifications={notificationHistory}
+        onJumpToNotification={(item) => {
+          markNotificationAsRead(item.id)
+          handleNotificationNavigation(item.data || { type: item.type })
+        }}
+        onMarkAllAsRead={markAllNotificationsAsRead}
+        onClearHistory={clearNotificationHistory}
       />
 
       {/* Floating Picture-in-Picture Mini Player (Always on Top) */}

@@ -18,11 +18,38 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.62.4',
+    title: 'Echo v0.62.4 - Central de Notificações e Nova Loja',
+    date: '26 de Outubro de 2026',
+    tagline: 'Central de notificações com histórico e resposta rápida, Loja renovada com provador ao vivo e ajustes nos cartões de membro.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🔔',
+        badge: 'NOVO',
+        title: 'Central de Notificações e Resposta Rápida',
+        description: 'O ícone de sino no topo agora abre a Central de Notificações com abas para Todas, Menções, Mensagens e Amizades. Os avisos na tela também trazem resposta rápida sem sair de onde você está.'
+      },
+      {
+        icon: '🛍️',
+        badge: 'NOVO',
+        title: 'Loja Renovada com Provador ao Vivo',
+        description: 'A Loja ganhou busca por nome, filtro "Só o que falta", ordenação A–Z e o painel lateral "Seu visual" para experimentar decorações, fontes e cores de nome antes de equipar.'
+      },
+      {
+        icon: '🪪',
+        badge: 'CORREÇÃO',
+        title: 'Decorações no Cartão de Membro',
+        description: 'As molduras de avatar e os efeitos de perfil voltam a aparecer completos sem cortes ao passar o mouse sobre um membro na lista.'
+      }
+    ]
+  },
+  {
     version: '0.62.3',
     title: 'Echo v0.62.3 - Mais Leve e Mais Calmo',
     date: '21 de Outubro de 2026',
     tagline: 'O Echo gasta bem menos processador, ganha um visual mais limpo e fontes para o seu nome na Loja.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '⚡',

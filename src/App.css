@@ -58,6 +58,7 @@
 
 /* Loja de cosméticos e inventário redesenhados (depois de effects.css e calls.css) */
 @import './styles/shop-inventory.css';
+@import './styles/shop-layout.css';
 
 /* Configurações do usuário redesenhadas (depois de settings.css) */
 @import './styles/settings-aurora.css';

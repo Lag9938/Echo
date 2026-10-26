@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import {
   AVATAR_DECORATIONS,
   PROFILE_EFFECTS,
@@ -14,6 +14,7 @@ import {
   type UserInventory
 } from '../lib/cosmeticsData'
 import { NAME_FONTS, NAME_FONT_CATEGORIES, nameFontStyle, getNameFont } from '../lib/nameFonts'
+import { ShopLookPanel, type ShopLookTrial } from './shop/ShopLookPanel'
 import { ProfileEffect } from './ProfileEffect'
 import { badgeStyle } from '../lib/accentContrast'
 import { DecoratedAvatar } from './DecoratedAvatar'
@@ -96,25 +97,41 @@ export function EchoShop({
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isEquipping, setIsEquipping] = useState(false)
 
+  // Busca, "só o que ainda não tenho" e ordenação: valem para todas as seções
+  const [shopQuery, setShopQuery] = useState('')
+  const [onlyMissing, setOnlyMissing] = useState(false)
+  const [sortAZ, setSortAZ] = useState(false)
+
   const decoCategories = ['Todos', 'Aura', 'Fantasia', 'Animais', 'Sazonal']
   const nameCategories = ['Todos', 'Ressonância', 'Energia', 'Cyber', 'Cósmico', 'Prestígio']
   const effectCategories = ['Todos', 'Áudio & Som', 'Fogo & Energia', 'Natureza', 'Sci-Fi', 'Místico', 'Prestígio']
 
-  const filteredDecos = activeDecoCategory === 'Todos'
+  const shopFilter = <T extends { id: string; name: string; category?: string }>(category: 'decorations' | 'effects' | 'finishes' | 'name_effects' | 'name_fonts', items: T[]): T[] => {
+    const q = shopQuery.trim().toLowerCase()
+    const list = items.filter(item =>
+      (!q || `${item.name} ${item.category ?? ''}`.toLowerCase().includes(q)) &&
+      (!onlyMissing || !hasUserAcquired(userId, category, item.id))
+    )
+    return sortAZ ? [...list].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')) : list
+  }
+
+  const filteredDecos = shopFilter('decorations', activeDecoCategory === 'Todos'
     ? AVATAR_DECORATIONS
-    : AVATAR_DECORATIONS.filter(item => item.category === activeDecoCategory)
+    : AVATAR_DECORATIONS.filter(item => item.category === activeDecoCategory))
 
-  const filteredEffects = activeEffectCategory === 'Todos'
+  const filteredEffects = shopFilter('effects', activeEffectCategory === 'Todos'
     ? PROFILE_EFFECTS
-    : PROFILE_EFFECTS.filter(item => item.category === activeEffectCategory)
+    : PROFILE_EFFECTS.filter(item => item.category === activeEffectCategory))
 
-  const filteredNameEffects = activeNameCategory === 'Todos'
+  const filteredNameEffects = shopFilter('name_effects', activeNameCategory === 'Todos'
     ? NAME_EFFECTS
-    : NAME_EFFECTS.filter(item => item.category === activeNameCategory)
+    : NAME_EFFECTS.filter(item => item.category === activeNameCategory))
 
-  const filteredFonts = activeFontCategory === 'Todos'
+  const filteredFonts = shopFilter('name_fonts', activeFontCategory === 'Todos'
     ? NAME_FONTS
-    : NAME_FONTS.filter(item => item.category === activeFontCategory)
+    : NAME_FONTS.filter(item => item.category === activeFontCategory))
+
+  const filteredFinishes = shopFilter('finishes', CARD_FINISHES)
 
   const previewDecoMeta: DecorationMetadata | undefined = AVATAR_DECORATIONS.find(d => d.id === selectedDecoPreview)
   const previewEffectMeta: ProfileEffectMetadata | undefined = PROFILE_EFFECTS.find(e => e.id === selectedEffectPreview)
@@ -179,6 +196,56 @@ export function EchoShop({
     showToast(fontId === 'none' ? 'Fonte do nome removida.' : 'Fonte equipada no seu nome!')
   }
 
+  // "Seu visual": o item selecionado na seção aberta é aplicado no painel antes de equipar
+  const lookDeco = shopSection === 'decorations' ? selectedDecoPreview : currentDecoration
+  const lookFont = shopSection === 'name_fonts' ? selectedFontPreview : currentNameFont
+  const lookEffect = shopSection === 'name_effects' ? selectedNamePreview : currentNameEffect
+  let trial: ShopLookTrial | null = null
+  if (shopSection === 'decorations' && selectedDecoPreview !== currentDecoration) {
+    const owned = hasUserAcquired(userId, 'decorations', selectedDecoPreview)
+    trial = {
+      label: previewDecoMeta?.name || 'Sem decoração',
+      canEquip: owned && !isEquipping,
+      hint: owned ? undefined : 'Obtenha o item no cartão para poder equipar.',
+      onEquip: () => { void handleEquipDeco(selectedDecoPreview) },
+      onUndo: () => setSelectedDecoPreview(currentDecoration)
+    }
+  } else if (shopSection === 'name_fonts' && currentNameFont !== selectedFontPreview) {
+    const owned = hasUserAcquired(userId, 'name_fonts', selectedFontPreview)
+    const locked = Boolean(previewFont?.vip) && !isPremiumUser
+    trial = {
+      label: previewFont?.name || 'Fonte',
+      canEquip: owned && !locked,
+      hint: locked ? 'Disponível para quem tem o Echo VIP.' : owned ? undefined : 'Obtenha o item no cartão para poder equipar.',
+      onEquip: () => handleEquipFont(selectedFontPreview),
+      onUndo: () => setSelectedFontPreview(currentNameFont || NAME_FONTS[0]?.id || '')
+    }
+  } else if (shopSection === 'name_effects' && selectedNamePreview !== currentNameEffect) {
+    const owned = hasUserAcquired(userId, 'name_effects', selectedNamePreview)
+    trial = {
+      label: previewNameMeta?.name || 'Cor de nome',
+      canEquip: owned,
+      hint: owned ? undefined : 'Obtenha o item no cartão para poder equipar.',
+      onEquip: () => handleEquipName(selectedNamePreview),
+      onUndo: () => setSelectedNamePreview(currentNameEffect || 'resonance_cyan')
+    }
+  }
+
+  const railSections: Array<{ id: ShopTab; label: string; icon: ReactNode; count: number }> = [
+    { id: 'decorations', label: 'Decorações', icon: <ColoredMaskIcon size={18} />, count: AVATAR_DECORATIONS.length },
+    { id: 'name_fonts', label: 'Fontes de Nome', icon: <ColoredSoundwaveIcon size={18} />, count: NAME_FONTS.length },
+    { id: 'name_effects', label: 'Cores de Nome', icon: <ColoredSoundwaveIcon size={18} />, count: NAME_EFFECTS.length },
+    { id: 'profile_effects', label: 'Efeitos de Perfil', icon: <ColoredSparklesIcon size={18} />, count: PROFILE_EFFECTS.length },
+    { id: 'finishes', label: 'Acabamentos', icon: <ColoredGemIcon size={18} />, count: CARD_FINISHES.length }
+  ]
+  const lookRows = [
+    { label: 'Decoração', value: AVATAR_DECORATIONS.find(d => d.id === currentDecoration)?.name || 'Nenhuma', onChange: () => setShopSection('decorations') },
+    { label: 'Fonte do nome', value: getNameFont(currentNameFont)?.name || 'Padrão', onChange: () => setShopSection('name_fonts') },
+    { label: 'Cor do nome', value: NAME_EFFECTS.find(n => n.id === currentNameEffect)?.name || 'Nenhuma', onChange: () => setShopSection('name_effects') },
+    { label: 'Efeito de perfil', value: PROFILE_EFFECTS.find(e => e.id === currentProfileEffect)?.name || 'Nenhum', onChange: () => setShopSection('profile_effects') },
+    { label: 'Acabamento', value: CARD_FINISHES.find(c => c.id === currentCardFinish)?.name || 'Padrão', onChange: () => setShopSection('finishes') }
+  ]
+
   return (
     <div className="echo-shop-container">
       {/* Dynamic Toast Feedback */}
@@ -226,59 +293,58 @@ export function EchoShop({
         </div>
       </div>
 
-      {/* Section Switcher Tabs */}
-      <div className="echo-shop-main-tabs">
-        <button
-          type="button"
-          className={`echo-shop-main-tab ${shopSection === 'decorations' ? 'active' : ''}`}
-          onClick={() => setShopSection('decorations')}
-        >
-          <span className="tab-icon"><ColoredMaskIcon size={18} /></span>
-          <span>Decorações de Avatar</span>
-          <span className="echo-shop-tab-count">{AVATAR_DECORATIONS.length}</span>
-        </button>
+      <div className="shop-layout">
+        <nav className="shop-rail" aria-label="Categorias da loja">
+          {railSections.map(section => (
+            <button
+              key={section.id}
+              type="button"
+              className={`shop-rail-btn ${shopSection === section.id ? 'active' : ''}`}
+              onClick={() => setShopSection(section.id)}
+              aria-current={shopSection === section.id ? 'page' : undefined}
+            >
+              <span className="shop-rail-icon">{section.icon}</span>
+              <span>{section.label}</span>
+              <span className="shop-rail-count">{section.count}</span>
+            </button>
+          ))}
+        </nav>
 
-        <button
-          type="button"
-          className={`echo-shop-main-tab ${shopSection === 'profile_effects' ? 'active' : ''}`}
-          onClick={() => setShopSection('profile_effects')}
-        >
-          <span className="tab-icon"><ColoredSparklesIcon size={18} /></span>
-          <span>Efeitos de Perfil</span>
-          <span className="echo-shop-tab-count">{PROFILE_EFFECTS.length}</span>
-        </button>
-
-        <button
-          type="button"
-          className={`echo-shop-main-tab ${shopSection === 'name_fonts' ? 'active' : ''}`}
-          onClick={() => setShopSection('name_fonts')}
-        >
-          <span className="tab-icon"><ColoredSoundwaveIcon size={18} /></span>
-          <span>Fontes de Nome</span>
-          <span className="echo-shop-tab-count">{NAME_FONTS.length}</span>
-        </button>
-
-        <button
-          type="button"
-          className={`echo-shop-main-tab ${shopSection === 'name_effects' ? 'active' : ''}`}
-          onClick={() => setShopSection('name_effects')}
-        >
-          <span className="tab-icon"><ColoredSoundwaveIcon size={18} /></span>
-          <span>Cores de Nome</span>
-          <span className="echo-shop-tab-count">{NAME_EFFECTS.length}</span>
-        </button>
-
-
-        <button
-          type="button"
-          className={`echo-shop-main-tab ${shopSection === 'finishes' ? 'active' : ''}`}
-          onClick={() => setShopSection('finishes')}
-        >
-          <span className="tab-icon"><ColoredGemIcon size={18} /></span>
-          <span>Acabamentos de Cartão</span>
-          <span className="echo-shop-tab-count">{CARD_FINISHES.length}</span>
-        </button>
-      </div>
+        <div className="shop-main">
+          <div className="shop-toolbar">
+            <label className="shop-search">
+              <span aria-hidden="true">⌕</span>
+              <input
+                value={shopQuery}
+                onChange={e => setShopQuery(e.target.value)}
+                placeholder="Buscar nesta categoria…"
+                aria-label="Buscar nesta categoria"
+              />
+            </label>
+            <label className={`shop-toggle ${onlyMissing ? 'active' : ''}`} title="Filtrar apenas itens que você ainda não possui">
+              <input
+                type="checkbox"
+                checked={onlyMissing}
+                onChange={e => setOnlyMissing(e.target.checked)}
+                className="shop-toggle-input"
+              />
+              <span className={`shop-toggle-box ${onlyMissing ? 'checked' : ''}`} aria-hidden="true">
+                {onlyMissing && (
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </span>
+              <span className="shop-toggle-label">Só o que ainda não tenho</span>
+            </label>
+            <label className="shop-sort">
+              Ordenar
+              <select value={sortAZ ? 'az' : 'default'} onChange={e => setSortAZ(e.target.value === 'az')} aria-label="Ordenar">
+                <option value="default">Em destaque</option>
+                <option value="az">A–Z</option>
+              </select>
+            </label>
+          </div>
 
       {/* ── SECTION 1: AVATAR DECORATIONS ───────────────────────────── */}
       {shopSection === 'decorations' && (
@@ -638,7 +704,7 @@ export function EchoShop({
           </div>
 
           <div className="echo-shop-grid">
-            {CARD_FINISHES.map(finish => {
+            {filteredFinishes.map(finish => {
               const isEquipped = currentCardFinish === finish.id
               const isAcquired = hasUserAcquired(userId, 'finishes', finish.id)
               const isSelectedInPreview = selectedFinishPreview === finish.id
@@ -1015,6 +1081,18 @@ export function EchoShop({
           </div>
         </>
       )}
+        </div>
+
+        <ShopLookPanel
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+          decorationId={lookDeco}
+          nameEffectId={lookEffect}
+          nameFontId={lookFont}
+          rows={lookRows}
+          trial={trial}
+        />
+      </div>
     </div>
   )
 }

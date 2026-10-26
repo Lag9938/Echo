@@ -2150,6 +2150,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   position: relative;
   width: 52px;
   height: 52px;
+  overflow: visible;
 }
 
 .hover-popover-avatar {
@@ -2165,7 +2166,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   color: #fff;
   font-weight: 700;
   font-size: 18px;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .hover-popover-avatar img {
@@ -2184,6 +2185,7 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
   border-radius: 50%;
   border: 3px solid #12141e;
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+  z-index: 4;
 }
 
 .hover-popover-avatar-wrap .member-status-dot.online {
@@ -3712,8 +3714,10 @@ body.echo-layout-glass .hover-popover-avatar-bar {
 }
 
 body.echo-layout-glass .hover-popover-avatar-wrap {
+  position: relative;
   width: 56px;
   height: 56px;
+  overflow: visible;
 }
 
 body.echo-layout-glass .hover-popover-avatar {
@@ -3721,12 +3725,14 @@ body.echo-layout-glass .hover-popover-avatar {
   height: 56px;
   border: 3px solid color-mix(in srgb, var(--bg-primary, #0a0d14) 90%, transparent);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 16px color-mix(in srgb, var(--accent-color, #00f2fe) 40%, transparent);
+  overflow: hidden;
 }
 
 body.echo-layout-glass .hover-popover-avatar-wrap .member-status-dot {
   width: 15px;
   height: 15px;
   border: 3px solid #0a0d14;
+  z-index: 4;
 }
 
 body.echo-layout-glass .hover-popover-avatar-wrap .member-status-dot.voice-active {

@@ -132,9 +132,15 @@ export interface Toast {
   id: string;
   title: string;
   message: string;
-  type?: 'info' | 'message' | 'friend';
+  type?: 'info' | 'message' | 'friend' | 'mention' | 'voice' | 'success' | 'warning' | 'error';
   data?: any;
+  avatarUrl?: string;
+  avatarDecoration?: string | null;
+  badgeLabel?: string;
+  duration?: number;
+  timestamp?: number;
   onClick?: () => void;
+  onQuickReply?: (replyText: string) => void | Promise<void>;
 }
 
 export interface FriendshipRequest {

@@ -8,8 +8,8 @@
 /* ── 1. LOJA DE COSMÉTICOS (ECHO SHOP) ─────────────────────────────────── */
 
 .echo-shop-container {
-  max-width: 1320px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   padding: 24px 32px 48px;
   width: 100%;
   box-sizing: border-box;

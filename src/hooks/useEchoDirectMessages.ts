@@ -264,12 +264,14 @@ export function useEchoDirectMessages({
       } else {
         setUnreadDMs(prev => ({ ...prev, [data.senderId]: (prev[data.senderId] || 0) + 1 }))
         showToast(
-          `Mensagem de ${data.senderName}`, 
-          data.body.slice(0, 50), 
+          data.senderName, 
+          data.body.slice(0, 80), 
           'message',
-          () => {
-            handleOpenDirectChat(data.senderId)
-            setPage('Amigos')
+          {
+            type: 'dm',
+            senderId: data.senderId,
+            senderName: data.senderName,
+            badgeLabel: 'MENSAGEM PRIVADA'
           }
         )
         if (!document.hasFocus()) {

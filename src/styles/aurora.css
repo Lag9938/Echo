@@ -736,8 +736,8 @@ body.light-theme .echo-shop-container {
   padding: 28px 36px 56px !important;
   box-sizing: border-box !important;
   scrollbar-gutter: stable;
-  max-width: 1320px !important;
-  margin: 0 auto !important;
+  max-width: 100% !important;
+  margin: 0 !important;
   width: 100% !important;
 }
 

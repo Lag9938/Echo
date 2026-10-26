@@ -39,6 +39,8 @@ export interface TopBarProps {
   setShowAddSpaceModal?: (val: boolean) => void
   savedMessages?: SavedMessageItem[]
   setShowSavedMessagesModal?: (val: boolean) => void
+  unreadNotificationsCount?: number
+  onOpenInbox?: () => void
   topbarPinned?: boolean
   setTopbarPinned?: React.Dispatch<React.SetStateAction<boolean>>
   currentUserId: string
@@ -88,6 +90,8 @@ export const TopBar = memo(function TopBar(props: TopBarProps) {
     activeVoiceChannelId = null,
     participants = [],
     savedMessages = [],
+    unreadNotificationsCount = 0,
+    onOpenInbox = () => {},
     currentUserId
   } = props
 
@@ -438,6 +442,26 @@ export const TopBar = memo(function TopBar(props: TopBarProps) {
             </svg>
             {savedMessages.length > 0 && (
               <span className="topbar-icon-badge">{savedMessages.length}</span>
+            )}
+          </button>
+
+          {/* Central de Notificações / Inbox */}
+          <button
+            type="button"
+            className={`topbar-icon-btn topbar-inbox-btn ${unreadNotificationsCount > 0 ? 'has-unread' : ''}`}
+            onClick={onOpenInbox}
+            title="Central de Notificações"
+            data-tooltip="Notificações"
+            aria-label="Central de Notificações"
+          >
+            <svg className="topbar-icon-svg icon-bell" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            {unreadNotificationsCount > 0 && (
+              <span className="topbar-icon-badge" style={{ background: 'var(--accent-fill, #8b5cf6)', color: '#ffffff' }}>
+                {unreadNotificationsCount}
+              </span>
             )}
           </button>
 
