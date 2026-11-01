@@ -99,10 +99,11 @@ describe('ProfileEffect com efeito em vídeo', () => {
     expect(container.innerHTML).toBe('')
   })
 
-  it('com "reduzir movimento" ligado não toca o vídeo', () => {
+  it('com "reduzir movimento" ligado mantém o quadro estático do vídeo visível mas não toca', () => {
     document.body.classList.add('reduce-motion')
     render(FX)
-    expect(container.querySelector('video')).toBeNull()
+    expect(container.querySelector('video')).not.toBeNull()
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled()
   })
 
   it('"movimento completo" toca o vídeo mesmo se o sistema pedir menos movimento', () => {

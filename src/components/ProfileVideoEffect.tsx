@@ -12,7 +12,8 @@ interface ProfileVideoEffectProps {
 /**
  * O vídeo do efeito, esticado sobre o cartão de perfil. Fica acima do banner e do fundo (z-index 30) mas não
  * bloqueia clique nenhum (pointer-events: none). A mistura "screen" (ver profile-video-effect.css) faz o preto sumir.
- * Sem animação para quem pediu "reduzir movimento", e pausado enquanto a janela está escondida.
+ * Com "reduzir movimento" ou nos cartões da grade fora de foco, mantém um quadro iluminado visível (currentTime = 1.2)
+ * para que o efeito nunca apareça preto/vazio na Loja ou no Inventário.
  */
 export function ProfileVideoEffect({ effect, className = '', style }: ProfileVideoEffectProps) {
   const ref = useRef<HTMLVideoElement | null>(null)
@@ -20,11 +21,36 @@ export function ProfileVideoEffect({ effect, className = '', style }: ProfileVid
 
   useEffect(() => {
     const video = ref.current
-    if (!video || reduced) return
+    if (!video) return
+
+    // Garante um quadro rico e iluminado sempre que o vídeo estiver pausado (evita caixa preta na Loja/Inventário
+    // ou quando o Windows está com animações desativadas / prefers-reduced-motion)
+    const seekToPreviewFrame = () => {
+      try {
+        if (video.paused && video.currentTime < 0.5) {
+          video.currentTime = 1.2
+        }
+      } catch {
+        // Ignora se o elemento de mídia ainda não aceita seek (ex.: ambiente de teste happy-dom)
+      }
+    }
+    if (video.readyState >= 1) seekToPreviewFrame()
+    else video.addEventListener('loadedmetadata', seekToPreviewFrame, { once: true })
+
+    // Se a pessoa escolheu explicitamente "Reduzir movimento" nas configurações do Echo, fica no quadro parado
+    const explicitAppReduceMotion =
+      typeof document !== 'undefined' && document.body.classList.contains('reduce-motion')
+    if (explicitAppReduceMotion) {
+      video.pause()
+      return () => {
+        video.removeEventListener('loadedmetadata', seekToPreviewFrame)
+      }
+    }
+
     // Só toca com o cartão realmente visível: um cartão escondido (0×0) ou fora da área rolável não decodifica vídeo à toa
     let visible = true
     // Num cartão das grades da Loja/Inventário, só toca com o mouse em cima do cartão (eram ~10 vídeos juntos na grade;
-    // lib/decorationMotion.ts). No perfil e na prévia grande, toca normalmente.
+    // lib/decorationMotion.ts). No perfil e na prévia grande ("Seu visual"), toca normalmente.
     const card = showcaseCardOf(video)
     let hovered = false
     const onEnter = () => { hovered = true; sync() }
@@ -32,9 +58,14 @@ export function ProfileVideoEffect({ effect, className = '', style }: ProfileVid
     card?.addEventListener('mouseenter', onEnter)
     card?.addEventListener('mouseleave', onLeave)
     const sync = () => {
-      // O autoplay pode ser recusado (política do navegador); sem vídeo o cartão continua inteiro
-      if (visible && !document.hidden && (!card || hovered)) video.play().catch(() => {})
-      else video.pause()
+      // Com prefers-reduced-motion do sistema, fica no quadro parado por padrão, mas anima ao passar o mouse no card da Loja
+      const shouldPlay = visible && !document.hidden && (card ? hovered : !reduced)
+      if (shouldPlay) {
+        video.play().catch(() => {})
+      } else {
+        video.pause()
+        if (video.readyState >= 1) seekToPreviewFrame()
+      }
     }
     const observer = typeof IntersectionObserver !== 'undefined'
       ? new IntersectionObserver(([entry]) => {
@@ -50,10 +81,9 @@ export function ProfileVideoEffect({ effect, className = '', style }: ProfileVid
       document.removeEventListener('visibilitychange', sync)
       card?.removeEventListener('mouseenter', onEnter)
       card?.removeEventListener('mouseleave', onLeave)
+      video.removeEventListener('loadedmetadata', seekToPreviewFrame)
     }
   }, [reduced, effect.src])
-
-  if (reduced) return null
 
   return (
     <video

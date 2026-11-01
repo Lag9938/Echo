@@ -16,6 +16,7 @@ import { useThreadsStore } from '../stores/useThreadsStore'
 import { useEchoThreads } from '../hooks/useEchoThreads'
 import { ThreadPanel } from '../components/chat/ThreadPanel'
 import { filesFromTransfer, sendFilesInOrder } from '../lib/attachments'
+import type { ForwardableMessage } from '../lib/messageActions'
 
 export interface TextChannelViewProps {
   currentSpace: Space | null
@@ -94,6 +95,8 @@ export interface TextChannelViewProps {
   notifyTyping?: () => void
   /** Entra na chamada (e abre o canal de voz) a partir da faixa no topo do chat */
   onJoinVoice?: (channel: Channel) => void
+  onForwardMessage?: (msg: ForwardableMessage) => void
+  showToast?: (title: string, message: string, type?: 'info' | 'message' | 'friend') => void
 }
 
 const EMPTY_CHANNELS: Channel[] = []
@@ -180,7 +183,9 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
     supabase,
     typingUsers = [],
     notifyTyping,
-    onJoinVoice
+    onJoinVoice,
+    onForwardMessage,
+    showToast
   } = props
 
   // Passar o mouse no botão de membros espia a lista; o clique a fixa
@@ -633,6 +638,8 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
             threadSummaries={threads.enabled ? threads.summaries : undefined}
             onOpenThread={threads.enabled ? threads.openThread : undefined}
             unreadThreadRoots={unreadThreadRoots}
+            onForwardMessage={onForwardMessage}
+            showToast={showToast}
           />
 
           <MessageComposer

@@ -32,7 +32,7 @@ const REGISTRY: Record<string, ProfileVideoEffect> = {
     id: 'echo_resonance',
     name: 'Ressonância Harmônica',
     src: echoResonanceSrc,
-    position: 'center'
+    position: 'center bottom'
   },
   quantum_singularity: {
     id: 'quantum_singularity',
@@ -44,13 +44,13 @@ const REGISTRY: Record<string, ProfileVideoEffect> = {
     id: 'cyber_matrix',
     name: 'Sobrecarga de Dados',
     src: cyberMatrixSrc,
-    position: 'center'
+    position: 'center bottom'
   },
   glacial_aurora: {
     id: 'glacial_aurora',
     name: 'Aurora Ártica',
     src: glacialAuroraSrc,
-    position: 'center'
+    position: 'center top'
   },
   void_abyss: {
     id: 'void_abyss',
@@ -62,19 +62,19 @@ const REGISTRY: Record<string, ProfileVideoEffect> = {
     id: 'golden_stardust',
     name: 'Stardust Imperial',
     src: goldenStardustSrc,
-    position: 'center'
+    position: 'center top'
   },
   sakura_breeze: {
     id: 'sakura_breeze',
     name: 'Brisa de Florescer',
     src: sakuraBreezeSrc,
-    position: 'center top'
+    position: 'center 30%'
   },
   sakura_garden: {
     id: 'sakura_garden',
     name: 'Jardim de Sakura',
     src: sakuraCardSrc,
-    position: 'center'
+    position: 'center 30%'
   }
 }
 

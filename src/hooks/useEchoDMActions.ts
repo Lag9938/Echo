@@ -12,7 +12,7 @@ export interface UseEchoDMActionsOptions {
   setDirectMessages: (messages: DirectMessage[]) => void
   setRecentDMUserIds: Dispatch<SetStateAction<string[]>>
   loadDirectMessages: (friendId: string) => unknown
-  sendDirectMessage: (body: string, attachmentUrl?: string, attachmentType?: string) => unknown
+  sendDirectMessage: (body: string, attachmentUrl?: string, attachmentType?: string, targetUserIdOverride?: string) => unknown
   setPage: (page: Page) => void
   setIsUploading: (uploading: boolean) => void
   setError: (message: string) => void

@@ -26,3 +26,32 @@ body.light-theme .profile-video-effect {
   filter: invert(1) hue-rotate(180deg) saturate(2.2) brightness(2.3) contrast(0.9);
   opacity: 0.8;
 }
+
+/* Nos cartões de amostra da Loja (.effect-visualizer) e do Inventário (.effect-box), o palco é sempre escuro
+   com brilho temático para que tanto vídeos (screen) quanto canvas (plasma) apareçam vivos e nítidos. */
+.echo-inv-card-preview-box.effect-box,
+body.light-theme .echo-shop-card-visualizer.effect-visualizer,
+body.light-theme.echo-layout-glass .echo-shop-card-visualizer.effect-visualizer,
+body.light-theme .echo-inv-card-preview-box.effect-box,
+body.light-theme.echo-layout-glass .echo-inv-card-preview-box.effect-box {
+  background:
+    radial-gradient(120% 95% at 50% 100%, color-mix(in srgb, var(--item-theme, #38bdf8) 26%, transparent) 0%, transparent 72%),
+    linear-gradient(180deg, #161a28 0%, #0d1018 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  isolation: isolate;
+}
+
+body.light-theme .effect-visualizer .profile-video-effect,
+body.light-theme .effect-box .profile-video-effect {
+  mix-blend-mode: screen;
+  filter: none;
+  opacity: 1;
+}
+
+.effect-visualizer .echo-shop-card-badge,
+.effect-visualizer .echo-shop-owned-badge,
+.effect-box .echo-inv-owned-tag,
+.effect-box .echo-inv-store-tag {
+  z-index: 35 !important;
+}

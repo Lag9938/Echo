@@ -200,6 +200,8 @@ export function EchoShop({
   const lookDeco = shopSection === 'decorations' ? selectedDecoPreview : currentDecoration
   const lookFont = shopSection === 'name_fonts' ? selectedFontPreview : currentNameFont
   const lookEffect = shopSection === 'name_effects' ? selectedNamePreview : currentNameEffect
+  const lookProfileEffect = shopSection === 'profile_effects' ? selectedEffectPreview : currentProfileEffect
+  const lookFinish = shopSection === 'finishes' ? selectedFinishPreview : currentCardFinish
   let trial: ShopLookTrial | null = null
   if (shopSection === 'decorations' && selectedDecoPreview !== currentDecoration) {
     const owned = hasUserAcquired(userId, 'decorations', selectedDecoPreview)
@@ -228,6 +230,24 @@ export function EchoShop({
       hint: owned ? undefined : 'Obtenha o item no cartão para poder equipar.',
       onEquip: () => handleEquipName(selectedNamePreview),
       onUndo: () => setSelectedNamePreview(currentNameEffect || 'resonance_cyan')
+    }
+  } else if (shopSection === 'profile_effects' && selectedEffectPreview !== currentProfileEffect) {
+    const owned = hasUserAcquired(userId, 'effects', selectedEffectPreview)
+    trial = {
+      label: previewEffectMeta?.name || 'Efeito de perfil',
+      canEquip: owned && !isEquipping,
+      hint: owned ? undefined : 'Obtenha o item no cartão para poder equipar.',
+      onEquip: () => { void handleEquipEffect(selectedEffectPreview) },
+      onUndo: () => setSelectedEffectPreview(currentProfileEffect || PROFILE_EFFECTS[0].id)
+    }
+  } else if (shopSection === 'finishes' && selectedFinishPreview !== currentCardFinish) {
+    const owned = hasUserAcquired(userId, 'finishes', selectedFinishPreview)
+    trial = {
+      label: previewFinishMeta?.name || 'Acabamento',
+      canEquip: owned && !isEquipping,
+      hint: owned ? undefined : 'Obtenha o item no cartão para poder equipar.',
+      onEquip: () => handleEquipFinish(selectedFinishPreview),
+      onUndo: () => setSelectedFinishPreview(currentCardFinish || CARD_FINISHES[0].id)
     }
   }
 
@@ -600,6 +620,16 @@ export function EchoShop({
                   style={{ '--item-theme': effect.themeColor } as CSSProperties}
                 >
                   <div className="echo-shop-card-visualizer effect-visualizer">
+                    <div className="effect-card-mini-preview" aria-hidden="true">
+                      <div className="effect-card-mini-banner" />
+                      <div className="effect-card-mini-row">
+                        <div className="effect-card-mini-avatar" />
+                        <div className="effect-card-mini-lines">
+                          <span className="effect-card-mini-line primary" />
+                          <span className="effect-card-mini-line secondary" />
+                        </div>
+                      </div>
+                    </div>
                     <ProfileEffect effectId={effect.id} />
                     <div className="echo-shop-card-badge" style={badgeStyle(effect.themeColor)}>
                       {effect.badge}
@@ -1089,6 +1119,8 @@ export function EchoShop({
           decorationId={lookDeco}
           nameEffectId={lookEffect}
           nameFontId={lookFont}
+          profileEffectId={lookProfileEffect}
+          cardFinishId={lookFinish}
           rows={lookRows}
           trial={trial}
         />

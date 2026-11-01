@@ -39,6 +39,7 @@ import { isSixtyFpsAllowed } from '../lib/screenShareQuality'
 import { resolveMusicBotAvatarUrl } from '../lib/musicBotAvatars'
 import { MusicBotParticipantCard } from '../components/voice/MusicBotParticipantCard'
 import { MusicBotAvatarPickerModal } from '../components/modals/MusicBotAvatarPickerModal'
+import type { ForwardableMessage } from '../lib/messageActions'
 
 // Tile de vídeo de câmera (chamada de vídeo estilo Discord — versão simples).
 // MediaStream não pode ser passado como atributo JSX (precisa de srcObject via ref/efeito).
@@ -192,6 +193,8 @@ export interface VoiceChannelViewProps {
   showScreenMenu: boolean
   setShowScreenMenu: React.Dispatch<React.SetStateAction<boolean>>
   sidebarLayout?: 'glass' | 'classic'
+  onForwardMessage?: (msg: ForwardableMessage) => void
+  showToast?: (title: string, message: string, type?: 'info' | 'message' | 'friend') => void
 }
 
 export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChannelViewProps) {
@@ -315,7 +318,9 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
     searchQuery,
     setSearchQuery,
     showScreenMenu,
-    setShowScreenMenu
+    setShowScreenMenu,
+    onForwardMessage,
+    showToast
   } = props
   const openLightbox = useUIStore((s) => s.openLightbox)
   const setShowMusicBotModal = useUIStore((s) => s.setShowMusicBotModal)
@@ -1255,6 +1260,8 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                               voiceNoteAudioRef={voiceNoteAudioRef}
                               retrySendMessage={retrySendMessage}
                               messageReactions={messageReactions}
+                              onForwardMessage={onForwardMessage}
+                              showToast={showToast}
                             />
 
                             <MessageComposer

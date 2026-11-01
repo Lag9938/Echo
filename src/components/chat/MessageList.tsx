@@ -10,6 +10,8 @@ import { nameFontStyle, resolveNameFontId } from '../../lib/nameFonts'
 import { useNameFontStore } from '../../stores/useNameFontStore'
 import { CommunityBadge } from '../CommunityBadge'
 import {
+  CopyIcon,
+  ForwardIcon,
   HashtagIcon,
   MegaphoneIcon,
   MusicIcon,
@@ -21,6 +23,7 @@ import {
   TrashIcon,
   VolumeIcon
 } from '../icons'
+import { unwrapMessageBody, type ForwardableMessage } from '../../lib/messageActions'
 import { FileAttachmentCard } from './FileAttachmentCard'
 import { isCaptionJustFileName, readFileInfo } from '../../lib/attachments'
 import { isAutoImageCaption } from '../../lib/attachmentCaption'
@@ -164,6 +167,9 @@ export interface MessageListProps {
   unreadThreadRoots?: Record<string, string>
   /** 'thread' = lista de respostas dentro do painel do tópico; 'voice' = gaveta lateral do chat da sala de voz */
   variant?: 'channel' | 'thread' | 'voice'
+  /** Abre o modal para encaminhar a mensagem para outro canal, amigo ou grupo */
+  onForwardMessage?: (msg: ForwardableMessage) => void
+  showToast?: (title: string, message: string, type?: 'info' | 'message' | 'friend') => void
 }
 
 export const MessageList = memo(function MessageList({
@@ -209,7 +215,9 @@ export const MessageList = memo(function MessageList({
   threadSummaries,
   onOpenThread,
   unreadThreadRoots,
-  variant = 'channel'
+  variant = 'channel',
+  onForwardMessage,
+  showToast
 }: MessageListProps) {
   const isThreadList = variant === 'thread'
   const isVoiceChat = variant === 'voice'
@@ -309,22 +317,17 @@ export const MessageList = memo(function MessageList({
           const prevDate = prevMessage ? new Date(prevMessage.created_at) : null
           const isDifferentDay = !prevDate || msgDate.toDateString() !== prevDate.toDateString()
 
-          // Parse reply quote if present
-          let displayedBody = message.body
-          let replyQuoteText: string | null = null
-          if (displayedBody.startsWith('> @')) {
-            const firstLineEnd = displayedBody.indexOf('\n')
-            if (firstLineEnd !== -1) {
-              replyQuoteText = displayedBody.slice(2, firstLineEnd)
-              displayedBody = displayedBody.slice(firstLineEnd + 1)
-            }
-          }
+          // Parse reply quote / forwarded prefix if present
+          const unwrapped = unwrapMessageBody(message.body)
+          const displayedBody = unwrapped.cleanBody
+          const replyQuoteText = unwrapped.replyQuoteText
+          const isForwarded = unwrapped.isForwarded
 
-          // Consecutive Message Grouping (Same author within 5 min, same calendar day, not a reply, and not voice note)
+          // Consecutive Message Grouping (Same author within 5 min, same calendar day, not a reply, not forwarded, and not voice note)
           const isSameAuthor = prevMessage && prevMessage.author_id === message.author_id
           const isWithinWindow = prevMessage && (msgDate.getTime() - prevDate!.getTime() < 5 * 60 * 1000)
           const isAudioNote = message.attachment_type === 'audio' || prevMessage?.attachment_type === 'audio'
-          const isConsecutive = !isDifferentDay && isSameAuthor && isWithinWindow && !replyQuoteText && !isAudioNote
+          const isConsecutive = !isDifferentDay && isSameAuthor && isWithinWindow && !replyQuoteText && !isForwarded && !isAudioNote
 
           const isMentioned = message.author_id !== user.id && message.body.toLowerCase().includes(`@${profileDisplayName.toLowerCase()}`)
           const msgRole = currentSpace ? getUserHighestRole(currentSpace.id, message.author_id) : null
@@ -467,6 +470,38 @@ export const MessageList = memo(function MessageList({
                                   <span>Responder em tópico</span>
                                 </button>
                               )}
+                              {onForwardMessage && message.status !== 'sending' && message.status !== 'failed' && (
+                                <button
+                                  type="button"
+                                  className="hover-action-btn"
+                                  onClick={() => onForwardMessage({
+                                    id: message.id,
+                                    body: message.body,
+                                    authorName: resolvedAuthorName,
+                                    attachment_url: message.attachment_url,
+                                    attachment_type: message.attachment_type,
+                                    sourceLabel: `#${selectedChannel.name} • ${currentSpace?.name || 'Servidor'}`
+                                  })}
+                                  title="Encaminhar mensagem"
+                                >
+                                  <ForwardIcon style={{ width: '14px', height: '14px' }} />
+                                  <span>Encaminhar</span>
+                                </button>
+                              )}
+                              {displayedBody.trim() && (
+                                <button
+                                  type="button"
+                                  className="hover-action-btn"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(displayedBody)
+                                    showToast?.('Texto copiado', 'Mensagem copiada para a área de transferência.', 'info')
+                                  }}
+                                  title="Copiar texto da mensagem"
+                                >
+                                  <CopyIcon style={{ width: '14px', height: '14px' }} />
+                                  <span>Copiar texto</span>
+                                </button>
+                              )}
                               {!isThreadList && (
                                 <button
                                   type="button"
@@ -516,6 +551,12 @@ export const MessageList = memo(function MessageList({
                               original={message.reply_to_message_id ? filteredMessages.find((m) => m.id === message.reply_to_message_id) : undefined}
                               canJump
                             />
+                          )}
+                          {isForwarded && (
+                            <div className="dm-forwarded-badge">
+                              <ForwardIcon style={{ width: '12px', height: '12px' }} />
+                              <span>Mensagem encaminhada</span>
+                            </div>
                           )}
 
                           <div className="msg-meta">

@@ -3,7 +3,7 @@
    Origem: as regras do Aurora Light (base.css, topbar.css, sidebar.css, friends.css, chat.css, voice.css, calls.css, streaming.css, effects.css, music-bot.css, settings/appearance.css, settings/layout.css, settings/profile.css, space-studio-home.css, friends-home.css, shop-inventory.css, settings-aurora.css, member-profile.css, voice-aurora.css, aurora.css), com .light-theme trocado por
    .theme-aurora-dark e as cores convertidas por scripts/gen-aurora-dark.mjs.
    Ajustes manuais: src/styles/aurora-dark-overrides.css. Para regerar: npm run aurora:dark
-   (640 regras)
+   (645 regras)
    ========================================================================== */
 /* ── de base.css ── */
 body.theme-aurora-dark.echo-layout-glass .main-content,
@@ -222,6 +222,35 @@ body.theme-aurora-dark.echo-layout-glass .dm-full-header,
 body.theme-aurora-dark.echo-layout-glass .dm-full-compose {
   background: rgba(var(--aurora-glass-rgb, 24, 22, 27), 0.76) !important;
   border-color: rgba(255, 255, 255, 0.13) !important;
+}
+body.theme-aurora-dark .dm-action-btn {
+  background: rgba(var(--aurora-glass-rgb, 24, 22, 27), 0.86);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: var(--text-secondary, #c4b8ca);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+body.theme-aurora-dark .dm-action-btn:hover {
+  background: var(--aurora-surface, #1c1b20);
+  color: var(--text-primary, #f6eff8);
+  border-color: var(--accent-color, #df6d5d);
+}
+body.theme-aurora-dark .dm-react-pop,
+body.theme-aurora-dark .dm-emoji-picker-popover,
+body.theme-aurora-dark .forward-message-modal-card {
+  background: rgba(var(--aurora-glass-rgb, 24, 22, 27), 0.9);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.42);
+}
+body.theme-aurora-dark .dm-reply-quote-bar {
+  background: rgba(var(--aurora-glass-rgb, 24, 22, 27), 0.85);
+  border-color: rgba(223, 109, 93, 0.35);
+}
+body.theme-aurora-dark .dm-reply-reference,
+body.theme-aurora-dark .dm-forwarded-badge,
+body.theme-aurora-dark .forward-modal-preview,
+body.theme-aurora-dark .forward-modal-item {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.13);
 }
 
 /* ── de chat.css ── */

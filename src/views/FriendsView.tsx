@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useMemo, useCallback, memo, type FormEvent } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, memo, type FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { DirectMessage, FriendshipRequest, Page, GroupChat, GroupMessage } from '../types'
 import { formatGameDuration } from '../lib/formatters'
@@ -21,6 +21,7 @@ import { DMConversation } from './friends/DMConversation'
 import { GroupConversation } from './friends/GroupConversation'
 import { FriendsList } from './friends/FriendsList'
 import { FriendRequests } from './friends/FriendRequests'
+import type { ForwardableMessage } from '../lib/messageActions'
 
 export interface FriendsViewProps {
   friendships?: FriendshipRequest[]
@@ -107,6 +108,10 @@ export interface FriendsViewProps {
   onOpenGroup?: (groupId: string) => void
   notifyGroupTyping?: (groupId: string) => void
   onDeleteGroupMessage?: (messageId: string, groupId: string) => Promise<void>
+  onSendDirectMessage?: (body: string, attachmentUrl?: string, attachmentType?: string, targetUserIdOverride?: string) => Promise<void> | void
+  onForwardMessage?: (msg: ForwardableMessage) => void
+  messageReactions?: Record<string, Record<string, string[]>>
+  onToggleReaction?: (msgId: string, emoji: string) => void
 }
 
 export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
@@ -203,7 +208,11 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
     onLeaveGroupChat,
     onOpenGroup,
     notifyGroupTyping,
-    onDeleteGroupMessage
+    onDeleteGroupMessage,
+    onSendDirectMessage,
+    onForwardMessage,
+    messageReactions,
+    onToggleReaction
   } = props
 
   const openLightbox = useUIStore((s) => s.openLightbox)
@@ -806,6 +815,10 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
           onSendGroupMessage={onSendGroupMessage}
           onUploadGroupFile={onUploadGroupFile}
           isUploading={isUploading}
+          onForwardMessage={onForwardMessage}
+          messageReactions={messageReactions}
+          onToggleReaction={onToggleReaction}
+          showToast={showToast}
         />
       ) : selectedDMUserId && dmUser ? (
         <DMConversation
@@ -860,6 +873,11 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
           notifyDMTyping={notifyDMTyping}
           handleDMPaste={handleDMPaste}
           onSendDMSticker={onSendDMSticker}
+          onSendDirectMessage={onSendDirectMessage}
+          onForwardMessage={onForwardMessage}
+          messageReactions={messageReactions}
+          onToggleReaction={onToggleReaction}
+          showToast={showToast}
         />
       ) : (
         <section className="friends-content">

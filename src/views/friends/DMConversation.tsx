@@ -1,14 +1,24 @@
-import { memo } from 'react'
+import { memo, useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { DirectMessage } from '../../types'
 import { AvatarDecoration } from '../../components/AvatarDecoration'
 import { ModernVoiceNotePlayer } from '../../components/chat/ModernVoiceNotePlayer'
 import { ChatLinkEmbed } from '../../components/chat/ChatLinkEmbed'
 import { StickerPicker } from '../../components/StickerPicker'
+import { DEFAULT_EMOJIS } from '../../components/chat/MessageComposer'
+import { jumpToMessage } from '../../components/chat/MessageList'
 import { formatMessageText } from '../../lib/messageFormatter'
 import { FileAttachmentCard } from '../../components/chat/FileAttachmentCard'
 import { ChatDateDivider, withDayDividers } from '../../components/chat/ChatDateDivider'
 import { isCaptionJustFileName, readFileInfo, sendFilesInOrder } from '../../lib/attachments'
+import {
+  unwrapMessageBody,
+  parseReplyQuote,
+  getMessageSnippetLabel,
+  buildReplyPrefix,
+  findRepliedMessage,
+  type ForwardableMessage
+} from '../../lib/messageActions'
 import { useFileDrop } from '../../hooks/useFileDrop'
 import {
   PanelLeftIcon,
@@ -26,9 +36,15 @@ import {
   PaperclipIcon,
   VoiceMessageIcon,
   StickerIcon,
+  SmileIcon,
   SendIcon,
-  ClockIcon
+  ClockIcon,
+  ReplyIcon,
+  ForwardIcon,
+  CopyIcon
 } from '../../components/icons'
+
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '🔥', '🎮', '💀']
 
 export interface DMConversationProps {
   dmUser: {
@@ -59,6 +75,7 @@ export interface DMConversationProps {
   directMessages: DirectMessage[]
   user: User
   profileDisplayName: string
+  profileAvatarUrl?: string
   onToggleSaveDM?: (msg: DirectMessage, dmUser: any) => void
   isMessageSaved?: (msgId: string) => boolean
   onDeleteDM?: (msgId: string) => void
@@ -80,7 +97,7 @@ export interface DMConversationProps {
   handleDMComposeSubmit: (e: React.FormEvent) => void
   dmFileRef: React.RefObject<HTMLInputElement | null>
   isUploading: boolean
-  onUploadFile: (file: File) => void
+  onUploadFile: (file: File, caption?: string) => void
   onStartVoiceNote?: () => void
   showDMStickerPicker: boolean
   setShowDMStickerPicker: React.Dispatch<React.SetStateAction<boolean>>
@@ -89,6 +106,11 @@ export interface DMConversationProps {
   notifyDMTyping?: (userId: string) => void
   handleDMPaste: (e: React.ClipboardEvent | ClipboardEvent) => void
   onSendDMSticker?: (url: string, name?: string) => void
+  onSendDirectMessage?: (body: string, attachmentUrl?: string, attachmentType?: string) => Promise<void> | void
+  onForwardMessage?: (msg: ForwardableMessage) => void
+  messageReactions?: Record<string, Record<string, string[]>>
+  onToggleReaction?: (msgId: string, emoji: string) => void
+  showToast?: (title: string, message: string, type?: 'info' | 'message' | 'friend') => void
 }
 
 export const DMConversation = memo(function DMConversation({
@@ -113,6 +135,7 @@ export const DMConversation = memo(function DMConversation({
   directMessages,
   user,
   profileDisplayName,
+  profileAvatarUrl,
   onToggleSaveDM,
   isMessageSaved,
   onDeleteDM,
@@ -142,9 +165,108 @@ export const DMConversation = memo(function DMConversation({
   setDmDraft,
   notifyDMTyping,
   handleDMPaste,
-  onSendDMSticker
+  onSendDMSticker,
+  onSendDirectMessage,
+  onForwardMessage,
+  messageReactions = {},
+  onToggleReaction,
+  showToast
 }: DMConversationProps) {
-  const { isDragging, dropProps } = useFileDrop((files) => { void sendFilesInOrder(files, (f) => onUploadFile(f)) }, !isUploading)
+  const [replyingToMessage, setReplyingToMessage] = useState<DirectMessage | null>(null)
+  const [showDMEmojiPicker, setShowDMEmojiPicker] = useState(false)
+
+  // Limpa resposta pendente ao trocar de conversa
+  useEffect(() => {
+    setReplyingToMessage(null)
+    setShowDMEmojiPicker(false)
+  }, [dmUser.id])
+
+  // Esc cancela a resposta pendente ou fecha o seletor de emojis
+  useEffect(() => {
+    if (!replyingToMessage && !showDMEmojiPicker) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !pendingDMPastedFile) {
+        if (showDMEmojiPicker) {
+          setShowDMEmojiPicker(false)
+        } else if (replyingToMessage) {
+          setReplyingToMessage(null)
+        }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [replyingToMessage, showDMEmojiPicker, pendingDMPastedFile])
+
+  const getAuthorName = (m: DirectMessage) =>
+    m.sender_id === user.id ? (profileDisplayName || 'Você') : dmUser.display_name
+
+  const getAuthorAvatar = (m: DirectMessage) =>
+    m.sender_id === user.id ? profileAvatarUrl : dmUser.avatar_url
+
+  const focusInput = () => {
+    const input = document.getElementById('dm-message-input') as HTMLInputElement | null
+    input?.focus()
+  }
+
+  const handleReplyClick = (msg: DirectMessage) => {
+    setReplyingToMessage(msg)
+    setTimeout(focusInput, 0)
+  }
+
+  const handleCopyText = (text: string) => {
+    if (!text.trim()) return
+    void navigator.clipboard?.writeText(text)
+    showToast?.('Texto copiado!', 'Mensagem copiada para a área de transferência.', 'info')
+  }
+
+  const handleSendFilesWithOptionalReply = (files: File[]) => {
+    let prefix = ''
+    if (replyingToMessage) {
+      prefix = buildReplyPrefix(getAuthorName(replyingToMessage), replyingToMessage)
+      setReplyingToMessage(null)
+    }
+    let isFirst = true
+    void sendFilesInOrder(files, (f: File) => {
+      const caption = isFirst && prefix ? `${prefix}${f.name || 'Arquivo'}` : undefined
+      isFirst = false
+      return onUploadFile(f, caption)
+    })
+  }
+
+  const { isDragging, dropProps } = useFileDrop(handleSendFilesWithOptionalReply, !isUploading)
+
+  const onFormSubmit = async (e: React.FormEvent) => {
+    if (replyingToMessage) {
+      e.preventDefault()
+      const prefix = buildReplyPrefix(getAuthorName(replyingToMessage), replyingToMessage)
+      setReplyingToMessage(null)
+
+      if (pendingDMPastedFile) {
+        const file = pendingDMPastedFile
+        const caption = dmDraft.trim()
+        removePendingDMImage()
+        setDmDraft('')
+        await onUploadFile(file, `${prefix}${caption || file.name || 'Imagem'}`)
+        return
+      }
+
+      const trimmed = dmDraft.trim()
+      if (!trimmed) return
+      if (onSendDirectMessage) {
+        await onSendDirectMessage(`${prefix}${trimmed}`)
+      } else {
+        setDmDraft(`${prefix}${trimmed}`)
+        handleDMComposeSubmit(e)
+      }
+      return
+    }
+    handleDMComposeSubmit(e)
+  }
+
+  // Mapa de índice de cada mensagem para localizar respostas anteriores
+  const messageIndexById = new Map<string, number>()
+  directMessages.forEach((m, i) => messageIndexById.set(m.id, i))
+
   return (
     <section className="dm-full-chat file-drop-host" {...dropProps}>
       {isDragging && (
@@ -346,35 +468,117 @@ export const DMConversation = memo(function DMConversation({
           {withDayDividers(directMessages).map((entry) => {
             if (entry.kind === 'day') return <ChatDateDivider key={entry.key} date={entry.date} />
             const msg = entry.message
+            const msgIndex = messageIndexById.get(msg.id) ?? -1
+            const { replyQuoteText, isForwarded, cleanBody } = unwrapMessageBody(msg.body)
+
             const isSent = msg.sender_id === user.id
-            const isImage = Boolean(msg.attachment_url && msg.attachment_type === 'image')
+            const isImage = Boolean(msg.attachment_url && (msg.attachment_type === 'image' || msg.attachment_type?.startsWith('image')))
             const isAudio = Boolean(msg.attachment_url && msg.attachment_type === 'audio')
             const isSticker = Boolean(msg.attachment_url && msg.attachment_type === 'sticker')
             const isOtherFile = Boolean(msg.attachment_url && !isImage && !isAudio && !isSticker)
-            const hasLink = Boolean(!isAudio && !isOtherFile && !isSticker && msg.body && /(https?:\/\/[^\s]+)/i.test(msg.body))
+            const hasLink = Boolean(!isAudio && !isOtherFile && !isSticker && cleanBody && /(https?:\/\/[^\s]+)/i.test(cleanBody))
             const hasText = Boolean(
-              msg.body &&
+              cleanBody &&
+              !isSticker &&
               (!isImage || (
-                msg.body !== 'Imagem' &&
-                !/^screenshot_\d+\./i.test(msg.body) &&
-                !/^image_\d+\./i.test(msg.body) &&
-                !msg.body.startsWith('http')
+                cleanBody !== 'Imagem' &&
+                !/^screenshot_\d+\./i.test(cleanBody) &&
+                !/^image_\d+\./i.test(cleanBody) &&
+                !cleanBody.startsWith('http')
               ))
             )
+
+            const repliedOriginal = replyQuoteText
+              ? findRepliedMessage(directMessages, msgIndex, replyQuoteText, getAuthorName)
+              : undefined
+            const parsedReply = replyQuoteText ? parseReplyQuote(replyQuoteText) : null
+            const replyAuthorName = repliedOriginal ? getAuthorName(repliedOriginal) : (parsedReply?.author || 'Membro')
+            const replyAuthorAvatar = repliedOriginal ? getAuthorAvatar(repliedOriginal) : undefined
+            const replySnippet = replyQuoteText ? getMessageSnippetLabel(repliedOriginal, parsedReply?.snippet || '') : ''
+            const reactions = messageReactions[msg.id] || {}
 
             return (
               <div
                 key={msg.id}
+                data-message-id={msg.id}
                 className={`dm-message-row ${isSent ? 'dm-sent' : 'dm-received'}`}
               >
                 <div className="dm-message-container">
-                  {/* Action buttons (Star / Delete) */}
-                  <div className="dm-actions-toolbar">
+                  {/* Barra de ações por mensagem: Responder, Reagir, Encaminhar, Copiar, Salvar e Excluir */}
+                  <div className="dm-actions-toolbar" role="toolbar" aria-label="Ações da mensagem">
+                    <button
+                      type="button"
+                      className="dm-action-btn dm-reply-btn"
+                      onClick={() => handleReplyClick(msg)}
+                      title="Responder a esta mensagem"
+                    >
+                      <ReplyIcon style={{ width: '13px', height: '13px' }} />
+                      <span className="dm-action-btn-label">Responder</span>
+                    </button>
+
+                    {onToggleReaction && (
+                      <div className="dm-react-wrap">
+                        <button
+                          type="button"
+                          className="dm-action-btn"
+                          title="Reagir com emoji"
+                          aria-haspopup="true"
+                        >
+                          <SmileIcon style={{ width: '13px', height: '13px' }} />
+                        </button>
+                        <div className="dm-react-pop">
+                          {QUICK_REACTIONS.map((emoji) => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              className="dm-react-emoji-btn"
+                              onClick={() => onToggleReaction(msg.id, emoji)}
+                              title={`Reagir com ${emoji}`}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {onForwardMessage && (
+                      <button
+                        type="button"
+                        className="dm-action-btn dm-forward-btn"
+                        onClick={() =>
+                          onForwardMessage({
+                            id: msg.id,
+                            body: msg.body,
+                            attachment_url: msg.attachment_url,
+                            attachment_type: msg.attachment_type,
+                            authorName: getAuthorName(msg),
+                            authorAvatar: getAuthorAvatar(msg)
+                          })
+                        }
+                        title="Encaminhar mensagem"
+                      >
+                        <ForwardIcon style={{ width: '13px', height: '13px' }} />
+                      </button>
+                    )}
+
+                    {hasText && (
+                      <button
+                        type="button"
+                        className="dm-action-btn dm-copy-btn"
+                        onClick={() => handleCopyText(cleanBody)}
+                        title="Copiar texto da mensagem"
+                      >
+                        <CopyIcon style={{ width: '12px', height: '12px' }} />
+                      </button>
+                    )}
+
                     {onToggleSaveDM && (
                       <button 
                         type="button" 
-                        className={`dm-star-btn ${isMessageSaved?.(msg.id) ? 'active' : ''}`}
+                        className={`dm-action-btn dm-star-btn ${isMessageSaved?.(msg.id) ? 'active' : ''}`}
                         onClick={() => onToggleSaveDM(msg, dmUser)}
+                        title={isMessageSaved?.(msg.id) ? 'Remover dos salvos' : 'Salvar mensagem (⭐)'}
                       >
                         <StarIcon style={{ width: '12px', height: '12px' }} />
                       </button>
@@ -382,8 +586,9 @@ export const DMConversation = memo(function DMConversation({
                     {onDeleteDM && isSent && (
                       <button 
                         type="button" 
-                        className="dm-delete-btn"
+                        className="dm-action-btn dm-delete-btn"
                         onClick={() => onDeleteDM(msg.id)}
+                        title="Excluir mensagem"
                       >
                         <TrashIcon style={{ width: '12px', height: '12px' }} />
                       </button>
@@ -392,6 +597,47 @@ export const DMConversation = memo(function DMConversation({
 
                   {/* Content Column (Stacked vertically) */}
                   <div className="dm-message-content">
+                    {/* Citação de resposta no topo da mensagem */}
+                    {replyQuoteText && (
+                      <div
+                        className={`reply-reference dm-reply-reference ${repliedOriginal ? 'is-interactive' : ''}`}
+                        role={repliedOriginal ? 'button' : undefined}
+                        tabIndex={repliedOriginal ? 0 : undefined}
+                        title={repliedOriginal ? 'Ir para a mensagem original' : 'Mensagem respondida'}
+                        onClick={repliedOriginal ? () => jumpToMessage(repliedOriginal.id) : undefined}
+                        onKeyDown={
+                          repliedOriginal
+                            ? (e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  jumpToMessage(repliedOriginal.id)
+                                }
+                              }
+                            : undefined
+                        }
+                      >
+                        <span className="reply-reference-curve" aria-hidden="true" />
+                        <span className="reply-reference-avatar" aria-hidden="true">
+                          {replyAuthorAvatar ? (
+                            <img src={replyAuthorAvatar} alt="" />
+                          ) : (
+                            replyAuthorName.slice(0, 1).toUpperCase()
+                          )}
+                        </span>
+                        <span className="reply-reference-name">@{replyAuthorName}</span>
+                        <span className="reply-reference-text">{replySnippet}</span>
+                        {repliedOriginal && <span className="reply-reference-go" aria-hidden="true">↗</span>}
+                      </div>
+                    )}
+
+                    {/* Selo de mensagem encaminhada */}
+                    {isForwarded && (
+                      <div className="dm-forwarded-badge">
+                        <ForwardIcon style={{ width: 12, height: 12 }} />
+                        <span>Mensagem encaminhada</span>
+                      </div>
+                    )}
+
                     {/* 0. Sticker Media */}
                     {isSticker && (
                       <div className="dm-sticker-wrap" style={{ padding: '4px 0' }}>
@@ -454,16 +700,16 @@ export const DMConversation = memo(function DMConversation({
                           />
                         ) : isOtherFile ? (
                           <>
-                            {!isCaptionJustFileName(msg.body, readFileInfo(msg.attachment_url, msg.body)) && (
+                            {!isCaptionJustFileName(cleanBody, readFileInfo(msg.attachment_url, cleanBody)) && (
                               <div className="dm-text-body file-card-caption" style={{ wordBreak: 'break-word', lineHeight: 1.45 }}>
-                                {formatMessageText(msg.body, profileDisplayName)}
+                                {formatMessageText(cleanBody, profileDisplayName)}
                               </div>
                             )}
-                            <FileAttachmentCard url={msg.attachment_url!} fallbackName={msg.body} />
+                            <FileAttachmentCard url={msg.attachment_url!} fallbackName={cleanBody} />
                           </>
                         ) : (
                           <div className="dm-text-body" style={{ wordBreak: 'break-word', lineHeight: 1.45 }}>
-                            {formatMessageText(msg.body, profileDisplayName)}
+                            {formatMessageText(cleanBody, profileDisplayName)}
                           </div>
                         )}
                         <span className="dm-time">
@@ -475,7 +721,28 @@ export const DMConversation = memo(function DMConversation({
                     {/* 3. Embed Card (Stacked neatly underneath) */}
                     {hasLink && (
                       <div className="dm-embed-wrapper">
-                        <ChatLinkEmbed content={msg.body} />
+                        <ChatLinkEmbed content={cleanBody} />
+                      </div>
+                    )}
+
+                    {/* 4. Reações de Emoji */}
+                    {Object.keys(reactions).length > 0 && (
+                      <div className="message-reactions-row dm-reactions-row">
+                        {Object.entries(reactions).map(([em, userIds]) => {
+                          const hasReacted = userIds.includes(user.id)
+                          return (
+                            <button
+                              key={em}
+                              type="button"
+                              className={`reaction-pill ${hasReacted ? 'reacted' : ''}`}
+                              onClick={() => onToggleReaction?.(msg.id, em)}
+                              title={hasReacted ? 'Remover sua reação' : 'Adicionar reação'}
+                            >
+                              <span>{em}</span>
+                              <span>{userIds.length}</span>
+                            </button>
+                          )
+                        })}
                       </div>
                     )}
                   </div>
@@ -550,6 +817,28 @@ export const DMConversation = memo(function DMConversation({
               <span><strong>@{dmUser.display_name}</strong> está digitando...</span>
             </div>
           )}
+
+          {/* Barra de resposta ativa acima do campo de digitação */}
+          {replyingToMessage && (
+            <div className="reply-quote-bar dm-reply-quote-bar">
+              <span className="dm-reply-quote-info">
+                <ReplyIcon style={{ width: 13, height: 13, flexShrink: 0 }} />
+                <span>
+                  Respondendo a <strong>@{getAuthorName(replyingToMessage)}</strong>:{' '}
+                  "{getMessageSnippetLabel(replyingToMessage)}"
+                </span>
+              </span>
+              <button
+                type="button"
+                className="dm-reply-cancel-btn"
+                onClick={() => setReplyingToMessage(null)}
+                title="Cancelar resposta (Esc)"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {pendingDMPastedFile && pendingDMImagePreview && (
             <div className="composer-image-staging dm-image-staging">
               <div className="staging-thumb-wrap">
@@ -574,8 +863,18 @@ export const DMConversation = memo(function DMConversation({
               </button>
             </div>
           )}
-          <form className="dm-full-compose" onSubmit={handleDMComposeSubmit}>
-            <input type="file" multiple ref={dmFileRef} style={{ display: 'none' }} onChange={(e) => { const chosen = Array.from(e.target.files ?? []); e.target.value = ''; void sendFilesInOrder(chosen, (f) => onUploadFile(f)) }} />
+          <form className="dm-full-compose" onSubmit={onFormSubmit}>
+            <input
+              type="file"
+              multiple
+              ref={dmFileRef}
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const chosen = Array.from(e.target.files ?? [])
+                e.target.value = ''
+                handleSendFilesWithOptionalReply(chosen)
+              }}
+            />
             <button type="button" className="dm-attach-btn" onClick={() => dmFileRef.current?.click()} disabled={isUploading} title="Enviar arquivo (até 25 MB)">
               {isUploading ? <ClockIcon style={{ width: '16px', height: '16px' }} /> : <PaperclipIcon style={{ width: '16px', height: '16px' }} />}
             </button>
@@ -593,11 +892,26 @@ export const DMConversation = memo(function DMConversation({
             <button
               type="button"
               className="dm-attach-btn"
-              onClick={() => setShowDMStickerPicker(prev => !prev)}
+              onClick={() => {
+                setShowDMEmojiPicker(false)
+                setShowDMStickerPicker(prev => !prev)
+              }}
               title="Figurinhas (Stickers)"
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: showDMStickerPicker ? 'var(--accent-color, #00f2fe)' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
             >
               <StickerIcon style={{ width: '16px', height: '16px' }} />
+            </button>
+            <button
+              type="button"
+              className="dm-attach-btn"
+              onClick={() => {
+                setShowDMStickerPicker(false)
+                setShowDMEmojiPicker(prev => !prev)
+              }}
+              title="Emojis"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: showDMEmojiPicker ? 'var(--accent-color, #00f2fe)' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
+            >
+              <SmileIcon style={{ width: '16px', height: '16px' }} />
             </button>
             <input 
               id="dm-message-input"
@@ -609,19 +923,54 @@ export const DMConversation = memo(function DMConversation({
                 }
               }} 
               onPaste={handleDMPaste}
-              placeholder={`Conversar com @${dmUser.display_name}…`}
+              placeholder={
+                replyingToMessage
+                  ? `Respondendo a @${getAuthorName(replyingToMessage)}…`
+                  : `Conversar com @${dmUser.display_name}…`
+              }
               autoFocus
             />
             <button type="submit" disabled={(!dmDraft.trim() && !pendingDMPastedFile) || isUploading} className="dm-send-btn" title="Enviar mensagem">
               <SendIcon style={{ width: '16px', height: '16px' }} />
             </button>
           </form>
+
+          {showDMEmojiPicker && (
+            <div className="dm-emoji-picker-popover">
+              <div className="dm-emoji-picker-header">
+                <span>Emojis</span>
+                <button type="button" onClick={() => setShowDMEmojiPicker(false)} title="Fechar">✕</button>
+              </div>
+              <div className="dm-emoji-picker-grid">
+                {DEFAULT_EMOJIS.map((em) => (
+                  <button
+                    key={em}
+                    type="button"
+                    className="dm-emoji-item-btn"
+                    onClick={() => {
+                      setDmDraft(`${dmDraft}${em}`)
+                      focusInput()
+                    }}
+                  >
+                    {em}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {showDMStickerPicker && (
             <div style={{ position: 'relative', width: '100%' }}>
               <StickerPicker
                 userId={user.id}
                 onSelectSticker={(url, name) => {
-                  if (onSendDMSticker) onSendDMSticker(url, name)
+                  if (replyingToMessage && onSendDirectMessage) {
+                    const prefix = buildReplyPrefix(getAuthorName(replyingToMessage), replyingToMessage)
+                    setReplyingToMessage(null)
+                    void onSendDirectMessage(`${prefix}${name ? `[Sticker: ${name}]` : 'Sticker'}`, url, 'sticker')
+                  } else if (onSendDMSticker) {
+                    onSendDMSticker(url, name)
+                  }
                   setShowDMStickerPicker(false)
                 }}
                 onClose={() => setShowDMStickerPicker(false)}

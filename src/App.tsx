@@ -30,6 +30,8 @@ import { useEchoSavedMessages } from './hooks/useEchoSavedMessages'
 import { useEchoAudioDevices } from './hooks/useEchoAudioDevices'
 import { ToastContainer } from './components/common/ToastContainer'
 import { ActivityInboxModal } from './components/modals/ActivityInboxModal'
+import { ForwardMessageModal, type ForwardDestination } from './components/modals/ForwardMessageModal'
+import { buildForwardedBody, type ForwardableMessage } from './lib/messageActions'
 import { useEchoPtt } from './hooks/useEchoPtt'
 import { useEchoGamePresence } from './hooks/useEchoGamePresence'
 import { UpdateBanner } from './components/common/UpdateBanner'
@@ -1852,6 +1854,85 @@ function Echo({ user }: { user: User }) {
     }
   }, [handleOpenDirectChat, handleOpenGroup, spaces])
 
+  // Estado e destinos para encaminhar mensagens (Amigos, Grupos e Canais de Servidores)
+  const [forwardingMessage, setForwardingMessage] = useState<ForwardableMessage | null>(null)
+
+  const forwardDestinations = useMemo<ForwardDestination[]>(() => {
+    const list: ForwardDestination[] = []
+    const addedUserIds = new Set<string>()
+
+    const addUserDest = (userId: string, dName: string, aUrl?: string, sub?: string) => {
+      if (!userId || userId === user.id || addedUserIds.has(userId) || blockedUserIds?.has(userId)) return
+      addedUserIds.add(userId)
+      list.push({
+        id: userId,
+        kind: 'dm',
+        name: dName || 'Usuário',
+        subtitle: sub || (onlineUsers.has(userId) ? 'Online • Mensagem Direta' : 'Mensagem Direta'),
+        avatarUrl: aUrl
+      })
+    }
+
+    friendships
+      .filter(f => f.status === 'accepted')
+      .forEach(f => addUserDest(f.user.id, f.user.display_name, f.user.avatar_url))
+
+    recentDMUserIds.forEach(uid => {
+      const known = knownProfiles[uid]
+      const mem = spaceMembers.find(m => (m.user?.id || m.id) === uid)
+      const name = known?.display_name || mem?.user?.display_name || mem?.display_name || 'Usuário'
+      const avatar = known?.avatar_url || mem?.user?.avatar_url || mem?.avatar_url
+      addUserDest(uid, name, avatar, 'Conversa recente')
+    })
+
+    groupChats.forEach(g => {
+      list.push({
+        id: g.id,
+        kind: 'group',
+        name: g.name,
+        subtitle: `Grupo • ${g.members?.length || 0} membros`,
+        avatarUrl: g.avatar_url || undefined
+      })
+    })
+
+    spaces.forEach(sp => {
+      const chs = spaceChannels[sp.id] || []
+      chs
+        .filter(ch => ch.type === 'text' && (!ch.is_announcement || canUserDo(sp.id, user.id, 'sendInAnnouncementChannels')))
+        .forEach(ch => {
+          list.push({
+            id: ch.id,
+            kind: 'channel',
+            name: ch.name,
+            subtitle: `Servidor • ${sp.name}`
+          })
+        })
+    })
+
+    return list
+  }, [friendships, recentDMUserIds, knownProfiles, spaceMembers, groupChats, spaces, spaceChannels, onlineUsers, user.id, blockedUserIds, canUserDo])
+
+  const handleForwardToDestination = useCallback(async (dest: ForwardDestination, msg: ForwardableMessage, comment?: string) => {
+    const forwardedBody = buildForwardedBody(msg)
+    if (dest.kind === 'dm') {
+      await sendDirectMessage(forwardedBody, msg.attachment_url || undefined, msg.attachment_type || undefined, dest.id)
+      if (comment) {
+        await sendDirectMessage(comment, undefined, undefined, dest.id)
+      }
+    } else if (dest.kind === 'group') {
+      await sendGroupMessage(dest.id, forwardedBody, msg.attachment_url || undefined, msg.attachment_type || undefined)
+      if (comment) {
+        await sendGroupMessage(dest.id, comment)
+      }
+    } else if (dest.kind === 'channel') {
+      await postChannelMessage(dest.id, forwardedBody, msg.attachment_url || undefined, msg.attachment_type || undefined)
+      if (comment) {
+        await postChannelMessage(dest.id, comment)
+      }
+    }
+    showToast('Mensagem encaminhada', `Enviada para ${dest.kind === 'channel' ? `#${dest.name}` : dest.name}`, 'info')
+  }, [sendDirectMessage, sendGroupMessage, postChannelMessage, showToast])
+
   return (
     <main className="echo-app">
       <UpdateBanner
@@ -2134,6 +2215,8 @@ function Echo({ user }: { user: User }) {
                     voiceNoteTarget={voiceNoteTarget}
                     typingUsers={typingUsers}
                     notifyTyping={notifyTyping}
+                    onForwardMessage={setForwardingMessage}
+                    showToast={showToast}
                   />
                   </Suspense>
                 </ErrorBoundary>
@@ -2254,6 +2337,8 @@ function Echo({ user }: { user: User }) {
                     setSearchQuery={setSearchQuery}
                     showScreenMenu={showScreenMenu}
                     setShowScreenMenu={setShowScreenMenu}
+                    onForwardMessage={setForwardingMessage}
+                    showToast={showToast}
                   />
                   </Suspense>
                 </ErrorBoundary>
@@ -2349,6 +2434,10 @@ function Echo({ user }: { user: User }) {
             onOpenGroup={handleOpenGroup}
             notifyGroupTyping={notifyGroupTyping}
             onDeleteGroupMessage={deleteGroupMessage}
+            onSendDirectMessage={sendDirectMessage}
+            onForwardMessage={setForwardingMessage}
+            messageReactions={messageReactions}
+            onToggleReaction={toggleReaction}
           />
           </Suspense>
         </ErrorBoundary>
@@ -2696,6 +2785,16 @@ function Echo({ user }: { user: User }) {
         onMarkAllAsRead={markAllNotificationsAsRead}
         onClearHistory={clearNotificationHistory}
       />
+
+      {/* Modal de Encaminhar Mensagem */}
+      {forwardingMessage && (
+        <ForwardMessageModal
+          message={forwardingMessage}
+          destinations={forwardDestinations}
+          onClose={() => setForwardingMessage(null)}
+          onForwardToDestination={handleForwardToDestination}
+        />
+      )}
 
       {/* Floating Picture-in-Picture Mini Player (Always on Top) */}
       {isPiPActive && activeScreenSharer && (

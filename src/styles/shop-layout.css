@@ -267,12 +267,36 @@ body.light-theme .shop-toggle:hover .shop-toggle-box {
   border: 1px solid var(--calm-line, var(--border-color));
 }
 
+.shop-look-stage {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.shop-look-stage > .profile-effect-container {
+  z-index: 2;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
 .shop-look-banner {
+  position: relative;
+  z-index: 1;
   height: 70px;
   background: linear-gradient(120deg, #2b6c86, #7a3b78);
 }
 
+.shop-look-hero {
+  position: relative;
+  z-index: 3;
+  padding: 0 16px 4px;
+  display: flex;
+  flex-direction: column;
+}
+
 .shop-look-body {
+  position: relative;
+  z-index: 3;
   padding: 0 16px 16px;
   display: flex;
   flex-direction: column;

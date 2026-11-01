@@ -18,11 +18,38 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.62.5',
+    title: 'Echo v0.62.5 - Encaminhar, Respostas nas DMs e Provador Completo',
+    date: '1 de Novembro de 2026',
+    tagline: 'Encaminhe mensagens para amigos, grupos e canais, responda e reaja nas conversas privadas e experimente efeitos de perfil na Loja.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '↪️',
+        badge: 'NOVO',
+        title: 'Encaminhar Mensagens',
+        description: 'Encaminhe qualquer mensagem ou mídia para amigos, grupos ou canais de servidores em um clique, com busca rápida, prévia e comentário opcional.'
+      },
+      {
+        icon: '💬',
+        badge: 'NOVO',
+        title: 'Responder, Reagir e Copiar nas DMs e Grupos',
+        description: 'As conversas diretas e em grupo agora trazem resposta com citação clicável até a mensagem original, reações rápidas por mensagem, cópia de texto e seletor de emojis.'
+      },
+      {
+        icon: '✨',
+        badge: 'MELHORIA',
+        title: 'Efeitos de Perfil Vivos na Loja e no Provador',
+        description: 'O painel "Seu visual" agora permite testar e equipar efeitos de perfil e acabamentos de cartão ao vivo, e as amostras na grade exibem prévia nítida em todos os temas.'
+      }
+    ]
+  },
+  {
     version: '0.62.4',
     title: 'Echo v0.62.4 - Central de Notificações e Nova Loja',
     date: '26 de Outubro de 2026',
     tagline: 'Central de notificações com histórico e resposta rápida, Loja renovada com provador ao vivo e ajustes nos cartões de membro.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🔔',

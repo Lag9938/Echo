@@ -158,10 +158,11 @@ export function useEchoDirectMessages({
       .then(() => {})
   }, [supabase, user, setError])
 
-  const sendDirectMessage = useCallback(async (body: string, attachmentUrl?: string, attachmentType?: string) => {
-    if (!supabase || !selectedDMUserId || !user) return
+  const sendDirectMessage = useCallback(async (body: string, attachmentUrl?: string, attachmentType?: string, targetUserIdOverride?: string) => {
+    const targetFriendId = targetUserIdOverride || selectedDMUserId
+    if (!supabase || !targetFriendId || !user) return
 
-    if (blockedUserIds?.has(selectedDMUserId)) {
+    if (blockedUserIds?.has(targetFriendId)) {
       showToast('Usuário Bloqueado', 'Você bloqueou este usuário. Desbloqueie-o para enviar mensagens.', 'info')
       return
     }
@@ -173,7 +174,6 @@ export function useEchoDirectMessages({
       return
     }
 
-    const targetFriendId = selectedDMUserId
     const { error: sendError } = await supabase
       .from('direct_messages')
       .insert({
@@ -187,13 +187,15 @@ export function useEchoDirectMessages({
     if (sendError) {
       setError(sendError.message)
     } else {
-      setDmDraft('')
+      setRecentDMUserIds(prev => Array.from(new Set([targetFriendId, ...prev])))
+      if (!targetUserIdOverride || targetFriendId === selectedDMUserId) {
+        setDmDraft('')
+        await loadDirectMessages(targetFriendId)
+      }
       trackMessageSent(attachmentType ? 'attachment' : 'text')
       // O aviso para o destinatário é publicado pelo banco ao gravar a DM (migração 13), só na caixa dele
-
-      await loadDirectMessages(targetFriendId)
     }
-  }, [supabase, selectedDMUserId, user, setError, socialChannelRef, profileDisplayName, displayName, loadDirectMessages])
+  }, [supabase, selectedDMUserId, user, setError, socialChannelRef, profileDisplayName, displayName, loadDirectMessages, blockedUserIds, showToast])
 
   const handleDeleteDM = useCallback(async (messageId: string) => {
     if (!supabase || !user) return
