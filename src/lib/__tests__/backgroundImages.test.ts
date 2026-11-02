@@ -51,6 +51,13 @@ describe('imagens animadas em segundo plano', () => {
     expect(hoverOnlyImages([avatar, icon, chatGif, hidden])).toEqual([avatar, icon])
   })
 
+  it('imagens já congeladas são ignoradas para evitar leitura de layout', () => {
+    const sized = (width: number) => { const img = image(GIF); Object.defineProperty(img, 'clientWidth', { value: width }); return img }
+    const alreadyFrozen = sized(64)
+    alreadyFrozen.setAttribute(HOVER_FROZEN_ATTR, '')
+    expect(hoverOnlyImages([alreadyFrozen])).toEqual([])
+  })
+
   it('a mesma imagem em vários lugares é lida uma vez só', async () => {
     const makeStill = vi.fn(async () => 'blob:parado')
     const freezer = createImageFreezer(makeStill, () => true)

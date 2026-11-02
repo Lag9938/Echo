@@ -1,18 +1,32 @@
+import { useVoiceStore } from '../../stores/useVoiceStore'
+
 export interface VoiceReconnectBannerProps {
-  isVoiceReconnecting: boolean
-  voiceReconnectCountdown: number
-  voiceReconnectAttempt: number
-  onRetry: () => void
-  onCancel: () => void
+  isVoiceReconnecting?: boolean
+  voiceReconnectCountdown?: number
+  voiceReconnectAttempt?: number
+  onRetry?: () => void
+  onCancel?: () => void
 }
 
 export function VoiceReconnectBanner({
-  isVoiceReconnecting,
-  voiceReconnectCountdown,
-  voiceReconnectAttempt,
-  onRetry,
-  onCancel
-}: VoiceReconnectBannerProps) {
+  isVoiceReconnecting: propIsVoiceReconnecting,
+  voiceReconnectCountdown: propVoiceReconnectCountdown,
+  voiceReconnectAttempt: propVoiceReconnectAttempt,
+  onRetry: propOnRetry,
+  onCancel: propOnCancel
+}: VoiceReconnectBannerProps = {}) {
+  const storeReconnecting = useVoiceStore((s) => s.isVoiceReconnecting || s.isVoiceNetworkUnstable)
+  const storeCountdown = useVoiceStore((s) => s.voiceReconnectCountdown)
+  const storeAttempt = useVoiceStore((s) => s.voiceReconnectAttempt)
+  const storeRetry = useVoiceStore((s) => s.retryVoiceReconnect)
+  const storeCancel = useVoiceStore((s) => s.cancelVoiceReconnect)
+
+  const isVoiceReconnecting = propIsVoiceReconnecting ?? storeReconnecting
+  const voiceReconnectCountdown = propVoiceReconnectCountdown ?? storeCountdown
+  const voiceReconnectAttempt = propVoiceReconnectAttempt ?? storeAttempt
+  const onRetry = propOnRetry ?? storeRetry
+  const onCancel = propOnCancel ?? storeCancel
+
   if (!isVoiceReconnecting) return null
 
   return (

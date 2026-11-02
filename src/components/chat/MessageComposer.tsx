@@ -1,9 +1,10 @@
-import React, { memo, useState } from 'react'
+import React, { memo, useState, useCallback, useMemo, useRef } from 'react'
 import { roleInk } from '../../lib/accentContrast'
 import { sendFilesInOrder } from '../../lib/attachments'
 import type { User } from '@supabase/supabase-js'
 import type { Space, Channel, Message, ServerEmoji, RolePermissions } from '../../types'
 import { StickerPicker } from '../StickerPicker'
+import { useChatDraftStore, useChannelDraft } from '../../stores/useChatDraftStore'
 import {
   ClockIcon,
   MegaphoneIcon,
@@ -72,32 +73,34 @@ export interface MessageComposerProps {
   handleComposerSubmit: (e: React.FormEvent) => void
   handleChatFileUpload: (file: File, caption?: string, sizePreference?: string) => void
   isUploading: boolean
-  draft: string
-  setDraft: (val: string) => void
-  chatInputRef: React.RefObject<HTMLInputElement | null>
-  handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void
-  handleInputKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
-  handlePaste: (e: React.ClipboardEvent | ClipboardEvent) => void
+  draft?: string
+  setDraft?: (val: string) => void
+  chatInputRef?: React.RefObject<HTMLInputElement | null>
+  handleInputChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
+  handleInputKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
+  handlePaste?: (e: React.ClipboardEvent | ClipboardEvent) => void
   slowmodeCooldown: number
-  showMentionPicker: boolean
-  mentionCandidates: Array<{ id: string; name: string; avatarUrl?: string; roleName?: string; roleColor?: string; isSpecial?: boolean }>
-  selectedMentionIndex: number
-  setSelectedMentionIndex: React.Dispatch<React.SetStateAction<number>>
-  selectMention: (candidate: { name: string }) => void
-  showGifPicker: boolean
-  setShowGifPicker: React.Dispatch<React.SetStateAction<boolean>>
-  gifSearchQuery: string
-  setGifSearchQuery: React.Dispatch<React.SetStateAction<string>>
-  showStickerPicker: boolean
-  setShowStickerPicker: React.Dispatch<React.SetStateAction<boolean>>
+  showMentionPicker?: boolean
+  mentionCandidates?: Array<{ id: string; name: string; avatarUrl?: string; roleName?: string; roleColor?: string; isSpecial?: boolean }>
+  selectedMentionIndex?: number
+  setSelectedMentionIndex?: React.Dispatch<React.SetStateAction<number>>
+  selectMention?: (candidate: { name: string }) => void
+  showGifPicker?: boolean
+  setShowGifPicker?: React.Dispatch<React.SetStateAction<boolean>>
+  gifSearchQuery?: string
+  setGifSearchQuery?: React.Dispatch<React.SetStateAction<string>>
+  showStickerPicker?: boolean
+  setShowStickerPicker?: React.Dispatch<React.SetStateAction<boolean>>
   handleSendSticker: (url: string, name?: string) => Promise<void> | void
-  showEmojiPicker: boolean
-  setShowEmojiPicker: React.Dispatch<React.SetStateAction<boolean>>
-  emojiPickerTab: 'default' | 'server'
-  setEmojiPickerTab: React.Dispatch<React.SetStateAction<'default' | 'server'>>
+  showEmojiPicker?: boolean
+  setShowEmojiPicker?: React.Dispatch<React.SetStateAction<boolean>>
+  emojiPickerTab?: 'default' | 'server'
+  setEmojiPickerTab?: React.Dispatch<React.SetStateAction<'default' | 'server'>>
   serverEmojis?: ServerEmoji[]
   supabase?: any
   postChannelMessage?: (channelId: string, body: string, attachmentUrl?: string, attachmentType?: string, existingTempId?: string) => Promise<any> | void
+  notifyTyping?: () => void
+  getUserHighestRole?: (spaceId: string, userId: string) => any
   variant?: 'channel' | 'voice'
 }
 
@@ -128,32 +131,34 @@ export const MessageComposer = memo(function MessageComposer({
   handleComposerSubmit,
   handleChatFileUpload,
   isUploading,
-  draft,
-  setDraft,
-  chatInputRef,
-  handleInputChange,
-  handleInputKeyDown,
-  handlePaste,
+  draft: propDraft,
+  setDraft: propSetDraft,
+  chatInputRef: propChatInputRef,
+  handleInputChange: propHandleInputChange,
+  handleInputKeyDown: propHandleInputKeyDown,
+  handlePaste: propHandlePaste,
   slowmodeCooldown,
-  showMentionPicker,
-  mentionCandidates,
-  selectedMentionIndex,
-  setSelectedMentionIndex,
-  selectMention,
-  showGifPicker,
-  setShowGifPicker,
-  gifSearchQuery,
-  setGifSearchQuery,
-  showStickerPicker,
-  setShowStickerPicker,
+  showMentionPicker: propShowMentionPicker,
+  mentionCandidates: propMentionCandidates,
+  selectedMentionIndex: propSelectedMentionIndex,
+  setSelectedMentionIndex: propSetSelectedMentionIndex,
+  selectMention: propSelectMention,
+  showGifPicker: propShowGifPicker,
+  setShowGifPicker: propSetShowGifPicker,
+  gifSearchQuery: propGifSearchQuery,
+  setGifSearchQuery: propSetGifSearchQuery,
+  showStickerPicker: propShowStickerPicker,
+  setShowStickerPicker: propSetShowStickerPicker,
   handleSendSticker,
-  showEmojiPicker,
-  setShowEmojiPicker,
-  emojiPickerTab,
-  setEmojiPickerTab,
+  showEmojiPicker: propShowEmojiPicker,
+  setShowEmojiPicker: propSetShowEmojiPicker,
+  emojiPickerTab: propEmojiPickerTab,
+  setEmojiPickerTab: propSetEmojiPickerTab,
   serverEmojis = [],
   supabase,
   postChannelMessage = () => {},
+  notifyTyping,
+  getUserHighestRole,
   variant = 'channel'
 }: MessageComposerProps) {
   const isVoiceChat = variant === 'voice'
@@ -168,6 +173,167 @@ export const MessageComposer = memo(function MessageComposer({
     const maxLeft = Math.max(12, formWidth - popoverWidth - 12)
     setPickerLeft(Math.max(12, Math.min(btn.offsetLeft - 8, maxLeft)))
   }
+
+  // GIF / Sticker / Emoji pickers - locais se não passados pelo componente pai
+  const [internalShowGifPicker, setInternalShowGifPicker] = useState(false)
+  const [internalGifSearchQuery, setInternalGifSearchQuery] = useState('')
+  const [internalShowStickerPicker, setInternalShowStickerPicker] = useState(false)
+  const [internalShowEmojiPicker, setInternalShowEmojiPicker] = useState(false)
+  const [internalEmojiPickerTab, setInternalEmojiPickerTab] = useState<'default' | 'server'>('default')
+
+  const showGifPicker = propShowGifPicker !== undefined ? propShowGifPicker : internalShowGifPicker
+  const setShowGifPicker = propSetShowGifPicker || setInternalShowGifPicker
+  const gifSearchQuery = propGifSearchQuery !== undefined ? propGifSearchQuery : internalGifSearchQuery
+  const setGifSearchQuery = propSetGifSearchQuery || setInternalGifSearchQuery
+  const showStickerPicker = propShowStickerPicker !== undefined ? propShowStickerPicker : internalShowStickerPicker
+  const setShowStickerPicker = propSetShowStickerPicker || setInternalShowStickerPicker
+  const showEmojiPicker = propShowEmojiPicker !== undefined ? propShowEmojiPicker : internalShowEmojiPicker
+  const setShowEmojiPicker = propSetShowEmojiPicker || setInternalShowEmojiPicker
+  const emojiPickerTab = propEmojiPickerTab !== undefined ? propEmojiPickerTab : internalEmojiPickerTab
+  const setEmojiPickerTab = propSetEmojiPickerTab || setInternalEmojiPickerTab
+
+  // Atomic draft isolation (isolado por canal via Zustand)
+  const channelDraft = useChannelDraft(selectedChannel?.id)
+  const draft = propDraft !== undefined ? propDraft : channelDraft
+
+  const setDraft = useCallback((val: string) => {
+    if (propSetDraft) {
+      propSetDraft(val)
+    }
+    if (selectedChannel?.id) {
+      useChatDraftStore.getState().setDraft(selectedChannel.id, val)
+    }
+  }, [propSetDraft, selectedChannel?.id])
+
+  // Mentions (@) e foco do input isolados
+  const internalInputRef = useRef<HTMLInputElement | null>(null)
+  const chatInputRef = propChatInputRef || internalInputRef
+
+  const [internalShowMentionPicker, setInternalShowMentionPicker] = useState(false)
+  const [internalMentionQuery, setInternalMentionQuery] = useState('')
+  const [internalMentionStartIndex, setInternalMentionStartIndex] = useState(-1)
+  const [internalSelectedMentionIndex, setInternalSelectedMentionIndex] = useState(0)
+
+  const showMentionPicker = propShowMentionPicker !== undefined ? propShowMentionPicker : internalShowMentionPicker
+  const selectedMentionIndex = propSelectedMentionIndex !== undefined ? propSelectedMentionIndex : internalSelectedMentionIndex
+  const setSelectedMentionIndex = propSetSelectedMentionIndex || setInternalSelectedMentionIndex
+
+  const mentionCandidates = useMemo(() => {
+    if (propMentionCandidates !== undefined) return propMentionCandidates
+    const list: Array<{ id: string; name: string; avatarUrl?: string; roleName?: string; roleColor?: string; isSpecial?: boolean }> = []
+    const q = internalMentionQuery.toLowerCase().trim()
+
+    if (!q || 'todos'.includes(q) || 'everyone'.includes(q)) {
+      list.push({
+        id: 'everyone-mention',
+        name: 'todos',
+        roleName: 'Notificar todos no canal',
+        roleColor: '#f59e0b',
+        isSpecial: true
+      })
+    }
+
+    const seen = new Set<string>()
+    ;(spaceMembers || []).forEach(m => {
+      const u = m.user || m
+      if (!u || !u.id || seen.has(u.id)) return
+      seen.add(u.id)
+      const dName = u.display_name || u.name || 'Membro'
+      if (!q || dName.toLowerCase().includes(q)) {
+        const role = getUserHighestRole?.(currentSpace?.id || '', u.id)
+        list.push({
+          id: u.id,
+          name: dName,
+          avatarUrl: u.avatar_url,
+          roleName: role?.name,
+          roleColor: role?.color
+        })
+      }
+    })
+
+    return list.slice(0, 8)
+  }, [propMentionCandidates, internalMentionQuery, spaceMembers, currentSpace?.id, getUserHighestRole])
+
+  const selectMention = useCallback((candidate: { name: string }) => {
+    if (propSelectMention) {
+      propSelectMention(candidate)
+      return
+    }
+    if (!candidate || internalMentionStartIndex === -1) return
+    const input = chatInputRef.current
+    const cursorPos = input?.selectionStart ?? draft.length
+    const beforeAt = draft.slice(0, internalMentionStartIndex)
+    const afterCursor = draft.slice(cursorPos)
+    const mentionText = `@${candidate.name} `
+    const newDraft = beforeAt + mentionText + afterCursor
+    setDraft(newDraft)
+    setInternalShowMentionPicker(false)
+    setInternalMentionStartIndex(-1)
+
+    setTimeout(() => {
+      if (input) {
+        input.focus()
+        const newPos = beforeAt.length + mentionText.length
+        input.setSelectionRange(newPos, newPos)
+      }
+    }, 10)
+  }, [propSelectMention, internalMentionStartIndex, chatInputRef, draft, setDraft])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (propHandleInputChange) {
+      propHandleInputChange(e)
+      return
+    }
+    const val = e.target.value
+    setDraft(val)
+    if (notifyTyping) notifyTyping()
+
+    const cursorPos = e.target.selectionStart ?? val.length
+    const textBeforeCursor = val.slice(0, cursorPos)
+    const match = textBeforeCursor.match(/(?:^|\s)@([a-zA-Z0-9_\u00C0-\u017F]*)$/)
+
+    if (match) {
+      const q = match[1]
+      const atIdx = textBeforeCursor.lastIndexOf('@')
+      setInternalMentionQuery(q)
+      setInternalMentionStartIndex(atIdx)
+      setInternalSelectedMentionIndex(0)
+      setInternalShowMentionPicker(true)
+    } else {
+      setInternalShowMentionPicker(false)
+    }
+  }
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (propHandleInputKeyDown) {
+      propHandleInputKeyDown(e)
+      return
+    }
+    if (showMentionPicker && mentionCandidates.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedMentionIndex(prev => (prev + 1) % mentionCandidates.length)
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedMentionIndex(prev => (prev - 1 + mentionCandidates.length) % mentionCandidates.length)
+        return
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        selectMention(mentionCandidates[selectedMentionIndex])
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setInternalShowMentionPicker(false)
+        return
+      }
+    }
+  }
+
+  const handlePaste = propHandlePaste || (() => {})
 
   if (currentSpace && !canUserDo(currentSpace.id, user.id, 'sendMessages')) {
     return (

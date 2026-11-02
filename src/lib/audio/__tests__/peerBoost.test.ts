@@ -3,12 +3,21 @@ import { PeerBoost } from '../peerBoost'
 
 // Web Audio falso: registra os nós criados e as ligações
 function makeFakeAudioContext() {
-  const created: any = { gains: [], sources: [], limiters: [], setSinkId: vi.fn().mockResolvedValue(undefined) }
+  const created: any = {
+    gains: [],
+    sources: [],
+    limiters: [],
+    setSinkId: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+    suspend: vi.fn().mockResolvedValue(undefined)
+  }
   class FakeAudioContext {
     state = 'running'
     destination = { name: 'destination' }
     setSinkId = created.setSinkId
     resume = vi.fn().mockResolvedValue(undefined)
+    suspend = created.suspend
+    close = created.close
     createMediaStreamSource = vi.fn((stream: any) => {
       const node = { stream, connect: vi.fn(), disconnect: vi.fn() }
       created.sources.push(node)
@@ -137,5 +146,14 @@ describe('PeerBoost', () => {
     boost.releaseAll()
     expect(boost.isBoosting('a-voice')).toBe(false)
     expect(boost.isBoosting('b-voice')).toBe(false)
+    expect(created.close).toHaveBeenCalled()
+  })
+
+  it('quando todos os participantes voltam para <=100%, o contexto é suspenso', () => {
+    const a = makeAudio()
+    boost.apply('a-voice', a, 2, false)
+    expect(created.suspend).not.toHaveBeenCalled()
+    boost.apply('a-voice', a, 1, false)
+    expect(created.suspend).toHaveBeenCalled()
   })
 })

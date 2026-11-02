@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { VoiceParticipant } from '../lib/useVoiceChannel'
 import type { Channel } from '../types'
+import { useIsUserSpeaking } from '../stores/useVoiceStore'
 
 export interface UseEchoAfkDetectorOptions {
   isConnected: boolean
-  participants: VoiceParticipant[]
+  participants?: VoiceParticipant[]
   userId?: string
   activeVoiceChannelId: string | null
   spaceId?: string
@@ -14,13 +15,15 @@ export interface UseEchoAfkDetectorOptions {
 
 export function useEchoAfkDetector({
   isConnected,
-  participants,
+  participants: _propParticipants,
   userId,
   activeVoiceChannelId,
   spaceId,
   spaceChannels,
   handleLeaveVoice
 }: UseEchoAfkDetectorOptions) {
+  const isMeSpeaking = useIsUserSpeaking(userId)
+
   const [showAfkPrompt, setShowAfkPrompt] = useState(false)
   const [afkCountdown, setAfkCountdown] = useState(180)
   const [showAfkDisconnectedModal, setShowAfkDisconnectedModal] = useState(false)
@@ -53,11 +56,10 @@ export function useEchoAfkDetector({
   // Refresh activity when the local user speaks in voice
   useEffect(() => {
     if (!isConnected) return
-    const isMeSpeaking = participants.some(p => p.userId === userId && p.isSpeaking)
     if (isMeSpeaking && !showAfkPrompt) {
       lastActivityRef.current = Date.now()
     }
-  }, [isConnected, participants, userId, showAfkPrompt])
+  }, [isConnected, isMeSpeaking, showAfkPrompt])
 
   // Check for 2 hours of continuous inactivity while connected to voice/stream
   useEffect(() => {

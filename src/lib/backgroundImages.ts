@@ -12,7 +12,7 @@
 
 import { isAppInBackground } from './backgroundAnimations'
 
-const RESCAN_INTERVAL_MS = 2000
+const RESCAN_INTERVAL_MS = 5000
 const MAX_CACHED_STILLS = 200
 const BACKGROUND_SCAN_EVERY = 5
 
@@ -186,6 +186,7 @@ export const HOVER_FROZEN_ATTR = 'data-echo-gif-frozen'
 export function hoverOnlyImages(images: Iterable<HTMLImageElement>): HTMLImageElement[] {
   const out: HTMLImageElement[] = []
   for (const img of images) {
+    if (img.hasAttribute(HOVER_FROZEN_ATTR)) continue
     const width = img.clientWidth
     if (width > 0 && width <= HOVER_ONLY_IMAGE_PX) out.push(img)
   }
@@ -209,7 +210,9 @@ export function startBackgroundImageFreezer(doc: Document = document, win: Windo
     if (scans++ % BACKGROUND_SCAN_EVERY !== 0) return
     const view = doc.defaultView
     if (!view) return
-    const elements = Array.from(doc.body.querySelectorAll<HTMLElement>('*'))
+    const elements = Array.from(doc.body.querySelectorAll<HTMLElement>(
+      '[style*="url"], [style*="background"], .space-banner, .user-banner, .profile-banner, .echo-avatar-core, .profile-card, .voice-participant-card, .echo-shop-card, .echo-inv-card, [class*="banner"], [class*="card"]'
+    ))
     void freezer.freezeBackgrounds(elements, (el) => view.getComputedStyle(el).backgroundImage).catch(() => {})
   }
 

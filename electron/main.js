@@ -74,7 +74,7 @@ app.commandLine.appendSwitch('enable-native-gpu-memory-buffers')
 app.commandLine.appendSwitch('force_high_performance_gpu')
 app.commandLine.appendSwitch('disable-renderer-backgrounding')
 app.commandLine.appendSwitch('disable-background-timer-throttling')
-app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
+// Permite que o Chromium suspenda a composição de quadros quando a janela estiver 100% ocluída por um jogo em tela cheia
 
 let mainWindow = null
 let isQuitting = false

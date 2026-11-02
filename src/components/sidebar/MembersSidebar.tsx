@@ -315,7 +315,7 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
             }}
           >
             {member.user.avatar_url ? (
-              <img src={member.user.avatar_url} alt={member.user.display_name} />
+              <img src={member.user.avatar_url} alt={member.user.display_name} loading="lazy" decoding="async" />
             ) : (
               member.user.display_name.slice(0, 1).toUpperCase()
             )}

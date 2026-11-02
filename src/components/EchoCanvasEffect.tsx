@@ -1143,6 +1143,11 @@ export function EchoCanvasEffect({ effectId, className = '' }: EchoCanvasEffectP
       document.removeEventListener('visibilitychange', handleVisibility)
       window.removeEventListener('blur', handleBlur)
       window.removeEventListener('focus', handleFocus)
+      try {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        canvas.width = 0
+        canvas.height = 0
+      } catch {}
     }
   }, [effectId])
 

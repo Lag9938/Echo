@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
@@ -91,6 +91,15 @@ export function useEchoDirectCalls({
     if (stopRingtoneRef.current) {
       stopRingtoneRef.current()
       stopRingtoneRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (stopRingtoneRef.current) {
+        stopRingtoneRef.current()
+        stopRingtoneRef.current = null
+      }
     }
   }, [])
 

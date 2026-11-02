@@ -7,6 +7,7 @@ import type { Space, Channel, Page, RolePermissions, ServerRole } from '../../ty
 import { UnifiedUserProfileFooter } from './UnifiedUserProfileFooter'
 import { useSpacesStore } from '../../stores/useSpacesStore'
 import { useUIStore } from '../../stores/useUIStore'
+import { useVoiceStore } from '../../stores/useVoiceStore'
 import { SPACE_SETTINGS_PERMISSIONS } from '../../lib/permissions'
 import { isMusicBotIdentity } from '../../lib/musicBotState'
 import { SERVER_BANNER_PRESETS } from '../../lib/formatters'
@@ -88,26 +89,26 @@ export interface ChannelsSidebarProps {
   selectedChannel?: Channel | null
   setSelectedChannel?: (ch: Channel | null) => void
   spaceVoiceUsers?: Record<string, any[]>
-  activeVoiceChannelId: string | null
-  participants: VoiceParticipant[]
-  handleJoinVoice: (channelId: string, spaceId: string) => void
-  handleLeaveVoice: () => void
-  isPttMode: boolean
-  pttKey: string
-  isPttActive: boolean
-  isVoiceReconnecting: boolean
+  activeVoiceChannelId?: string | null
+  participants?: VoiceParticipant[]
+  handleJoinVoice?: (channelId: string, spaceId: string) => void
+  handleLeaveVoice?: () => void
+  isPttMode?: boolean
+  pttKey?: string
+  isPttActive?: boolean
+  isVoiceReconnecting?: boolean
   activeVoiceChannel?: Channel | null
   currentSpace: Space | null
   rtcStats?: any
-  isMuted: boolean
-  handleToggleMute: () => void
-  isDeafened: boolean
-  handleToggleDeafen: () => void
-  setShowSoundboardModal: (val: boolean) => void
-  isRecordingCall: boolean
-  startCallRecording: () => void
-  stopCallRecording: () => void
-  recordingDuration: number
+  isMuted?: boolean
+  handleToggleMute?: () => void
+  isDeafened?: boolean
+  handleToggleDeafen?: () => void
+  setShowSoundboardModal?: (val: boolean) => void
+  isRecordingCall?: boolean
+  startCallRecording?: () => void
+  stopCallRecording?: () => void
+  recordingDuration?: number
   canUserDo: (spaceId: string, userId: string, perm: keyof RolePermissions) => boolean
   canViewChannel?: (channel: Channel, userId: string) => boolean
   setVolumeControlUser: (user: any) => void
@@ -194,26 +195,22 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
     channelSearchInputRef,
     collapsedCategories,
     toggleCategoryCollapse,
-    activeVoiceChannelId,
-    participants,
-    handleJoinVoice,
-    handleLeaveVoice,
-    isPttMode,
-    pttKey,
-    isPttActive,
-    isVoiceReconnecting,
-    activeVoiceChannel,
+    activeVoiceChannelId: propActiveVoiceChannelId,
+    participants: propParticipants,
+    handleJoinVoice: propHandleJoinVoice,
+    handleLeaveVoice: propHandleLeaveVoice,
+    isPttMode = false,
+    pttKey = '',
+    isPttActive: propIsPttActive,
+    isVoiceReconnecting: propIsVoiceReconnecting,
+    activeVoiceChannel: propActiveVoiceChannel,
     currentSpace: _currentSpace,
-    rtcStats,
-    isMuted,
-    handleToggleMute,
-    isDeafened,
-    handleToggleDeafen,
+    rtcStats: propRtcStats,
+    isMuted: propIsMuted,
+    handleToggleMute: propHandleToggleMute,
+    isDeafened: propIsDeafened,
+    handleToggleDeafen: propHandleToggleDeafen,
     setShowSoundboardModal,
-    isRecordingCall: _isRecordingCall,
-    startCallRecording: _startCallRecording,
-    stopCallRecording: _stopCallRecording,
-    recordingDuration: _recordingDuration,
     canUserDo,
     setVolumeControlUser,
     isConnected,
@@ -235,6 +232,31 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
     setIsPiPActive,
     activeScreenSharers
   } = props
+  const storeParticipants = useVoiceStore((s) => s.participants)
+  const storeActiveVoiceChannelId = useVoiceStore((s) => s.activeVoiceChannelId)
+  const storeActiveVoiceChannel = useVoiceStore((s) => s.activeVoiceChannel)
+  const storeMuted = useVoiceStore((s) => s.isMuted)
+  const storeDeafened = useVoiceStore((s) => s.isDeafened)
+  const storePttActive = useVoiceStore((s) => s.isPttActive)
+  const storeRtcStats = useVoiceStore((s) => s.rtcStats)
+  const storeReconnecting = useVoiceStore((s) => s.isVoiceReconnecting || s.isVoiceNetworkUnstable)
+  const storeToggleMute = useVoiceStore((s) => s.handleToggleMute)
+  const storeToggleDeafen = useVoiceStore((s) => s.handleToggleDeafen)
+  const storeJoinVoice = useVoiceStore((s) => s.handleJoinVoice)
+  const storeLeaveVoice = useVoiceStore((s) => s.handleLeaveVoice)
+
+  const participants = propParticipants ?? storeParticipants
+  const activeVoiceChannelId = propActiveVoiceChannelId ?? storeActiveVoiceChannelId
+  const activeVoiceChannel = propActiveVoiceChannel ?? storeActiveVoiceChannel
+  const isMuted = propIsMuted ?? storeMuted
+  const isDeafened = propIsDeafened ?? storeDeafened
+  const isPttActive = propIsPttActive ?? storePttActive
+  const rtcStats = propRtcStats ?? storeRtcStats
+  const isVoiceReconnecting = propIsVoiceReconnecting ?? storeReconnecting
+  const handleToggleMute = propHandleToggleMute ?? storeToggleMute
+  const handleToggleDeafen = propHandleToggleDeafen ?? storeToggleDeafen
+  const handleJoinVoice = propHandleJoinVoice ?? storeJoinVoice
+  const handleLeaveVoice = propHandleLeaveVoice ?? storeLeaveVoice
   const [voiceUserMenu, setVoiceUserMenu] = React.useState<{
     participant: any
     channel: Channel
@@ -1276,7 +1298,7 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                   onToggleDeafen: handleToggleDeafen,
                   onLeave: handleLeaveVoice,
                   onReturn: () => { if (activeVoiceChannel) setSelectedChannel(activeVoiceChannel) },
-                  onOpenSoundboard: isViewingActiveVoiceChannel ? undefined : () => setShowSoundboardModal(true),
+                  onOpenSoundboard: isViewingActiveVoiceChannel ? undefined : () => setShowSoundboardModal?.(true),
                   onTogglePiP: !isViewingActiveVoiceChannel && activeScreenSharers && activeScreenSharers.length > 0
                     ? () => setIsPiPActive?.(!isPiPActive)
                     : undefined,

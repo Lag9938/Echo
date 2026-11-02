@@ -5,6 +5,7 @@ import { trackMessageSent } from '../lib/analytics'
 import { MESSAGE_DELETED_EVENT, THREAD_MESSAGE_EVENT, isMissingThreadColumn, threadSupport } from '../lib/threads'
 import { emitNotice } from '../lib/realtimeNotices'
 import { uploadAttachment } from '../lib/attachmentUpload'
+import { useChatDraftStore } from '../stores/useChatDraftStore'
 import {
   generateTempMessageId,
   createAntiSpamState,
@@ -62,7 +63,16 @@ export function useEchoChannelMessages({
   supabase
 }: UseEchoChannelMessagesOptions) {
   const [messages, setMessages] = useState<Message[]>([])
-  const [draft, setDraft] = useState('')
+  const [draft, setDraftState] = useState('')
+  const setDraft = useCallback((val: string | ((prev: string) => string)) => {
+    setDraftState(prev => {
+      const nextVal = typeof val === 'function' ? val(prev) : val
+      if (selectedChannel?.id) {
+        useChatDraftStore.getState().setDraft(selectedChannel.id, nextVal)
+      }
+      return nextVal
+    })
+  }, [selectedChannel?.id])
   const [isUploading, setIsUploading] = useState(false)
   const [replyingToMessage, setReplyingToMessage] = useState<any | null>(null)
   const [messageReactions, setMessageReactions] = useState<Record<string, Record<string, string[]>>>(() => {
@@ -558,8 +568,14 @@ export function useEchoChannelMessages({
     }
   }
 
-  async function send(event: FormEvent) {
-    event.preventDefault(); if (!supabase || !selectedChannel || !draft.trim()) return
+  async function send(event: FormEvent, explicitDraft?: string) {
+    event.preventDefault()
+    if (!supabase || !selectedChannel) return
+
+    const channelStoreDraft = selectedChannel ? useChatDraftStore.getState().getDraft(selectedChannel.id) : ''
+    const rawDraft = explicitDraft !== undefined ? explicitDraft : (channelStoreDraft || draft)
+    if (!rawDraft.trim()) return
+
     const currentSp = spaces.find(s => s.id === selectedChannel.space_id) ?? null
     if (currentSp && !canUserDo(currentSp.id, user.id, 'sendMessages')) {
       showToast('Permissão negada', 'Seus cargos não permitem enviar mensagens neste espaço.', 'info')
@@ -577,7 +593,7 @@ export function useEchoChannelMessages({
       }
     }
 
-    const trimmedDraft = draft.trim()
+    const trimmedDraft = rawDraft.trim()
     const antiSpam = validateMessageAntiSpam(antiSpamRef.current, trimmedDraft)
     if (!antiSpam.allowed) {
       if (antiSpam.cooldownSeconds) setSlowmodeCooldown(antiSpam.cooldownSeconds)
@@ -594,7 +610,10 @@ export function useEchoChannelMessages({
       setReplyingToMessage(null)
     }
 
-    setDraft('')
+    setDraftState('')
+    if (selectedChannel) {
+      useChatDraftStore.getState().clearDraft(selectedChannel.id)
+    }
     if (selectedChannel.slowmode_seconds && selectedChannel.slowmode_seconds > 0 && !isImmuneToSlowmode) {
       setSlowmodeCooldown(selectedChannel.slowmode_seconds)
     }

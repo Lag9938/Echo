@@ -186,7 +186,7 @@ export function AvatarDecoration({ decorationId, className = '', style }: Avatar
         <img
           src={decorationId}
           alt=""
-          loading="eager"
+          loading="lazy"
           decoding="async"
           style={{
             width: '100%',

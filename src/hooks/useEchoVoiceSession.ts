@@ -3,6 +3,8 @@ import type { User } from '@supabase/supabase-js'
 import { useVoiceChannel, type VoiceParticipant } from '../lib/useVoiceChannel'
 import { installPresenceTrackThrottle } from '../lib/presenceThrottle'
 import type { Space, Channel } from '../types'
+import { useVoiceStore } from '../stores/useVoiceStore'
+import { useSpacesStore } from '../stores/useSpacesStore'
 import {
   playJoinSound,
   playLeaveSound,
@@ -58,7 +60,7 @@ export function useEchoVoiceSession({
   getSelectedOutputId,
   getNoiseSuppressionEnabled,
   getEchoCancellationEnabled,
-  noiseGateEnabled = false,
+  noiseGateEnabled = true,
   noiseGateThreshold = -45,
   spaces,
   spaceChannelsRef,
@@ -85,6 +87,7 @@ export function useEchoVoiceSession({
   // Voice disconnect handler (chamado apenas quando a conexão for realmente perdida pelo SFU/rede)
   const handleVoiceDisconnected = useCallback(() => {
     playLeaveSound(sfxVolume)
+    useVoiceStore.getState().resetVoiceState()
     setActiveVoiceChannelId(prevChId => {
       if (prevChId && user?.id) {
         setSpaceVoiceUsers(prev => {
@@ -384,6 +387,7 @@ export function useEchoVoiceSession({
     const prevChId = activeVoiceChannelId
     cancelVoiceReconnect()
     leaveVoice()
+    useVoiceStore.getState().resetVoiceState()
     setActiveVoiceChannelId(null)
     if (setActiveSharingSource) setActiveSharingSource(null)
     if (onLeaveVoice) onLeaveVoice()
@@ -421,6 +425,126 @@ export function useEchoVoiceSession({
       ? Object.values(spaceChannels).flat().find(c => c.id === activeVoiceChannelId) || null
       : null
   }, [activeVoiceChannelId, spaceChannels])
+
+  // Sincronização atômica com o useVoiceStore (elimina re-renders na árvore inteira)
+  useEffect(() => {
+    useVoiceStore.getState().setActiveVoiceChannelId(activeVoiceChannelId)
+    useVoiceStore.getState().setActiveVoiceChannel(activeVoiceChannel)
+  }, [activeVoiceChannelId, activeVoiceChannel])
+
+  useEffect(() => {
+    useVoiceStore.getState().setSpaceVoiceUsers(spaceVoiceUsers)
+    useSpacesStore.getState().setSpaceVoiceUsers(spaceVoiceUsers)
+  }, [spaceVoiceUsers])
+
+  useEffect(() => {
+    useVoiceStore.getState().setParticipants(participants)
+  }, [participants])
+
+  useEffect(() => {
+    useVoiceStore.getState().setVoiceState({
+      isConnected,
+      isMuted,
+      isDeafened,
+      isPttMode,
+      isPttActive,
+      isAiDenoiseEnabled,
+      isRecordingCall,
+      recordingDuration,
+      localScreenStream,
+      localCameraStream,
+      rtcStats,
+      screenAudioSyncDelayMs,
+      isVoiceReconnecting,
+      isVoiceNetworkUnstable,
+      voiceReconnectCountdown,
+      voiceReconnectAttempt
+    })
+  }, [
+    isConnected,
+    isMuted,
+    isDeafened,
+    isPttMode,
+    isPttActive,
+    isAiDenoiseEnabled,
+    isRecordingCall,
+    recordingDuration,
+    localScreenStream,
+    localCameraStream,
+    rtcStats,
+    screenAudioSyncDelayMs,
+    isVoiceReconnecting,
+    isVoiceNetworkUnstable,
+    voiceReconnectCountdown,
+    voiceReconnectAttempt
+  ])
+
+  // Registro de despachantes no Zustand para componentes folhas acessarem diretamente
+  useEffect(() => {
+    useVoiceStore.getState().registerActions({
+      handleJoinVoice,
+      handleLeaveVoice,
+      handleToggleMute,
+      handleToggleDeafen,
+      leaveVoice,
+      joinVoice,
+      toggleMute,
+      toggleDeafen,
+      startScreenShare,
+      stopScreenShare,
+      startCamera,
+      stopCamera,
+      changeInputDevice,
+      changeOutputDevice,
+      changeScreenShareSettings,
+      changePeerVolume,
+      changePeerPan,
+      setSpatialAudioEnabled,
+      changePeerScreenVolume,
+      setPttMode,
+      setPttActive,
+      playSoundboard,
+      startCallRecording,
+      stopCallRecording,
+      toggleAiDenoise,
+      updateScreenSubscriptions,
+      updateLocalProfile,
+      changeScreenAudioSyncDelay,
+      retryVoiceReconnect,
+      cancelVoiceReconnect
+    })
+  }, [
+    handleJoinVoice,
+    handleLeaveVoice,
+    handleToggleMute,
+    handleToggleDeafen,
+    leaveVoice,
+    joinVoice,
+    toggleMute,
+    toggleDeafen,
+    startScreenShare,
+    stopScreenShare,
+    startCamera,
+    stopCamera,
+    changeInputDevice,
+    changeOutputDevice,
+    changeScreenShareSettings,
+    changePeerVolume,
+    changePeerPan,
+    setSpatialAudioEnabled,
+    changePeerScreenVolume,
+    setPttMode,
+    setPttActive,
+    playSoundboard,
+    startCallRecording,
+    stopCallRecording,
+    toggleAiDenoise,
+    updateScreenSubscriptions,
+    updateLocalProfile,
+    changeScreenAudioSyncDelay,
+    retryVoiceReconnect,
+    cancelVoiceReconnect
+  ])
 
   // Synchronize Live Voice State with Mini Overlay
   useEffect(() => {

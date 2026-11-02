@@ -169,60 +169,6 @@
   50% { transform: scale(1.08); }
 }
 
-/* Badge de Onda Sonora para Voz Ativa */
-.guild-voice-wave-badge {
-  position: absolute;
-  bottom: -3px;
-  right: -3px;
-  background: rgba(16, 185, 129, 0.92);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  padding: 0 4px;
-  height: 18px;
-  min-width: 20px;
-  border-radius: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  border: 2px solid rgba(15, 17, 21, 0.95);
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.55);
-}
-.echo-wave-bar {
-  width: 2px;
-  background: #ffffff;
-  border-radius: 1px;
-  display: inline-block;
-  animation: echoWaveformBar 0.85s ease-in-out infinite alternate;
-}
-.echo-wave-bar.wave-1 {
-  height: 6px;
-  animation-delay: 0s;
-}
-.echo-wave-bar.wave-2 {
-  height: 11px;
-  animation-delay: 0.3s;
-}
-.echo-wave-bar.wave-3 {
-  height: 8px;
-  animation-delay: 0.15s;
-}
-
-@keyframes echoWaveformBar {
-  0% {
-    transform: scaleY(0.35);
-    opacity: 0.7;
-  }
-  50% {
-    transform: scaleY(1);
-    opacity: 1;
-  }
-  100% {
-    transform: scaleY(0.45);
-    opacity: 0.85;
-  }
-}
-
 /* Divisor elegante em gradiente */
 .guild-rail-divider {
   width: 26px;

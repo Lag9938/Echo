@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { HeadphonesIcon, HeadphonesOffIcon, MicIcon, MicOffIcon, PhoneOffIcon } from '../icons'
+import { useVoiceStore } from '../../stores/useVoiceStore'
 
 export interface FloatingCallParticipant {
   userId: string
@@ -12,17 +13,17 @@ export interface FloatingCallParticipant {
 }
 
 export interface FloatingCallPanelProps {
-  channelName: string
+  channelName?: string
   spaceName?: string
-  participants: FloatingCallParticipant[]
+  participants?: FloatingCallParticipant[]
   currentUserId: string
-  isMuted: boolean
-  isDeafened: boolean
-  onToggleMute: () => void
-  onToggleDeafen: () => void
-  onLeave: () => void
+  isMuted?: boolean
+  isDeafened?: boolean
+  onToggleMute?: () => void
+  onToggleDeafen?: () => void
+  onLeave?: () => void
   /** Leva de volta à tela da chamada */
-  onReturn: () => void
+  onReturn?: () => void
 }
 
 const COLLAPSED_KEY = 'echo-call-panel-collapsed'
@@ -67,17 +68,33 @@ function Avatar({ p, size }: { p: FloatingCallParticipant; size: 'md' | 'sm' }) 
 }
 
 export function FloatingCallPanel({
-  channelName,
+  channelName: propChannelName,
   spaceName,
-  participants,
+  participants: propParticipants,
   currentUserId,
-  isMuted,
-  isDeafened,
-  onToggleMute,
-  onToggleDeafen,
-  onLeave,
+  isMuted: propIsMuted,
+  isDeafened: propIsDeafened,
+  onToggleMute: propOnToggleMute,
+  onToggleDeafen: propOnToggleDeafen,
+  onLeave: propOnLeave,
   onReturn
 }: FloatingCallPanelProps) {
+  const storeChannel = useVoiceStore((s) => s.activeVoiceChannel)
+  const storeParticipants = useVoiceStore((s) => s.participants)
+  const storeMuted = useVoiceStore((s) => s.isMuted)
+  const storeDeafened = useVoiceStore((s) => s.isDeafened)
+  const storeToggleMute = useVoiceStore((s) => s.handleToggleMute)
+  const storeToggleDeafen = useVoiceStore((s) => s.handleToggleDeafen)
+  const storeLeave = useVoiceStore((s) => s.handleLeaveVoice)
+
+  const channelName = propChannelName ?? storeChannel?.name ?? 'Chamada de Voz'
+  const participants = propParticipants ?? storeParticipants
+  const isMuted = propIsMuted ?? storeMuted
+  const isDeafened = propIsDeafened ?? storeDeafened
+  const onToggleMute = propOnToggleMute ?? storeToggleMute
+  const onToggleDeafen = propOnToggleDeafen ?? storeToggleDeafen
+  const onLeave = propOnLeave ?? storeLeave
+
   const [collapsed, setCollapsed] = useState(readCollapsed)
 
   const toggleCollapsed = () => {

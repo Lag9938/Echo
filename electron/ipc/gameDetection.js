@@ -206,11 +206,13 @@ export function setGameScanInterval(interval) {
 export const GAME_SCAN_INTERVAL_MS = 15000
 
 /**
- * Precisa listar todos os processos (tasklist, a parte cara)? Só quando a janela em primeiro plano não
- * resolveu: se ela já é um jogo, a resposta está dada.
+ * Precisa listar todos os processos (tasklist, a parte cara)?
+ * Desativado: o helper nativo em C++ (echo-helper.exe) já consulta GetForegroundWindow e as janelas
+ * ativas na API do Windows com custo quase zero (~0% de CPU). Disparar tasklist.exe periodicamente no
+ * Windows gerava picos de 5% a 8% de CPU a cada 15 segundos devido à criação contínua de processos.
  */
 export function needsProcessList(foregroundGame) {
-  return !foregroundGame
+  return false
 }
 
 async function findForegroundGame(rootDir) {

@@ -2,13 +2,14 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import type { VoiceParticipant } from '../lib/useVoiceChannel'
 import type { Channel } from '../types'
 import { useUIStore } from '../stores/useUIStore'
+import { useVoiceStore } from '../stores/useVoiceStore'
 
 export interface UseEchoDesktopShellOptions {
   channelSearchInputRef: React.MutableRefObject<HTMLInputElement | null>
   showSpaceSettingsModal: boolean
   setShowSpaceSettingsModal: (show: boolean) => void
   showToast: (title: string, message: string, type?: 'info' | 'success' | 'warning' | 'error') => void
-  participants: VoiceParticipant[]
+  participants?: VoiceParticipant[]
   isConnected: boolean
   selectedChannel: Channel | null
   activeVoiceChannelId: string | null
@@ -21,13 +22,15 @@ export function useEchoDesktopShell({
   showSpaceSettingsModal,
   setShowSpaceSettingsModal,
   showToast,
-  participants,
+  participants: propParticipants,
   isConnected,
   selectedChannel,
   activeVoiceChannelId,
   page,
   updateScreenSubscriptions
 }: UseEchoDesktopShellOptions) {
+  const storeParticipants = useVoiceStore((s) => s.participants)
+  const participants = propParticipants ?? storeParticipants
   // Mini Overlay Flutuante Control
   const handleToggleOverlay = useCallback(() => {
     if ((window as any).electronAPI?.toggleOverlay) {

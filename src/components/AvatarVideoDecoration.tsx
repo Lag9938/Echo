@@ -82,6 +82,11 @@ export function AvatarVideoDecoration({ deco }: { deco: AvatarVideoDecorationDef
       host?.removeEventListener('mouseleave', onLeave)
       video.removeEventListener('loadedmetadata', still)
       releaseVideoSlot(token)
+      try {
+        video.pause()
+        video.removeAttribute('src')
+        video.load()
+      } catch {}
     }
   }, [reduced, deco.src])
 

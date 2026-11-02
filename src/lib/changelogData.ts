@@ -18,11 +18,38 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.62.6',
+    title: 'Echo v0.62.6 - Mais Leve, Mais Estável e Voz Mais Limpa',
+    date: '1 de Novembro de 2026',
+    tagline: 'O Echo usa menos memória e processador, rola conversas longas sem travar e sua voz chega mais limpa para os amigos.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '⚡',
+        badge: 'DESEMPENHO',
+        title: 'Conversas Longas Sem Travar',
+        description: 'O chat agora só desenha as mensagens que estão na tela. Canais com milhares de mensagens abrem e rolam suaves, e digitar não deixa mais o app lento.'
+      },
+      {
+        icon: '🎮',
+        badge: 'DESEMPENHO',
+        title: 'Menos Processador Enquanto Você Joga',
+        description: 'Acabamos com os picos de processador a cada poucos segundos: a detecção de jogos ficou mais leve e o Echo descansa de verdade quando está atrás do jogo.'
+      },
+      {
+        icon: '🎙️',
+        badge: 'MELHORIA',
+        title: 'Voz Mais Limpa',
+        description: 'Supressão de ruído por IA e portão de ruído ligados por padrão, voz com mais brilho e qualidade maior na transmissão, com proteção contra cortes quando a rede oscila.'
+      }
+    ]
+  },
+  {
     version: '0.62.5',
     title: 'Echo v0.62.5 - Encaminhar, Respostas nas DMs e Provador Completo',
     date: '1 de Novembro de 2026',
     tagline: 'Encaminhe mensagens para amigos, grupos e canais, responda e reaja nas conversas privadas e experimente efeitos de perfil na Loja.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '↪️',

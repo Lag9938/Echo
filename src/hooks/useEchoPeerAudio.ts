@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import type { VoiceParticipant } from '../lib/useVoiceChannel'
 import { isMusicBotIdentity } from '../lib/musicBotState'
 import { useMusicBotStore } from '../stores/useMusicBotStore'
+import { useVoiceStore } from '../stores/useVoiceStore'
 
 export interface UseEchoPeerAudioOptions {
   userId: string
-  participants: VoiceParticipant[]
+  participants?: VoiceParticipant[]
   changePeerVolume: (peerId: string, volume: number) => void
   changePeerPan: (peerId: string, pan: number) => void
   setSpatialAudioEnabled: (enabled: boolean) => void
@@ -14,12 +15,15 @@ export interface UseEchoPeerAudioOptions {
 
 export function useEchoPeerAudio({
   userId,
-  participants,
+  participants: propParticipants,
   changePeerVolume,
   changePeerPan,
   setSpatialAudioEnabled,
   changePeerScreenVolume
 }: UseEchoPeerAudioOptions) {
+  const storeParticipants = useVoiceStore((s) => s.participants)
+  const participants = propParticipants ?? storeParticipants
+
   // Local volumes state
   const [userVolumes, setUserVolumes] = useState<Record<string, number>>(() => {
     const saved = localStorage.getItem('echo-user-volumes')
@@ -33,7 +37,17 @@ export function useEchoPeerAudio({
   // identidade por canal, então o volume dele não fica em userVolumes (que é por pessoa).
   const musicBotVolume = useMusicBotStore((s) => s.myVolume)
 
-  // Sincronizar volumes locais sempre que participantes ou volumes mudarem
+  // Chave estável de membros na chamada: só re-aplica volumes quando alguém entrar ou sair,
+  // nunca a cada 50ms quando o indicador de voz (isSpeaking) oscilar.
+  const peerIdsKey = useMemo(() => {
+    return participants
+      .map(p => p.userId)
+      .filter(id => id !== userId)
+      .sort()
+      .join(',')
+  }, [participants, userId])
+
+  // Sincronizar volumes locais sempre que participantes entrarem/saírem ou volumes mudarem
   useEffect(() => {
     participants.forEach(p => {
       if (p.userId !== userId) {
@@ -45,7 +59,7 @@ export function useEchoPeerAudio({
         changePeerVolume(p.userId, vol / 100)
       }
     })
-  }, [participants, userVolumes, musicBotVolume, changePeerVolume, userId])
+  }, [peerIdsKey, userVolumes, musicBotVolume, changePeerVolume, userId])
 
   // 3D Spatial Audio & Stereo Panning state
   const [spatialAudioEnabled, setSpatialAudioEnabledState] = useState<boolean>(() => {
@@ -69,7 +83,7 @@ export function useEchoPeerAudio({
         changePeerPan(p.userId, pan)
       }
     })
-  }, [participants, userStereoPans, changePeerPan, userId])
+  }, [peerIdsKey, userStereoPans, changePeerPan, userId])
 
   // Local screenshare volumes state
   const [peerScreenVolumes, setPeerScreenVolumes] = useState<Record<string, number>>(() => {
@@ -85,7 +99,7 @@ export function useEchoPeerAudio({
         changePeerScreenVolume(p.userId, vol / 100)
       }
     })
-  }, [participants, peerScreenVolumes, changePeerScreenVolume, userId])
+  }, [peerIdsKey, peerScreenVolumes, changePeerScreenVolume, userId])
 
   return {
     userVolumes,

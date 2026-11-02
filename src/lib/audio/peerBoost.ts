@@ -105,10 +105,19 @@ export class PeerBoost {
     try { node.source.disconnect() } catch {}
     try { node.gain.disconnect() } catch {}
     try { node.limiter.disconnect() } catch {}
+    // Quando nenhum participante estiver com volume amplificado, suspende o contexto para liberar a CPU
+    if (this.nodes.size === 0 && this.ctx && this.ctx.state === 'running') {
+      try { void this.ctx.suspend?.().catch(() => {}) } catch {}
+    }
   }
 
   releaseAll() {
     for (const key of [...this.nodes.keys()]) this.release(key)
+    // Ao sair da chamada, fecha o contexto completamente e descarta o canal de áudio com o sistema operacional
+    if (this.ctx) {
+      try { void this.ctx.close?.().catch(() => {}) } catch {}
+      this.ctx = null
+    }
   }
 
   isBoosting(key: string): boolean {

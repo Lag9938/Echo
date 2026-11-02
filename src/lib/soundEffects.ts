@@ -1,12 +1,27 @@
 let audioCtx: AudioContext | null = null
+let autoSuspendTimer: ReturnType<typeof setTimeout> | null = null
+
+function scheduleAudioCtxSuspend() {
+  if (autoSuspendTimer) clearTimeout(autoSuspendTimer)
+  autoSuspendTimer = setTimeout(() => {
+    if (audioCtx && audioCtx.state === 'running') {
+      try { void audioCtx.suspend?.().catch(() => {}) } catch {}
+    }
+  }, 3000)
+}
 
 function getAudioContext(): AudioContext {
+  if (autoSuspendTimer) {
+    clearTimeout(autoSuspendTimer)
+    autoSuspendTimer = null
+  }
   if (!audioCtx || audioCtx.state === 'closed') {
     audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
   }
   if (audioCtx.state === 'suspended') {
     audioCtx.resume().catch(() => {})
   }
+  scheduleAudioCtxSuspend()
   return audioCtx
 }
 

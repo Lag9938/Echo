@@ -7,6 +7,7 @@ import { useHoverPeek } from '../hooks/useHoverPeek'
 import { PinnedMessagesDrawer } from '../components/chat/PinnedMessagesDrawer'
 import { MessageList } from '../components/chat/MessageList'
 import { MessageComposer } from '../components/chat/MessageComposer'
+import { useChatDraftStore } from '../stores/useChatDraftStore'
 import { StreamTile } from '../components/streaming/StreamTile'
 import {
   BrainIcon,
@@ -33,6 +34,7 @@ import { useUIStore } from '../stores/useUIStore'
 import { useNameFontStore } from '../stores/useNameFontStore'
 import { nameFontStyle, resolveNameFontId } from '../lib/nameFonts'
 import { useSpacesStore } from '../stores/useSpacesStore'
+import { useVoiceStore } from '../stores/useVoiceStore'
 import { useMusicBotStore } from '../stores/useMusicBotStore'
 import { isMusicBotIdentity } from '../lib/musicBotState'
 import { isSixtyFpsAllowed } from '../lib/screenShareQuality'
@@ -93,25 +95,25 @@ export interface VoiceChannelViewProps {
   setHoveredMemberPopover: (val: any) => void
   hoverTimeoutRef: React.MutableRefObject<any>
   spaceMembers?: any[]
-  activeVoiceChannelId: string | null
-  isConnected: boolean
-  participants: VoiceParticipant[]
-  handleJoinVoice: (channelId: string, spaceId?: string) => void
-  handleLeaveVoice: () => void
-  isMuted: boolean
-  handleToggleMute: () => void
-  isDeafened: boolean
-  handleToggleDeafen: () => void
-  isAiDenoiseEnabled: boolean
-  toggleAiDenoise: () => void
-  isPttMode: boolean
-  isPttActive: boolean
-  pttKey: string
-  setShowSoundboardModal: (val: boolean) => void
-  isRecordingCall: boolean
-  startCallRecording: () => void
-  stopCallRecording: () => void
-  recordingDuration: number
+  activeVoiceChannelId?: string | null
+  isConnected?: boolean
+  participants?: VoiceParticipant[]
+  handleJoinVoice?: (channelId: string, spaceId?: string) => void
+  handleLeaveVoice?: () => void
+  isMuted?: boolean
+  handleToggleMute?: () => void
+  isDeafened?: boolean
+  handleToggleDeafen?: () => void
+  isAiDenoiseEnabled?: boolean
+  toggleAiDenoise?: () => void
+  isPttMode?: boolean
+  isPttActive?: boolean
+  pttKey?: string
+  setShowSoundboardModal?: (val: boolean) => void
+  isRecordingCall?: boolean
+  startCallRecording?: () => void
+  stopCallRecording?: () => void
+  recordingDuration?: number
   setVolumeControlUser: (user: any) => void
   activeScreenSharers: VoiceParticipant[]
   activeScreenSharer: VoiceParticipant | null
@@ -163,8 +165,8 @@ export interface VoiceChannelViewProps {
   typingUsers?: string[]
   notifyTyping?: () => void
   send: (e: React.FormEvent) => void
-  draft: string
-  setDraft: (val: string) => void
+  draft?: string
+  setDraft?: (val: string) => void
   handleChatFileUpload: (file: File, caption?: string, sizePreference?: string) => void
   isUploading: boolean
   canUserDo: (spaceId: string, userId: string, perm: keyof RolePermissions) => boolean
@@ -228,20 +230,20 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
     setInspectedMember,
     setHoveredMemberPopover,
     hoverTimeoutRef,
-    activeVoiceChannelId,
-    isConnected,
-    participants,
-    handleJoinVoice,
-    handleLeaveVoice,
-    isMuted,
-    handleToggleMute,
-    isDeafened,
-    handleToggleDeafen,
-    isAiDenoiseEnabled,
-    toggleAiDenoise,
-    isPttMode,
-    isPttActive,
-    pttKey,
+    activeVoiceChannelId: propActiveVoiceChannelId,
+    isConnected: propIsConnected,
+    participants: propParticipants,
+    handleJoinVoice: propHandleJoinVoice,
+    handleLeaveVoice: propHandleLeaveVoice,
+    isMuted: propIsMuted,
+    handleToggleMute: propHandleToggleMute,
+    isDeafened: propIsDeafened,
+    handleToggleDeafen: propHandleToggleDeafen,
+    isAiDenoiseEnabled: propIsAiDenoiseEnabled,
+    toggleAiDenoise: propToggleAiDenoise,
+    isPttMode = false,
+    isPttActive: propIsPttActive,
+    pttKey = '',
     setShowSoundboardModal,
     setVolumeControlUser,
     activeScreenSharers,
@@ -322,6 +324,32 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
     onForwardMessage,
     showToast
   } = props
+
+  const storeParticipants = useVoiceStore((s) => s.participants)
+  const storeActiveVoiceChannelId = useVoiceStore((s) => s.activeVoiceChannelId)
+  const storeIsConnected = useVoiceStore((s) => s.isConnected)
+  const storeMuted = useVoiceStore((s) => s.isMuted)
+  const storeDeafened = useVoiceStore((s) => s.isDeafened)
+  const storePttActive = useVoiceStore((s) => s.isPttActive)
+  const storeToggleMute = useVoiceStore((s) => s.handleToggleMute)
+  const storeToggleDeafen = useVoiceStore((s) => s.handleToggleDeafen)
+  const storeJoinVoice = useVoiceStore((s) => s.handleJoinVoice)
+  const storeLeaveVoice = useVoiceStore((s) => s.handleLeaveVoice)
+  const storeToggleAiDenoise = useVoiceStore((s) => s.toggleAiDenoise)
+  const storeAiDenoise = useVoiceStore((s) => s.isAiDenoiseEnabled)
+
+  const participants = propParticipants ?? storeParticipants
+  const activeVoiceChannelId = propActiveVoiceChannelId ?? storeActiveVoiceChannelId
+  const isConnected = propIsConnected ?? storeIsConnected
+  const isMuted = propIsMuted ?? storeMuted
+  const isDeafened = propIsDeafened ?? storeDeafened
+  const isPttActive = propIsPttActive ?? storePttActive
+  const handleToggleMute = propHandleToggleMute ?? storeToggleMute
+  const handleToggleDeafen = propHandleToggleDeafen ?? storeToggleDeafen
+  const handleJoinVoice = propHandleJoinVoice ?? storeJoinVoice
+  const handleLeaveVoice = propHandleLeaveVoice ?? storeLeaveVoice
+  const toggleAiDenoise = propToggleAiDenoise ?? storeToggleAiDenoise
+  const isAiDenoiseEnabled = propIsAiDenoiseEnabled ?? storeAiDenoise
   const openLightbox = useUIStore((s) => s.openLightbox)
   const setShowMusicBotModal = useUIStore((s) => s.setShowMusicBotModal)
   // Câmera expandida no lugar da transmissão (clique numa câmera da fileira); sai da tela da transmissão, volta ao normal
@@ -399,12 +427,14 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
   const selectMention = useCallback((candidate: { name: string }) => {
     if (!candidate || mentionStartIndex === -1) return
     const input = chatInputRef.current
-    const cursorPos = input?.selectionStart ?? draft.length
-    const beforeAt = draft.slice(0, mentionStartIndex)
-    const afterCursor = draft.slice(cursorPos)
+    const currentDraft = (draft || useChatDraftStore.getState().getDraft(selectedChannel.id))
+    const cursorPos = input?.selectionStart ?? currentDraft.length
+    const beforeAt = currentDraft.slice(0, mentionStartIndex)
+    const afterCursor = currentDraft.slice(cursorPos)
     const mentionText = `@${candidate.name} `
     const newDraft = beforeAt + mentionText + afterCursor
-    setDraft(newDraft)
+    if (setDraft) setDraft(newDraft)
+    useChatDraftStore.getState().setDraft(selectedChannel.id, newDraft)
     setShowMentionPicker(false)
     setMentionStartIndex(-1)
 
@@ -415,11 +445,12 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
         input.setSelectionRange(newPos, newPos)
       }
     }, 10)
-  }, [draft, mentionStartIndex, setDraft])
+  }, [draft, mentionStartIndex, selectedChannel.id, setDraft])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
-    setDraft(val)
+    if (setDraft) setDraft(val)
+    useChatDraftStore.getState().setDraft(selectedChannel.id, val)
     if (notifyTyping) notifyTyping()
 
     const cursorPos = e.target.selectionStart ?? val.length
@@ -547,12 +578,14 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
 
   const handleVoiceComposerSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const activeDraft = (draft || useChatDraftStore.getState().getDraft(selectedChannel.id))
     if (pendingVoicePastedFile) {
       const file = pendingVoicePastedFile
-      const caption = draft.trim()
+      const caption = activeDraft.trim()
       const sizePref = pendingVoiceImageSize
       removePendingVoiceImage()
-      setDraft('')
+      if (setDraft) setDraft('')
+      useChatDraftStore.getState().clearDraft(selectedChannel.id)
       await handleChatFileUpload(file, caption, sizePref)
       return
     }
@@ -1183,7 +1216,7 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                   <div className="voice-dock-cluster">
                                     <button
                                       className="control-btn soundboard-btn"
-                                      onClick={() => setShowSoundboardModal(true)}
+                                      onClick={() => setShowSoundboardModal?.(true)}
                                       title="Mesa de Efeitos Sonoros (Soundboard)"
                                     >
                                       <SoundboardIcon style={{ width: 20, height: 20 }} />

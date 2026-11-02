@@ -85,6 +85,8 @@ export function DecoratedAvatar({
           <img
             src={avatarUrl}
             alt={displayName}
+            loading="lazy"
+            decoding="async"
             style={{
               width: '100%',
               height: '100%',

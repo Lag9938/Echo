@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { useVoiceStore } from '../stores/useVoiceStore'
 
 /**
  * Preferências de áudio que ficam salvas no aparelho: supressão de ruído, cancelamento de eco, portão de
@@ -59,7 +60,7 @@ export interface UseEchoAudioSettingsActionsOptions {
   setEchoCancellationEnabled: (enabled: boolean) => void
   setSpatialAudioEnabledState: (enabled: boolean) => void
   setUserStereoPans: Dispatch<SetStateAction<Record<string, number>>>
-  participants: { userId: string }[]
+  participants?: { userId: string }[]
   changePeerPan: (peerId: string, pan: number) => void
 }
 
@@ -77,7 +78,7 @@ export function useEchoAudioSettingsActions({
   setEchoCancellationEnabled,
   setSpatialAudioEnabledState,
   setUserStereoPans,
-  participants,
+  participants: propParticipants,
   changePeerPan
 }: UseEchoAudioSettingsActionsOptions) {
   const handleNoiseSuppressionChange = useCallback((val: boolean) => {
@@ -104,10 +105,11 @@ export function useEchoAudioSettingsActions({
   const handleResetAllPans = useCallback(() => {
     setUserStereoPans({})
     localStorage.removeItem('echo-user-stereo-pans')
-    participants.forEach(p => {
+    const list = propParticipants ?? useVoiceStore.getState().participants
+    list.forEach(p => {
       changePeerPan(p.userId, 0)
     })
-  }, [setUserStereoPans, participants, changePeerPan])
+  }, [setUserStereoPans, propParticipants, changePeerPan])
 
   return {
     handleNoiseSuppressionChange,

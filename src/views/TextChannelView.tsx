@@ -13,6 +13,8 @@ import { PaperclipIcon } from '../components/icons'
 import { useUIStore } from '../stores/useUIStore'
 import { useSpacesStore } from '../stores/useSpacesStore'
 import { useThreadsStore } from '../stores/useThreadsStore'
+import { useVoiceStore } from '../stores/useVoiceStore'
+import { useChatDraftStore } from '../stores/useChatDraftStore'
 import { useEchoThreads } from '../hooks/useEchoThreads'
 import { ThreadPanel } from '../components/chat/ThreadPanel'
 import { filesFromTransfer, sendFilesInOrder } from '../lib/attachments'
@@ -57,8 +59,8 @@ export interface TextChannelViewProps {
   voiceNotePlaySpeed: number
   handleChangeVoiceSpeed: () => void
   voiceNoteAudioRef: React.RefObject<HTMLAudioElement | null>
-  draft: string
-  setDraft: React.Dispatch<React.SetStateAction<string>>
+  draft?: string
+  setDraft?: React.Dispatch<React.SetStateAction<string>> | ((val: string) => void)
   send: (e: React.FormEvent) => void
   isUploading: boolean
   handleChatFileUpload: (file: File, caption?: string, sizePreference?: string) => void
@@ -81,7 +83,7 @@ export interface TextChannelViewProps {
   spaceMembers?: any[]
   spaceChannels?: Record<string, Channel[]>
   activeVoiceChannelId: string | null
-  participants: any[]
+  participants?: any[]
   spaceVoiceUsers?: Record<string, any[]>
   presenceStatus?: 'online' | 'idle' | 'dnd' | 'invisible'
   myGamePresence?: { name: string; icon: string; startedAt: number } | null
@@ -173,7 +175,7 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
     pinnedMessages,
     togglePinMessage,
     activeVoiceChannelId,
-    participants,
+    participants: propParticipants,
     myGamePresence,
     setSpaceForAddMembers,
     setInspectedMember,
@@ -187,6 +189,9 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
     onForwardMessage,
     showToast
   } = props
+
+  const storeParticipants = useVoiceStore((s) => s.participants)
+  const participants = propParticipants ?? storeParticipants
 
   // Passar o mouse no botão de membros espia a lista; o clique a fixa
   const membersPeek = useHoverPeek(showMembersList, setShowMembersList)
@@ -281,12 +286,14 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
   const selectMention = useCallback((candidate: { name: string }) => {
     if (!candidate || mentionStartIndex === -1) return
     const input = chatInputRef.current
-    const cursorPos = input?.selectionStart ?? draft.length
-    const beforeAt = draft.slice(0, mentionStartIndex)
-    const afterCursor = draft.slice(cursorPos)
+    const currentDraft = (draft || useChatDraftStore.getState().getDraft(selectedChannel.id))
+    const cursorPos = input?.selectionStart ?? currentDraft.length
+    const beforeAt = currentDraft.slice(0, mentionStartIndex)
+    const afterCursor = currentDraft.slice(cursorPos)
     const mentionText = `@${candidate.name} `
     const newDraft = beforeAt + mentionText + afterCursor
-    setDraft(newDraft)
+    if (setDraft) setDraft(newDraft)
+    useChatDraftStore.getState().setDraft(selectedChannel.id, newDraft)
     setShowMentionPicker(false)
     setMentionStartIndex(-1)
 
@@ -297,11 +304,12 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
         input.setSelectionRange(newPos, newPos)
       }
     }, 10)
-  }, [draft, mentionStartIndex, setDraft])
+  }, [draft, mentionStartIndex, selectedChannel.id, setDraft])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
-    setDraft(val)
+    if (setDraft) setDraft(val)
+    useChatDraftStore.getState().setDraft(selectedChannel.id, val)
     if (notifyTyping) notifyTyping()
 
     const cursorPos = e.target.selectionStart ?? val.length
@@ -462,12 +470,14 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
 
   const handleComposerSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const activeDraft = (draft || useChatDraftStore.getState().getDraft(selectedChannel.id))
     if (pendingPastedFile) {
       const file = pendingPastedFile
-      const caption = draft.trim()
+      const caption = activeDraft.trim()
       const sizePref = pendingImageSize
       removePendingImage()
-      setDraft('')
+      if (setDraft) setDraft('')
+      useChatDraftStore.getState().clearDraft(selectedChannel.id)
       await handleChatFileUpload(file, caption, sizePref)
       return
     }
@@ -695,6 +705,8 @@ export const TextChannelView = memo(function TextChannelView(props: TextChannelV
             serverEmojis={serverEmojis}
             supabase={supabase}
             postChannelMessage={postChannelMessage}
+            notifyTyping={notifyTyping}
+            getUserHighestRole={getUserHighestRole}
           />
         </div>
 

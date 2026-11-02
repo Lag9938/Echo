@@ -656,7 +656,7 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
                   >
                     <div className="dm-item-avatar-wrapper">
                       {group.avatar_url ? (
-                        <img src={group.avatar_url} alt={group.name} />
+                        <img src={group.avatar_url} alt={group.name} loading="lazy" decoding="async" />
                       ) : (
                         <div style={{
                           width: '100%',
@@ -718,7 +718,7 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
                     <div className="dm-item-avatar-wrapper">
                       <div className="friend-avatar" style={{ width: '100%', height: '100%', fontSize: 13, position: 'relative' }}>
                         {conv.avatar_url ? (
-                          <img src={conv.avatar_url} alt={conv.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
+                          <img src={conv.avatar_url} alt={conv.display_name} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
                         ) : (
                           conv.display_name.slice(0, 1).toUpperCase()
                         )}

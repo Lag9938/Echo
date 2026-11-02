@@ -12,6 +12,11 @@
   flex-shrink: 0;
   display: flex; flex-direction: column; gap: 2px;
 }
+.messages-flow.messages-virtual-flow {
+  display: block !important;
+  position: relative !important;
+  contain: layout;
+}
 /* Removido "content-visibility: auto" em conversas longas: a altura de cada mensagem varia demais (uma
    linha, várias, imagem, incorporação, reações) para um "chute" de tamanho funcionar. Na prática, toda
    mensagem nunca antes desenhada trocava de 72px pro tamanho real ao entrar perto da tela — um pequeno

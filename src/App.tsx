@@ -2,7 +2,8 @@ import { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } fro
 import type { User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { Auth } from './components/auth/Auth'
-import { useEchoVoiceSession } from './hooks/useEchoVoiceSession'
+import { VoiceSessionController } from './components/voice/VoiceSessionController'
+import { useVoiceStore, findTargetVoiceChannel } from './stores/useVoiceStore'
 import { useEchoPeerAudio } from './hooks/useEchoPeerAudio'
 import { useEchoDesktopShell } from './hooks/useEchoDesktopShell'
 import { useEchoGlobalPresence } from './hooks/useEchoGlobalPresence'
@@ -821,8 +822,6 @@ function Echo({ user }: { user: User }) {
   const {
     messages,
     setMessages,
-    draft,
-    setDraft,
     isUploading,
     setIsUploading,
     replyingToMessage,
@@ -881,98 +880,64 @@ function Echo({ user }: { user: User }) {
   const activeSharingSourceRef = useRef<any>(null)
   const setActiveSharingSourceRef = useRef<((src: any) => void) | null>(null)
 
-  const {
-    participants,
-    isMuted,
-    isDeafened,
-    isConnected,
-    localScreenStream,
-    localCameraStream,
-    rtcStats,
-    isPttMode,
-    isPttActive,
-    lastSoundboardEvent,
-    isRecordingCall,
-    recordingDuration,
-    leaveVoice,
-    startScreenShare,
-    stopScreenShare,
-    startCamera,
-    stopCamera,
-    changeInputDevice,
-    changeOutputDevice,
-    changeScreenShareSettings,
-    changePeerVolume,
-    changePeerPan,
-    setSpatialAudioEnabled,
-    changePeerScreenVolume,
-    setPttMode,
-    setPttActive,
-    playSoundboard,
-    startCallRecording,
-    stopCallRecording,
-    isAiDenoiseEnabled,
-    toggleAiDenoise,
-    updateScreenSubscriptions,
-    updateLocalProfile,
-    screenAudioSyncDelayMs,
-    changeScreenAudioSyncDelay,
-    isVoiceReconnecting,
-    isVoiceNetworkUnstable,
-    voiceReconnectCountdown,
-    voiceReconnectAttempt,
-    retryVoiceReconnect,
-    cancelVoiceReconnect,
-    activeVoiceChannelId,
-    setActiveVoiceChannelId,
-    spaceVoiceUsers,
-    activeVoiceChannel,
-    handleJoinVoice,
-    handleLeaveVoice,
-    handleToggleMute,
-    handleToggleDeafen
-  } = useEchoVoiceSession({
-    user,
-    profileDisplayName,
-    profileAvatarUrl,
-    sfxVolume,
-    getSelectedInputId: () => selectedInputIdRef.current,
-    getSelectedOutputId: () => selectedOutputIdRef.current,
-    getNoiseSuppressionEnabled: () => noiseSuppressionEnabledRef.current,
-    getEchoCancellationEnabled: () => echoCancellationEnabledRef.current,
-    noiseGateEnabled,
-    noiseGateThreshold,
-    getActiveSharingSource: () => activeSharingSourceRef.current,
-    onBeforeJoinVoice: () => {
-      lastActivityRef.current = Date.now()
-      setShowAfkPrompt(false)
-      setShowAfkDisconnectedModal(false)
-    },
-    onLeaveVoice: () => {
-      if (setActiveSharingSourceRef.current) {
-        setActiveSharingSourceRef.current(null)
-      }
-    },
-    spaces,
-    spaceChannelsRef,
-    selectedChannel,
-    spaceChannels,
-    showToast,
-    supabase,
-    presenceData
-  })
+  // Estado de voz desacoplado e atômico (Zustand: zero re-renders no componente raiz ao falar)
+  const isConnected = useVoiceStore((s) => s.isConnected)
+  const activeVoiceChannelId = useVoiceStore((s) => s.activeVoiceChannelId)
+  const activeVoiceChannel = useVoiceStore((s) => s.activeVoiceChannel)
+  const spaceVoiceUsers = useVoiceStore((s) => s.spaceVoiceUsers)
+  const isPttMode = useVoiceStore((s) => s.isPttMode)
+  const isAiDenoiseEnabled = useVoiceStore((s) => s.isAiDenoiseEnabled)
+  const isMuted = useVoiceStore((s) => s.isMuted)
+  const isDeafened = useVoiceStore((s) => s.isDeafened)
+  const localScreenStream = useVoiceStore((s) => s.localScreenStream)
+  const localCameraStream = useVoiceStore((s) => s.localCameraStream)
+  const screenAudioSyncDelayMs = useVoiceStore((s) => s.screenAudioSyncDelayMs)
+  const lastSoundboardEvent = useVoiceStore((s) => s.lastSoundboardEvent)
 
-  useEffect(() => {
-    useSpacesStore.getState().setSpaceVoiceUsers(spaceVoiceUsers)
-  }, [spaceVoiceUsers])
+  // Despachantes estáveis (identidades imutáveis: evitam invalidar useCallbacks dependentes)
+  const handleJoinVoice = useCallback((channelId: string, explicitSpaceId?: string) => {
+    return useVoiceStore.getState().handleJoinVoice(channelId, explicitSpaceId)
+  }, [])
+  const handleLeaveVoice = useCallback(() => {
+    useVoiceStore.getState().handleLeaveVoice()
+  }, [])
+  const handleToggleMute = useCallback(() => {
+    useVoiceStore.getState().handleToggleMute()
+  }, [])
+  const handleToggleDeafen = useCallback(() => {
+    useVoiceStore.getState().handleToggleDeafen()
+  }, [])
+  const leaveVoice = useCallback(() => useVoiceStore.getState().leaveVoice(), [])
+  const startScreenShare = useCallback((sourceId?: string) => useVoiceStore.getState().startScreenShare(sourceId), [])
+  const stopScreenShare = useCallback(() => useVoiceStore.getState().stopScreenShare(), [])
+  const startCamera = useCallback((deviceId?: string, onError?: (message: string) => void) => useVoiceStore.getState().startCamera(deviceId, onError), [])
+  const stopCamera = useCallback(() => useVoiceStore.getState().stopCamera(), [])
+  const changeInputDevice = useCallback((deviceId: string) => useVoiceStore.getState().changeInputDevice(deviceId), [])
+  const changeOutputDevice = useCallback((deviceId: string) => useVoiceStore.getState().changeOutputDevice(deviceId), [])
+  const changeScreenShareSettings = useCallback((settings: any) => useVoiceStore.getState().changeScreenShareSettings(settings), [])
+  const changePeerVolume = useCallback((peerId: string, volume: number) => useVoiceStore.getState().changePeerVolume(peerId, volume), [])
+  const changePeerPan = useCallback((peerId: string, pan: number) => useVoiceStore.getState().changePeerPan(peerId, pan), [])
+  const setSpatialAudioEnabled = useCallback((enabled: boolean) => useVoiceStore.getState().setSpatialAudioEnabled(enabled), [])
+  const changePeerScreenVolume = useCallback((peerId: string, volume: number) => useVoiceStore.getState().changePeerScreenVolume(peerId, volume), [])
+  const setPttMode = useCallback((enabled: boolean) => useVoiceStore.getState().setPttMode(enabled), [])
+  const setPttActive = useCallback((active: boolean) => useVoiceStore.getState().setPttActive(active), [])
+  const playSoundboard = useCallback((soundId: string) => useVoiceStore.getState().playSoundboard(soundId), [])
+  const startCallRecording = useCallback(() => useVoiceStore.getState().startCallRecording(), [])
+  const stopCallRecording = useCallback(() => useVoiceStore.getState().stopCallRecording(), [])
+  const toggleAiDenoise = useCallback(() => useVoiceStore.getState().toggleAiDenoise(), [])
+  const updateScreenSubscriptions = useCallback((opts: any) => useVoiceStore.getState().updateScreenSubscriptions(opts), [])
+  const updateLocalProfile = useCallback((name: string, avatarUrl?: string) => useVoiceStore.getState().updateLocalProfile(name, avatarUrl), [])
+  const changeScreenAudioSyncDelay = useCallback((delay: number) => useVoiceStore.getState().changeScreenAudioSyncDelay(delay), [])
+  const retryVoiceReconnect = useCallback(() => useVoiceStore.getState().retryVoiceReconnect(), [])
+  const cancelVoiceReconnect = useCallback(() => useVoiceStore.getState().cancelVoiceReconnect(), [])
+  const setActiveVoiceChannelId = useCallback((id: string | null) => useVoiceStore.getState().setActiveVoiceChannelId(id), [])
+
   handleJoinVoiceRef.current = handleJoinVoice
 
   // Moderação de voz: o servidor confere cargo e hierarquia e executa (Edge Function voice-moderation)
   const findVoiceChannelOf = useCallback((targetUserId: string): string | null => {
-    if (activeVoiceChannelId && participants.some(p => p.userId === targetUserId)) return activeVoiceChannelId
-    const entry = Object.entries(spaceVoiceUsers).find(([, users]) => users.some(u => u.userId === targetUserId))
-    return entry ? entry[0] : null
-  }, [activeVoiceChannelId, participants, spaceVoiceUsers])
+    return findTargetVoiceChannel(targetUserId)
+  }, [])
 
   const moderateVoice = useCallback(async (request: Omit<VoiceModerationRequest, 'channelId'>): Promise<boolean> => {
     const channelId = findVoiceChannelOf(request.targetUserId)
@@ -1202,7 +1167,6 @@ function Echo({ user }: { user: User }) {
     setPeerScreenVolumes
   } = useEchoPeerAudio({
     userId: user.id,
-    participants,
     changePeerVolume,
     changePeerPan,
     setSpatialAudioEnabled,
@@ -1242,7 +1206,6 @@ function Echo({ user }: { user: User }) {
     showSpaceSettingsModal,
     setShowSpaceSettingsModal,
     showToast,
-    participants,
     isConnected,
     selectedChannel,
     activeVoiceChannelId,
@@ -1332,7 +1295,6 @@ function Echo({ user }: { user: User }) {
     handleAfkStay
   } = useEchoAfkDetector({
     isConnected,
-    participants,
     userId: user?.id,
     activeVoiceChannelId,
     spaceId: selectedChannel?.space_id,
@@ -1785,7 +1747,6 @@ function Echo({ user }: { user: User }) {
     setEchoCancellationEnabled,
     setSpatialAudioEnabledState,
     setUserStereoPans,
-    participants,
     changePeerPan
   })
 
@@ -1964,11 +1925,34 @@ function Echo({ user }: { user: User }) {
         />
       )}
 
+      {/* Controlador de Sessão de Voz Isolado (mantém atualizações de VAD e LiveKit fora do componente raiz) */}
+      <VoiceSessionController
+        user={user}
+        profileDisplayName={profileDisplayName}
+        profileAvatarUrl={profileAvatarUrl}
+        sfxVolume={sfxVolume}
+        selectedInputIdRef={selectedInputIdRef}
+        selectedOutputIdRef={selectedOutputIdRef}
+        noiseSuppressionEnabledRef={noiseSuppressionEnabledRef}
+        echoCancellationEnabledRef={echoCancellationEnabledRef}
+        noiseGateEnabled={noiseGateEnabled}
+        noiseGateThreshold={noiseGateThreshold}
+        spaces={spaces}
+        spaceChannelsRef={spaceChannelsRef}
+        selectedChannel={selectedChannel}
+        spaceChannels={spaceChannels}
+        activeSharingSourceRef={activeSharingSourceRef}
+        setActiveSharingSourceRef={setActiveSharingSourceRef}
+        lastActivityRef={lastActivityRef}
+        setShowAfkPrompt={setShowAfkPrompt}
+        setShowAfkDisconnectedModal={setShowAfkDisconnectedModal}
+        showToast={showToast}
+        supabase={supabase}
+        presenceData={presenceData}
+      />
+
       {/* Barra Discreta de Reconexão Automática de Voz */}
       <VoiceReconnectBanner
-        isVoiceReconnecting={isVoiceReconnecting}
-        voiceReconnectCountdown={voiceReconnectCountdown}
-        voiceReconnectAttempt={voiceReconnectAttempt}
         onRetry={retryVoiceReconnect}
         onCancel={cancelVoiceReconnect}
       />
@@ -1983,10 +1967,7 @@ function Echo({ user }: { user: User }) {
         <FloatingCallPanel
           channelName={activeVoiceChannel.name}
           spaceName={spaces.find(s => s.id === activeVoiceChannel.space_id)?.name}
-          participants={participants}
           currentUserId={user.id}
-          isMuted={isMuted}
-          isDeafened={isDeafened}
           onToggleMute={handleToggleMute}
           onToggleDeafen={handleToggleDeafen}
           onLeave={handleLeaveVoice}
@@ -2014,7 +1995,6 @@ function Echo({ user }: { user: User }) {
         spaceVoiceUsers={spaceVoiceUsers}
         activeVoiceChannelId={activeVoiceChannelId}
         isVoiceConnected={isConnected}
-        participants={participants}
         setAddSpaceModalTab={setAddSpaceModalTab}
         setShowAddSpaceModal={setShowAddSpaceModal}
         savedMessages={savedMessages}
@@ -2088,25 +2068,17 @@ function Echo({ user }: { user: User }) {
             collapsedCategories={collapsedCategories}
             toggleCategoryCollapse={toggleCategoryCollapse}
             activeVoiceChannelId={activeVoiceChannelId}
-            participants={participants}
             handleJoinVoice={handleJoinVoice}
             handleLeaveVoice={handleLeaveVoice}
             isPttMode={isPttMode}
             pttKey={pttKey}
-            isPttActive={isPttActive}
-            isVoiceReconnecting={isVoiceReconnecting || isVoiceNetworkUnstable}
             activeVoiceChannel={activeVoiceChannel}
             currentSpace={currentSpace}
-            rtcStats={rtcStats}
-            isMuted={isMuted}
             handleToggleMute={handleToggleMute}
-            isDeafened={isDeafened}
             handleToggleDeafen={handleToggleDeafen}
             setShowSoundboardModal={setShowSoundboardModal}
-            isRecordingCall={isRecordingCall}
             startCallRecording={startCallRecording}
             stopCallRecording={stopCallRecording}
-            recordingDuration={recordingDuration}
             canUserDo={canUserDo}
             canViewChannel={canViewChannel}
             setVolumeControlUser={setVolumeControlUser}
@@ -2179,8 +2151,6 @@ function Echo({ user }: { user: User }) {
                     voiceNotePlaySpeed={voiceNotePlaySpeed}
                     handleChangeVoiceSpeed={handleChangeVoiceSpeed}
                     voiceNoteAudioRef={voiceNoteAudioRef}
-                    draft={draft}
-                    setDraft={setDraft}
                     send={send}
                     isUploading={isUploading}
                     handleChatFileUpload={handleChatFileUpload}
@@ -2201,7 +2171,6 @@ function Echo({ user }: { user: User }) {
                     pinnedMessages={pinnedMessages}
                     togglePinMessage={togglePinMessage}
                     activeVoiceChannelId={activeVoiceChannelId}
-                    participants={participants}
                     myGamePresence={myGamePresence}
                     setSpaceForAddMembers={setSpaceForAddMembers}
                     setInspectedMember={handleInspectMember}
@@ -2244,23 +2213,17 @@ function Echo({ user }: { user: User }) {
                     hoverTimeoutRef={hoverTimeoutRef}
                     activeVoiceChannelId={activeVoiceChannelId}
                     isConnected={isConnected}
-                    participants={participants}
                     handleJoinVoice={handleJoinVoice}
                     handleLeaveVoice={handleLeaveVoice}
-                    isMuted={isMuted}
                     handleToggleMute={handleToggleMute}
-                    isDeafened={isDeafened}
                     handleToggleDeafen={handleToggleDeafen}
                     isAiDenoiseEnabled={isAiDenoiseEnabled}
                     toggleAiDenoise={toggleAiDenoise}
                     isPttMode={isPttMode}
-                    isPttActive={isPttActive}
                     pttKey={pttKey}
                     setShowSoundboardModal={setShowSoundboardModal}
-                    isRecordingCall={isRecordingCall}
                     startCallRecording={startCallRecording}
                     stopCallRecording={stopCallRecording}
-                    recordingDuration={recordingDuration}
                     setVolumeControlUser={setVolumeControlUser}
                     activeScreenSharers={activeScreenSharers}
                     activeScreenSharer={activeScreenSharer}
@@ -2308,8 +2271,6 @@ function Echo({ user }: { user: User }) {
                     typingUsers={typingUsers}
                     notifyTyping={notifyTyping}
                     send={send}
-                    draft={draft}
-                    setDraft={setDraft}
                     handleChatFileUpload={handleChatFileUpload}
                     isUploading={isUploading}
                     canUserDo={canUserDo}
@@ -2591,7 +2552,6 @@ function Echo({ user }: { user: User }) {
         profileEffect={profileEffect}
         avatarDecoration={avatarDecoration}
         onlineUsers={onlineUsers}
-        participants={participants}
         presenceData={presenceData}
         presenceStatus={presenceStatus}
         myGamePresence={myGamePresence}
@@ -2604,8 +2564,6 @@ function Echo({ user }: { user: User }) {
         spaceMembers={spaceMembers}
         activeVoiceChannel={activeVoiceChannel}
         activeVoiceChannelId={activeVoiceChannelId}
-        isMuted={isMuted}
-        isDeafened={isDeafened}
         handleToggleMute={handleToggleMute}
         handleToggleDeafen={handleToggleDeafen}
         handleJoinVoice={handleJoinVoice}

@@ -44,6 +44,11 @@ export function ProfileVideoEffect({ effect, className = '', style }: ProfileVid
       video.pause()
       return () => {
         video.removeEventListener('loadedmetadata', seekToPreviewFrame)
+      try {
+        video.pause()
+        video.removeAttribute('src')
+        video.load()
+      } catch {}
       }
     }
 
@@ -82,6 +87,11 @@ export function ProfileVideoEffect({ effect, className = '', style }: ProfileVid
       card?.removeEventListener('mouseenter', onEnter)
       card?.removeEventListener('mouseleave', onLeave)
       video.removeEventListener('loadedmetadata', seekToPreviewFrame)
+      try {
+        video.pause()
+        video.removeAttribute('src')
+        video.load()
+      } catch {}
     }
   }, [reduced, effect.src])
 

@@ -174,7 +174,6 @@ export const TopBar = memo(function TopBar(props: TopBarProps) {
             const isSelected = (page === 'Servidores') && ((expandedSpace === space.id) || (!expandedSpace && spaces[0]?.id === space.id))
             const spaceChs = spaceChannels[space.id] || []
             const unreadInSpace = spaceChs.filter(c => unreadChannels.has(c.id)).length
-            const hasActiveVoice = spaceChs.some(c => c.type === 'voice' && ((spaceVoiceUsers[c.id] && spaceVoiceUsers[c.id].length > 0) || (activeVoiceChannelId === c.id && participants.length > 0)))
 
             return (
               <div 
@@ -222,15 +221,6 @@ export const TopBar = memo(function TopBar(props: TopBarProps) {
                   {/* Badge de Nao Lidas */}
                   {unreadInSpace > 0 && (
                     <span className="topbar-server-badge">{unreadInSpace}</span>
-                  )}
-
-                  {/* Onda Sonora se houver alguem em voz */}
-                  {hasActiveVoice && (
-                    <div className="topbar-voice-wave-badge" title="Canal de voz ativo">
-                      <span className="echo-wave-bar" style={{ height: '6px' }} />
-                      <span className="echo-wave-bar" style={{ height: '10px' }} />
-                      <span className="echo-wave-bar" style={{ height: '5px' }} />
-                    </div>
                   )}
                 </button>
 

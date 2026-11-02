@@ -15,6 +15,7 @@ import type {
 import { supabase } from '../../lib/supabase'
 import type { EffectivePermissions } from '../../lib/permissions'
 import { useUIStore } from '../../stores/useUIStore'
+import { useVoiceStore } from '../../stores/useVoiceStore'
 
 import { HoveredMemberPopover } from '../sidebar/HoveredMemberPopover'
 import { SoundboardToast } from './SoundboardToast'
@@ -44,7 +45,7 @@ export interface ModalManagerProps {
   profileEffect: string
   avatarDecoration: string
   onlineUsers: Set<string>
-  participants: any[]
+  participants?: any[]
   presenceData: Record<string, any>
   presenceStatus: any
   myGamePresence: any
@@ -57,8 +58,8 @@ export interface ModalManagerProps {
   spaceMembers: any[]
   activeVoiceChannel: Channel | null
   activeVoiceChannelId: string | null
-  isMuted: boolean
-  isDeafened: boolean
+  isMuted?: boolean
+  isDeafened?: boolean
   handleToggleMute: () => void
   handleToggleDeafen: () => void
   handleJoinVoice: (channelId: string, explicitSpaceId?: string) => Promise<void>
@@ -248,7 +249,7 @@ export function ModalManager(props: ModalManagerProps) {
     profileEffect,
     avatarDecoration,
     onlineUsers,
-    participants,
+    participants: propParticipants,
     presenceData,
     presenceStatus,
     myGamePresence,
@@ -261,8 +262,8 @@ export function ModalManager(props: ModalManagerProps) {
     spaceMembers,
     activeVoiceChannel,
     activeVoiceChannelId,
-    isMuted,
-    isDeafened,
+    isMuted: propIsMuted,
+    isDeafened: propIsDeafened,
     handleToggleMute,
     handleToggleDeafen,
     handleJoinVoice,
@@ -441,6 +442,13 @@ export function ModalManager(props: ModalManagerProps) {
     acceptIncomingCall,
     rejectIncomingCall
   } = props
+
+  const storeParticipants = useVoiceStore((s) => s.participants)
+  const storeMuted = useVoiceStore((s) => s.isMuted)
+  const storeDeafened = useVoiceStore((s) => s.isDeafened)
+  const participants = propParticipants ?? storeParticipants
+  const isMuted = propIsMuted ?? storeMuted
+  const isDeafened = propIsDeafened ?? storeDeafened
   const showMusicBotModal = useUIStore((s) => s.showMusicBotModal)
   const setShowMusicBotModal = useUIStore((s) => s.setShowMusicBotModal)
 

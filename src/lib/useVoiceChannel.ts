@@ -72,7 +72,7 @@ export interface StudioMicrophoneDSPNodes {
   audioCtx: AudioContext;
 }
 
-const DEFAULT_NOISE_GATE: NoiseGateParams = { enabled: false, thresholdDb: -45 }
+const DEFAULT_NOISE_GATE: NoiseGateParams = { enabled: true, thresholdDb: -45 }
 
 function applyNoiseGateParams(gate: AudioWorkletNode | null, params: NoiseGateParams) {
   if (!gate) return
@@ -118,29 +118,29 @@ async function createStudioMicrophoneDSP(
 
   const source = audioCtx.createMediaStreamSource(stream);
 
-  // Filtro Passa-Alta em 85 Hz (elimina vibracoes de mesa e vento)
+  // Filtro Passa-Alta em 75 Hz (elimina vibrações de mesa e vento preservando o corpo e calor da voz)
   const highpass = audioCtx.createBiquadFilter();
   highpass.type = 'highpass';
-  highpass.frequency.value = 85;
+  highpass.frequency.value = 75;
   highpass.Q.value = 0.707;
 
-  // Filtro Passa-Baixa em 14 kHz (elimina chiados e estatica)
+  // Filtro Passa-Baixa em 18 kHz (elimina chiados e estática ultrassônica mantendo a presença e clareza cristalina)
   const lowpass = audioCtx.createBiquadFilter();
   lowpass.type = 'lowpass';
-  lowpass.frequency.value = 14000;
+  lowpass.frequency.value = 18000;
   lowpass.Q.value = 0.707;
 
-  // Compressor de Estúdio (Nivelamento Suave)
+  // Compressor de Estúdio (Nivelamento Suave e Transparente)
   const compressor = audioCtx.createDynamicsCompressor();
-  compressor.threshold.value = -24;
-  compressor.knee.value = 10;
-  compressor.ratio.value = 4;
+  compressor.threshold.value = -20;
+  compressor.knee.value = 12;
+  compressor.ratio.value = 3;
   compressor.attack.value = 0.003;
   compressor.release.value = 0.15;
 
-  // Brickwall Peak Limiter (Corta 100% dos picos que excedem -2 dBFS, eliminando estouros)
+  // Brickwall Peak Limiter (Corta 100% dos picos que excedem -1.5 dBFS, eliminando estouros)
   const limiter = audioCtx.createDynamicsCompressor();
-  limiter.threshold.value = -2.0;
+  limiter.threshold.value = -1.5;
   limiter.knee.value = 0.0;
   limiter.ratio.value = 20.0;
   limiter.attack.value = 0.001;
@@ -292,9 +292,9 @@ export function useVoiceChannel(options?: {
   const isPttModeRef = useRef(false)
   const isPttActiveRef = useRef(false)
 
-  // AI Noise Suppression (RNNoise)
+  // AI Noise Suppression (RNNoise - ativado por padrão para voz cristalina)
   const [isAiDenoiseEnabled, setIsAiDenoiseEnabled] = useState<boolean>(() => {
-    return localStorage.getItem('echo-ai-denoise-enabled') === 'true'
+    return localStorage.getItem('echo-ai-denoise-enabled') !== 'false'
   })
   const isAiDenoiseEnabledRef = useRef(isAiDenoiseEnabled)
 
@@ -536,11 +536,43 @@ export function useVoiceChannel(options?: {
       }
     }
 
+    let timerId: ReturnType<typeof setTimeout> | null = null
+
+    const scheduleNext = (delayMs?: number) => {
+      if (cancelled) return
+      if (timerId) clearTimeout(timerId)
+      // Quando a janela está minimizada ou em segundo plano, reduz a frequência para economizar CPU
+      const isHidden = typeof document !== 'undefined' && document.hidden
+      const delay = delayMs ?? (isHidden ? 6000 : 2000)
+      timerId = setTimeout(async () => {
+        await measure()
+        scheduleNext()
+      }, delay)
+    }
+
+    const onVisibilityChange = () => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        // Ao voltar à visualização, atualiza imediatamente e retoma o ritmo normal
+        void measure()
+        scheduleNext(2000)
+      } else {
+        scheduleNext(6000)
+      }
+    }
+
+    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+      document.addEventListener('visibilitychange', onVisibilityChange)
+    }
+
     void measure()
-    const timer = setInterval(() => void measure(), 2000)
+    scheduleNext(2000)
+
     return () => {
       cancelled = true
-      clearInterval(timer)
+      if (timerId) clearTimeout(timerId)
+      if (typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
+        document.removeEventListener('visibilitychange', onVisibilityChange)
+      }
       // Saiu da chamada assistindo: fecha os resumos em aberto
       watchSessionsRef.current.forEach((session) => trackScreenShareWatched(session.summary()))
       watchSessionsRef.current.clear()
@@ -1140,6 +1172,20 @@ export function useVoiceChannel(options?: {
 
     activeStreamTilesRef.current.clear()
 
+    if (mediaRecorderRef.current) {
+      try { mediaRecorderRef.current.stop() } catch {}
+      mediaRecorderRef.current = null
+    }
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+    if (recordingCtxRef.current) {
+      try { void recordingCtxRef.current.close().catch(() => {}) } catch {}
+      recordingCtxRef.current = null
+    }
+    setIsRecordingCall(false)
+
     peerBoostRef.current.releaseAll()
     audioElementsRef.current.forEach(audio => {
       audio.srcObject = null
@@ -1551,6 +1597,8 @@ export function useVoiceChannel(options?: {
           if (!isScreen) peerBoostRef.current.release(key)
           if (audio) {
             track.detach(audio)
+            audio.srcObject = null
+            audio.remove()
             audioElementsRef.current.delete(key)
           }
           syncParticipants()
@@ -1692,7 +1740,11 @@ export function useVoiceChannel(options?: {
             await room.localParticipant.publishTrack(localAudio, {
               source: Track.Source.Microphone,
               name: 'microphone',
-              dtx: true
+              dtx: true,
+              audioPreset: {
+                maxBitrate: 96000
+              },
+              red: true
             })
           }
         } catch (pubErr) {
