@@ -19,7 +19,7 @@ export const config = {
   botAuthorId: required('BOT_AUTHOR_ID'),
 
   maxConcurrentSessions: parseInt(process.env.MAX_CONCURRENT_SESSIONS || '4', 10),
-  maxTrackSeconds: parseInt(process.env.MAX_TRACK_SECONDS || '900', 10),
+  maxTrackSeconds: parseInt(process.env.MAX_TRACK_SECONDS || '10800', 10),
   // Se ninguém além do bot ficar na chamada por esse tempo (segundos), o bot sai sozinho. 0 desliga.
   emptyRoomSeconds: parseInt(process.env.EMPTY_ROOM_SECONDS || '60', 10),
   commandPrefix: process.env.COMMAND_PREFIX || '!',
