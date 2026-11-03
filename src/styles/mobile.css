@@ -1,0 +1,135 @@
+/* ── Adaptabilidade e Responsividade Mobile (Echo Android & iOS) ── */
+
+@media (max-width: 768px) {
+  /* 1. Viewport e Safe Areas (Notches de câmera e barra gestual) */
+  :root {
+    --mobile-safe-top: env(safe-area-inset-top, 0px);
+    --mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  body,
+  .echo-app {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    width: 100vw !important;
+    overflow: hidden !important;
+    touch-action: pan-y;
+  }
+
+  /* 2. Barra Superior (TopBar) no Mobile */
+  .topbar {
+    padding-top: var(--mobile-safe-top) !important;
+    height: calc(48px + var(--mobile-safe-top)) !important;
+  }
+
+  /* Esconde controles de janela desktop no celular */
+  .window-controls,
+  .topbar-window-controls {
+    display: none !important;
+  }
+
+  .topbar-center-dock {
+    max-width: calc(100vw - 110px) !important;
+  }
+
+  .topbar-servers-track {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .topbar-servers-track::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 3. Layout Principal e Canais */
+  .main-layout {
+    flex-direction: column !important;
+    height: calc(100dvh - 48px - var(--mobile-safe-top)) !important;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Na visualização de servidores, a barra de canais não esmaga a tela */
+  .channels-sidebar {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    border-right: none !important;
+  }
+
+  /* Quando um canal de texto ou voz está aberto no mobile, o chat ocupa a tela toda */
+  .page-servers .main-content {
+    width: 100vw !important;
+    min-width: 100vw !important;
+  }
+
+  /* Gaveta de membros do servidor no mobile vira overlay */
+  .members-sidebar {
+    position: absolute !important;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 80vw !important;
+    max-width: 300px !important;
+    z-index: 100 !important;
+    box-shadow: -6px 0 24px rgba(0, 0, 0, 0.6) !important;
+    border-left: 1px solid var(--border-color) !important;
+  }
+
+  /* 4. Chat e Compositor */
+  .chat-container {
+    padding-bottom: var(--mobile-safe-bottom);
+  }
+
+  .chat-messages {
+    padding: 10px 12px !important;
+  }
+
+  .message-composer-wrapper {
+    padding: 8px 10px calc(8px + var(--mobile-safe-bottom)) !important;
+  }
+
+  .composer-input-row {
+    gap: 6px !important;
+  }
+
+  .composer-textarea {
+    font-size: 15px !important; /* Previne zoom automático indesejado no iOS */
+  }
+
+  /* 5. Modais e Popups em Tela Cheia / Bottom Sheet no Mobile */
+  .confirm-modal-card,
+  .forward-message-modal-card,
+  .activity-inbox-modal,
+  .space-studio-modal,
+  .music-bot-modal-card,
+  .channel-invite-modal-card {
+    width: 94vw !important;
+    max-width: 94vw !important;
+    max-height: 88dvh !important;
+    border-radius: 20px !important;
+    margin: auto !important;
+  }
+
+  /* 6. Aba de Amigos e DMs */
+  .friends-view-container {
+    flex-direction: column !important;
+  }
+
+  .friends-sidebar {
+    width: 100% !important;
+    min-width: 100% !important;
+    border-right: none !important;
+  }
+
+  .friends-content {
+    width: 100% !important;
+  }
+
+  /* 7. Toque e Usabilidade */
+  button,
+  .channel-item,
+  .dm-item,
+  .friend-item {
+    min-height: 40px; /* Alvo de toque acessível */
+  }
+}

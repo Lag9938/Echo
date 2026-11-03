@@ -47,3 +47,10 @@ cookies.txt
 # Scratch and audit outputs
 Claude outputs/
 scripts/css-audit-results.json
+
+# Android build outputs
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+

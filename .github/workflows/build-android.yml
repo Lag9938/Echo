@@ -1,0 +1,64 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'android/**'
+      - 'capacitor.config.ts'
+      - 'src/**'
+      - 'package.json'
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    name: Compilar APK Android
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Compilar Web App (Vite)
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+          VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
+        run: npm run build
+
+      - name: Sincronizar Capacitor Android
+        run: npx cap sync android
+
+      - name: Conceder permissão de execução ao Gradle Wrapper
+        working-directory: android
+        run: chmod +x gradlew
+
+      - name: Compilar APK Debug
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Publicar APK como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: Echo-Android-Debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

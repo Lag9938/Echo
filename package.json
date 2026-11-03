@@ -19,9 +19,13 @@
     "test:watch": "vitest",
     "preview": "vite preview",
     "preview:build": "vite build --config vite.preview.config.ts",
-    "aurora:dark": "node scripts/gen-aurora-dark.mjs"
+    "aurora:dark": "node scripts/gen-aurora-dark.mjs",
+    "cap:sync": "npm run build && npx cap sync",
+    "cap:open": "npx cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/core": "^8.6.0",
     "@fontsource/caveat": "^5.3.0",
     "@fontsource/cormorant-garamond": "^5.3.0",
     "@fontsource/dancing-script": "^5.3.0",
@@ -41,6 +45,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.0",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
