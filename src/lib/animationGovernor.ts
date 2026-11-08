@@ -11,7 +11,10 @@
 // muda é quantas vezes a tela é redesenhada. Em segundo plano o relógio para (backgroundAnimations.ts já
 // cuidava disso; aqui as animações simplesmente ficam onde estão).
 //
-// Indicadores de estado (carregando, reconectando, quem está falando) ficam de fora e rodam normalmente.
+// Indicadores de "carregando" e "reconectando" ficam de fora e rodam normalmente. Os de "quem está falando"
+// entram no limitador em primeiro plano (as ondas e barras de várias pessoas falando somavam ~3 pontos de CPU
+// numa chamada, sem diferença visível a 30/s); em segundo plano o limitador os devolve ao navegador, porque
+// eles precisam seguir se mexendo (backgroundAnimations.ts).
 //
 // DESEMPENHO — nunca ler e escrever animações de CSS intercaladas. Ler `playState` ou `currentTime` de uma
 // animação de CSS obriga o navegador a recalcular os estilos se algo mudou desde a última leitura; escrever
@@ -30,7 +33,7 @@
 // escuta o evento `cancel` (o Chromium o dispara mesmo quando ela foi ressuscitada): o limitador a solta e, se
 // ela já tiver voltado, cancela de novo.
 
-import { isAppInBackground, isDecorativeLoop } from './backgroundAnimations'
+import { isAppInBackground, isDecorativeLoop, isSpeakingIndicator } from './backgroundAnimations'
 import { isSmallDecorationBox, showcaseCardOf } from './decorationMotion'
 
 export const GOVERNED_FPS = 30
@@ -73,7 +76,8 @@ function isUntouched(animation: GovernedAnimation): boolean {
 export function adoptDecorativeAnimations(animations: GovernedAnimation[], governed: GovernedAnimations): void {
   const picked: Array<[GovernedAnimation, number]> = []
   for (const animation of animations) {
-    if (governed.has(animation) || animation.playState !== 'running' || !isDecorativeLoop(animation as any) || isUntouched(animation)) continue
+    if (governed.has(animation) || animation.playState !== 'running' || isUntouched(animation)) continue
+    if (!isDecorativeLoop(animation as any) && !isSpeakingIndicator(animation as any)) continue
     picked.push([animation, Number(animation.currentTime) || 0])
   }
   for (const [animation, time] of picked) {
@@ -152,6 +156,19 @@ export function releaseAnimations(governed: GovernedAnimations): void {
   governed.clear()
 }
 
+/** Em segundo plano o relógio para; os indicadores de fala voltam ao navegador para seguirem se mexendo */
+export function releaseSpeakingIndicators(governed: GovernedAnimations): void {
+  for (const animation of [...governed.keys()]) {
+    if (!isSpeakingIndicator(animation as any)) continue
+    governed.delete(animation)
+    try {
+      animation.play()
+    } catch {
+      // o elemento saiu da tela
+    }
+  }
+}
+
 /** Liga o limitador. Devolve a função que desliga e devolve tudo ao normal. */
 export function startAnimationGovernor(doc: Document = document, win: Window = window, now: () => number = () => performance.now()): () => void {
   if (typeof doc.getAnimations !== 'function') return () => {}
@@ -189,6 +206,7 @@ export function startAnimationGovernor(doc: Document = document, win: Window = w
       if (adoptTimer) clearInterval(adoptTimer)
       stepTimer = null
       adoptTimer = null
+      releaseSpeakingIndicators(governed)
     }
   }
 

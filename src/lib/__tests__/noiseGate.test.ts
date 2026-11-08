@@ -99,6 +99,56 @@ describe('NoiseGate', () => {
   })
 })
 
+describe('NoiseGate adaptativo', () => {
+  const adaptive = (gate: NoiseGate, levelDb: number, blocks: number, thresholdDb = -45): number => {
+    const out = new Float32Array(BLOCK)
+    for (let b = 0; b < blocks; b++) gate.process(tone(levelDb), out, { enabled: true, thresholdDb, adaptive: true })
+    return blockLevelDb(out)
+  }
+
+  it('ruído constante acima do limiar fixo abre o portão fixo, mas o adaptativo o fecha', () => {
+    const fixed = new NoiseGate(SR)
+    run(fixed, -36, msToBlocks(3000))
+    expect(fixed.isOpen).toBe(true)
+
+    const smart = new NoiseGate(SR)
+    expect(adaptive(smart, -36, msToBlocks(3000))).toBeLessThan(-100)
+    expect(smart.isOpen).toBe(false)
+    expect(smart.noiseFloorDb).toBeCloseTo(-36, 0)
+  })
+
+  it('a voz bem acima do ruído passa, e depois volta a fechar', () => {
+    const gate = new NoiseGate(SR)
+    adaptive(gate, -36, msToBlocks(3000))
+    const speech = adaptive(gate, -20, msToBlocks(300))
+    expect(gate.isOpen).toBe(true)
+    expect(speech).toBeGreaterThan(-21)
+    adaptive(gate, -36, msToBlocks(800))
+    expect(gate.isOpen).toBe(false)
+  })
+
+  it('em sala silenciosa vale o limiar escolhido (o piso baixo não o reduz)', () => {
+    const gate = new NoiseGate(SR)
+    adaptive(gate, -80, msToBlocks(1000))
+    adaptive(gate, -50, msToBlocks(200)) // abaixo do limiar de -45
+    expect(gate.isOpen).toBe(false)
+  })
+
+  it('o piso não passa do teto: voz alta continua abrindo numa sala muito barulhenta', () => {
+    const gate = new NoiseGate(SR)
+    adaptive(gate, -22, msToBlocks(3000))
+    expect(gate.noiseFloorDb).toBeCloseTo(-22, 0)
+    adaptive(gate, -20, msToBlocks(300))
+    expect(gate.isOpen).toBe(true)
+  })
+
+  it('sem o modo adaptativo o comportamento é o de sempre', () => {
+    const gate = new NoiseGate(SR)
+    run(gate, -36, msToBlocks(3000))
+    expect(gate.isOpen).toBe(true)
+  })
+})
+
 describe('supressão do navegador x IA', () => {
   it('desliga a do navegador quando a IA está ligada', () => {
     expect(browserNoiseSuppression(true, true)).toBe(false)

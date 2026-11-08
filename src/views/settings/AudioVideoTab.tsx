@@ -34,6 +34,8 @@ export interface AudioVideoTabProps {
   onNavigateToKeybinds?: () => void
 }
 
+type NoiseMode = 'ai' | 'browser' | 'off'
+
 /* ── Minimalist Clean SVG Icons (Zero cartoon emojis) ── */
 function MicIcon({ size = 18 }: { size?: number }) {
   return (
@@ -136,6 +138,8 @@ export function AudioVideoTab({
   onOutputDeviceChange,
   audioError,
   onRefreshDevices,
+  noiseSuppressionEnabled,
+  onNoiseSuppressionChange,
   echoCancellationEnabled,
   onEchoCancellationChange,
   sfxVolume,
@@ -158,6 +162,15 @@ export function AudioVideoTab({
   aiDenoiseShortcut,
   onNavigateToKeybinds,
 }: AudioVideoTabProps) {
+  // Supressão de ruído: a IA tem prioridade; sem ela vale a preferência do navegador (padrão) ou nenhuma
+  const noiseMode: NoiseMode = isAiDenoiseEnabled ? 'ai' : noiseSuppressionEnabled ? 'browser' : 'off'
+  const handleNoiseModeChange = (mode: NoiseMode) => {
+    // Só chama o que muda: cada chamada reabre o microfone se a pessoa estiver em chamada
+    const wantBrowser = mode !== 'off'
+    if (wantBrowser !== noiseSuppressionEnabled) onNoiseSuppressionChange(wantBrowser)
+    if ((mode === 'ai') !== isAiDenoiseEnabled) onToggleAiDenoise(mode === 'ai')
+  }
+
   // Push-to-Talk state
   const [prevPttModeSetting, setPrevPttModeSetting] = useState(pttModeSetting)
   const [localPttMode, setLocalPttMode] = useState<boolean>(() =>
@@ -495,7 +508,7 @@ export function AudioVideoTab({
                   Sensibilidade do Portão de Ruído (Noise Gate)
                 </span>
                 <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-                  Sons ambientes abaixo deste volume não abrirão seu microfone.
+                  Sons ambientes abaixo deste volume não abrirão seu microfone. Se o ambiente for barulhento, o Echo sobe o limite sozinho.
                 </span>
               </div>
               <span style={{ fontSize: '12px', fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-color)' }}>
@@ -594,7 +607,7 @@ export function AudioVideoTab({
         </div>
 
         <div className="echo-filters-grid">
-          {/* Supressão de Ruído por IA (RNNoise) */}
+          {/* Supressão de Ruído: IA (RNNoise), padrão do navegador ou nenhuma */}
           <div className="echo-filter-item">
             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -602,24 +615,36 @@ export function AudioVideoTab({
                   <SparklesAiIcon size={16} />
                 </span>
                 <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  Supressão por IA (RNNoise)
-                </span>
-                <span style={{ fontSize: '9.5px', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc' }}>
-                  0% CPU
+                  Supressão de Ruído
                 </span>
               </div>
               <p style={{ margin: 0, fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.35 }}>
-                Remove teclado mecânico, respiração e ruído elétrico com rede neural.
+                {noiseMode === 'ai'
+                  ? 'IA (RNNoise): remove teclado, respiração e ruído elétrico. Se a voz ficar metálica, tente o padrão.'
+                  : noiseMode === 'browser'
+                    ? 'Padrão do navegador: leve, bom para ventilador e ar-condicionado; voz mais natural.'
+                    : 'Sem supressão: só o portão de ruído age.'}
               </p>
             </div>
-            <label className="echo-switch">
-              <input
-                type="checkbox"
-                checked={isAiDenoiseEnabled}
-                onChange={(e) => onToggleAiDenoise(e.target.checked)}
-              />
-              <span className="echo-slider" />
-            </label>
+            <select
+              value={noiseMode}
+              onChange={(e) => handleNoiseModeChange(e.target.value as NoiseMode)}
+              aria-label="Supressão de ruído"
+              style={{
+                padding: '8px 10px',
+                borderRadius: '8px',
+                border: '1px solid var(--border-color)',
+                background: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+                fontWeight: 700,
+                outline: 'none',
+                flexShrink: 0
+              }}
+            >
+              <option value="ai">IA (RNNoise)</option>
+              <option value="browser">Padrão</option>
+              <option value="off">Nenhuma</option>
+            </select>
           </div>
 
           {/* Cancelamento de Eco */}

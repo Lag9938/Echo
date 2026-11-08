@@ -9,6 +9,7 @@ import { MessageList } from '../components/chat/MessageList'
 import { MessageComposer } from '../components/chat/MessageComposer'
 import { useChatDraftStore } from '../stores/useChatDraftStore'
 import { StreamTile } from '../components/streaming/StreamTile'
+import { StillAvatarImage } from '../components/voice/StillAvatarImage'
 import {
   BrainIcon,
   GridIcon,
@@ -854,7 +855,7 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                                 <img src={botAvatarUrl!} alt="Echo Music Bot" />
                                               )
                                             ) : p.avatarUrl ? (
-                                              <img src={p.avatarUrl} alt={p.displayName} />
+                                              <StillAvatarImage src={p.avatarUrl} alt={p.displayName} maxSize={128} />
                                             ) : (
                                               <span>{(p.displayName || 'M').slice(0, 1).toUpperCase()}</span>
                                             )}
@@ -1014,13 +1015,14 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                       }}
                                       style={{
                                         cursor: 'pointer',
-                                        position: 'relative',
-                                        // Fundo desfocado do cartão: a própria foto da pessoa (sem foto, a cor de destaque)
-                                        ...(p.avatarUrl ? { ['--pc-bg' as any]: `url(${JSON.stringify(p.avatarUrl)})` } : {})
+                                        position: 'relative'
                                       }}
                                       title={isSharer ? `Clique para assistir a tela de ${p.displayName}` : (p.userId !== user.id ? "Ajustar volume de áudio" : "")}
                                     >
-                                      {!hasCam && <span className="participant-card-backdrop" aria-hidden="true" />}
+                                      {/* Fundo desfocado do cartão: a foto da pessoa parada, pequena (sem foto, a cor de destaque) */}
+                                      {!hasCam && (p.avatarUrl
+                                        ? <StillAvatarImage src={p.avatarUrl} className="participant-card-backdrop" maxSize={48} />
+                                        : <span className="participant-card-backdrop" aria-hidden="true" />)}
                                       {isSharer && (
                                         <div className="participant-live-badge">
                                           <span className="live-dot-pulse" /> AO VIVO
@@ -1044,7 +1046,7 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                         style={hasCam ? { display: 'none' } : { position: 'relative' }}
                                       >
                                         {p.avatarUrl ? (
-                                          <img src={p.avatarUrl} alt={p.displayName} className="round-avatar-img-large" />
+                                          <StillAvatarImage src={p.avatarUrl} alt={p.displayName} className="round-avatar-img-large" />
                                         ) : (
                                           <span className="avatar-initial-large">
                                             {p.displayName.slice(0, 1).toUpperCase()}

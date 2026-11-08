@@ -357,7 +357,8 @@ body.echo-layout-glass .stream-participants-strip:not(.classic-strip) .stream-do
   color: var(--text-primary);
   box-sizing: border-box;
 }
-.stream-strip-avatar img {
+.stream-strip-avatar img,
+.stream-strip-avatar canvas {
   width: 100%;
   height: 100%;
   border-radius: 50%;
@@ -1268,6 +1269,16 @@ body.theme-midnight .voice-controls-capsule {
   background: var(--pc-bg, linear-gradient(135deg, var(--accent-color), #c75a4a)) center / cover;
   filter: blur(34px) saturate(1.2);
   opacity: 0.42;
+}
+/* Com foto, o fundo é uma tela (canvas) com o primeiro quadro, não o GIF vivo */
+canvas.participant-card-backdrop {
+  inset: auto;
+  top: -20%;
+  left: -20%;
+  width: 140%;
+  height: 140%;
+  object-fit: cover;
+  background: none;
 }
 .participants-grid .participant-card:not(.has-camera) .participant-avatar-large {
   position: relative;

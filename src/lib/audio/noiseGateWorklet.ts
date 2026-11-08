@@ -13,7 +13,8 @@ class NoiseGateProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
     return [
       { name: 'enabled', defaultValue: 1, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
-      { name: 'thresholdDb', defaultValue: -45, minValue: -100, maxValue: 0, automationRate: 'k-rate' }
+      { name: 'thresholdDb', defaultValue: -45, minValue: -100, maxValue: 0, automationRate: 'k-rate' },
+      { name: 'adaptive', defaultValue: 1, minValue: 0, maxValue: 1, automationRate: 'k-rate' }
     ]
   }
 
@@ -30,7 +31,8 @@ class NoiseGateProcessor extends AudioWorkletProcessor {
 
     const changed = this.gate.process(input, output[0], {
       enabled: parameters.enabled[0] >= 0.5,
-      thresholdDb: parameters.thresholdDb[0]
+      thresholdDb: parameters.thresholdDb[0],
+      adaptive: parameters.adaptive[0] >= 0.5
     })
     for (let c = 1; c < output.length; c++) output[c].set(output[0])
     // Avisa a thread principal para o indicador de "falando" seguir o portão

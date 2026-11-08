@@ -18,11 +18,43 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.62.7',
+    title: 'Echo v0.62.7 - Voz Sem Chiado e Chamadas Mais Leves',
+    date: '8 de Novembro de 2026',
+    tagline: 'O portão de ruído se ajusta sozinho ao seu ambiente, você escolhe o tipo de supressão e as chamadas pesam menos no computador.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🎙️',
+        badge: 'MELHORIA',
+        title: 'Portão de Ruído Inteligente',
+        description: 'Em ambientes barulhentos o Echo sobe o limite do portão sozinho, então ventilador e barulho da rua não abrem mais seu microfone.'
+      },
+      {
+        icon: '🎛️',
+        badge: 'NOVO',
+        title: 'Escolha a Supressão de Ruído',
+        description: 'Nas configurações de áudio, escolha entre IA (RNNoise), o padrão do navegador (voz mais natural) ou nenhuma. Se a IA não carregar, a supressão padrão assume no lugar.'
+      },
+      {
+        icon: '⚡',
+        badge: 'DESEMPENHO',
+        title: 'Chamadas Mais Leves',
+        description: 'Fotos animadas e indicadores de fala gastam menos processador nas chamadas, sem diferença visível.'
+      },
+      {
+        icon: '🎵',
+        badge: 'MELHORIA',
+        title: 'Músicas de Até 3 Horas',
+        description: 'O bot de música agora toca faixas e mixes de até 3 horas.'
+      }
+    ]
+  },
+  {
     version: '0.62.6',
     title: 'Echo v0.62.6 - Mais Leve, Mais Estável e Voz Mais Limpa',
     date: '1 de Novembro de 2026',
     tagline: 'O Echo usa menos memória e processador, rola conversas longas sem travar e sua voz chega mais limpa para os amigos.',
-    isLatest: true,
     highlights: [
       {
         icon: '⚡',

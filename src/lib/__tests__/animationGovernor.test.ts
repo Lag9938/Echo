@@ -38,10 +38,12 @@ describe('limitador das animações decorativas', () => {
     const governed = new Map<any, number>()
 
     adoptDecorativeAnimations([shimmer, entrance, spinner, speaking, nameEffect], governed)
-    expect([...governed.keys()]).toEqual([shimmer])
+    // "Quem está falando" entra no limitador junto com as decorativas
+    expect([...governed.keys()]).toEqual([shimmer, speaking])
     expect(shimmer.pause).toHaveBeenCalledTimes(1)
-    // Aviso deslizando, "carregando" e "quem está falando" seguem na taxa normal; efeito de nome ninguém toca
-    for (const free of [entrance, spinner, speaking, nameEffect]) expect(free.pause).not.toHaveBeenCalled()
+    expect(speaking.pause).toHaveBeenCalledTimes(1)
+    // Aviso deslizando e "carregando" seguem na taxa normal; efeito de nome ninguém toca
+    for (const free of [entrance, spinner, nameEffect]) expect(free.pause).not.toHaveBeenCalled()
 
     // Assumir de novo não pausa duas vezes
     adoptDecorativeAnimations([shimmer], governed)
@@ -195,6 +197,22 @@ describe('limitador das animações decorativas', () => {
       listeners.focus()
       clock += 34; vi.advanceTimersByTime(34)
       expect(shimmer.currentTime - before).toBeLessThan(100)
+      stop()
+    })
+
+    it('em segundo plano o indicador de fala volta ao navegador e segue andando; a decorativa fica parada', () => {
+      const shimmer = animation()
+      const speaking = animation({ className: 'avatar is-speaking' })
+      const state = { hidden: false, focused: true }
+      const { doc, win, listeners } = fakeDocument([shimmer, speaking], state)
+      const stop = startAnimationGovernor(doc, win, () => 0)
+      expect(speaking.pause).toHaveBeenCalledTimes(1)
+
+      state.focused = false
+      listeners.blur()
+      expect(speaking.play).toHaveBeenCalledTimes(1)
+      expect(speaking.playState).toBe('running')
+      expect(shimmer.play).not.toHaveBeenCalled()
       stop()
     })
 

@@ -22,7 +22,7 @@ import rnnoiseWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise.wasm?url'
 import rnnoiseSimdWasmPath from '@sapphi-red/web-noise-suppressor/rnnoise_simd.wasm?url'
 import noiseGateWorkletPath from './audio/noiseGateWorklet.ts?worker&url'
 import { NOISE_GATE_PROCESSOR, type NoiseGateParams } from './audio/noiseGate'
-import { browserNoiseSuppression } from './audio/noiseSuppression'
+import { browserNoiseSuppression, restoreBrowserNoiseSuppression } from './audio/noiseSuppression'
 import { PeerBoost } from './audio/peerBoost'
 import { playJoinSound, playLeaveSound, playSoundboardEffect } from './soundEffects'
 import { trackVoiceJoined, trackVoiceLeft, trackVoiceJoinProblem, trackScreenShareStarted, trackScreenShareStopped, trackScreenShareWatched } from './analytics'
@@ -1316,6 +1316,7 @@ export function useVoiceChannel(options?: {
 
       localRawStreamRef.current = rawStream
       myInfoRef.current = { userId, displayName, avatarUrl }
+      let aiActive = false
 
       // Inicia medidor local de fala com 0ms de atraso
       if (rawStream) startLocalVad(rawStream)
@@ -1332,6 +1333,7 @@ export function useVoiceChannel(options?: {
         )
         localDspCtxRef.current = audioCtx
         localDspNodesRef.current = nodes
+        aiActive = !!nodes.rnnoiseNode
         // O portão pode ter mudado nas configurações enquanto o worklet carregava
         applyNoiseGateParams(nodes.gate, noiseGateRef.current)
         finalStream = dspStream
@@ -1341,6 +1343,8 @@ export function useVoiceChannel(options?: {
       } catch (dspErr) {
         console.error('[Voice] Falha no pipeline DSP:', dspErr)
       }
+      // Sem a IA (não carregou), a supressão do navegador, que foi aberta desligada por causa dela, volta a valer
+      await restoreBrowserNoiseSuppression(rawStream, noiseSuppression, isAiDenoiseEnabledRef.current, aiActive)
       localStreamRef.current = finalStream
 
       // Conexao LiveKit SFU (Oracle Cloud Always Free Server Ampere)
@@ -2434,7 +2438,7 @@ export function useVoiceChannel(options?: {
   }, [stopScreenShare, syncParticipants, sendVoicePresence, endStreamSession])
 
   // Change input microphone device
-  const changeInputDevice = useCallback(async (deviceId: string, noiseSuppression = true, echoCancellation = true) => {
+  const rebuildInputDevice = useCallback(async (deviceId: string, noiseSuppression = true, echoCancellation = true) => {
     selectedInputIdRef.current = deviceId
     noiseSuppressionPrefRef.current = noiseSuppression
     echoCancellationPrefRef.current = echoCancellation
@@ -2464,6 +2468,7 @@ export function useVoiceChannel(options?: {
       startLocalVad(newStream)
 
       let finalStream = newStream
+      let aiActive = false
       try {
         const { finalStream: dspStream, audioCtx, nodes } = await createStudioMicrophoneDSP(
           newStream,
@@ -2473,6 +2478,7 @@ export function useVoiceChannel(options?: {
         )
         localDspCtxRef.current = audioCtx
         localDspNodesRef.current = nodes
+        aiActive = !!nodes.rnnoiseNode
         // O portão pode ter mudado nas configurações enquanto o worklet carregava
         applyNoiseGateParams(nodes.gate, noiseGateRef.current)
         finalStream = dspStream
@@ -2482,6 +2488,7 @@ export function useVoiceChannel(options?: {
       } catch (dspErr) {
         console.error('[Voice] Falha no DSP após troca de dispositivo:', dspErr)
       }
+      await restoreBrowserNoiseSuppression(newStream, noiseSuppression, isAiDenoiseEnabledRef.current, aiActive)
       localStreamRef.current = finalStream
 
       const newTrack = finalStream.getAudioTracks()[0]
@@ -2492,6 +2499,16 @@ export function useVoiceChannel(options?: {
       console.error('Failed to change input device:', err)
     }
   }, [isConnected, startLocalVad, handleGateChange])
+
+  // Uma recriação por vez: trocar o modo de supressão pode pedir duas seguidas (IA e supressão do navegador), e a
+  // segunda parava as faixas que a primeira ainda estava abrindo.
+  const micRebuildQueueRef = useRef<Promise<unknown>>(Promise.resolve())
+  const changeInputDevice = useCallback((deviceId: string, noiseSuppression = true, echoCancellation = true) => {
+    const run = () => rebuildInputDevice(deviceId, noiseSuppression, echoCancellation)
+    const next = micRebuildQueueRef.current.then(run, run)
+    micRebuildQueueRef.current = next.catch(() => {})
+    return next
+  }, [rebuildInputDevice])
 
   // Usado pela alternância da IA: recria o microfone atual com as mesmas preferências
   useEffect(() => {

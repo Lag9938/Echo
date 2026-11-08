@@ -36,6 +36,13 @@ export function isDecorativeLoop(animation: AnimationLike): boolean {
   return target.closest(KEEP_RUNNING_SELECTOR) === null
 }
 
+/** Animação sem fim de "quem está falando": segue andando em segundo plano, mas pode ser limitada a 30/s em primeiro plano */
+export function isSpeakingIndicator(animation: AnimationLike): boolean {
+  if (animation.effect?.getComputedTiming?.().iterations !== Infinity) return false
+  const target = animation.effect?.target
+  return Boolean(target && typeof target.closest === 'function' && target.closest('[class*="speaking"]') && !target.closest('[class*="reconnect"], .loader'))
+}
+
 /** O app está em segundo plano? (minimizado/oculto ou sem o foco do teclado) */
 export function isAppInBackground(doc: Pick<Document, 'hidden' | 'hasFocus'> = document): boolean {
   return doc.hidden || !doc.hasFocus()
