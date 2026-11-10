@@ -66,7 +66,9 @@ const ToastItem = memo(function ToastItem({ toast, onRemove, onClick, onQuickRep
   const inputRef = useRef<HTMLInputElement>(null)
 
   const duration = toast.duration || (toast.type === 'mention' ? 6500 : 5000)
-  const isClickable = Boolean(toast.onClick || onClick || toast.data)
+  const hasAction = Boolean(toast.onAction && toast.actionLabel)
+  // Aviso com ação própria (ex.: Desfazer) não vira atalho "Ver conversa"
+  const isClickable = !hasAction && Boolean(toast.onClick || onClick || toast.data)
   const canReply = Boolean(onQuickReply && (toast.data?.senderId || toast.data?.channelId || toast.data?.groupId))
 
   // Foco no input ao abrir a resposta rápida
@@ -208,6 +210,23 @@ const ToastItem = memo(function ToastItem({ toast, onRemove, onClick, onQuickRep
           <span className="toast-message-text">{toast.message}</span>
         </div>
       </div>
+
+      {/* Ação do aviso (ex.: Desfazer): botão sempre visível, fecha o aviso ao usar */}
+      {hasAction && (
+        <div className="toast-actions-row">
+          <button
+            type="button"
+            className="toast-action-btn toast-action-primary"
+            onClick={(e) => {
+              e.stopPropagation()
+              toast.onAction?.()
+              onRemove()
+            }}
+          >
+            <span>{toast.actionLabel}</span>
+          </button>
+        </div>
+      )}
 
       {/* Formulário de Resposta Rápida (Inline) */}
       {isReplying ? (

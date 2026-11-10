@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { GroupChat, GroupChatMember, GroupMessage } from '../types'
+import { insertByCreatedAt } from '../lib/undoableDelete'
+import { useUndoableDelete } from './useUndoableDelete'
+import type { ToastExtraOptions } from './useEchoToasts'
 
 export interface UseEchoGroupChatsOptions {
   user: User
@@ -8,7 +11,7 @@ export interface UseEchoGroupChatsOptions {
   supabase: any
   /** Não é mais usado: avisos de grupo vêm do banco (migração 13). Mantido para não mudar quem chama. */
   socialChannelRef?: React.MutableRefObject<any>
-  showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend', onClickOrData?: any) => void
+  showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend', onClickOrData?: any, extraOptions?: ToastExtraOptions) => void
   triggerDesktopNotification: (title: string, body: string, data?: any) => void
   setKnownProfiles: React.Dispatch<React.SetStateAction<Record<string, any>>>
   playDmNotificationSound: (volume: number) => void
@@ -344,17 +347,19 @@ export function useEchoGroupChats({
   }, [groupMessages, loadGroupMessages])
 
   // ── DELETE GROUP MESSAGE ──
+  const scheduleDelete = useUndoableDelete(showToast)
   const deleteGroupMessage = useCallback(async (messageId: string, groupId: string) => {
-    try {
-      await supabase.from('group_messages').delete().eq('id', messageId)
-      setGroupMessages(prev => ({
-        ...prev,
-        [groupId]: (prev[groupId] || []).filter(m => m.id !== messageId)
-      }))
-    } catch (err) {
-      console.error('[GroupChats] Failed to delete message:', err)
-    }
-  }, [supabase])
+    const msg = (groupMessages[groupId] || []).find(m => m.id === messageId)
+    if (!msg) return
+    // Some da tela já e só é apagada no banco depois de 6 s, com "Desfazer" (hooks/useUndoableDelete.ts)
+    scheduleDelete({
+      id: messageId,
+      message: 'Mensagem removida do grupo.',
+      hide: () => setGroupMessages(prev => ({ ...prev, [groupId]: (prev[groupId] || []).filter(m => m.id !== messageId) })),
+      restore: () => setGroupMessages(prev => ({ ...prev, [groupId]: insertByCreatedAt(prev[groupId] || [], msg) })),
+      remove: async () => (await supabase.from('group_messages').delete().eq('id', messageId)).error
+    })
+  }, [supabase, groupMessages, scheduleDelete])
 
   return {
     groupChats,

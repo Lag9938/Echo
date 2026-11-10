@@ -215,6 +215,11 @@ export function needsProcessList(foregroundGame) {
   return false
 }
 
+/** Junta o número do processo ao jogo reconhecido (serve para achar o .exe e o ícone dele) */
+function withPid(game, pid) {
+  return game && Number.isInteger(pid) && pid > 0 ? { ...game, pid } : game
+}
+
 async function findForegroundGame(rootDir) {
   const helperPath = resolveHelperPath(rootDir)
   if (!helperPath) return { foreground: null, windowed: null }
@@ -222,11 +227,11 @@ async function findForegroundGame(rootDir) {
     const { stdout } = await execFileAsync(helperPath, ['--get-active-game'], { timeout: 4000 })
     if (!stdout || !stdout.trim().startsWith('{')) return { foreground: null, windowed: null }
     const data = JSON.parse(stdout.trim())
-    const foreground = matchGameProcess(data.foreground?.processName, data.foreground?.title)
+    const foreground = withPid(matchGameProcess(data.foreground?.processName, data.foreground?.title), data.foreground?.pid)
     let windowed = null
     if (!foreground && Array.isArray(data.windows)) {
       for (const win of data.windows) {
-        windowed = matchGameProcess(win.processName, win.title)
+        windowed = withPid(matchGameProcess(win.processName, win.title), win.pid)
         if (windowed) break
       }
     }
@@ -238,6 +243,57 @@ async function findForegroundGame(rootDir) {
 }
 
 let hasScannedGames = false
+
+// ── Ícone oficial do jogo ─────────────────────────────────────────────────────────────────────────────────
+// O próprio .exe do jogo traz o ícone oficial; o Windows entrega uma versão 32×32, que vira uma imagem pequena
+// (alguns KB) e vai junto do "jogando" para os amigos. Vale para qualquer jogo, sem baixar nada. Se o anti-cheat
+// esconder o caminho do programa (Valorant, por exemplo), fica sem ícone e a tela usa o desenho pelo nome.
+
+/** Maior ícone aceito (em caracteres do "data:"): a presença em tempo real tem limite de tamanho */
+export const MAX_GAME_ICON_LENGTH = 8000
+const gameIconCache = new Map()
+
+/** O ícone serve? Só PNG embutido e pequeno */
+export function isUsableGameIcon(dataUrl) {
+  return typeof dataUrl === 'string' && dataUrl.startsWith('data:image/png;base64,') && dataUrl.length <= MAX_GAME_ICON_LENGTH
+}
+
+async function defaultGetFileIcon(exePath) {
+  const { app } = await import('electron')
+  const image = await app.getFileIcon(exePath, { size: 'normal' })
+  return image && !image.isEmpty() ? image.toDataURL() : null
+}
+
+/**
+ * Ícone oficial do jogo do processo `pid` (data:image/png) ou null. Guarda por caminho do .exe: só procura de
+ * novo quando abre outro jogo. `deps` existe para os testes.
+ */
+export async function resolveGameIcon(pid, deps = {}) {
+  if (!Number.isInteger(pid) || pid <= 0) return null
+  const lookupPaths = deps.getProcessPaths || getProcessPaths
+  const getFileIcon = deps.getFileIcon || defaultGetFileIcon
+  try {
+    const exePath = (await lookupPaths([pid])).get(pid)
+    if (!exePath) return null
+    if (gameIconCache.has(exePath)) return gameIconCache.get(exePath)
+    const dataUrl = await getFileIcon(exePath)
+    const usable = isUsableGameIcon(dataUrl) ? dataUrl : null
+    gameIconCache.set(exePath, usable)
+    return usable
+  } catch (error) {
+    console.warn('[Jogos] Não deu para pegar o ícone do jogo:', error?.message || error)
+    return null
+  }
+}
+
+/** O que vai para a tela sobre o jogo atual */
+function gamePayload(game, startedAt) {
+  return { name: game.name, icon: game.icon, iconUrl: game.iconUrl || null, startedAt }
+}
+
+export function getActiveGamePayload() {
+  return activeGame ? gamePayload(activeGame, activeGameStartTime) : null
+}
 
 export async function scanRunningGames(getMainWindow, rootDir) {
   if (isScanningGames) return
@@ -275,15 +331,19 @@ export async function scanRunningGames(getMainWindow, rootDir) {
     if (foundGame) {
       const isNewGame = !activeGame || activeGame.name !== foundGame.name
       if (isNewGame) {
-        activeGame = foundGame
+        activeGame = { ...foundGame, iconUrl: null }
         activeGameStartTime = Date.now()
+        // O ícone chega um pouco depois (precisa achar o .exe); quando chegar, a tela recebe o jogo de novo com ele
+        const gameAtStart = activeGame
+        void resolveGameIcon(foundGame.pid).then(iconUrl => {
+          if (!iconUrl || activeGame !== gameAtStart) return
+          activeGame = { ...activeGame, iconUrl }
+          const win = getMainWindow()
+          if (win && !win.isDestroyed()) win.webContents.send('game-detected', gamePayload(activeGame, activeGameStartTime))
+        })
       }
       if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('game-detected', {
-          name: activeGame.name,
-          icon: activeGame.icon,
-          startedAt: activeGameStartTime || Date.now()
-        })
+        mainWindow.webContents.send('game-detected', gamePayload(activeGame, activeGameStartTime || Date.now()))
       }
     } else {
       if (activeGame) {
@@ -306,6 +366,6 @@ export function setupGameDetectionIpc(safeHandle, getMainWindow, rootDir) {
   // isto ao abrir, e a conferência periódica (que avisa a tela quando muda) fica por conta deste processo.
   safeHandle('check-active-game', async () => {
     if (!hasScannedGames) await scanRunningGames(getMainWindow, rootDir)
-    return activeGame ? { name: activeGame.name, icon: activeGame.icon, startedAt: activeGameStartTime } : null
+    return getActiveGamePayload()
   })
 }

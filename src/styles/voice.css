@@ -365,28 +365,9 @@ body.echo-layout-glass .stream-participants-strip:not(.classic-strip) .stream-do
   object-fit: cover;
 }
 /* Onda ao falar, na cor de destaque do tema */
+/* Quem fala: anel verde parado, que acende e apaga com a voz (sem onda animada) */
 .stream-strip-card.speaking .stream-strip-avatar {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 55%, transparent);
-}
-.stream-strip-card.speaking .stream-strip-avatar::before,
-.stream-strip-card.speaking .stream-strip-avatar::after {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: 50%;
-  border: 2px solid var(--accent-color);
-  opacity: 0;
-  pointer-events: none;
-  animation: stripWave 1.7s ease-out infinite;
-}
-.stream-strip-card.speaking .stream-strip-avatar::after { animation-delay: 0.55s; }
-@keyframes stripWave {
-  0% { transform: scale(1); opacity: 0.6; }
-  100% { transform: scale(1.7); opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .stream-strip-card.speaking .stream-strip-avatar::before,
-  .stream-strip-card.speaking .stream-strip-avatar::after { animation: none; }
+  box-shadow: 0 0 0 2px #22c55e;
 }
 
 /* Estados discretos: selo pequeno no canto do avatar (mutado / transmitindo) */
@@ -1352,33 +1333,70 @@ canvas.participant-card-backdrop {
   transform: none;
   animation: none;
 }
+/* Quem está transmitindo: borda vermelha, um brilho vermelho bem leve no topo, anel vermelho na foto e um botão
+   "Assistir" vermelho sólido. Só este cartão muda; os outros continuam neutros. O brilho é uma camada (::after)
+   porque o aurora-calm.css apaga background-image e box-shadow do cartão ao vivo. */
 .participants-grid .participant-card.has-live-screen:not(.has-camera) {
-  border-color: color-mix(in srgb, var(--accent-color) 60%, var(--border-color));
+  border-color: rgba(239, 68, 68, 0.45);
+}
+.participants-grid .participant-card.has-live-screen:not(.has-camera)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.14), transparent 55%);
 }
 .participants-grid .participant-card.has-live-screen:not(.has-camera):hover {
-  border-color: var(--accent-color);
+  border-color: rgba(239, 68, 68, 0.8);
+}
+.participants-grid .participant-card.has-live-screen:not(.has-camera) .participant-avatar-large {
+  box-shadow: 0 0 0 3px var(--bg-secondary), 0 0 0 5px #ef4444, 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 .participants-grid .participant-card.is-muted:not(.has-camera) .participant-avatar-large { filter: saturate(0.7); }
 .participant-live-badge {
-  background: var(--accent-color);
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent-color) 45%, transparent);
+  background: #d92222;
+  box-shadow: none;
   z-index: 2;
+}
+.participants-grid .participant-card:not(.has-camera) .participant-live-badge {
+  top: 12px;
+  left: 12px;
+  right: auto;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.06em;
+}
+/* Ponto do AO VIVO parado (piscar sem fim era trabalho contínuo para cada transmissão na sala) */
+.participants-grid .participant-card .live-dot-pulse {
+  animation: none;
 }
 @media (prefers-reduced-motion: reduce) {
   span.participant-card-backdrop { filter: blur(34px); }
 }
 
+/* Botão "Assistir": vermelho sólido, cresce um pouco quando o mouse passa no cartão */
 .participants-grid .participant-card:not(.has-camera) .watch-stream-badge-btn {
-  background: color-mix(in srgb, #000 55%, transparent);
-  border-color: var(--accent-color);
+  gap: 7px;
+  padding: 7px 14px;
+  border: 0;
+  background: #d92222;
   color: #fff;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-.participants-grid .participant-card:not(.has-camera) .watch-stream-badge-btn:hover {
-  background: var(--accent-color);
+  font-size: 13px;
+  font-weight: 800;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   box-shadow: none;
-  transform: none;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+.participants-grid .participant-card.has-live-screen:not(.has-camera):hover .watch-stream-badge-btn,
+.participants-grid .participant-card:not(.has-camera) .watch-stream-badge-btn:hover,
+.participants-grid .participant-card:not(.has-camera) .watch-stream-badge-btn:focus-visible {
+  background: #d92222;
+  filter: brightness(1.12);
+  transform: scale(1.04);
+  box-shadow: none;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -1471,4 +1489,28 @@ body.echo-layout-glass .status-picker-option.selected .status-dot-bullet {
 body.echo-layout-glass .status-picker-check {
   color: var(--status-color);
   filter: drop-shadow(0 0 6px var(--status-color));
+}
+
+/* Estado de voz de relance: selo vermelho no canto do cartão (mutado = microfone cortado, ensurdecido = fone cortado).
+   Vermelho com ícone branco passa de 4,5:1 nos dois temas; o avatar também esmaece para a pessoa "sumir" da conversa. */
+.participant-state-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #d92222;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+.participant-state-badge.is-deafened { background: #a31515; }
+.participants-grid .participant-card.is-muted:not(.has-camera) .participant-avatar-large { opacity: 0.78; }
+.participants-grid .participant-card:has(.participant-state-badge.is-deafened):not(.has-camera) .participant-avatar-large {
+  opacity: 0.55;
+  filter: saturate(0.4);
 }

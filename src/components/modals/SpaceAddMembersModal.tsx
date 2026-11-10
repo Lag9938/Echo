@@ -3,16 +3,13 @@ import { copyToClipboard } from '../../lib/clipboard'
 import { useSpaceInviteLink } from '../../hooks/useSpaceInviteLink'
 import { getServerGradient, getServerInitials } from '../../lib/formatters'
 import {
-  UserPlusIcon,
   SearchIcon,
   CloseXIcon,
   CheckIcon,
   CopyIcon,
-  LinkIcon,
   KeyIcon,
   MessageSquareIcon,
-  UsersIcon,
-  SparklesIcon
+  UsersIcon
 } from '../icons'
 import type { Space, FriendshipRequest } from '../../types'
 
@@ -93,7 +90,7 @@ export function SpaceAddMembersModal({
   return (
     <div className="invite-backdrop" onClick={onClose}>
       <div
-        className="invite-modal space-add-members-modal"
+        className="invite-modal invite-cozy space-add-members-modal"
         role="dialog"
         aria-modal="true"
         aria-label={`Convidar amigos para ${space.name}`}
@@ -106,8 +103,10 @@ export function SpaceAddMembersModal({
             <div className="invite-space-icon" style={{ background: serverGradient }}>{serverInitials}</div>
           )}
           <div className="invite-title">
-            <h3>Convidar amigos para {space.name}</h3>
-            <p>Envie um convite direto ou compartilhe o link do espaço.</p>
+            <h3>Convidar para {space.name}</h3>
+            <p>
+              {spaceMembers.length} {spaceMembers.length === 1 ? 'membro' : 'membros'} · {spaceMembers.filter(m => onlineUsers.has(m?.user?.id || m?.id)).length} online
+            </p>
           </div>
           <button type="button" className="invite-close" onClick={onClose} aria-label="Fechar">
             <CloseXIcon style={{ width: '14px', height: '14px' }} />
@@ -119,7 +118,7 @@ export function SpaceAddMembersModal({
             <SearchIcon className="invite-search-icon" style={{ width: '14px', height: '14px' }} />
             <input
               type="text"
-              placeholder="Buscar amigos pelo nome..."
+              placeholder="Buscar amigos"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
@@ -130,7 +129,7 @@ export function SpaceAddMembersModal({
         )}
 
         <section className="invite-section invite-friends-section">
-          <span className="invite-label">Amigos no Echo · {acceptedFriends.length}</span>
+          <span className="invite-label">Amigos · {acceptedFriends.length}</span>
           <div className="invite-friends-list">
             {acceptedFriends.length === 0 ? (
               <div className="invite-empty">
@@ -165,24 +164,17 @@ export function SpaceAddMembersModal({
                     </div>
 
                     {isMember ? (
-                      <span className="invite-chip ok">
-                        <CheckIcon style={{ width: '12px', height: '12px' }} />
-                        No espaço
-                      </span>
+                      <span className="invite-act in">No espaço</span>
                     ) : wasInvited ? (
-                      <span className="invite-chip info">
-                        <CheckIcon style={{ width: '12px', height: '12px' }} />
-                        Convidado
-                      </span>
+                      <span className="invite-act sent"><CheckIcon style={{ width: '12px', height: '12px' }} /> Enviado</span>
                     ) : (
                       <button
                         type="button"
-                        className="invite-primary-btn small"
+                        className="invite-act"
                         disabled={isAdding}
                         onClick={() => handleAddFriend(friend)}
                       >
-                        <UserPlusIcon style={{ width: '13px', height: '13px' }} />
-                        <span>{isAdding ? 'Enviando...' : 'Convidar'}</span>
+                        {isAdding ? 'Enviando…' : 'Convidar'}
                       </button>
                     )}
                   </div>
@@ -192,15 +184,15 @@ export function SpaceAddMembersModal({
           </div>
         </section>
 
-        <section className="invite-section invite-link-section">
-          <div className="invite-label-row">
-            <span className="invite-label">Link de convite do espaço</span>
-            <span className="invite-chip info tiny">Nunca expira</span>
+        <section className="invite-share">
+          <div className="invite-share-top">
+            <b>Link do espaço</b>
+            <span>nunca expira</span>
           </div>
 
           <div className="invite-link-box">
-            <LinkIcon className="invite-link-icon" style={{ width: '14px', height: '14px' }} />
             <input
+              aria-label="Link de convite do espaço"
               readOnly
               value={inviteLoading ? 'Gerando link de convite...' : (inviteLink || inviteError || 'Não foi possível gerar o link de convite.')}
               onClick={e => (e.target as HTMLInputElement).select()}
@@ -219,7 +211,7 @@ export function SpaceAddMembersModal({
               ) : (
                 <>
                   <CopyIcon style={{ width: '13px', height: '13px' }} />
-                  <span>Copiar link</span>
+                  <span>Copiar</span>
                 </>
               )}
             </button>
@@ -240,7 +232,7 @@ export function SpaceAddMembersModal({
               ) : (
                 <>
                   <KeyIcon style={{ width: '13px', height: '13px' }} />
-                  <span>Código: {inviteCode ?? '...'}</span>
+                  <span>{inviteCode ?? '...'}</span>
                 </>
               )}
             </button>
@@ -265,10 +257,6 @@ export function SpaceAddMembersModal({
             </button>
           </div>
 
-          <div className="invite-tip">
-            <SparklesIcon style={{ width: '14px', height: '14px', flexShrink: 0 }} />
-            <span>O link abre a página do Echo no navegador e redireciona direto para o aplicativo.</span>
-          </div>
         </section>
       </div>
     </div>

@@ -1,0 +1,39 @@
+/* ==========================================================================
+   MODO LEVE + CONSUMO — menos processador e memória sem mudar o visual
+   Vem logo depois de accessibility.css (App.css).
+   ========================================================================== */
+
+/* ── 1. Modo Leve ativo (body.echo-lite: ver lib/liteMode.ts) ─────────────────
+   Mesma regra de "reduzir movimento": animações decorativas viram um quadro só e as transições ficam instantâneas.
+   Fora, de propósito:
+   - os efeitos de nome (.name-effect-*) e tudo dentro deles: letras, brilho e animação não são alterados (regra do projeto);
+   - indicadores de carregamento/atualização, para a tela não parecer travada;
+   - quem está falando (anel/onda de voz): é informação, não enfeite. */
+body.echo-lite *:not(.loader, .update-applying-ring, .update-applying-bar, .update-banner-ring,
+  [class*='name-effect-'], [class*='name-effect-'] *, [class*='speaking'], [class*='is-talking']),
+body.echo-lite *:not(.loader, .update-applying-ring, .update-applying-bar, .update-banner-ring,
+  [class*='name-effect-'], [class*='name-effect-'] *, [class*='speaking'], [class*='is-talking'])::before,
+body.echo-lite *:not(.loader, .update-applying-ring, .update-applying-bar, .update-banner-ring,
+  [class*='name-effect-'], [class*='name-effect-'] *, [class*='speaking'], [class*='is-talking'])::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0s !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0s !important;
+}
+
+/* ── 2. Lojas e inventário: só desenha o que está na tela ─────────────────────
+   Uma grade da Loja tem dezenas de cartões, cada um com prévia, vídeo e efeitos. `content-visibility: auto` faz o
+   navegador pular estilo, layout e pintura dos que estão fora da área rolável (e o `auto` em contain-intrinsic-size
+   lembra a altura real depois que o cartão apareceu, então a barra de rolagem não pula). */
+.echo-shop-card,
+.echo-inv-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 334px; /* altura real medida do cartão da Loja */
+}
+
+/* ── 3. Avatares animados (GIF/WebP) parados: ver lib/stillImages.ts ─────────── */
+img[data-echo-still='1'] {
+  /* a imagem parada é um quadro do mesmo avatar; nada muda no desenho */
+  image-rendering: auto;
+}

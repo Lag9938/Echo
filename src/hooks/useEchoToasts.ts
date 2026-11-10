@@ -22,6 +22,8 @@ export interface ToastExtraOptions {
   timestamp?: number
   onQuickReply?: (replyText: string) => void | Promise<void>
   saveToInbox?: boolean
+  actionLabel?: string
+  onAction?: () => void
 }
 
 const NOTIFICATION_STORAGE_KEY = 'echo-notification-history-v1'
@@ -79,7 +81,9 @@ export function useEchoToasts() {
       badgeLabel,
       duration,
       timestamp,
-      onQuickReply
+      onQuickReply,
+      actionLabel: extraOptions?.actionLabel,
+      onAction: extraOptions?.onAction
     }
 
     setToasts(prev => [...prev, newToast])

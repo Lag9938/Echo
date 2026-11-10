@@ -41,6 +41,25 @@ import { nameFontStyle, resolveNameFontId } from '../../lib/nameFonts'
 import { useNameFontStore } from '../../stores/useNameFontStore'
 import { CallElapsed } from '../voice/CallHeaderMeta'
 
+/**
+ * Quantos membros do espaço estão por aí agora (para o "25 membros · 3 online" do topo): você, se não estiver
+ * invisível, e quem tem presença ativa e não está invisível.
+ */
+export function countOnlineMembers(members: any[], presenceData: Record<string, any> | undefined, myId: string): number {
+  let count = 0
+  for (const m of members) {
+    const id = m?.user?.id || m?.id
+    if (!id) continue
+    const pres = presenceData?.[id]
+    if (id === myId) {
+      if (pres?.presence_status !== 'invisible') count++
+    } else if (pres && pres.presence_status !== 'invisible' && pres.presence_status !== 'offline') {
+      count++
+    }
+  }
+  return count
+}
+
 export interface ChannelsSidebarProps {
   spaces?: Space[]
   expandedSpace?: string | null
@@ -579,18 +598,17 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                     )}
                   </span>
                   <span className="channel-item-name">{ch.name}</span>
+                  {/* Na sala em que você está: há quanto tempo você está na chamada */}
+                  {isActive && isConnected && (
+                    <span className="voice-room-elapsed" title="Tempo nesta chamada"><CallElapsed /></span>
+                  )}
                   {(() => {
-                    // Contagem na cor do espaço; com transmissão em andamento, um ponto que pulsa (sem o bloco vermelho)
-                    const streaming = channelVoiceUsers.some(p => p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0))
+                    // Só a contagem: quem transmite já aparece com "● ao vivo" na própria linha
                     const count = channelVoiceUsers.length
                     const limit = ch.user_limit && ch.user_limit > 0 ? ch.user_limit : 0
                     if (!limit && count === 0) return null
                     return (
-                      <span
-                        className={`voice-channel-limit-badge${count > 0 ? ' occupied' : ''}`}
-                        title={streaming ? 'Transmissão ao vivo em andamento' : undefined}
-                      >
-                        {streaming && <i className="live-dot" />}
+                      <span className={`voice-channel-limit-badge${count > 0 ? ' occupied' : ''}`}>
                         {limit ? `${count}/${limit}` : count}
                       </span>
                     )
@@ -659,20 +677,25 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                               p.displayName.slice(0, 1).toUpperCase()
                             )}
                           </div>
-                          <span className="sidebar-voice-name" style={nameFontStyle(resolveNameFontId(p.userId, user?.id ?? '', myNameFont, props.presenceData))}>{p.displayName}</span>
+                          {/* Quem transmite: "● ao vivo" embaixo do nome, sem selo; "Assistir" aparece ao passar o mouse */}
+                          <span className="sidebar-voice-namestack">
+                            <span className="sidebar-voice-name" style={nameFontStyle(resolveNameFontId(p.userId, user?.id ?? '', myNameFont, props.presenceData))}>{p.displayName}</span>
+                            {isSharer && (
+                              <span className="sidebar-voice-live"><i aria-hidden="true" />ao vivo</span>
+                            )}
+                          </span>
                           <div className="sidebar-voice-user-icons">
                             {isSharer && (
                               <button
                                 type="button"
-                                className="sidebar-voice-stream-action-badge"
+                                className="sidebar-watch-link"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   onWatchStream?.(ch, p.userId)
                                 }}
                                 title={`Assistir transmissão ao vivo de ${p.displayName}`}
                               >
-                                <ScreenIcon style={{ width: '12px', height: '12px' }} />
-                                <span className="live-stream-label">Assistir</span>
+                                Assistir
                               </button>
                             )}
                             {p.isMuted && (
@@ -796,7 +819,7 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
               </div>
             )}            {railPeek.visible && (
             <aside
-              className={`sidebar channels-sidebar ${sidebarLayout === 'classic' ? 'echo-layout-classic' : 'echo-layout-glass'} ${isResizing ? 'is-resizing' : ''}${collapsed ? ' is-collapsed' : ''}${railPeek.peek ? ' is-peek' : ''}`}
+              className={`sidebar channels-sidebar cozy-rooms ${sidebarLayout === 'classic' ? 'echo-layout-classic' : 'echo-layout-glass'} ${isResizing ? 'is-resizing' : ''}${collapsed ? ' is-collapsed' : ''}${railPeek.peek ? ' is-peek' : ''}`}
               style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, maxWidth: `${sidebarWidth}px` }}
               {...(railPeek.peek ? railPeek.panelProps : {})}
             >
@@ -836,15 +859,21 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                       activeSpace.name.slice(0, 1).toUpperCase()
                     )}
                   </div>
-                  <div className="server-header-info" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <h3 className="server-title" title={activeSpace.name} style={{ margin: 0, fontSize: '15px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {activeSpace.name}
-                    </h3>
-                    {activeSpace.creator_id === user.id && (
-                      <span className="server-crown-badge" title="Você é o Dono do Espaço" style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>
-                        <CrownIcon style={{ width: '13px', height: '13px', color: '#f59e0b' }} />
-                      </span>
-                    )}
+                  <div className="server-header-info" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                      <h3 className="server-title" title={activeSpace.name} style={{ margin: 0, fontSize: '15px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {activeSpace.name}
+                      </h3>
+                      {activeSpace.creator_id === user.id && (
+                        <span className="server-crown-badge" title="Você é o Dono do Espaço" style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>
+                          <CrownIcon style={{ width: '13px', height: '13px', color: '#f59e0b' }} />
+                        </span>
+                      )}
+                    </div>
+                    {/* Quantos são e quantos estão por aí agora */}
+                    <span className="server-header-sub">
+                      {spaceMembers.length} {spaceMembers.length === 1 ? 'membro' : 'membros'} · {countOnlineMembers(spaceMembers, presenceData, user.id)} online
+                    </span>
                   </div>
                   <ChevronDownIcon className={`server-dropdown-chevron ${showServerDropdown ? 'open' : ''}`} style={{ width: '13px', height: '13px', transition: 'transform 0.2s ease', transform: showServerDropdown ? 'rotate(180deg)' : 'none', color: 'var(--text-muted)', flexShrink: 0 }} />
                 </div>
@@ -986,7 +1015,7 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                               <ChevronDownIcon style={{ width: '10px', height: '10px' }} />
                             )}
                           </span>
-                          <span className="category-name">CANAIS DE VOZ</span>
+                          <span className="category-name">SALAS DE VOZ</span>
                         </button>
                         {(canUserDo(activeSpace.id, user.id, 'manageChannels') || activeSpace.creator_id === user.id) && (
                           <button 

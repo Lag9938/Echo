@@ -3647,3 +3647,49 @@ body.light-theme .forward-modal-item {
 }
 
 
+
+/* ── Cartão do amigo: atividade numa linha calma (jogo com ícone, chamada, status) ─────────────────────────
+   Sem a caixa verde: "🎮 Jogando eFootball PES · 1 min", com o nome do jogo em destaque. Textos longos vão até
+   2 linhas e cortam com reticências (o texto inteiro aparece ao passar o mouse). */
+body .friends-content .friend-status-modern .friend-activity {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+body .friends-content .friend-activity .game-logo-container {
+  margin-top: 1px;
+}
+body .friends-content .friend-activity-text {
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+body .friends-content .friend-activity.game strong {
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+body .friends-content .friend-activity.voice {
+  align-items: center;
+  color: var(--ok-text, #15803d);
+}
+body.theme-aurora-dark .friends-content .friend-activity.voice { color: #4ade80; }
+body .friends-content .friend-activity-dot {
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #22c55e;
+}
+body .friends-content .friend-activity.status-idle .friend-activity-dot { background: #f0b232; }
+body .friends-content .friend-activity.status-dnd .friend-activity-dot { background: #ef4444; }
+body .friends-content .friend-activity.status-offline .friend-activity-dot { background: color-mix(in srgb, var(--text-primary) 30%, transparent); }

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useEchoChannelMessages } from '../useEchoChannelMessages'
 import type { Channel, Space } from '../../types'
@@ -296,7 +296,48 @@ describe('useEchoChannelMessages', () => {
     })
 
     expect(result.current.messages.length).toBe(0)
-    expect(showToastMock).toHaveBeenCalledWith('Mensagem Excluída', expect.any(String), 'info')
+    expect(showToastMock).toHaveBeenCalledWith(
+      'Mensagem Excluída', expect.any(String), 'info', undefined,
+      expect.objectContaining({ actionLabel: 'Desfazer', onAction: expect.any(Function) })
+    )
+  })
+
+  describe('desfazer exclusão', () => {
+    const own = {
+      id: 'msg-undo', channel_id: 'channel-1', body: 'Talvez eu volte', created_at: '2026-01-01T10:00:00Z',
+      author_id: 'test-user-id', status: 'sent' as const
+    }
+    beforeEach(() => { vi.useFakeTimers() })
+    afterEach(() => { vi.useRealTimers() })
+
+    it('só apaga no banco depois do prazo, e o Desfazer devolve a mensagem sem apagar', async () => {
+      const { result } = setupHook()
+      act(() => { result.current.setMessages([own]) })
+      mockSupabase.from.mockClear()
+
+      await act(async () => { await result.current.handleDeleteMessage('msg-undo') })
+      expect(result.current.messages.length).toBe(0)
+      expect(mockSupabase.from).not.toHaveBeenCalledWith('messages')
+
+      const options = showToastMock.mock.calls.at(-1)![4]
+      act(() => { options.onAction() })
+      expect(result.current.messages.map(m => m.id)).toEqual(['msg-undo'])
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(7000) })
+      expect(mockSupabase.from).not.toHaveBeenCalledWith('messages')
+      expect(result.current.messages.length).toBe(1)
+    })
+
+    it('sem Desfazer, apaga no banco depois de 6 segundos', async () => {
+      const { result } = setupHook()
+      act(() => { result.current.setMessages([own]) })
+      mockSupabase.from.mockClear()
+
+      await act(async () => { await result.current.handleDeleteMessage('msg-undo') })
+      await act(async () => { await vi.advanceTimersByTimeAsync(6100) })
+      expect(mockSupabase.from).toHaveBeenCalledWith('messages')
+      expect(result.current.messages.length).toBe(0)
+    })
   })
 
   it('bloqueia exclusão de mensagem de outro autor se não tiver permissão', async () => {

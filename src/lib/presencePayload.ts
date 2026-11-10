@@ -52,6 +52,22 @@ export interface PresencePayload {
 }
 
 const MAX_BANNER_URL_LENGTH = 2048
+/** Ícone oficial do jogo (32×32, tirado do .exe de quem joga): PNG embutido de poucos KB */
+export const MAX_GAME_ICON_LENGTH = 8000
+
+/** O ícone do jogo serve para a presença e para a tela? Só PNG embutido e pequeno */
+export function isSafeGameIcon(raw: unknown): raw is string {
+  return typeof raw === 'string' && raw.startsWith('data:image/png;base64,') && raw.length <= MAX_GAME_ICON_LENGTH
+}
+
+/** O jogo como vai na presença: um ícone fora do padrão (grande, outro formato) é retirado */
+export function safePresenceGame(game: unknown): unknown {
+  if (!game || typeof game !== 'object') return game ?? null
+  const g = game as Record<string, unknown>
+  if (g.iconUrl === undefined || isSafeGameIcon(g.iconUrl)) return game
+  const { iconUrl: _drop, ...rest } = g
+  return rest
+}
 
 /** Só links curtos vão na presença: uma imagem embutida ("data:") estouraria o limite do tempo real */
 export function safePresenceBannerUrl(raw: string | null | undefined): string {
@@ -72,7 +88,7 @@ export function buildPresencePayload(input: PresencePayloadInput): PresencePaylo
 
   // No modo invisível a pessoa aparece offline: nem status personalizado nem jogo são publicados
   const customStatus = invisible ? '' : (input.customStatus ?? read('echo-custom-status'))
-  const game = invisible ? null : (input.game ?? null)
+  const game = invisible ? null : safePresenceGame(input.game ?? null)
 
   const banner = safePresenceBannerUrl(input.bannerUrl || read(`echo-banner-custom-${uid}`) || read('echo-banner-custom'))
   const showBadge = read(`echo-show-badge-${uid}`) !== 'false'

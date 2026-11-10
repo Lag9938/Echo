@@ -3,6 +3,8 @@ export interface GamePresenceInfo {
   icon?: string
   startedAt?: number
   processName?: string
+  /** Ícone oficial do jogo (data:image/png 32×32 tirado do .exe); null se o caminho do programa não está acessível */
+  iconUrl?: string | null
 }
 
 export interface LiveKitConnectionResult {

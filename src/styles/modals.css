@@ -1421,3 +1421,146 @@
   transform: scale(0.95);
 }
 
+
+/* ── Novidades: bilhete do Echo ──────────────────────────────────────────────────────────────────────────
+   Topo com um brilho suave (violeta e coral), versão e título em destaque; novidades numa lista leve com um
+   ícone colorido cada. Cores do tema (claro e escuro). */
+.whats-new-modal.wn-modal {
+  max-width: 480px;
+  border-radius: 22px;
+  background: var(--bg-secondary);
+}
+.wn-letter {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+.wn-hero {
+  position: relative;
+  padding: 24px 24px 20px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(139, 124, 246, 0.32), transparent 55%),
+    radial-gradient(circle at 96% 18%, rgba(223, 109, 93, 0.28), transparent 55%),
+    color-mix(in srgb, var(--text-primary) 4%, var(--bg-secondary));
+}
+.wn-letter.embedded .wn-hero { border-radius: 18px; }
+.wn-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+.wn-close:hover { background: color-mix(in srgb, var(--text-primary) 10%, transparent); color: var(--text-primary); }
+.wn-ver {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.wn-ver b {
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+.wn-title {
+  margin: 10px 0 6px;
+  padding-right: 28px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.wn-tagline {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.wn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px 4px;
+}
+.wn-item {
+  display: flex;
+  gap: 12px;
+  padding: 10px 8px;
+  border-radius: 12px;
+}
+.wn-item:hover { background: color-mix(in srgb, var(--text-primary) 5%, transparent); }
+.wn-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  font-size: 17px;
+}
+.wn-item-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wn-item-text b { font-size: 14px; color: var(--text-primary); }
+.wn-item-text span { font-size: 13px; line-height: 1.45; color: var(--text-secondary); }
+.wn-previous {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 14px 0;
+  padding: 8px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+}
+.wn-prev-item { padding: 8px; border-radius: 10px; }
+.wn-prev-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.wn-prev-top b { font-size: 13px; color: var(--text-primary); }
+.wn-prev-top span { flex-shrink: 0; font-size: 11.5px; color: var(--text-muted); }
+.wn-prev-item p { margin: 3px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--text-secondary); }
+.wn-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px 18px;
+}
+.wn-link {
+  padding: 6px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.wn-link:hover { color: var(--text-primary); }
+.wn-cta {
+  padding: 10px 22px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent-fill, var(--accent-color));
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.wn-cta:hover { filter: brightness(1.08); }
+.wn-close:focus-visible,
+.wn-link:focus-visible,
+.wn-cta:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}

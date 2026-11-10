@@ -48,11 +48,11 @@ describe('rodapé do perfil com chamada', () => {
     expect(c.querySelector('.profile-footer-sub-status')?.textContent).toBe('Online')
   })
 
-  it('na chamada mostra a sala no status e o painel com mutar, silenciar e sair', () => {
+  it('na chamada mostra "Na chamada · tempo" no status (sem a sala) e o painel com mutar, silenciar e sair', () => {
     const call = makeCall()
     const c = renderFooter(call)
     expect(c.querySelector('.sidebar-profile-footer.has-call')).not.toBeNull()
-    expect(c.querySelector('.profile-footer-sub-status')?.textContent).toContain('Na chamada · Sala principal')
+    expect(c.querySelector('.profile-footer-sub-status')?.textContent).toBe('Na chamada · 0:42')
 
     const toggles = c.querySelectorAll('.profile-call-toggle')
     expect(toggles).toHaveLength(2)

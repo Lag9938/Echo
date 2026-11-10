@@ -660,6 +660,7 @@ export function ModalManager(props: ModalManagerProps) {
           space={channelForInvite.space}
           onClose={() => setChannelForInvite(null)}
           friendships={friendships}
+          onlineUsers={onlineUsers}
           onSendDMInvite={async (friendUserId, inviteMessage) => {
             if (!supabase || !user) return
             await supabase.from('direct_messages').insert({

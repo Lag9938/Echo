@@ -51,7 +51,7 @@ export interface UnifiedUserProfileFooterProps {
   onOpenSettings?: () => void
   onOpenWhatsNew?: () => void
   onSignOut?: () => void
-  myGamePresence?: { name: string; icon?: string; startedAt?: number } | null
+  myGamePresence?: { name: string; icon?: string; startedAt?: number; iconUrl?: string | null } | null
   avatarDecoration?: string | null
   userId?: string
   call?: FooterCallControls | null
@@ -143,9 +143,10 @@ export function UnifiedUserProfileFooter({
             <div className="profile-footer-names">
               <span className="profile-footer-display-name">{displayName}</span>
               {call ? (
-                <span className="profile-footer-sub-status in-call">
+                // "Na chamada · 12:34": o tempo é curto e cabe; o nome da sala cortava no rodapé estreito (aparece ao passar o mouse)
+                <span className="profile-footer-sub-status in-call" title={call.channelName}>
                   <i className={`profile-call-dot${call.isReconnecting ? ' reconnecting' : ''}`} aria-hidden="true" />
-                  {call.isReconnecting ? 'Reconectando…' : `Na chamada · ${call.channelName}`}
+                  {call.isReconnecting ? 'Reconectando…' : <>Na chamada<span className="profile-footer-call-time"> · {call.elapsed}</span></>}
                 </span>
               ) : (
                 <span className="profile-footer-sub-status">
@@ -175,7 +176,7 @@ export function UnifiedUserProfileFooter({
         {myGamePresence && presenceStatus !== 'invisible' && (
           <div className="profile-footer-activity-card" title={`Jogando ${myGamePresence.name}${myGamePresence.startedAt ? ` • ${formatGameDuration(myGamePresence.startedAt)}` : ''}`}>
             <div className="profile-footer-activity-logo">
-              <GameLogo gameName={myGamePresence.name} size={22} />
+              <GameLogo gameName={myGamePresence.name} iconUrl={myGamePresence.iconUrl} size={22} />
             </div>
             <div className="profile-footer-activity-details">
               <span className="profile-footer-activity-label">JOGANDO</span>

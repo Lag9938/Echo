@@ -2,8 +2,8 @@ import React from 'react'
 import { roleInk } from '../../lib/accentContrast'
 import type { User } from '@supabase/supabase-js'
 import type { Space, Channel, ServerRole } from '../../types'
-import { UserPlusIcon, CrownIcon, VolumeIcon, SearchIcon, ChevronDownIcon } from '../icons'
-import { GameLogo, getGameBrandColor } from '../GameLogos'
+import { UserPlusIcon, CrownIcon, VolumeIcon, SearchIcon, ChevronDownIcon, ShieldIcon } from '../icons'
+import { GameLogo, gameIconOf, getGameBrandColor } from '../GameLogos'
 import { AvatarDecoration } from '../AvatarDecoration'
 import { formatGameDuration } from '../../lib/formatters'
 import { nameFontStyle, resolveNameFontId } from '../../lib/nameFonts'
@@ -23,6 +23,21 @@ const AVATAR_GRADIENTS = [
   'linear-gradient(135deg, #f97316 0%, #eab308 100%)',   // Orange / Yellow
   'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',   // Indigo / Violet
 ]
+
+/** Offline: quantos nomes aparecem antes do "Mostrar mais" (com até 2 a mais, mostra todos de uma vez) */
+export const OFFLINE_PREVIEW_COUNT = 6
+
+/** Quem do offline aparece agora: os primeiros, a não ser que a lista seja curta, esteja aberta ou haja busca */
+export function visibleOfflineMembers<T>(list: T[], expanded: boolean, searching: boolean): T[] {
+  if (expanded || searching || list.length <= OFFLINE_PREVIEW_COUNT + 2) return list
+  return list.slice(0, OFFLINE_PREVIEW_COUNT)
+}
+
+/** Duração do jogo para a linha de atividade: "há 14m" vira "14 min", "há 2h 5m" vira "2h 5min" */
+export function shortGameDuration(startedAt?: number | null): string {
+  if (!startedAt) return ''
+  return formatGameDuration(startedAt).replace('há ', '').replace(/(\d+)m$/, '$1 min')
+}
 
 function getMemberAvatarBackground(userId: string, name: string): string {
   const str = userId || name || 'echo'
@@ -98,6 +113,7 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
   const [isSearchOpen, setIsSearchOpen] = React.useState(false)
   const searchInputRef = React.useRef<HTMLInputElement | null>(null)
   const [collapsedSections, setCollapsedSections] = React.useState<Record<string, boolean>>({})
+  const [showAllOffline, setShowAllOffline] = React.useState(false)
 
   const handleToggleSearch = React.useCallback(() => {
     setIsSearchOpen(prev => {
@@ -120,7 +136,7 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
     activeVoiceChannelId && spaceChList.some(c => c.id === activeVoiceChannelId)
   )
 
-  const { onlineList, offlineList, currentSpaceVoiceUsers } = React.useMemo(() => {
+  const { onlineList, offlineList, currentSpaceVoiceUsers, voiceChannelNameOf } = React.useMemo(() => {
     const allMembersMap = new Map<string, any>()
     spaceMembers.forEach(m => {
       if (m && m.user?.id) {
@@ -165,14 +181,30 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
     const online = combinedMembers.filter(m => isMemberOnline(m))
     const offline = combinedMembers.filter(m => !isMemberOnline(m))
 
+    // Em qual sala de voz cada pessoa está (para "Em chamada · bate-papo")
+    const voiceChannelNameOf = new Map<string, string>()
+    Object.entries(spaceVoiceUsers).forEach(([chId, uList]) => {
+      const ch = spaceChList.find(c => c.id === chId)
+      if (ch) uList.forEach(p => p?.userId && voiceChannelNameOf.set(p.userId, ch.name))
+    })
+    if (isCurrentCallInThisSpace) {
+      const ch = spaceChList.find(c => c.id === activeVoiceChannelId)
+      if (ch) participants.forEach(p => p?.userId && voiceChannelNameOf.set(p.userId, ch.name))
+    }
+
     return {
       onlineList: online,
       offlineList: offline,
-      currentSpaceVoiceUsers: voiceUsers
+      currentSpaceVoiceUsers: voiceUsers,
+      voiceChannelNameOf
     }
-  }, [spaceMembers, isCurrentCallInThisSpace, participants, spaceVoiceUsers, spaceChList, onlineUsers, presenceStatus, presenceData, user.id])
+  }, [spaceMembers, isCurrentCallInThisSpace, participants, spaceVoiceUsers, spaceChList, onlineUsers, presenceStatus, presenceData, user.id, activeVoiceChannelId])
 
-  const renderCard = (member: any) => {
+  /**
+   * groupRoleId / inCreatorGroup: o grupo em que o cartão aparece. Dentro do grupo do próprio cargo (ou do Dono)
+   * o cargo não se repete no cartão; fora dele vira só um escudinho (ou coroa) na cor do cargo.
+   */
+  const renderCard = (member: any, ctx: { groupRoleId?: string; inCreatorGroup?: boolean; offline?: boolean } = {}) => {
     const isMe = member.user.id === user.id
     const isCreator = currentSpace.creator_id === member.user.id
     const isVoiceUserRaw = (isCurrentCallInThisSpace && participants.some(p => p.userId === member.user.id)) || currentSpaceVoiceUsers.some(p => p.userId === member.user.id)
@@ -247,8 +279,8 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
       : (presenceData[member.user.id]?.badge || localStorage.getItem(`echo-badge-${member.user.id}`) || (isCreator ? 'owner' : null))
 
     return (
-      <div 
-        className="member-card"
+      <div
+        className={`member-card calm${ctx.offline ? ' is-offline' : ''}`}
         key={member.user.id}
         onClick={() => {
           if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
@@ -283,6 +315,7 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
               clanTag: memberClanTag,
               clanTagColor: memberClanTagColor,
               activeGame,
+              activeGameIconUrl: gameIconOf(activeGameObj),
               activeGameStartedAt,
               isVoiceUser,
               userPresenceStatus,
@@ -353,39 +386,42 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
               </span>
             )}
 
+            {/* Cargo: dentro do grupo do próprio cargo ele não se repete; fora, só um escudinho na cor do cargo */}
             {isCreator ? (
-              <span className="member-badge creator"><CrownIcon style={{ width: '10px', height: '10px' }} /> Dono</span>
-            ) : memberRole ? (
-              <span 
-                className="member-badge role" 
-                style={{ 
-                  color: roleInk(memberRole.color), 
-                  borderColor: `${memberRole.color}44`, 
-                  background: `${memberRole.color}15` 
-                }}
+              !ctx.inCreatorGroup && (
+                <span className="member-role-mark creator" title="Dono do espaço" aria-label="Dono do espaço">
+                  <CrownIcon style={{ width: '12px', height: '12px' }} />
+                </span>
+              )
+            ) : memberRole && memberRole.id !== ctx.groupRoleId ? (
+              <span
+                className="member-role-mark"
+                style={{ color: roleInk(memberRole.color) }}
+                title={memberRole.name}
+                aria-label={`Cargo: ${memberRole.name}`}
               >
-                {memberRole.name}
+                <ShieldIcon style={{ width: '12px', height: '12px' }} />
               </span>
             ) : null}
           </div>
 
+          {/* Atividade numa linha discreta, sem caixa: o nome continua sendo o destaque */}
           {activeGame ? (
             <span
-              className="member-status-text activity-game"
+              className="member-activity"
               style={{ '--game-color': getGameBrandColor(activeGame) } as React.CSSProperties}
-              title={`Jogando ${activeGame}${activeGameStartedAt ? ` • ${formatGameDuration(activeGameStartedAt)}` : ''}`}
+              title={`Jogando ${activeGame}${activeGameStartedAt ? ` • ${formatGameDuration(activeGameStartedAt)}` : ''}${isVoiceUser ? ' • em chamada' : ''}`}
             >
-              <span className="member-mini-game-logo">
-                <GameLogo gameName={activeGame} size={12} />
+              <span className="member-activity-logo">
+                <GameLogo gameName={activeGame} iconUrl={gameIconOf(activeGameObj)} size={12} />
               </span>
-              {/* Sem o prefixo "Jogando": o ícone já entrega isso, e sobra espaço pro nome do jogo não cortar feio */}
-              <span className="member-game-title">{activeGame}</span>
-              {activeGameStartedAt && (
-                <span className="member-game-time">{formatGameDuration(activeGameStartedAt).replace('há ', '')}</span>
-              )}
+              <span className="member-activity-text">
+                Jogando <strong>{activeGame}</strong>
+                {activeGameStartedAt ? ` · ${shortGameDuration(activeGameStartedAt)}` : ''}
+              </span>
               {isVoiceUser && (
-                <span className="member-status-voice-sub" title="Em chamada de voz">
-                  <VolumeIcon style={{ width: '9px', height: '9px' }} />
+                <span className="member-activity-voice" title="Em chamada de voz">
+                  <VolumeIcon style={{ width: '11px', height: '11px' }} />
                 </span>
               )}
             </span>
@@ -396,7 +432,7 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
           ) : isVoiceUser ? (
             <span className="member-voice-pill">
               <VolumeIcon style={{ width: '11px', height: '11px', flexShrink: 0 }} />
-              <span>Em chamada</span>
+              <span>Em chamada{voiceChannelNameOf.get(member.user.id) ? ` · ${voiceChannelNameOf.get(member.user.id)}` : ''}</span>
               {userPresenceStatus === 'idle' && <span className="member-status-sub-idle">• Ausente</span>}
               {userPresenceStatus === 'dnd' && <span className="member-status-sub-dnd">• Não perturbe</span>}
             </span>
@@ -549,27 +585,20 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
         {filteredCreator.length > 0 && (
           <div className="members-group-section">
             <div
-              className="members-group-header"
-              style={{ color: '#f59e0b' }}
+              className="members-group-header calm"
               onClick={() => toggleSection('creator')}
             >
               <div className="members-group-header-left">
                 <ChevronDownIcon className={`members-group-chevron ${collapsedSections['creator'] && !cleanQuery ? 'collapsed' : ''}`} />
-                <span className="members-group-icon">
-                  <CrownIcon style={{ width: '12px', height: '12px' }} />
+                <span className="members-group-icon" style={{ color: '#f59e0b' }}>
+                  <CrownIcon style={{ width: '11px', height: '11px' }} />
                 </span>
-                <span className="members-group-title">DONO</span>
+                <span className="members-group-title">Dono — {filteredCreator.length}</span>
               </div>
-              <span
-                className="members-group-count-pill"
-                style={{ color: '#f59e0b', borderColor: 'rgba(245, 158, 11, 0.25)', background: 'rgba(245, 158, 11, 0.1)' }}
-              >
-                {filteredCreator.length}
-              </span>
             </div>
             {(!collapsedSections['creator'] || cleanQuery) && (
               <div className="members-list">
-                {filteredCreator.map(renderCard)}
+                {filteredCreator.map(m => renderCard(m, { inCreatorGroup: true }))}
               </div>
             )}
           </div>
@@ -581,24 +610,18 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
           return (
             <div key={b.role.id} className="members-group-section">
               <div
-                className="members-group-header"
-                style={{ color: b.role.color }}
+                className="members-group-header calm"
                 onClick={() => toggleSection(`role-${b.role.id}`)}
               >
                 <div className="members-group-header-left">
                   <ChevronDownIcon className={`members-group-chevron ${isCollapsed ? 'collapsed' : ''}`} />
-                  <span className="members-group-title">{b.role.name.toUpperCase()}</span>
+                  <span className="members-group-dot" style={{ background: b.role.color }} aria-hidden="true" />
+                  <span className="members-group-title">{b.role.name} — {b.members.length}</span>
                 </div>
-                <span
-                  className="members-group-count-pill"
-                  style={{ color: roleInk(b.role.color), borderColor: `${b.role.color}35`, background: `${b.role.color}15` }}
-                >
-                  {b.members.length}
-                </span>
               </div>
               {!isCollapsed && (
                 <div className="members-list">
-                  {b.members.map(renderCard)}
+                  {b.members.map(m => renderCard(m, { groupRoleId: b.role.id }))}
                 </div>
               )}
             </div>
@@ -609,24 +632,18 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
         {filteredUnassigned.length > 0 && (
           <div className="members-group-section">
             <div
-              className="members-group-header"
-              style={{ color: '#22c55e' }}
+              className="members-group-header calm"
               onClick={() => toggleSection('online')}
             >
               <div className="members-group-header-left">
                 <ChevronDownIcon className={`members-group-chevron ${collapsedSections['online'] && !cleanQuery ? 'collapsed' : ''}`} />
-                <span className="members-group-title">DISPONÍVEL</span>
+                <span className="members-group-dot" style={{ background: '#22c55e' }} aria-hidden="true" />
+                <span className="members-group-title">Disponível — {filteredUnassigned.length}</span>
               </div>
-              <span
-                className="members-group-count-pill"
-                style={{ color: '#22c55e', borderColor: 'rgba(34, 197, 94, 0.25)', background: 'rgba(34, 197, 94, 0.1)' }}
-              >
-                {filteredUnassigned.length}
-              </span>
             </div>
             {(!collapsedSections['online'] || cleanQuery) && (
               <div className="members-list">
-                {filteredUnassigned.map(renderCard)}
+                {filteredUnassigned.map(m => renderCard(m))}
               </div>
             )}
           </div>
@@ -636,26 +653,32 @@ const MembersSidebarInner = React.memo(function MembersSidebarInner({
         {filteredOffline.length > 0 && (
           <div className="members-group-section offline">
             <div
-              className="members-group-header"
-              style={{ color: '#94a3b8' }}
+              className="members-group-header calm"
               onClick={() => toggleSection('offline')}
             >
               <div className="members-group-header-left">
                 <ChevronDownIcon className={`members-group-chevron ${collapsedSections['offline'] && !cleanQuery ? 'collapsed' : ''}`} />
-                <span className="members-group-title">OFFLINE</span>
+                <span className="members-group-title">Offline — {filteredOffline.length}</span>
               </div>
-              <span
-                className="members-group-count-pill"
-                style={{ color: '#94a3b8', borderColor: 'rgba(148, 163, 184, 0.2)', background: 'rgba(255, 255, 255, 0.05)' }}
-              >
-                {filteredOffline.length}
-              </span>
             </div>
-            {(!collapsedSections['offline'] || cleanQuery) && (
-              <div className="members-list">
-                {filteredOffline.map(renderCard)}
-              </div>
-            )}
+            {(!collapsedSections['offline'] || cleanQuery) && (() => {
+              const shown = visibleOfflineMembers(filteredOffline, showAllOffline, Boolean(cleanQuery))
+              const hiddenCount = filteredOffline.length - shown.length
+              return (
+                <div className="members-list">
+                  {shown.map(m => renderCard(m, { offline: true }))}
+                  {hiddenCount > 0 ? (
+                    <button type="button" className="members-show-more" onClick={() => setShowAllOffline(true)}>
+                      Mostrar mais {hiddenCount} offline
+                    </button>
+                  ) : showAllOffline && !cleanQuery && filteredOffline.length > OFFLINE_PREVIEW_COUNT + 2 ? (
+                    <button type="button" className="members-show-more" onClick={() => setShowAllOffline(false)}>
+                      Mostrar menos
+                    </button>
+                  ) : null}
+                </div>
+              )
+            })()}
           </div>
         )}
 

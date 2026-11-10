@@ -150,3 +150,9 @@ body.light-theme .member-profile-action-btn.secondary {
 body.light-theme .echo-stage-card-pill {
   color: #5b21b6 !important;
 }
+
+/* O campo do compositor não desenha anel próprio: a caixa (ou a pílula) sinaliza o foco de forma discreta */
+body .composer.composer :is(input, textarea):focus-visible,
+body .composer.composer :is(input, textarea):focus {
+  outline: none !important;
+}

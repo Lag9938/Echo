@@ -944,7 +944,7 @@ export const FriendsView = memo(function FriendsView(props: FriendsViewProps) {
                 ref={friendsSearchRef}
                 type="text" 
                 className="friends-search-input" 
-                placeholder="Buscar amigos... (Ctrl K)" 
+                placeholder="Buscar amigos"
                 value={localSearch}
                 onChange={e => setLocalSearch(e.target.value)}
               />

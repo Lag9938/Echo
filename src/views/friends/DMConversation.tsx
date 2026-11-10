@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from 'react'
+import { memo, useState, useEffect, useRef } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { DirectMessage } from '../../types'
 import { AvatarDecoration } from '../../components/AvatarDecoration'
@@ -175,11 +175,32 @@ export const DMConversation = memo(function DMConversation({
   const [replyingToMessage, setReplyingToMessage] = useState<DirectMessage | null>(null)
   const [showDMEmojiPicker, setShowDMEmojiPicker] = useState(false)
 
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const moreMenuRef = useRef<HTMLDivElement | null>(null)
+
   // Limpa resposta pendente ao trocar de conversa
   useEffect(() => {
     setReplyingToMessage(null)
     setShowDMEmojiPicker(false)
+    setShowMoreMenu(false)
   }, [dmUser.id])
+
+  // Menu "⋯": fecha ao clicar fora ou com Esc
+  useEffect(() => {
+    if (!showMoreMenu) return
+    const onDown = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) setShowMoreMenu(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowMoreMenu(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [showMoreMenu])
 
   // Esc cancela a resposta pendente ou fecha o seletor de emojis
   useEffect(() => {
@@ -341,43 +362,62 @@ export const DMConversation = memo(function DMConversation({
 
           <button
             type="button"
-            className="dm-header-action-btn call"
+            className="dm-header-action-btn call dm-header-call-primary"
             onClick={() => onStartCall && onStartCall(dmUser.id, dmUser.display_name, dmUser.avatar_url)}
             title="Iniciar Chamada de Voz 1x1"
           >
             <PhoneIcon style={{ width: '15px', height: '15px' }} />
-            <span>Chamada de Voz</span>
+            <span>Chamar</span>
           </button>
 
-          {onBlockUser && (
+          <div className="dm-header-more" ref={moreMenuRef}>
             <button
               type="button"
-              className="dm-header-action-btn danger"
-              onClick={async () => {
-                const isBlocked = blockedUserIds?.has(dmUser.id)
-                if (isBlocked) {
-                  await onUnblockUser?.(dmUser.id, dmUser.display_name)
-                } else {
-                  if (window.confirm(`Tem certeza que deseja bloquear @${dmUser.display_name}?`)) {
-                    await onBlockUser(dmUser.id, dmUser.display_name)
-                    onCloseDM()
-                  }
-                }
-              }}
-              title={blockedUserIds?.has(dmUser.id) ? "Desbloquear Usuário" : "Bloquear Usuário"}
+              className="dm-header-action-btn dm-header-more-btn"
+              onClick={() => setShowMoreMenu(v => !v)}
+              aria-haspopup="menu"
+              aria-expanded={showMoreMenu}
+              title="Mais opções"
             >
-              <BanIcon style={{ width: '15px', height: '15px' }} />
+              ⋯
             </button>
-          )}
-
-          <button
-            type="button"
-            className="dm-header-action-btn close"
-            onClick={onCloseDM}
-            title="Fechar Chat"
-          >
-            ✕
-          </button>
+            {showMoreMenu && (
+              <div className="dm-header-more-menu" role="menu">
+                {onBlockUser && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="dm-header-more-item danger"
+                    onClick={async () => {
+                      setShowMoreMenu(false)
+                      const isBlocked = blockedUserIds?.has(dmUser.id)
+                      if (isBlocked) {
+                        await onUnblockUser?.(dmUser.id, dmUser.display_name)
+                      } else if (window.confirm(`Tem certeza que deseja bloquear @${dmUser.display_name}?`)) {
+                        await onBlockUser(dmUser.id, dmUser.display_name)
+                        onCloseDM()
+                      }
+                    }}
+                  >
+                    <BanIcon style={{ width: '14px', height: '14px' }} />
+                    <span>{blockedUserIds?.has(dmUser.id) ? 'Desbloquear usuário' : 'Bloquear usuário'}</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="dm-header-more-item"
+                  onClick={() => {
+                    setShowMoreMenu(false)
+                    onCloseDM()
+                  }}
+                >
+                  <span className="dm-header-more-x" aria-hidden="true">✕</span>
+                  <span>Fechar conversa</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -436,6 +476,14 @@ export const DMConversation = memo(function DMConversation({
             )}
           </div>
           <h2 className="dm-welcome-name">{dmUser.display_name}</h2>
+          <div className="dm-welcome-tags">
+            <span className={`dm-welcome-tag ${dmUser.isFriend ? 'is-friend' : ''}`}>
+              {dmUser.isFriend ? 'Amigo' : 'Membro do servidor'}
+            </span>
+            {dmUser.status && /jogando/i.test(dmUser.status) && (
+              <span className="dm-welcome-tag is-playing">{dmUser.status}</span>
+            )}
+          </div>
           <p className="dm-welcome-sub">
             Este é o início da sua conversa privada com <strong>{dmUser.display_name}</strong>.
           </p>

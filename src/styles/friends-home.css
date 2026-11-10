@@ -1,4 +1,4 @@
-/* ==========================================================================
+﻿/* ==========================================================================
    ABA DE AMIGOS — acolhedora, enxuta e fácil de usar (vale em todos os temas)
    Cabeçalho em três zonas (título · filtros · busca + adicionar), lista em grade de cartões grandes,
    mensagem e chamada sempre à vista e o resto numa barrinha que aparece ao passar o mouse.
@@ -1000,3 +1000,296 @@ body.light-theme .friends-content .add-friend-input:focus {
   background: #fff !important;
 }
 
+
+/* Decoração (asas, coroa) passa da borda do avatar: reserva o espaço para ela não cobrir o começo do nome.
+   Medido no app: asas de cristal sobram ~18 px (lista de DMs, avatar de 38 px) e ~26 px (cartão de amigo, 53 px) para
+   cada lado, contra uma folga de 12 e 14 px até o nome. Só avatares com decoração ganham a margem. */
+body .friends-sidebar .dm-item-avatar-wrapper:has(.echo-avatar-decoration-wrap) {
+  margin-right: 8px;
+}
+body .friends-content .friend-avatar-modern:has(.echo-avatar-decoration-wrap) {
+  margin-right: 16px;
+}
+
+/* ==========================================================================
+   Redesign (prévia aprovada): início de amigos, foco do compositor, cabeçalho da DM
+   Só layout e cor estáticos: nenhuma animação nova, nenhuma consulta nova.
+   ========================================================================== */
+
+/* ── Amigos: grade que cabe 3 colunas e seção Offline separada ── */
+body .friends-content .friends-list-modern {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+body .friends-content .friends-list-container > .friends-list-modern + .friends-section-title {
+  margin-top: 26px;
+}
+body .friends-content .friends-section-offline {
+  opacity: 0.85;
+}
+body .friends-content .friends-section-offline + .friends-list-modern .friend-card-modern {
+  opacity: 0.78;
+}
+body .friends-content .friends-section-offline + .friends-list-modern .friend-card-modern:hover {
+  opacity: 1;
+}
+
+/* Faixa "Agora": quem está jogando */
+body .friends-content .friends-now {
+  margin-bottom: 22px;
+}
+body .friends-content .friends-now-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 2px 2px 8px;
+  scrollbar-width: thin;
+}
+body .friends-content .friends-now-chip {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 260px;
+  padding: 8px 14px 8px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-secondary) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 32%, var(--border-color));
+}
+body .friends-content .friends-now-chip:hover {
+  border-color: color-mix(in srgb, var(--accent-color) 60%, transparent);
+  background: color-mix(in srgb, var(--accent-color) 8%, var(--bg-secondary));
+}
+body .friends-content .friends-now-avatar {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  background: var(--bg-tertiary);
+}
+body .friends-content .friends-now-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+body .friends-content .friends-now-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+body .friends-content .friends-now-name {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body .friends-content .friends-now-game {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  min-width: 0;
+}
+body .friends-content .friends-now-game > span:last-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Compositor: foco discreto (linha de 1px + brilho suave) ──
+   O campo não desenha mais o anel grosso; quem sinaliza é a caixa do compositor, e só quando o foco veio
+   do teclado ou do clique no campo. Continua visível para quem navega com Tab. */
+body.echo-layout-glass .composer:focus-within,
+body.echo-layout-glass.theme-aurora .composer:focus-within,
+body.echo-layout-glass.theme-aurora-dark .composer:focus-within,
+body.echo-layout-glass.light-theme .composer:focus-within {
+  transform: none;
+  border-color: color-mix(in srgb, var(--accent-color) 70%, var(--border-color)) !important;
+  box-shadow:
+    0 1px 0 0 color-mix(in srgb, var(--accent-color) 55%, transparent),
+    0 6px 22px -10px color-mix(in srgb, var(--accent-color) 38%, transparent) !important;
+}
+
+/* ── Cabeçalho da DM: "Chamar" em destaque e o resto no menu ⋯ ── */
+body .dm-full-header .dm-header-call-primary {
+  padding: 7px 16px;
+  border-radius: 999px;
+  color: #fff;
+  background: color-mix(in srgb, var(--accent-color) 72%, #000);
+  border-color: transparent;
+}
+body .dm-full-header .dm-header-call-primary:hover {
+  color: #fff;
+  background: color-mix(in srgb, var(--accent-color) 82%, #000);
+  border-color: transparent;
+}
+body .dm-full-header .dm-header-more-btn {
+  padding: 7px 12px;
+  font-size: 16px;
+  line-height: 1;
+  border-radius: 999px;
+}
+.dm-header-more {
+  position: relative;
+}
+.dm-header-more-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  min-width: 190px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.45);
+}
+.dm-header-more-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.dm-header-more-item:hover {
+  background: var(--bg-hover, color-mix(in srgb, var(--text-primary) 8%, transparent));
+}
+.dm-header-more-item.danger {
+  color: var(--danger-text, #ef4444);
+}
+.dm-header-more-x {
+  width: 14px;
+  text-align: center;
+  font-size: 12px;
+}
+
+/* ── Início da conversa: cartão de apresentação ── */
+body .dm-welcome-hero {
+  align-items: center;
+  text-align: center;
+  max-width: 440px;
+  margin: 8px auto 20px;
+  padding: 28px 24px 22px;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
+}
+body .dm-welcome-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 2px 0 10px;
+}
+body .dm-welcome-tag {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+body .dm-welcome-tag.is-friend {
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+}
+body .dm-welcome-tag.is-playing {
+  color: var(--ok-text, #16a34a);
+  background: color-mix(in srgb, #22c55e 14%, transparent);
+}
+
+/* A coluna da direita nunca encolhe abaixo do conteúdo (antes a busca invadia as abas em janelas médias) */
+body .friends-content .friends-header-toolbar {
+  grid-template-columns: minmax(0, 1fr) auto minmax(max-content, 1fr);
+}
+
+/* Campo de mensagem da DM: o próprio campo é a pílula, então ele recebe o foco discreto */
+body .dm-full-compose input#dm-message-input:focus-visible,
+body .dm-full-compose input#dm-message-input:focus {
+  outline: none !important;
+  border-color: color-mix(in srgb, var(--accent-color) 70%, var(--border-color)) !important;
+  box-shadow:
+    0 1px 0 0 color-mix(in srgb, var(--accent-color) 55%, transparent),
+    0 6px 22px -10px color-mix(in srgb, var(--accent-color) 38%, transparent) !important;
+}
+
+/* Avatar com decoração no cabeçalho da DM: afasta o nome das asas */
+body .dm-header-avatar-wrap:has(.echo-avatar-decoration-wrap) {
+  margin-right: 12px;
+}
+
+/* ==========================================================================
+   Compositor dos canais do servidor: mesmo desenho do compositor das DMs
+   (ícones soltos à esquerda, campo em pílula, botão de enviar redondo).
+   O foco é sinalizado pela própria pílula, que acompanha o formato do campo.
+   ========================================================================== */
+body.echo-layout-glass:is(.theme-aurora, .theme-aurora-dark, .light-theme) .composer.composer:is(:focus-within, :not(:focus-within)) {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transform: none !important;
+  gap: 8px;
+  padding: 10px 18px 16px;
+}
+body.echo-layout-glass .composer.composer::before,
+body.echo-layout-glass .composer.composer::after {
+  display: none !important;
+}
+body.echo-layout-glass .composer.composer .composer-action-btn {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  color: var(--text-muted);
+}
+body.echo-layout-glass .composer.composer .composer-action-btn:hover,
+body.echo-layout-glass .composer.composer .composer-action-btn.active {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent) !important;
+  color: var(--text-primary);
+}
+body.echo-layout-glass .composer.composer > input:not([type='file']) {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 18px;
+  border-radius: 22px;
+  background: rgba(var(--aurora-glass-rgb, 24, 22, 27), 0.81) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 28px rgba(0, 0, 0, 0.26);
+}
+body.light-theme.echo-layout-glass .composer.composer > input:not([type='file']) {
+  background: rgba(255, 255, 255, 0.82) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 10px 28px rgba(42, 31, 45, 0.1);
+}
+body.echo-layout-glass .composer.composer > input:not([type='file']):focus {
+  border-color: color-mix(in srgb, var(--accent-color) 70%, var(--border-color)) !important;
+  box-shadow:
+    0 1px 0 0 color-mix(in srgb, var(--accent-color) 55%, transparent),
+    0 6px 22px -10px color-mix(in srgb, var(--accent-color) 38%, transparent) !important;
+}
+body.echo-layout-glass .composer.composer .send-btn {
+  border-radius: 50%;
+  background: linear-gradient(180deg, #e9826f, var(--accent-color)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 6px 16px rgba(223, 109, 93, 0.4);
+}

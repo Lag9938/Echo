@@ -6,6 +6,8 @@ import { readMotionPreference, type MotionPreference } from '../lib/motionPrefer
 import { buildPresencePayload } from '../lib/presencePayload'
 import { storeNameFont } from '../lib/nameFonts'
 import { useNameFontStore } from '../stores/useNameFontStore'
+import { useLiteModeStore, selectLiteActive } from '../stores/useLiteModeStore'
+import { useThemeModeStore, systemThemeId } from '../stores/useThemeModeStore'
 
 export interface UseEchoCosmeticsOptions {
   user: User
@@ -64,6 +66,17 @@ export function useEchoCosmetics({
   // O botão "Efeito de Vidro Fosco" saiu de Aparência; quem o tinha desligado ("classic", salvo no aparelho) volta
   // ao visual atual em vez de ficar preso num modo antigo que não acompanha o Aurora.
   const [sidebarLayout, setSidebarLayout] = useState<'glass' | 'classic'>('glass')
+
+  // Tema Automático: acompanha o claro/escuro do sistema e troca sozinho quando ele muda
+  const themeAuto = useThemeModeStore((s) => s.auto)
+  useEffect(() => {
+    if (!themeAuto) return
+    setTheme(systemThemeId())
+    const media = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-color-scheme: dark)') : null
+    const onChange = () => setTheme(systemThemeId())
+    media?.addEventListener?.('change', onChange)
+    return () => media?.removeEventListener?.('change', onChange)
+  }, [themeAuto])
 
   // Apply Theme class
   useEffect(() => {
@@ -158,15 +171,18 @@ export function useEchoCosmetics({
     try { localStorage.setItem('echo-motion', motionPreference) } catch { /* sem armazenamento: só não lembra */ }
   }, [motionPreference])
 
+  // Modo Leve (lib/liteMode.ts): automático com jogo aberto, ou ligado à mão. Usa as mesmas regras do Modo Alto
+  // Desempenho (fundo opaco, canvas a 15 quadros) e acrescenta a classe `echo-lite` (movimento reduzido: styles/lite-mode.css)
+  const liteActive = useLiteModeStore(selectLiteActive)
+  useEffect(() => {
+    document.body.classList.toggle('echo-lite', liteActive)
+  }, [liteActive])
+
   // Performance Mode
   useEffect(() => {
-    if (performanceMode) {
-      document.body.classList.add('theme-performance-opaque')
-    } else {
-      document.body.classList.remove('theme-performance-opaque')
-    }
+    document.body.classList.toggle('theme-performance-opaque', performanceMode || liteActive)
     localStorage.setItem('echo-performance-mode', performanceMode ? 'true' : 'false')
-  }, [performanceMode])
+  }, [performanceMode, liteActive])
 
   // Sidebar Layout (Glass vs Classic)
   useEffect(() => {
@@ -283,11 +299,14 @@ export function useEchoCosmetics({
       setPendingTheme(themeId)
       setShowSubscriptionModal(true)
     } else {
+      // Escolher um tema na mão desliga o Automático
+      useThemeModeStore.getState().setAuto(false)
       setTheme(themeId)
     }
   }
 
   function toggleTheme() {
+    useThemeModeStore.getState().setAuto(false)
     setTheme(prev => prev === 'light' ? 'aurora-dark' : 'light')
   }
 

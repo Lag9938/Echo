@@ -1,6 +1,9 @@
 import React from 'react'
 import { THEMES } from '../../lib/themes'
 import { MOTION_OPTIONS, type MotionPreference } from '../../lib/motionPreference'
+import { LITE_OPTIONS, liteReason } from '../../lib/liteMode'
+import { useLiteModeStore } from '../../stores/useLiteModeStore'
+import { useThemeModeStore } from '../../stores/useThemeModeStore'
 
 export interface AppearanceTabProps {
   theme: string
@@ -123,6 +126,12 @@ export function AppearanceTab({
 }: AppearanceTabProps) {
   const activeTheme = THEMES.find((t) => t.id === theme) || THEMES[0]
   const activeAccent = customAccentColor || activeTheme.accentColor
+  const themeAuto = useThemeModeStore((s) => s.auto)
+  const setThemeAuto = useThemeModeStore((s) => s.setAuto)
+  const litePreference = useLiteModeStore((s) => s.preference)
+  const gameRunning = useLiteModeStore((s) => s.gameRunning)
+  const setLitePreference = useLiteModeStore((s) => s.setPreference)
+  const activeLiteReason = liteReason(litePreference, gameRunning)
 
   const accentPresets = [
     { name: 'Coral Echo Aurora', hex: '#df6d5d' },
@@ -358,8 +367,42 @@ export function AppearanceTab({
             Selecione um estilo de tema:
           </div>
           <div className="echo-themes-dock">
+            {/* Automático: segue o claro/escuro do sistema (stores/useThemeModeStore.ts) */}
+            <button
+              type="button"
+              role="radio"
+              aria-checked={themeAuto}
+              onClick={() => setThemeAuto(true)}
+              className={`echo-theme-btn ${themeAuto ? 'selected' : ''}`}
+              style={{ '--theme-accent': activeTheme.accentColor } as React.CSSProperties}
+            >
+              <div
+                className="echo-theme-swatch-box"
+                style={{ background: `linear-gradient(135deg, ${THEMES[1]?.bgPrimary ?? '#f6eef0'} 50%, ${THEMES[0].bgPrimary} 50%)` }}
+              >
+                <span className="echo-theme-accent-pip" style={{ background: activeTheme.accentColor }} />
+              </div>
+              <div className="echo-theme-btn-info">
+                <span className="echo-theme-btn-name">Automático</span>
+                <span
+                  className="echo-theme-btn-tag"
+                  style={{
+                    background: `${activeTheme.accentColor}18`,
+                    color: activeTheme.accentColor,
+                    border: `1px solid ${activeTheme.accentColor}30`,
+                  }}
+                >
+                  Segue o sistema
+                </span>
+              </div>
+              {themeAuto && (
+                <span className="echo-theme-btn-check" style={{ background: activeTheme.accentColor }}>
+                  <CheckIcon size={11} />
+                </span>
+              )}
+            </button>
             {THEMES.map((t) => {
-              const isSelected = theme === t.id
+              const isSelected = !themeAuto && theme === t.id
               return (
                 <button
                   key={t.id}
@@ -615,6 +658,41 @@ export function AppearanceTab({
             </span>
           </div>
         </div>
+      </div>
+
+      {/* ── 3a. Modo Leve: o Echo gasta o mínimo; liga sozinho quando um jogo abre ── */}
+      <div className="echo-motion-card" style={{ marginTop: '36px' }}>
+        <div className="echo-motion-card-text">
+          <h3 id="echo-lite-title">Modo Leve</h3>
+          <p id="echo-lite-desc">
+            Para o Echo pesar o mínimo no computador: animações, vídeos e GIFs ficam parados, e os desfoques de vidro
+            viram fundo opaco. Em Automático, liga sozinho enquanto você joga e desliga quando o jogo fecha.
+          </p>
+        </div>
+        <div className="echo-motion-options" role="radiogroup" aria-labelledby="echo-lite-title" aria-describedby="echo-lite-desc">
+          {LITE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              role="radio"
+              aria-checked={litePreference === opt.value}
+              className={`echo-motion-option ${litePreference === opt.value ? 'is-selected' : ''}`}
+              onClick={() => setLitePreference(opt.value)}
+            >
+              <strong>{opt.label}</strong>
+              <span>{opt.hint}</span>
+            </button>
+          ))}
+        </div>
+        <p className="echo-lite-status" role="status" style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+          {activeLiteReason === 'game'
+            ? 'Ativo agora: um jogo está aberto.'
+            : activeLiteReason === 'manual'
+              ? 'Ativo agora: ligado por você.'
+              : litePreference === 'auto'
+                ? 'Desativado agora. Liga sozinho quando um jogo abrir.'
+                : 'Desativado.'}
+        </p>
       </div>
 
       {/* ── 3. Modo de Desempenho Visual (FPS Booster) ── */}

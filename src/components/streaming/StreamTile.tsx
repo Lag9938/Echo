@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { VoiceParticipant } from '../../lib/useVoiceChannel'
 import { AudioLevelMeter } from '../voice/AudioLevelMeter'
+import { StillAvatarImage } from '../voice/StillAvatarImage'
 import { useScreenShareStatsStore } from '../../stores/useScreenShareStatsStore'
 import { STREAM_SMOOTHING_PRESETS, useStreamSettingsStore } from '../../stores/useStreamSettingsStore'
 import { describeLimitation, describeTransport, formatBitrate, isBelowTarget, pickInboundStats } from '../../lib/screenShareStats'
@@ -18,6 +19,26 @@ import {
   VolumeIcon
 } from '../icons'
 
+/**
+ * Quão escuro o degradê da faixa de cinema precisa ser, a partir do brilho médio (0 a 1) da parte de baixo do
+ * vídeo: imagem escura pede pouco (fica "invisível"), imagem clara (área de trabalho, jogo claro) pede bastante
+ * para o texto branco continuar legível. Em passos de 0,05 para não redesenhar à toa.
+ */
+export function cinemaScrimFor(luminance: number): number {
+  const lum = Math.min(1, Math.max(0, Number.isFinite(luminance) ? luminance : 0))
+  return Math.round((0.45 + lum * 0.45) * 20) / 20
+}
+
+/** Proporção do vídeo a partir de "960x540" (16:9 enquanto ainda não mediu) */
+export function streamAspectRatio(resolution: string | undefined): string {
+  const m = /^(\d+)\s*[x×]\s*(\d+)$/.exec(resolution ?? '')
+  const w = m ? Number(m[1]) : 0
+  const h = m ? Number(m[2]) : 0
+  if (!w || !h) return '1.7778'
+  // Limita a formatos razoáveis (uma medição estranha não deve virar uma tira fina)
+  return String(Math.min(3, Math.max(1, w / h)).toFixed(4))
+}
+
 export function StreamTile({
   participant,
   user,
@@ -33,7 +54,9 @@ export function StreamTile({
   localScreenFps = 30,
   screenAudioSyncDelayMs,
   onChangeScreenAudioSyncDelay,
-  isDeafened = false
+  isDeafened = false,
+  cinema = false,
+  footerExtra
 }: {
   participant: VoiceParticipant;
   user: User;
@@ -50,6 +73,13 @@ export function StreamTile({
   screenAudioSyncDelayMs?: number;
   onChangeScreenAudioSyncDelay?: (ms: number) => void;
   isDeafened?: boolean;
+  /**
+   * Layout "faixa de cinema" (transmissão em foco): a barra vira uma faixa com degradê escuro no rodapé do vídeo,
+   * texto branco legível em qualquer jogo, e some com o mouse parado (volta ao mexer o mouse em cima do vídeo).
+   */
+  cinema?: boolean;
+  /** Só com `cinema`: o que entra no meio da barra (os rostos de quem está na sala) */
+  footerExtra?: ReactNode;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [streamResolution, setStreamResolution] = useState<string>('')
@@ -89,12 +119,15 @@ export function StreamTile({
   const originStats = originEntry && inboundStats && Date.now() - originEntry.receivedAt < ORIGIN_STATS_MAX_AGE_MS ? originEntry : null
   const originCause = originStats ? describeOrigin(originStats, targetFps) : ''
 
+  // Mouse em cima da barra (ajustando o volume, abrindo a lista de pessoas): ela não some
+  const pointerOnBarRef = useRef(false)
+
   const handleMouseMove = () => {
     setIsControlsVisible(true)
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current)
     }
-    if (!showStatsHud) {
+    if (!showStatsHud && !pointerOnBarRef.current) {
       hideTimeoutRef.current = setTimeout(() => {
         setIsControlsVisible(false)
       }, 2500)
@@ -110,7 +143,41 @@ export function StreamTile({
     }
   }
 
+  // Contraste automático da faixa de cinema: enquanto ela está visível, mede a cada 1,5 s o brilho da parte de
+  // baixo do vídeo numa tela minúscula (32×6) e escurece o degradê só quando a imagem é clara. Parada (sem custo)
+  // quando a faixa está escondida.
+  const [barScrim, setBarScrim] = useState(0.55)
   useEffect(() => {
+    if (!cinema || !isControlsVisible) return
+    const canvas = document.createElement('canvas')
+    canvas.width = 32
+    canvas.height = 6
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    if (!ctx) return
+    const measure = () => {
+      const video = videoRef.current
+      if (!video || !video.videoWidth || !video.videoHeight) return
+      try {
+        const h = video.videoHeight
+        ctx.drawImage(video, 0, h * 0.78, video.videoWidth, h * 0.22, 0, 0, canvas.width, canvas.height)
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+        let sum = 0
+        for (let i = 0; i < data.length; i += 4) sum += 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]
+        setBarScrim(cinemaScrimFor(sum / (data.length / 4) / 255))
+      } catch {
+        // quadro ainda não disponível
+      }
+    }
+    measure()
+    const timer = setInterval(measure, 1500)
+    return () => clearInterval(timer)
+  }, [cinema, isControlsVisible])
+
+  useEffect(() => {
+    // Ao abrir a transmissão a barra aparece e, sem mexer o mouse, some sozinha depois de alguns segundos
+    hideTimeoutRef.current = setTimeout(() => {
+      if (!pointerOnBarRef.current) setIsControlsVisible(false)
+    }, 3500)
     return () => {
       if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current)
     }
@@ -275,7 +342,10 @@ export function StreamTile({
 
   return (
     <div 
-      className={`screen-share-view ${isFullScreen ? 'fullscreen-active' : ''} ${isGrid ? 'grid-stream-view' : ''} ${!isControlsVisible ? 'stream-idle-hide' : ''}`}
+      className={`screen-share-view ${isFullScreen ? 'fullscreen-active' : ''} ${isGrid ? 'grid-stream-view' : ''} ${cinema ? 'is-cinema' : ''} ${!isControlsVisible ? 'stream-idle-hide' : ''}`}
+      // Na faixa de cinema a moldura tem o formato do vídeo (sem faixas pretas em volta): a barra fica sempre
+      // em cima da imagem, nunca sobre um fundo preto vazio
+      style={cinema ? ({ '--stream-ar': streamAspectRatio(streamResolution), '--bar-scrim': barScrim } as CSSProperties) : undefined}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
@@ -299,13 +369,29 @@ export function StreamTile({
           </button>
         </div>
       ) : (
-        <video 
+        <video
           ref={videoRef}
-          autoPlay 
-          playsInline 
+          autoPlay
+          playsInline
           muted={isLocalSharer || isDeafened}
           className="screen-share-video-el"
+          // Na grade, clicar no vídeo abre só esta transmissão (como clicar numa miniatura)
+          onClick={isGrid && onSelectFocus ? onSelectFocus : undefined}
+          style={isGrid && onSelectFocus ? { cursor: 'pointer' } : undefined}
         />
+      )}
+
+      {/* Na grade: botão no centro, ao passar o mouse, para assistir só esta tela */}
+      {isGrid && onSelectFocus && (
+        <button
+          type="button"
+          className="stream-grid-focus-cta"
+          onClick={onSelectFocus}
+          title={`Assistir só a tela de ${participant.displayName}`}
+        >
+          <FocusIcon style={{ width: '16px', height: '16px' }} />
+          <span>Assistir só esta</span>
+        </button>
       )}
 
 
@@ -441,7 +527,16 @@ export function StreamTile({
       )}
       
       {/* Unified Floating Glass Cinema Bar (Echo Style) */}
-      <div className={`stream-unified-glass-bar ${showStatsHud ? 'always-visible' : ''}`}>
+      <div
+        className={`stream-unified-glass-bar ${showStatsHud ? 'always-visible' : ''}`}
+        onMouseEnter={() => {
+          pointerOnBarRef.current = true
+          if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current)
+        }}
+        onMouseLeave={() => {
+          pointerOnBarRef.current = false
+        }}
+      >
         {/* Telemetria e Info da Transmissão */}
         <div className="stream-glass-telemetry">
           <div className="stream-live-pill">
@@ -451,10 +546,11 @@ export function StreamTile({
 
           <div className="stream-streamer-unit">
             {participant.avatarUrl ? (
-              <img
+              <StillAvatarImage
                 src={participant.avatarUrl}
                 alt={participant.displayName}
                 className="stream-avatar-circle"
+                maxSize={64}
               />
             ) : (
               <div className="stream-avatar-circle">
@@ -476,6 +572,8 @@ export function StreamTile({
             <AudioLevelMeter stream={participant.screenStream || null} />
           </div>
         </div>
+
+        {cinema && footerExtra && <div className="stream-bar-middle">{footerExtra}</div>}
 
         {/* Ações e Controles da Transmissão (Squircles Uniformes) */}
         <div className="stream-glass-actions">

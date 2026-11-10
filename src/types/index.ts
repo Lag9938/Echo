@@ -141,6 +141,9 @@ export interface Toast {
   timestamp?: number;
   onClick?: () => void;
   onQuickReply?: (replyText: string) => void | Promise<void>;
+  /** Botão de ação do aviso (ex.: "Desfazer" ao excluir uma mensagem) */
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
 export interface FriendshipRequest {

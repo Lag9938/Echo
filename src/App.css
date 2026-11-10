@@ -92,6 +92,7 @@
 
 /* 8. Acessibilidade: foco visível, movimento reduzido e contraste (por último, vale sobre tudo) */
 @import './styles/accessibility.css';
+@import './styles/lite-mode.css';
 
 /* 9. Responsividade para Android, iOS e telas menores */
 @import './styles/mobile.css';

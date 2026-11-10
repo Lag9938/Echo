@@ -84,6 +84,7 @@ import { useThreadsStore } from './stores/useThreadsStore'
 import { startBackgroundAnimationSaver } from './lib/backgroundAnimations'
 import { startBackgroundImageFreezer } from './lib/backgroundImages'
 import { startAnimationGovernor } from './lib/animationGovernor'
+import { installStillImages } from './lib/stillImages'
 import { useEchoAudioPreferences, useEchoAudioSettingsActions } from './hooks/useEchoAudioPreferences'
 
 import type { Space, Channel, Message, DirectMessage, FriendshipRequest, SavedMessageItem, Page, Toast, RolePermissions, ServerRole, ServerAuditLog, ServerEmoji, PinnedMessage, GroupChat, GroupMessage } from './types'
@@ -535,6 +536,8 @@ function Echo({ user }: { user: User }) {
   useEffect(() => startBackgroundAnimationSaver(), [])
   useEffect(() => startBackgroundImageFreezer(), [])
   useEffect(() => startAnimationGovernor(), [])
+  // Avatares em GIF ficam parados até o mouse passar em cima (lib/stillImages.ts)
+  useEffect(() => installStillImages(), [])
 
   // Atualização automática (baixando / pronta), vinda do Electron
   const { updateStatus, updateVersion, updateProgress } = useEchoAutoUpdate()

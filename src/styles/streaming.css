@@ -2171,3 +2171,450 @@ body.light-theme.echo-layout-glass .picker-close-btn {
   background: var(--accent-color, #38bdf8);
   border-color: var(--accent-color, #38bdf8);
 }
+
+/* ── Faixa de cinema (transmissão em foco) ──────────────────────────────────────────────────────────────
+   Inspirada nos players de streaming (HBO e afins): a moldura tem o formato do vídeo (sem faixas pretas em
+   volta), e a barra fica por cima da imagem, sem caixa: um degradê leve na borda de baixo, texto e ícones
+   brancos com uma sombra discreta, nada de botões com fundo. Some com o mouse parado e volta ao mexer o mouse
+   em cima do vídeo (StreamTile). Branco sobre o vídeo vale nos dois temas, então os seletores com !important
+   vencem as regras de vidro do Aurora claro e escuro. A barra repete .is-cinema para passar da regra do
+   aurora-calm.css (body.echo-layout-glass.theme-aurora.theme-aurora …), que pinta as barras de cor sólida. */
+
+/* A área da transmissão centraliza a moldura e informa o tamanho disponível (unidades cqw/cqh) */
+.stream-single-focus-wrap:has(> .screen-share-view.is-cinema:not(.fullscreen-active)) {
+  container-type: size;
+  align-items: center;
+  justify-content: center;
+}
+.stream-single-focus-wrap > .screen-share-view.is-cinema:not(.fullscreen-active) {
+  flex: none;
+  width: min(100cqw, calc(100cqh * var(--stream-ar, 1.7778)));
+  height: min(100cqh, calc(100cqw / var(--stream-ar, 1.7778)));
+}
+.screen-share-view.is-cinema {
+  background: #000 !important;
+}
+.screen-share-view.is-cinema.stream-idle-hide {
+  cursor: none;
+}
+.screen-share-view.is-cinema.is-cinema.is-cinema .stream-unified-glass-bar {
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  gap: 18px;
+  padding: 64px 22px 14px;
+  color: #fff;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  /* --bar-scrim vem do StreamTile: o brilho medido da parte de baixo do vídeo (0,45 em cena escura, até 0,9 em
+     imagem clara, como uma área de trabalho), para o texto branco ser legível sem escurecer à toa */
+  background-image: linear-gradient(
+    to top,
+    rgba(0, 0, 0, var(--bar-scrim, 0.55)),
+    rgba(0, 0, 0, calc(var(--bar-scrim, 0.55) * 0.45)) 55%,
+    transparent
+  ) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 10px rgba(0, 0, 0, 0.45);
+  /* Visível por padrão (não só no hover): quem esconde é o "mouse parado" logo abaixo */
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.screen-share-view.is-cinema.stream-idle-hide .stream-unified-glass-bar {
+  opacity: 0 !important;
+  transform: translateY(8px) !important;
+  pointer-events: none !important;
+}
+
+/* AO VIVO: ponto vermelho parado e texto branco, sem a caixinha */
+.screen-share-view.is-cinema .stream-live-pill {
+  padding: 0;
+  gap: 7px;
+  background: transparent;
+  border: 0;
+  color: #fff;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.screen-share-view.is-cinema .stream-live-pulse-dot {
+  width: 8px;
+  height: 8px;
+  background: #ff3b3b;
+  box-shadow: none;
+  animation: none;
+}
+
+/* Quem transmite e a qualidade */
+.screen-share-view.is-cinema .stream-streamer-unit,
+.screen-share-view.is-cinema .stream-author-name {
+  color: #fff !important;
+  font-weight: 700;
+  font-size: 14px;
+}
+.screen-share-view.is-cinema .stream-glass-telemetry {
+  gap: 14px;
+}
+.screen-share-view.is-cinema .stream-glass-telemetry > .stream-streamer-unit {
+  min-width: 0;
+  overflow: hidden;
+}
+.screen-share-view.is-cinema .stream-author-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.screen-share-view.is-cinema .stream-avatar-circle {
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+.screen-share-view.is-cinema .stream-quality-pill {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.72) !important;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+/* Botões: só o ícone, branco e maior; ao passar o mouse ele cresce e acende (sem fundo, sem borda) */
+.screen-share-view.is-cinema .stream-glass-actions {
+  gap: 6px;
+}
+.screen-share-view.is-cinema .stream-squircle-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: transparent !important;
+  border-color: transparent !important;
+  color: rgba(255, 255, 255, 0.86) !important;
+  box-shadow: none !important;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.screen-share-view.is-cinema .stream-squircle-btn svg {
+  width: 21px !important;
+  height: 21px !important;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 6px rgba(0, 0, 0, 0.4));
+}
+.screen-share-view.is-cinema .stream-squircle-btn:hover,
+.screen-share-view.is-cinema .stream-squircle-btn:focus-visible {
+  background: transparent !important;
+  color: #fff !important;
+  transform: scale(1.14);
+}
+.screen-share-view.is-cinema .stream-squircle-btn.active {
+  background: transparent !important;
+  color: #fff !important;
+}
+/* "Ligado" (estatísticas, mini player): um tracinho embaixo do ícone, como nos players */
+.screen-share-view.is-cinema .stream-squircle-btn.active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 14px;
+  height: 2px;
+  margin-left: -7px;
+  border-radius: 2px;
+  background: #fff;
+}
+.screen-share-view.is-cinema .stream-squircle-btn.exit-btn:hover {
+  color: #ff5a5a !important;
+}
+.screen-share-view.is-cinema .stream-glass-sep {
+  display: none;
+}
+
+/* Volume: ícone branco e uma linha fina branca, sem cápsula */
+.screen-share-view.is-cinema .stream-glass-volume-capsule {
+  height: 40px;
+  padding: 0 4px;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.screen-share-view.is-cinema .stream-volume-icon {
+  width: 21px !important;
+  height: 21px !important;
+  color: rgba(255, 255, 255, 0.86) !important;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 6px rgba(0, 0, 0, 0.4));
+}
+.screen-share-view.is-cinema .stream-glass-volume-capsule input[type="range"] {
+  width: 84px;
+  accent-color: #fff;
+}
+.screen-share-view.is-cinema .stream-volume-pct {
+  min-width: 34px;
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 12px;
+}
+
+/* Medidor de áudio: só a barrinha (sem o texto "Nível de Áudio"), curta e numa linha */
+.screen-share-view.is-cinema .stream-audio-meter {
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+.screen-share-view.is-cinema .stream-audio-meter > div {
+  max-width: 56px !important;
+}
+.screen-share-view.is-cinema .stream-audio-meter > div > span:first-child {
+  display: none;
+}
+.screen-share-view.is-cinema .stream-audio-meter * {
+  white-space: nowrap;
+}
+
+/* ── Rostos de quem está na sala (StreamBarPeople) ─────────────────────────────────────────────────────
+   No máximo 4 rostos sobrepostos e um "+N" que abre a lista completa; o "+N" ganha o anel verde quando
+   alguém escondido está falando. Os rostos nunca encolhem: quem cede espaço é o nome de quem transmite. */
+.stream-bar-middle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+.stream-bar-people {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.stream-bar-face {
+  position: relative;
+  display: inline-flex;
+  padding: 0;
+  margin-left: -6px;
+  border: 0;
+  background: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.stream-bar-people > .stream-bar-face:first-child { margin-left: 0; }
+.stream-bar-face .stream-strip-avatar {
+  width: 30px;
+  height: 30px;
+  border: 2px solid rgba(0, 0, 0, 0.55);
+  background: #2b2931;
+  color: #fff;
+}
+.stream-bar-face.speaking .stream-strip-avatar {
+  box-shadow: 0 0 0 2px #22c55e;
+}
+.stream-bar-people > .stream-bar-face:hover { z-index: 1; }
+.stream-bar-people > .stream-bar-face:hover .stream-strip-avatar {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+.stream-bar-letter {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #7a64e0, #2d245c);
+}
+.stream-bar-more {
+  height: 30px;
+  min-width: 30px;
+  margin-left: -6px;
+  padding: 0 8px;
+  border: 2px solid rgba(0, 0, 0, 0.55);
+  border-radius: 999px;
+  background: rgba(30, 29, 35, 0.9);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.stream-bar-more:hover,
+.stream-bar-more.open { background: #3a3741; }
+.stream-bar-more.speaking { box-shadow: 0 0 0 2px #22c55e; }
+
+/* Lista completa (abre para cima, por cima do vídeo) */
+.stream-bar-people-list {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 230px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 8px;
+  border-radius: 14px;
+  background: #1b1a20;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+  text-shadow: none;
+}
+.stream-bar-people-list-title {
+  padding: 4px 8px 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #a69fae;
+}
+.stream-bar-people-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: #f4eff7;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.stream-bar-people-row:hover { background: rgba(255, 255, 255, 0.08); }
+.stream-bar-people-row .stream-bar-face { margin-left: 0; }
+.stream-bar-people-row.speaking .stream-strip-avatar { box-shadow: 0 0 0 2px #22c55e; }
+.stream-bar-people-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.stream-bar-middle .stream-dock-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+/* Faixa estreita (chat aberto ao lado): o FPS sai antes do nome; depois, os rostos (continuam na lista de canais) */
+@container stream-bar (max-width: 900px) {
+  .is-cinema .stream-quality-pill { display: none; }
+}
+@container stream-bar (max-width: 640px) {
+  .stream-bar-people { display: none; }
+}
+
+/* ── Grade de transmissões ───────────────────────────────────────────────────────────────────────────────
+   Cada tela usa a mesma faixa de cinema (compacta) e tem o formato do próprio vídeo; a grade fica centralizada
+   na área, sem um vazio enorme embaixo. Ao passar o mouse numa tela aparece "Assistir só esta" no centro (e
+   clicar no vídeo faz o mesmo). */
+.streams-multi-grid {
+  align-content: center;
+  gap: 14px;
+  padding: 4px;
+}
+.streams-multi-grid > .screen-share-view.is-cinema:not(.fullscreen-active) {
+  flex: none;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  aspect-ratio: var(--stream-ar, 1.7778);
+  border-radius: 18px;
+  outline: 2px solid transparent;
+  outline-offset: 3px;
+  transition: outline-color 0.15s ease;
+}
+.streams-multi-grid > .screen-share-view.is-cinema:not(.fullscreen-active):hover {
+  outline-color: color-mix(in srgb, var(--accent-color) 55%, transparent);
+}
+.screen-share-view.grid-stream-view.is-cinema.is-cinema.is-cinema .stream-unified-glass-bar {
+  gap: 8px;
+  padding: 44px 12px 8px;
+}
+.screen-share-view.grid-stream-view.is-cinema .stream-squircle-btn {
+  width: 34px;
+  height: 34px;
+}
+.screen-share-view.grid-stream-view.is-cinema .stream-squircle-btn svg,
+.screen-share-view.grid-stream-view.is-cinema .stream-volume-icon {
+  width: 18px !important;
+  height: 18px !important;
+}
+.screen-share-view.grid-stream-view.is-cinema .stream-glass-volume-capsule input[type="range"] {
+  width: 56px;
+}
+
+.stream-grid-focus-cta {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 15;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(15, 14, 18, 0.82);
+  color: #fff;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.96);
+  transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.screen-share-view.grid-stream-view:hover:not(.stream-idle-hide) .stream-grid-focus-cta,
+.stream-grid-focus-cta:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+.stream-grid-focus-cta:hover {
+  background: #fff;
+  color: #111;
+}
+.stream-grid-focus-cta:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 3px;
+}
+
+/* Cápsula de baixo (grade e câmera expandida): os mesmos rostos da faixa, nas cores do tema */
+.stream-dock-people {
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+}
+.stream-dock-people .stream-bar-face .stream-strip-avatar,
+.stream-dock-people .stream-bar-more {
+  border-color: var(--bg-secondary);
+}
+.stream-dock-people .stream-bar-more {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+.stream-dock-people .stream-bar-more:hover,
+.stream-dock-people .stream-bar-more.open {
+  background: color-mix(in srgb, var(--text-primary) 14%, var(--bg-tertiary));
+}
+.stream-dock-people .stream-bar-people-list {
+  left: 0;
+  right: auto;
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+.stream-dock-people .stream-bar-people-row {
+  color: var(--text-primary);
+}
+.stream-dock-people .stream-bar-people-row:hover {
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+}
+.stream-dock-people .stream-bar-people-list-title {
+  color: var(--text-muted);
+}
+/* A cápsula rola na horizontal e cortaria a lista do "+N" (que abre para cima): com os rostos novos ela não
+   precisa rolar, porque são no máximo 4 + "+N" */
+.stream-participants-strip:has(.stream-dock-people) {
+  overflow: visible;
+}

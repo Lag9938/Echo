@@ -470,3 +470,120 @@ form.invite-link-box input {
 .invite-backdrop * {
   -webkit-app-region: no-drag;
 }
+
+/* ── Convites (chamada e espaço): estilo aconchegante ────────────────────────────────────────────────────
+   Amigos primeiro, cada um com um botão suave (Chamar / Convidar → Enviado ✓; quem já está aparece como
+   "Na chamada" / "No espaço"); o link fica num cartão compacto embaixo. Só nas janelas com .invite-cozy
+   ("Adicionar amigo" usa as mesmas classes e continua como está). */
+.invite-modal.invite-cozy {
+  gap: 12px;
+  width: min(460px, 100%);
+  padding: 18px 14px 14px;
+  border-radius: 22px;
+}
+.invite-cozy .invite-header { padding: 0 4px; gap: 12px; }
+.invite-cozy .invite-space-icon {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 13px;
+  box-shadow: none;
+  font-size: 15px;
+}
+.invite-cozy .invite-room-icon.voice { background: rgba(34, 197, 94, 0.16); font-size: 18px; }
+.invite-cozy .invite-room-icon.text { background: color-mix(in srgb, var(--accent-color) 16%, transparent); color: var(--accent-text); font-size: 20px; }
+.invite-cozy .invite-title h3 { font-size: 16.5px; }
+.invite-cozy .invite-title p { font-size: 12.5px; }
+.invite-cozy .invite-close { width: 32px; height: 32px; border-radius: 10px; background: transparent; }
+.invite-cozy .invite-close:hover { transform: none; }
+.invite-cozy .invite-search {
+  margin: 0 4px;
+  padding: 9px 12px;
+  border-radius: 12px;
+}
+.invite-cozy .invite-label { padding: 2px 6px 0; }
+.invite-cozy .invite-friends-section { gap: 4px; }
+.invite-cozy .invite-friends-list { gap: 2px; max-height: 248px; }
+.invite-cozy .invite-friend {
+  padding: 7px 8px;
+  border-radius: 12px;
+  background: transparent;
+  border: 0;
+}
+.invite-cozy .invite-friend:hover {
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+.invite-cozy .invite-avatar { width: 36px; height: 36px; }
+
+/* Botão de cada pessoa */
+.invite-act {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent-color) 16%, transparent);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+button.invite-act:hover:not(:disabled) {
+  background: var(--accent-fill, var(--accent-color));
+  color: #fff;
+}
+button.invite-act:disabled { opacity: 0.55; cursor: default; }
+button.invite-act:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+.invite-act.sent {
+  background: transparent;
+  color: var(--ok-text, #15803d);
+  cursor: default;
+}
+body.theme-aurora-dark .invite-act.sent { color: #4ade80; }
+.invite-act.in {
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 700;
+  cursor: default;
+}
+
+/* Cartão do link */
+.invite-share {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 2px 2px 0;
+  padding: 12px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 18%, transparent);
+}
+.invite-share-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.invite-share-top b { font-size: 12.5px; color: var(--text-primary); }
+.invite-share-top span { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+.invite-cozy .invite-link-box {
+  padding: 4px 4px 4px 12px;
+  border-radius: 11px;
+  background: var(--bg-secondary);
+}
+.invite-cozy .invite-link-box input { color: var(--text-secondary); }
+.invite-cozy .invite-primary-btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+}
+.invite-cozy .invite-secondary-row { gap: 6px; }
+.invite-cozy .invite-secondary-btn {
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+}

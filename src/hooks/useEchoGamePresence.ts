@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { buildPresencePayload } from '../lib/presencePayload'
+import { useLiteModeStore } from '../stores/useLiteModeStore'
 
 export interface GamePresenceData {
   name: string
   icon: string
   startedAt: number
+  /** Ícone oficial do jogo (PNG 32×32 tirado do .exe); chega um pouco depois do nome, ou nunca (anti-cheat) */
+  iconUrl?: string | null
 }
 
 export interface UseEchoGamePresenceOptions {
@@ -46,14 +49,17 @@ export function useEchoGamePresence({
     // senão cada chamada regravava o localStorage e disparava 'echo-presence-refresh' (um track por vez).
     let lastGameKey: string | null = null
     const handleGame = (game: any) => {
-      const gameKey = game ? `${game.name}|${game.startedAt}` : ''
+      // O ícone chega numa segunda mensagem: entra na chave para essa atualização não ser ignorada
+      const gameKey = game ? `${game.name}|${game.startedAt}|${game.iconUrl ? 'icone' : ''}` : ''
       if (gameKey === lastGameKey) return
       lastGameKey = gameKey
+      // Modo Leve automático: liga com o jogo aberto e desliga quando ele fecha (lib/liteMode.ts)
+      useLiteModeStore.getState().setGameRunning(Boolean(game))
 
       setMyGamePresence(prev => {
         const prevName = prev?.name || null
         const newName = game?.name || null
-        if (prevName === newName && prev?.startedAt === game?.startedAt) {
+        if (prevName === newName && prev?.startedAt === game?.startedAt && (prev?.iconUrl ?? null) === (game?.iconUrl ?? null)) {
           return prev
         }
         return game || null

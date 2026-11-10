@@ -6,6 +6,9 @@ import { MESSAGE_DELETED_EVENT, THREAD_MESSAGE_EVENT, isMissingThreadColumn, thr
 import { emitNotice } from '../lib/realtimeNotices'
 import { uploadAttachment } from '../lib/attachmentUpload'
 import { useChatDraftStore } from '../stores/useChatDraftStore'
+import { insertByCreatedAt } from '../lib/undoableDelete'
+import { useUndoableDelete } from './useUndoableDelete'
+import type { ToastExtraOptions } from './useEchoToasts'
 import {
   generateTempMessageId,
   createAntiSpamState,
@@ -39,7 +42,7 @@ export interface UseEchoChannelMessagesOptions {
   spaceChannels?: Record<string, Channel[]>
   sfxVolume: number
   canUserDo: (spaceId: string, userId: string, perm: keyof RolePermissions) => boolean
-  showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend') => void
+  showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend', onClickOrData?: (() => void) | any, extraOptions?: ToastExtraOptions) => void
   setError: (err: string) => void
   playDmNotificationSound: (volume: number) => void
   triggerDesktopNotification?: (title: string, body: string, data?: any) => void
@@ -97,6 +100,8 @@ export function useEchoChannelMessages({
   const hasMoreCacheRef = useRef<Record<string, boolean>>({})
   const prefetchedAtRef = useRef<Record<string, number>>({})
   const lastTypingSentRef = useRef<number>(0)
+  /** Excluir com "Desfazer" por 6 s (hooks/useUndoableDelete.ts) */
+  const scheduleDelete = useUndoableDelete(showToast)
 
   const activeChannelIdRef = useRef<string | null>(selectedChannel?.id || null)
   activeChannelIdRef.current = selectedChannel?.id || null
@@ -547,27 +552,26 @@ export function useEchoChannelMessages({
       return
     }
 
-    try {
-      const { error: delErr } = await supabase.from('messages').delete().eq('id', messageId)
-      if (delErr) {
-        console.error('Error deleting message:', delErr)
-        showToast('Erro ao Excluir', delErr.message, 'info')
-        return
-      }
-
-      setMessages(prev => {
-        const next = prev.filter(m => m.id !== messageId)
-        messagesCacheRef.current[selectedChannel.id] = next
-        return next
-      })
-
-      showToast('Mensagem Excluída', 'A mensagem foi removida do canal.', 'info')
-    } catch (err: any) {
-      console.error('Failed to delete message:', err)
-      showToast('Erro', 'Não foi possível excluir a mensagem.', 'info')
+    // Some da tela já, mas só é apagada no banco depois de 6 s (lib/undoableDelete.ts): dá tempo do "Desfazer"
+    const channelId = selectedChannel.id
+    const hide = () => {
+      if (activeChannelIdRef.current === channelId) setMessages(prev => prev.filter(m => m.id !== messageId))
+      const cached = messagesCacheRef.current[channelId]
+      if (cached) messagesCacheRef.current[channelId] = cached.filter(m => m.id !== messageId)
     }
+    const restore = () => {
+      if (activeChannelIdRef.current === channelId) setMessages(prev => insertByCreatedAt(prev, msgToDelete))
+      const cached = messagesCacheRef.current[channelId]
+      if (cached) messagesCacheRef.current[channelId] = insertByCreatedAt(cached, msgToDelete)
+    }
+    scheduleDelete({
+      id: messageId,
+      message: 'A mensagem foi removida do canal.',
+      hide,
+      restore,
+      remove: async () => (await supabase.from('messages').delete().eq('id', messageId)).error
+    })
   }
-
   async function send(event: FormEvent, explicitDraft?: string) {
     event.preventDefault()
     if (!supabase || !selectedChannel) return

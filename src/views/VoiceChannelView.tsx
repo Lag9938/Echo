@@ -10,9 +10,11 @@ import { MessageComposer } from '../components/chat/MessageComposer'
 import { useChatDraftStore } from '../stores/useChatDraftStore'
 import { StreamTile } from '../components/streaming/StreamTile'
 import { StillAvatarImage } from '../components/voice/StillAvatarImage'
+import { StreamBarPeople, type StreamBarPerson } from '../components/streaming/StreamBarPeople'
 import {
   BrainIcon,
   GridIcon,
+  FocusIcon,
   HeadphonesIcon,
   HeadphonesOffIcon,
   MessageSquareIcon,
@@ -708,6 +710,128 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                               // Câmeras ligadas (para a fileira abaixo da transmissão) e a que está expandida, se houver
                               const streamCameras = callMembersList.filter(p => p.isCameraOn && p.cameraStream && !isMusicBotIdentity(p.userId))
                               const expandedCamera = streamCameras.find(p => p.userId === expandedCameraUserId) ?? null
+                              // Uma transmissão em foco (sem grade, sem câmera expandida): tudo na faixa de cinema do vídeo
+                              const dockedFocus = !expandedCamera && !(screenShareViewMode === 'grid' && activeScreenSharers.length > 1) && !!activeScreenSharer
+
+
+                              // Com mais de uma transmissão: chave "Uma tela | Grade" (as duas opções sempre à vista)
+                              const isGridView = screenShareViewMode === 'grid'
+                              const gridToggle = activeScreenSharers.length > 1 && (
+                                <>
+                                  <button
+                                    type="button"
+                                    className={!isGridView ? 'on' : ''}
+                                    aria-pressed={!isGridView}
+                                    onClick={() => setScreenShareViewMode('focus')}
+                                    title="Ver uma transmissão por vez"
+                                  >
+                                    <FocusIcon style={{ width: '15px', height: '15px' }} />
+                                    <span>Uma tela</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={isGridView ? 'on' : ''}
+                                    aria-pressed={isGridView}
+                                    onClick={() => setScreenShareViewMode('grid')}
+                                    title="Ver todas as transmissões lado a lado"
+                                  >
+                                    <GridIcon style={{ width: '15px', height: '15px' }} />
+                                    <span>Grade</span>
+                                  </button>
+                                </>
+                              )
+                              const stopShareBtn = localScreenStream && (
+                                <button
+                                  type="button"
+                                  className="stream-dock-btn stop-btn"
+                                  onClick={handleStopScreenShare}
+                                  title="Parar de transmitir minha tela"
+                                >
+                                  <StopSquareIcon style={{ width: '13px', height: '13px' }} />
+                                  <span>Parar</span>
+                                </button>
+                              )
+
+                              // Ações do dock (grade e câmera expandida): Grade, Mini Player e Parar
+                              const dockActions = (
+                                <div className="stream-dock-actions">
+                                  <div className="stream-dock-seg" role="group" aria-label="Modo de exibição">
+                                    {gridToggle}
+                                    <button
+                                      type="button"
+                                      className={isPiPActive ? 'on' : ''}
+                                      aria-pressed={isPiPActive}
+                                      onClick={() => setIsPiPActive(!isPiPActive)}
+                                      title={isPiPActive ? "Fechar Mini Player Flutuante" : "Ativar Mini Player Flutuante (Always-on-Top)"}
+                                    >
+                                      <PipIcon style={{ width: '15px', height: '15px' }} />
+                                      <span>Mini Player</span>
+                                    </button>
+                                  </div>
+                                  {stopShareBtn}
+                                </div>
+                              )
+
+                              // Rostos da barra da transmissão: quem transmite primeiro, depois você, depois o resto na ordem
+                              // da sala (estável: ninguém troca de lugar ao falar). Com muita gente, vira "+N" com a lista.
+                              const barPeople: StreamBarPerson[] = [...callMembersList]
+                                .sort((a, b) => {
+                                  const rank = (p: VoiceParticipant) => (p.userId === activeScreenSharer?.userId ? 0 : p.userId === user.id ? 1 : 2)
+                                  return rank(a) - rank(b)
+                                })
+                                .map(p => {
+                                  const isMusicBot = isMusicBotIdentity(p.userId)
+                                  const isSharer = !isMusicBot && Boolean(p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0))
+                                  const isCurrentStreamer = activeScreenSharer?.userId === p.userId
+                                  const botAvatarUrl = isMusicBot ? resolveMusicBotAvatarUrl(myBotAvatar) : null
+                                  const name = `${isMusicBot ? 'Echo Music Bot' : p.displayName}${p.userId === user.id ? ' (Você)' : ''}`
+                                  return {
+                                    id: p.userId,
+                                    name,
+                                    isSpeaking: p.isSpeaking,
+                                    title: isMusicBot ? 'Echo Music Bot (abrir painel)' : isSharer && !isCurrentStreamer ? `Assistir à transmissão de ${p.displayName}` : p.userId !== user.id ? `${name} · ajustar volume` : name,
+                                    onClick: () => {
+                                      if (isMusicBot) setShowMusicBotModal(true)
+                                      else if (isSharer && !isCurrentStreamer) {
+                                        setSelectedScreenSharerUserId(p.userId)
+                                        setIsWatchingStreams(true)
+                                        setScreenShareViewMode('focus')
+                                      } else if (p.userId !== user.id) setVolumeControlUser(p)
+                                    },
+                                    face: (
+                                      <span className="stream-strip-avatar">
+                                        {isMusicBot ? (
+                                          myBotAvatar === 'letter-e'
+                                            ? <span className="stream-bar-letter" style={{ background: 'linear-gradient(135deg, #06b6d4, #f97316)' }}>E</span>
+                                            : <img src={botAvatarUrl!} alt="" />
+                                        ) : p.avatarUrl ? (
+                                          <StillAvatarImage src={p.avatarUrl} maxSize={64} />
+                                        ) : (
+                                          <span className="stream-bar-letter">{(p.displayName || 'M').slice(0, 1).toUpperCase()}</span>
+                                        )}
+                                        {p.isMuted ? (
+                                          <span className="stream-strip-badge" title="Mutado"><MicOffIcon /></span>
+                                        ) : isSharer ? (
+                                          <span className="stream-strip-badge live" title="Transmitindo a tela"><ScreenIcon /></span>
+                                        ) : null}
+                                      </span>
+                                    )
+                                  }
+                                })
+
+                              // Meio da barra da transmissão: os rostos e, se for o caso, Grade e Parar.
+                              // O Mini Player já está entre os botões da própria barra.
+                              const focusBarMiddle = (
+                                <>
+                                  <StreamBarPeople people={barPeople} />
+                                  {(gridToggle || stopShareBtn) && (
+                                    <div className="stream-dock-actions">
+                                      {gridToggle && <div className="stream-dock-seg" role="group" aria-label="Modo de exibição">{gridToggle}</div>}
+                                      {stopShareBtn}
+                                    </div>
+                                  )}
+                                </>
+                              )
 
                               return (
                                 <>
@@ -741,6 +865,7 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                         peerScreenVolumes={peerScreenVolumes}
                                         setPeerScreenVolumes={setPeerScreenVolumes}
                                         isGrid={true}
+                                        cinema
                                         isPiPActive={isPiPActive}
                                         onToggleFloatingPiP={() => setIsPiPActive(!isPiPActive)}
                                         onSelectFocus={() => {
@@ -774,6 +899,8 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                       screenAudioSyncDelayMs={screenAudioSyncDelayMs}
                                       onChangeScreenAudioSyncDelay={changeScreenAudioSyncDelay}
                                       isDeafened={isDeafened}
+                                      cinema
+                                      footerExtra={focusBarMiddle}
                                     />
                                   </div>
                                 ) : null}
@@ -820,108 +947,23 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                   )
                                 })()}
 
-                                {/* Dock flutuante centralizado de participantes & controles na transmissão */}
+                                {/* Dock de participantes e ações: na transmissão em foco ele vive na barra do próprio vídeo
+                                    (faixa de cinema); aqui só aparece na grade de várias telas ou com uma câmera expandida */}
+                                {!dockedFocus && (
                                 <div className="stream-participants-strip-wrap">
                                   <div className={`stream-participants-strip ${sidebarLayout === 'classic' ? 'classic-strip' : 'glass-dock'}`}>
-                                    {/* Membros na chamada */}
-                                    {callMembersList.map(p => {
-                                      const isMusicBot = isMusicBotIdentity(p.userId)
-                                      const isSharer = !isMusicBot && Boolean(p.isScreenSharing || (p.screenStream && p.screenStream.getVideoTracks().length > 0))
-                                      const isCurrentStreamer = activeScreenSharer?.userId === p.userId
-                                      const botAvatarUrl = isMusicBot ? resolveMusicBotAvatarUrl(myBotAvatar) : null
-                                      return (
-                                        <div
-                                          key={p.userId}
-                                          className={`stream-strip-card ${p.isSpeaking ? 'speaking' : ''} ${isSharer ? 'is-sharer' : ''} ${isCurrentStreamer ? 'active-streamer' : ''} ${isMusicBot ? 'music-bot-strip' : ''}`}
-                                          data-user-id={p.userId}
-                                          onClick={() => {
-                                            if (isMusicBot) {
-                                              setShowMusicBotModal(true)
-                                            } else if (isSharer && !isCurrentStreamer) {
-                                              setSelectedScreenSharerUserId(p.userId)
-                                              setIsWatchingStreams(true)
-                                              setScreenShareViewMode('focus')
-                                            } else if (p.userId !== user.id) {
-                                              setVolumeControlUser(p)
-                                            }
-                                          }}
-                                          title={isMusicBot ? 'Echo Music Bot (Clique para abrir painel)' : (isSharer ? (isCurrentStreamer ? `Transmissão de ${p.displayName} na tela` : `Clique para assistir à transmissão de ${p.displayName}`) : (p.userId !== user.id ? `Ajustar volume de áudio` : p.displayName))}
-                                        >
-                                          <div className="stream-strip-avatar">
-                                            {isMusicBot ? (
-                                              myBotAvatar === 'letter-e' ? (
-                                                <span style={{ fontWeight: 900, background: 'linear-gradient(135deg, #06b6d4, #f97316)', color: '#fff', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>E</span>
-                                              ) : (
-                                                <img src={botAvatarUrl!} alt="Echo Music Bot" />
-                                              )
-                                            ) : p.avatarUrl ? (
-                                              <StillAvatarImage src={p.avatarUrl} alt={p.displayName} maxSize={128} />
-                                            ) : (
-                                              <span>{(p.displayName || 'M').slice(0, 1).toUpperCase()}</span>
-                                            )}
-                                            {p.isMuted ? (
-                                              <span className="stream-strip-badge" title="Mutado">
-                                                <MicOffIcon />
-                                              </span>
-                                            ) : isSharer ? (
-                                              <span className="stream-strip-badge live" title={isCurrentStreamer ? 'Ao vivo (na tela)' : 'Transmitindo a tela'}>
-                                                <ScreenIcon />
-                                              </span>
-                                            ) : isMusicBot ? (
-                                              <span className="stream-strip-badge live" style={{ background: '#00f2fe', color: '#071320' }} title="Bot de Música">
-                                                <MusicIcon style={{ width: '10px', height: '10px' }} />
-                                              </span>
-                                            ) : null}
-                                          </div>
-                                          <span className="stream-strip-name">{isMusicBot ? 'Echo Music Bot' : p.displayName}{p.userId === user.id ? ' (Você)' : ''}</span>
-                                        </div>
-                                      )
-                                    })}
+                                    {/* Membros na chamada: os mesmos rostos da barra da transmissão (até 4 + "+N") */}
+                                    <div className="stream-dock-people">
+                                      <StreamBarPeople people={barPeople} />
+                                    </div>
 
                                     {/* Divisor elegante */}
                                     <div className="stream-dock-divider" />
 
-                                    {/* Ações Rápidas: Modo Grade/Foco, Mini Player & Ocultar Vídeo */}
-                                    <div className="stream-dock-actions">
-                                      <div className="stream-dock-seg" role="group" aria-label="Modo de exibição">
-                                        {activeScreenSharers.length > 1 && (
-                                          <button
-                                            type="button"
-                                            className={screenShareViewMode === 'grid' ? 'on' : ''}
-                                            aria-pressed={screenShareViewMode === 'grid'}
-                                            onClick={() => setScreenShareViewMode(screenShareViewMode === 'grid' ? 'focus' : 'grid')}
-                                            title={screenShareViewMode === 'grid' ? "Modo Foco (Uma tela)" : "Modo Grade (Ver todas as telas)"}
-                                          >
-                                            <GridIcon style={{ width: '15px', height: '15px' }} />
-                                            <span>Grade</span>
-                                          </button>
-                                        )}
-                                        <button
-                                          type="button"
-                                          className={isPiPActive ? 'on' : ''}
-                                          aria-pressed={isPiPActive}
-                                          onClick={() => setIsPiPActive(!isPiPActive)}
-                                          title={isPiPActive ? "Fechar Mini Player Flutuante" : "Ativar Mini Player Flutuante (Always-on-Top)"}
-                                        >
-                                          <PipIcon style={{ width: '15px', height: '15px' }} />
-                                          <span>Mini Player</span>
-                                        </button>
-                                      </div>
-
-                                      {localScreenStream && (
-                                        <button
-                                          type="button"
-                                          className="stream-dock-btn stop-btn"
-                                          onClick={handleStopScreenShare}
-                                          title="Parar de transmitir minha tela"
-                                        >
-                                          <StopSquareIcon style={{ width: '13px', height: '13px' }} />
-                                          <span>Parar</span>
-                                        </button>
-                                      )}
-                                    </div>
+                                    {dockActions}
                                   </div>
                                 </div>
+                                )}
                               </div>
                             ) : (
                               <div className={`participants-grid ${callMembersList.some(m => m.isCameraOn && m.cameraStream) ? 'has-cameras' : ''}`}>
@@ -1023,6 +1065,18 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                       {!hasCam && (p.avatarUrl
                                         ? <StillAvatarImage src={p.avatarUrl} className="participant-card-backdrop" maxSize={48} blurPx={4} fallback="none" />
                                         : <span className="participant-card-backdrop" aria-hidden="true" />)}
+                                      {/* Estado claro de relance: selo vermelho no canto (ensurdecido vale mais que mutado). Com
+                                          câmera ligada, o selo da própria câmera já mostra. */}
+                                      {!hasCam && (p.isDeafened || p.isMuted) && (
+                                        <span
+                                          className={`participant-state-badge ${p.isDeafened ? 'is-deafened' : 'is-muted'}`}
+                                          role="img"
+                                          aria-label={p.isDeafened ? `${p.displayName} está sem áudio (ensurdecido)` : `${p.displayName} está com o microfone desligado`}
+                                          title={p.isDeafened ? 'Sem áudio (ensurdecido)' : 'Microfone desligado'}
+                                        >
+                                          {p.isDeafened ? <HeadphonesOffIcon style={{ width: 14, height: 14 }} /> : <MicOffIcon style={{ width: 14, height: 14 }} />}
+                                        </span>
+                                      )}
                                       {isSharer && (
                                         <div className="participant-live-badge">
                                           <span className="live-dot-pulse" /> AO VIVO
@@ -1077,8 +1131,8 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                             }}
                                             title={`Assistir transmissão de ${p.displayName}`}
                                           >
-                                            <PlayIcon style={{ width: "11px", height: "11px" }} />
-                                            <span>Assistir Transmissão</span>
+                                            <PlayIcon style={{ width: "12px", height: "12px" }} />
+                                            <span>Assistir</span>
                                           </button>
                                         )}
                                       </div>

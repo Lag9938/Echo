@@ -18,11 +18,44 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.62.9',
+    title: 'Echo v0.62.9 - Mais Calmo, Mais Leve e Mais Cuidadoso',
+    date: '10 de Novembro de 2026',
+    tagline: 'Modo Leve automático quando você abre um jogo, convites mais diretos, desfazer ao apagar mensagem e ícones oficiais dos jogos.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🪶',
+        badge: 'DESEMPENHO',
+        title: 'Modo Leve Automático em Jogos',
+        description: 'Quando você abre um jogo, o Echo pausa fotos animadas, efeitos pesados e desfoques sozinho para guardar cada quadro para a partida.'
+      },
+      {
+        icon: '💌',
+        badge: 'MELHORIA',
+        title: 'Convites e Novidades Mais Simples',
+        description: 'A janela de novidades virou um bilhete leve, e os convites de chamada e espaço trazem seus amigos primeiro com o link compacto logo abaixo.'
+      },
+      {
+        icon: '↩️',
+        badge: 'NOVO',
+        title: 'Desfazer ao Apagar Mensagem',
+        description: 'Apagou uma mensagem sem querer? Agora você tem 6 segundos para clicar em Desfazer antes que ela suma de vez.'
+      },
+      {
+        icon: '🎮',
+        badge: 'MELHORIA',
+        title: 'Ícones Oficiais dos Jogos e Barra de Transmissão',
+        description: 'O status de jogo mostra o ícone real do executável, a lista de membros ficou mais limpa e a transmissão agrupa quem está na sala sem espremer a tela.'
+      }
+    ]
+  },
+  {
     version: '0.62.8',
     title: 'Echo v0.62.8 - Quem Fala, Sem Pesar',
     date: '10 de Novembro de 2026',
     tagline: 'O aviso de quem está falando ficou simples e quase não gasta processador.',
-    isLatest: true,
+    isLatest: false,
     highlights: [
       {
         icon: '🟢',

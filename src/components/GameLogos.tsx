@@ -3,9 +3,24 @@ import lolIconUrl from '../assets/game-icons/lol.png'
 
 interface GameLogoProps {
   gameName?: string | null
+  /**
+   * Ícone oficial do jogo (PNG tirado do .exe no PC de quem joga, vindo pela presença). Quando existe, é ele que
+   * aparece; sem ele, vale o desenho pelo nome. O Valorant fica sempre com o desenho próprio, que já é bom.
+   */
+  iconUrl?: string | null
   size?: number
   className?: string
   style?: React.CSSProperties
+}
+
+/** Ícone vindo da presença que pode ser mostrado: só PNG embutido e pequeno (veja lib/presencePayload) */
+function usableIcon(raw: unknown): string | null {
+  return typeof raw === 'string' && raw.startsWith('data:image/png;base64,') && raw.length <= 8000 ? raw : null
+}
+
+/** O ícone oficial de um objeto de jogo da presença (current_game / game_presence), se houver */
+export function gameIconOf(game: unknown): string | null {
+  return game && typeof game === 'object' ? usableIcon((game as { iconUrl?: unknown }).iconUrl) : null
 }
 
 /**
@@ -278,8 +293,9 @@ function renderInlineVector(key: string, size: number) {
 /**
  * Returns crisp vector logos for popular games with zero network latency.
  */
-export function GameLogo({ gameName, size = 18, className = '', style }: GameLogoProps) {
+export function GameLogo({ gameName, iconUrl, size = 18, className = '', style }: GameLogoProps) {
   const key = getGameKey(gameName)
+  const official = key === 'valorant' ? null : usableIcon(iconUrl)
 
   return (
     <span
@@ -295,7 +311,17 @@ export function GameLogo({ gameName, size = 18, className = '', style }: GameLog
       }}
       title={gameName || 'Jogo'}
     >
-      {renderInlineVector(key, size)}
+      {official ? (
+        <img
+          src={official}
+          alt=""
+          width={size}
+          height={size}
+          className="game-logo-svg game-logo-official"
+          style={{ objectFit: 'contain', borderRadius: Math.max(2, Math.round(size / 5)) }}
+          draggable={false}
+        />
+      ) : renderInlineVector(key, size)}
     </span>
   )
 }

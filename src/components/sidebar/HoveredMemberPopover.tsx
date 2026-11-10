@@ -237,7 +237,7 @@ export function HoveredMemberPopover({
         {/* Activity: Game or Voice */}
         {hoveredMemberPopover.activeGame && (
           <div className="hover-popover-activity game">
-            <GameLogo gameName={hoveredMemberPopover.activeGame} size={16} style={{ flexShrink: 0 }} />
+            <GameLogo gameName={hoveredMemberPopover.activeGame} iconUrl={hoveredMemberPopover.activeGameIconUrl} size={16} style={{ flexShrink: 0 }} />
             <span>
               Jogando <strong>{hoveredMemberPopover.activeGame}</strong>
               {hoveredMemberPopover.activeGameStartedAt ? ` • ${formatGameDuration(hoveredMemberPopover.activeGameStartedAt)}` : ''}

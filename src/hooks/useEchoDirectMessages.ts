@@ -2,6 +2,9 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { DirectMessage, FriendshipRequest, Page } from '../types'
 import { trackMessageSent } from '../lib/analytics'
+import { insertByCreatedAt } from '../lib/undoableDelete'
+import { useUndoableDelete } from './useUndoableDelete'
+import type { ToastExtraOptions } from './useEchoToasts'
 import {
   createAntiSpamState,
   validateMessageAntiSpam,
@@ -16,7 +19,7 @@ export interface UseEchoDirectMessagesOptions {
   spaceMembers: any[]
   socialChannelRef: React.MutableRefObject<any>
   sfxVolume: number
-  showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend', onClickOrData?: any) => void
+  showToast: (title: string, message: string, type?: 'info' | 'message' | 'friend', onClickOrData?: any, extraOptions?: ToastExtraOptions) => void
   triggerDesktopNotification: (title: string, body: string, data?: any) => void
   setError: (err: string) => void
   setPage: (page: Page) => void
@@ -197,6 +200,7 @@ export function useEchoDirectMessages({
     }
   }, [supabase, selectedDMUserId, user, setError, socialChannelRef, profileDisplayName, displayName, loadDirectMessages, blockedUserIds, showToast])
 
+  const scheduleDelete = useUndoableDelete(showToast)
   const handleDeleteDM = useCallback(async (messageId: string) => {
     if (!supabase || !user) return
     const msg = directMessages.find(m => m.id === messageId)
@@ -206,22 +210,15 @@ export function useEchoDirectMessages({
       return
     }
 
-    try {
-      const { error: delErr } = await supabase.from('direct_messages').delete().eq('id', messageId)
-      if (delErr) {
-        console.error('Error deleting direct message:', delErr)
-        showToast('Erro ao Excluir', delErr.message, 'info')
-        return
-      }
-
-      setDirectMessages(prev => prev.filter(m => m.id !== messageId))
-
-      showToast('Mensagem Excluída', 'Mensagem privada removida.', 'info')
-    } catch (err: any) {
-      console.error('Failed to delete direct message:', err)
-      showToast('Erro', 'Não foi possível excluir a mensagem.', 'info')
-    }
-  }, [supabase, user, directMessages, showToast, socialChannelRef, selectedDMUserId])
+    // Some da tela já e só é apagada no banco depois de 6 s, com "Desfazer" (hooks/useUndoableDelete.ts)
+    scheduleDelete({
+      id: messageId,
+      message: 'Mensagem privada removida.',
+      hide: () => setDirectMessages(prev => prev.filter(m => m.id !== messageId)),
+      restore: () => setDirectMessages(prev => insertByCreatedAt(prev, msg)),
+      remove: async () => (await supabase.from('direct_messages').delete().eq('id', messageId)).error
+    })
+  }, [supabase, user, directMessages, showToast, scheduleDelete])
 
   const handleOpenDirectChat = useCallback((targetId: string, targetProfile?: { id: string; display_name: string; avatar_url?: string }) => {
     if (blockedUserIds?.has(targetId)) {

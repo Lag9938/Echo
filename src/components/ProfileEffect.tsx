@@ -30,14 +30,6 @@ export const PROFILE_EFFECTS: ProfileEffectMetadata[] = [
     themeColor: '#a855f7'
   },
   {
-    id: 'plasma_overdrive',
-    name: 'Núcleo de Plasma',
-    category: 'Fogo & Energia',
-    description: 'Labaredas volumétricas de plasma termonuclear com convecção ascendente e faíscas incandescentes.',
-    badge: 'LENDÁRIO',
-    themeColor: '#ff6b00'
-  },
-  {
     id: 'cyber_matrix',
     name: 'Sobrecarga de Dados',
     category: 'Sci-Fi',
@@ -107,9 +99,13 @@ interface ProfileEffectProps {
   className?: string
 }
 
+/** Efeitos tirados do app: quem ainda está com um deles equipado fica sem efeito (nada é desenhado) */
+export const REMOVED_PROFILE_EFFECTS = new Set(['plasma_overdrive'])
+
 export function ProfileEffect({ effectId, style, className = '' }: ProfileEffectProps) {
   if (!effectId || effectId === 'none') return null
   const normalizedId = (EFFECT_ALIASES[effectId] || effectId) as CanvasProfileEffectId
+  if (REMOVED_PROFILE_EFFECTS.has(normalizedId)) return null
   // Efeito em vídeo (.mp4 com mix-blend-mode: screen): o <video> vai direto no cartão
   const videoEffect = getProfileVideoEffect(normalizedId) || getProfileVideoEffect(effectId)
   if (videoEffect) return <ProfileVideoEffect effect={videoEffect} className={className} style={style} />

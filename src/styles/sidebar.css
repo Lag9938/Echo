@@ -4220,3 +4220,450 @@ body.light-theme .channels-sidebar.echo-layout-glass .channel-group-text .channe
     linear-gradient(180deg, rgba(2, 132, 199, 0.13) 0%, rgba(2, 132, 199, 0.05) 100%) !important;
   border-color: rgba(2, 132, 199, 0.38) !important;
 }
+
+/* ── Lista de membros, visual calmo (direção A) ──────────────────────────────────────────────────────────
+   O nome é o destaque; o resto fica discreto. O cargo não se repete dentro do próprio grupo (fora dele vira um
+   escudinho na cor do cargo), a atividade é uma linha de texto sem caixa, e o offline fica apagado, mais
+   compacto e recolhido depois de alguns nomes. Os efeitos de nome (.name-effect-*) não são tocados aqui.
+   Os seletores com body e !important vencem as regras de vidro (echo-layout-glass) e do Aurora escuro. */
+
+/* Cabeçalho de grupo: texto pequeno e neutro, contagem junto ("Moderador — 3"), sem pílulas coloridas */
+.members-group-header.calm {
+  padding: 10px 6px 4px;
+  color: var(--text-muted);
+}
+body .members-group-header.calm:hover {
+  background: transparent !important;
+  color: var(--text-secondary);
+}
+.members-group-header.calm .members-group-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.members-group-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Cartão: sem deslizar nem sombra no hover, só um fundo leve */
+body .members-sidebar .member-card.calm {
+  transition: background 0.12s ease !important;
+}
+body .members-sidebar .member-card.calm:hover {
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+body .members-sidebar .member-card.calm:active {
+  transform: none !important;
+}
+
+/* Cargo fora do próprio grupo: escudinho (ou coroa do dono) logo depois do nome */
+.member-role-mark {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.member-role-mark.creator {
+  color: #d99a1e;
+}
+
+/* Atividade: "Jogando Roblox · 14 min", em texto, com o logo pequeno do jogo */
+.member-activity {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+  margin-top: 1px;
+  font-size: 11.5px;
+  line-height: 1.25;
+  color: var(--text-muted);
+}
+.member-activity-logo {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+}
+.member-activity-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.member-activity-text strong {
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.member-activity-voice {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--ok-text, #22c55e);
+}
+body.theme-aurora-dark .member-activity-voice { color: #4ade80; }
+
+/* Offline: foto desbotada, nome mais fraco e linha mais baixa (o hover devolve a cor) */
+body .members-sidebar .member-card.calm.is-offline {
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+.member-card.calm.is-offline .member-avatar-container,
+.member-card.calm.is-offline .member-avatar {
+  width: 30px;
+  height: 30px;
+}
+.member-card.calm.is-offline .member-avatar {
+  font-size: 12px;
+  box-shadow: none;
+}
+.member-card.calm.is-offline .member-avatar-container {
+  opacity: 0.45;
+  filter: saturate(0.35);
+  transition: opacity 0.12s ease, filter 0.12s ease;
+}
+.member-card.calm.is-offline:hover .member-avatar-container {
+  opacity: 0.85;
+  filter: none;
+}
+/* Nome mais fraco só para quem NÃO tem efeito de nome: efeitos (brilho, animação) ficam exatamente como são */
+.member-card.calm.is-offline .member-name-row:not(:has(.member-name[class*="name-effect-"])) {
+  opacity: 0.6;
+}
+.member-card.calm.is-offline:hover .member-name-row {
+  opacity: 1;
+}
+.member-card.calm.is-offline .member-status-dot {
+  display: none;
+}
+
+/* "Mostrar mais N offline" */
+.members-show-more {
+  margin: 4px 6px 2px;
+  padding: 7px 10px;
+  border: 1px dashed color-mix(in srgb, var(--text-primary) 16%, transparent);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+.members-show-more:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+.members-show-more:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+/* ── Lateral de canais: salas aconchegantes (ideia A) ────────────────────────────────────────────────────
+   Topo compacto com "N membros · N online"; cada sala de voz com gente vira um "cômodo" suave (um leve tom
+   verde, sem a borda forte), com quem está lá, o selo AO VIVO de quem transmite e o mini player do bot; os
+   canais de texto viram linhas simples. O prefixo repete .cozy-rooms para vencer as camadas de tema (vidro,
+   Aurora claro/escuro e aurora-calm.css, que chegam a usar 8 classes com !important). */
+
+/* Topo do espaço: compacto, sem a faixa vazia */
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .server-header-card {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 10px 12px !important;
+  border-radius: 14px !important;
+}
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .server-header-card .server-header-card-content {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .server-header-card.has-banner::before {
+  display: none !important;
+}
+.server-header-sub {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Busca + recolher: o recolher vira só o ícone */
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .channels-collapse-btn {
+  width: 34px !important;
+  min-width: 34px !important;
+  padding: 0 !important;
+  justify-content: center !important;
+}
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .channels-collapse-btn span {
+  display: none !important;
+}
+
+/* Categorias: texto pequeno e neutro */
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .channel-category-header {
+  color: var(--text-muted) !important;
+}
+
+/* Sala vazia: uma linha simples */
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .voice-channel-node:not(.has-users) .channel-item.voice-item {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+
+/* Sala com gente: o "cômodo" */
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .voice-channel-node.has-users {
+  margin: 2px 0 4px;
+  padding: 4px !important;
+  border: 1px solid rgba(34, 197, 94, 0.3) !important;
+  border-radius: 14px !important;
+  background:
+    linear-gradient(180deg, rgba(34, 197, 94, 0.11), transparent 70%),
+    color-mix(in srgb, var(--text-primary) 4%, transparent) !important;
+  box-shadow: none !important;
+}
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .voice-channel-node.has-users .channel-item.voice-item {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .voice-channel-node.has-users .channel-item-name {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+}
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .voice-channel-node.has-users .ch-icon {
+  color: var(--ok-text, #22c55e) !important;
+}
+body.theme-aurora-dark .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .voice-channel-node.has-users .ch-icon {
+  color: #4ade80 !important;
+}
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .voice-channel-node.has-users .voice-channel-limit-badge {
+  color: var(--ok-text, #22c55e) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  font-weight: 800;
+}
+body.theme-aurora-dark .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .voice-channel-node.has-users .voice-channel-limit-badge {
+  color: #4ade80 !important;
+}
+
+/* Quem está na sala */
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .sidebar-voice-users {
+  padding: 0 2px 2px 6px;
+  gap: 1px;
+}
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .voice-channel-node.has-users .sidebar-voice-user {
+  padding: 4px 6px !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+}
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .voice-channel-node.has-users .sidebar-voice-user:hover {
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent) !important;
+}
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .voice-channel-node.has-users .sidebar-voice-avatar {
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .voice-channel-node.has-users .sidebar-voice-user.speaking .sidebar-voice-avatar {
+  box-shadow: 0 0 0 2px #22c55e !important;
+}
+
+/* Canais de texto: linhas simples; o aberto ganha um tom suave do destaque */
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .channel-group-text .channel-item,
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .category-channels-list > .channel-item {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .channel-item.channel-item:hover {
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent) !important;
+}
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .channel-item.channel-item.active.active,
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .channel-item.channel-item.active.active:hover {
+  background: color-mix(in srgb, var(--accent-color) 16%, transparent) !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  color: var(--text-primary) !important;
+  transform: none !important;
+}
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .channel-item.channel-item.active.active .channel-item-name {
+  color: var(--text-primary) !important;
+}
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .channel-item.active::before {
+  display: none;
+}
+/* Dentro do cômodo, a sala aberta não ganha o tom de destaque (o próprio cômodo já mostra onde você está) */
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .voice-channel-node.has-users .channel-item.channel-item.voice-item.active.active {
+  background: transparent !important;
+}
+
+/* ── Sala: quem transmite e o bot de música (estilo A) ───────────────────────────────────────────────────
+   Nada de selos ou caixas: quem transmite ganha "● ao vivo" embaixo do nome (e "Assistir" ao passar o mouse);
+   o bot é mais uma linha da sala, com o ícone de nota e a música em destaque. */
+.sidebar-voice-namestack {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.2;
+}
+.sidebar-voice-live {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #c42020;
+}
+body.theme-aurora-dark .sidebar-voice-live { color: #ff6b6b; }
+.sidebar-voice-live i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.sidebar-watch-link {
+  padding: 2px 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #c42020;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease;
+}
+body.theme-aurora-dark .sidebar-watch-link { color: #ff6b6b; }
+.sidebar-voice-user:hover .sidebar-watch-link,
+.sidebar-watch-link:focus-visible {
+  opacity: 1;
+}
+.sidebar-watch-link:hover {
+  background: color-mix(in srgb, #ef4444 16%, transparent);
+}
+.sidebar-watch-link:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+
+.music-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 6px;
+  border-radius: 9px;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+.music-row:hover {
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+}
+.music-row:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+.music-row-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  color: #6d4fd6;
+  background: color-mix(in srgb, #6d4fd6 16%, transparent);
+}
+body.theme-aurora-dark .music-row-icon {
+  color: #b9a5ff;
+  background: color-mix(in srgb, #a78bfa 22%, transparent);
+}
+.music-row-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.2;
+}
+.music-row-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.music-row-sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.music-row-controls {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.music-row:hover .music-row-controls,
+.music-row:focus-within .music-row-controls {
+  opacity: 1;
+}
+.music-row-btn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.music-row-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  color: var(--text-primary);
+}
+.music-row-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* Sem o ponto de "canal selecionado" no fim da linha: a seleção já aparece pelo tom suave do destaque */
+body .channels-sidebar.cozy-rooms.cozy-rooms.cozy-rooms.cozy-rooms .channel-item.active::after {
+  display: none !important;
+}
+/* Tempo de chamada na sala em que você está ("12:34"), discreto antes da contagem */
+.voice-room-elapsed {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.voice-room-elapsed + .voice-channel-limit-badge {
+  margin-left: 4px;
+}
+.profile-footer-call-time {
+  font-variant-numeric: tabular-nums;
+}

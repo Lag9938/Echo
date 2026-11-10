@@ -8,7 +8,7 @@ import { setupDeeplink, setupDeeplinkIpc, setPendingInviteUrl } from './services
 import { createTray, getTray, getHasShownTrayBalloon, setHasShownTrayBalloon } from './services/tray.js'
 import { setupOverlayIpc } from './services/overlay.js'
 import { setupShortcutsIpc } from './services/shortcuts.js'
-import { scanRunningGames, setupGameDetectionIpc, getActiveGame, getActiveGameStartTime, setGameScanInterval, getGameScanInterval, GAME_SCAN_INTERVAL_MS } from './ipc/gameDetection.js'
+import { scanRunningGames, setupGameDetectionIpc, getActiveGamePayload, setGameScanInterval, getGameScanInterval, GAME_SCAN_INTERVAL_MS } from './ipc/gameDetection.js'
 import { setupLivekitIpc, ensureLocalLivekitServer, getLivekitProcess } from './ipc/livekit.js'
 import { setupUpdatesIpc, checkForUpdatesFromTray } from './ipc/updates.js'
 import { setupAudioIpc, stopAudioCapture } from './ipc/audio.js'
@@ -213,13 +213,9 @@ export function createWindow() {
   })
 
   mainWindow.webContents.on('did-finish-load', () => {
-    const activeGame = getActiveGame()
+    const activeGame = getActiveGamePayload()
     if (activeGame) {
-      mainWindow.webContents.send('game-detected', {
-        name: activeGame.name,
-        icon: activeGame.icon,
-        startedAt: getActiveGameStartTime()
-      })
+      mainWindow.webContents.send('game-detected', activeGame)
     }
     setTimeout(() => scanRunningGames(getMainWindow, rootDir), 600)
   })

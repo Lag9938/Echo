@@ -1,8 +1,9 @@
 import { memo } from 'react'
 import { formatGameDuration } from '../../lib/formatters'
 import { AvatarDecoration } from '../../components/AvatarDecoration'
-import { GameLogo } from '../../components/GameLogos'
+import { GameLogo, gameIconOf } from '../../components/GameLogos'
 import {
+  VolumeIcon,
   UsersIcon,
   UserPlusIcon,
   MessageSquareIcon,
@@ -35,12 +36,74 @@ export interface FriendsListProps {
 
 type FriendItem = FriendsListProps['friendsList'][number]
 
+/** O que a pessoa está fazendo agora, já separado (antes era um texto só, que o cartão tentava cortar) */
+export type FriendActivity =
+  | { kind: 'game'; name: string; iconUrl: string | null; since: string }
+  | { kind: 'voice' }
+  | { kind: 'custom'; text: string }
+  | { kind: 'status'; status: 'online' | 'idle' | 'dnd' | 'offline'; text: string }
+
+const STATUS_TEXT: Record<string, string> = { online: 'Disponível', idle: 'Ausente', dnd: 'Não perturbe', offline: 'Offline' }
+
+/**
+ * Atividade mostrada no cartão do amigo, por prioridade: jogando > em chamada > status personalizado > estado
+ * (Disponível, Ausente, Não perturbe, Offline). Offline nunca mostra jogo nem chamada.
+ */
+export function friendActivity(pres: any, isOnline: boolean): FriendActivity {
+  if (!isOnline) return { kind: 'status', status: 'offline', text: STATUS_TEXT.offline }
+  const game = pres?.current_game || pres?.game_presence
+  if (game?.name) {
+    return {
+      kind: 'game',
+      name: String(game.name),
+      iconUrl: gameIconOf(game),
+      since: game.startedAt ? formatGameDuration(game.startedAt).replace('há ', '').replace(/(\d+)m$/, '$1 min') : ''
+    }
+  }
+  if (pres?.voice_channel_id) return { kind: 'voice' }
+  const custom = typeof pres?.custom_status === 'string' ? pres.custom_status.trim() : ''
+  if (custom) return { kind: 'custom', text: custom }
+  const status = pres?.presence_status === 'idle' || pres?.presence_status === 'dnd' ? pres.presence_status : 'online'
+  return { kind: 'status', status, text: STATUS_TEXT[status] }
+}
+
+/** Uma linha só, sem caixa: o nome continua sendo o destaque do cartão */
+function ActivityLine({ activity }: { activity: FriendActivity }) {
+  if (activity.kind === 'game') {
+    return (
+      <span className="friend-activity game" title={`Jogando ${activity.name}${activity.since ? ` · ${activity.since}` : ''}`}>
+        <GameLogo gameName={activity.name} iconUrl={activity.iconUrl} size={14} />
+        <span className="friend-activity-text">
+          Jogando <strong>{activity.name}</strong>{activity.since ? ` · ${activity.since}` : ''}
+        </span>
+      </span>
+    )
+  }
+  if (activity.kind === 'voice') {
+    return (
+      <span className="friend-activity voice">
+        <VolumeIcon style={{ width: 13, height: 13, flexShrink: 0 }} />
+        <span className="friend-activity-text">Em chamada</span>
+      </span>
+    )
+  }
+  if (activity.kind === 'custom') {
+    return <span className="friend-activity custom" title={activity.text}><span className="friend-activity-text">{activity.text}</span></span>
+  }
+  return (
+    <span className={`friend-activity status-${activity.status}`}>
+      <i className="friend-activity-dot" aria-hidden="true" />
+      <span className="friend-activity-text">{activity.text}</span>
+    </span>
+  )
+}
+
 interface FriendCardProps {
   friend: FriendItem
   /** 'online' | 'idle' | 'dnd' | 'invisible' | 'offline': define o selo no avatar */
   statusType: string
-  /** Texto de apoio: atividade, status personalizado ou "Online" / "Offline" */
-  customText: string
+  /** O que a pessoa está fazendo (jogo, chamada, status personalizado ou estado) */
+  activity: FriendActivity
   decoration: string | null
   unread: number
   onOpenDM: FriendsListProps['onOpenDM']
@@ -57,7 +120,7 @@ interface FriendCardProps {
 const FriendCard = memo(function FriendCard({
   friend,
   statusType,
-  customText,
+  activity,
   decoration,
   unread,
   onOpenDM,
@@ -66,7 +129,6 @@ const FriendCard = memo(function FriendCard({
   onBlockUser,
   removeFriendship
 }: FriendCardProps) {
-  const isPlaying = customText.toLowerCase().includes('jogando')
   return (
     <div className={`friend-card-modern status-${statusType}`} onClick={() => onOpenDM(friend.user.id)}>
       <div className="friend-card-left">
@@ -81,15 +143,8 @@ const FriendCard = memo(function FriendCard({
         </div>
         <div className="friend-meta-modern">
           <span className="friend-name-modern">{friend.user.display_name}</span>
-          <span className="friend-status-modern" title={customText}>
-            {isPlaying ? (
-              <span className="game-presence-badge" style={{ fontSize: '11px', padding: '2px 6px' }}>
-                <GameLogo gameName={customText.replace(/^jogando\s+/i, '').split('•')[0].trim()} size={13} style={{ flexShrink: 0 }} />
-                <span>{customText}</span>
-              </span>
-            ) : (
-              customText
-            )}
+          <span className="friend-status-modern">
+            <ActivityLine activity={activity} />
           </span>
         </div>
       </div>
@@ -217,43 +272,95 @@ export const FriendsList = memo(function FriendsList({
     )
   }
 
+  const renderCard = (friend: FriendItem) => {
+    const pres = presenceData[friend.user.id]
+    const isOnline = isOnlineTab ? true : onlineUsers.has(friend.user.id)
+    const statusType = isOnline ? (pres?.presence_status || 'online') : 'offline'
+    const decoration = pres?.avatar_decoration || (friend.user as any).avatar_decoration || null
+    return (
+      <FriendCard
+        key={friend.id}
+        friend={friend}
+        statusType={statusType}
+        activity={friendActivity(pres, isOnline)}
+        decoration={decoration}
+        unread={unreadDMs[friend.user.id] || 0}
+        onOpenDM={onOpenDM}
+        onStartCall={onStartCall}
+        onInspectMember={onInspectMember}
+        onBlockUser={onBlockUser}
+        removeFriendship={removeFriendship}
+      />
+    )
+  }
+
+  // Só dados de presença que o app já tem em memória: quem está online e jogando agora
+  const playingNow = friendsList.filter(
+    f => (isOnlineTab || onlineUsers.has(f.user.id)) && presenceData[f.user.id]?.current_game?.name
+  )
+  // Na aba "Todos" os offline ficam numa seção própria, abaixo de quem está online
+  const onlineGroup = isOnlineTab ? friendsList : friendsList.filter(f => onlineUsers.has(f.user.id))
+  const offlineGroup = isOnlineTab ? [] : friendsList.filter(f => !onlineUsers.has(f.user.id))
+
   return (
     <div className="friends-list-container" style={{ maxWidth: '100%' }}>
-      <h2 className="friends-section-title">
-        <span>{isOnlineTab ? 'Online agora' : 'Todos os amigos'}</span>
-        <span className="friends-section-count">{friendsList.length}</span>
-      </h2>
-      <div className="friends-list-modern">
-        {friendsList.map(friend => {
-          const pres = presenceData[friend.user.id]
-          const isOnline = isOnlineTab ? true : onlineUsers.has(friend.user.id)
-          const statusType = isOnline ? (pres?.presence_status || 'online') : 'offline'
-          const gameStartedAt = pres?.current_game?.startedAt || pres?.game_presence?.startedAt
-          const gameDur = formatGameDuration(gameStartedAt)
-          let customText = isOnline
-            ? (pres?.custom_status || (pres?.current_game ? `Jogando ${pres.current_game.name}` : (isOnlineTab ? 'Disponível' : 'Online')))
-            : 'Offline'
-          if (isOnline && (pres?.current_game || customText.toLowerCase().includes('jogando')) && gameDur && !customText.includes('•')) {
-            customText = `${customText} • ${gameDur}`
-          }
-          const decoration = pres?.avatar_decoration || (friend.user as any).avatar_decoration || null
-          return (
-            <FriendCard
-              key={friend.id}
-              friend={friend}
-              statusType={statusType}
-              customText={customText}
-              decoration={decoration}
-              unread={unreadDMs[friend.user.id] || 0}
-              onOpenDM={onOpenDM}
-              onStartCall={onStartCall}
-              onInspectMember={onInspectMember}
-              onBlockUser={onBlockUser}
-              removeFriendship={removeFriendship}
-            />
-          )
-        })}
-      </div>
+      {playingNow.length > 0 && (
+        <section className="friends-now" aria-label="Jogando agora">
+          <h2 className="friends-section-title">
+            <span>Agora</span>
+            <span className="friends-section-count">{playingNow.length}</span>
+          </h2>
+          <div className="friends-now-strip">
+            {playingNow.map(f => {
+              const game = presenceData[f.user.id].current_game.name as string
+              return (
+                <button
+                  type="button"
+                  key={f.id}
+                  className="friends-now-chip"
+                  onClick={() => onOpenDM(f.user.id)}
+                  title={`${f.user.display_name} · Jogando ${game}`}
+                >
+                  <span className="friends-now-avatar">
+                    {f.user.avatar_url ? (
+                      <img src={f.user.avatar_url} alt="" />
+                    ) : (
+                      f.user.display_name.slice(0, 1).toUpperCase()
+                    )}
+                  </span>
+                  <span className="friends-now-text">
+                    <span className="friends-now-name">{f.user.display_name}</span>
+                    <span className="friends-now-game">
+                      <GameLogo gameName={game} iconUrl={gameIconOf(presenceData[f.user.id].current_game)} size={12} style={{ flexShrink: 0 }} />
+                      <span>{game}</span>
+                    </span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {onlineGroup.length > 0 && (
+        <>
+          <h2 className="friends-section-title">
+            <span>{isOnlineTab ? 'Online agora' : 'Online'}</span>
+            <span className="friends-section-count">{onlineGroup.length}</span>
+          </h2>
+          <div className="friends-list-modern">{onlineGroup.map(renderCard)}</div>
+        </>
+      )}
+
+      {offlineGroup.length > 0 && (
+        <>
+          <h2 className="friends-section-title friends-section-offline">
+            <span>Offline</span>
+            <span className="friends-section-count">{offlineGroup.length}</span>
+          </h2>
+          <div className="friends-list-modern">{offlineGroup.map(renderCard)}</div>
+        </>
+      )}
     </div>
   )
 })

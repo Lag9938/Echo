@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 export function motionIsReduced(): boolean {
   if (typeof document === 'undefined') return false
   const body = document.body.classList
-  if (body.contains('reduce-motion')) return true
+  // Modo Leve (lib/liteMode.ts) manda mais que "Completo": é o que libera processador para o jogo
+  if (body.contains('echo-lite') || body.contains('reduce-motion')) return true
   if (body.contains('motion-full')) return false
   return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }

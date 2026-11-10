@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { HeadphonesIcon, HeadphonesOffIcon, MicIcon, MicOffIcon, PhoneOffIcon } from '../icons'
 import { useVoiceStore } from '../../stores/useVoiceStore'
 import { StillAvatarImage } from './StillAvatarImage'
+import { CallElapsed } from './CallHeaderMeta'
 
 export interface FloatingCallParticipant {
   userId: string
@@ -157,7 +158,10 @@ export function FloatingCallPanel({
         <span className="fcp-live-dot" aria-hidden="true" />
         <div className="fcp-titles">
           <strong className="fcp-channel" title={channelName}>{channelName}</strong>
-          {spaceName ? <span className="fcp-space" title={spaceName}>{spaceName}</span> : null}
+          {/* Espaço e o tempo de chamada: "Amigos da Madrugada · 12:34" */}
+          <span className="fcp-space" title={spaceName}>
+            {spaceName ? `${spaceName} · ` : ''}<CallElapsed />
+          </span>
         </div>
         <button type="button" className="fcp-collapse-btn" onClick={toggleCollapsed} aria-label="Recolher o painel da chamada" title="Recolher">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
