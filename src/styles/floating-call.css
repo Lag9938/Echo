@@ -50,14 +50,7 @@ body.light-theme .floating-call-panel {
   border-radius: 50%;
   background: #22c55e;
 }
-.fcp-live-dot::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: #22c55e;
-  animation: fcp-live 1.8s ease-out infinite;
-}
+/* Ponto "ao vivo" parado: o painel fica na tela a chamada inteira, e um pulso sem fim era trabalho contínuo */
 .fcp-titles {
   display: flex;
   flex-direction: column;
@@ -115,9 +108,9 @@ body.light-theme .floating-call-panel {
   font-weight: 800;
   background: linear-gradient(135deg, #f08070, var(--accent-color, var(--accent-fill)));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-primary) 10%, transparent);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
-.fcp-avatar img {
+.fcp-avatar img,
+.fcp-avatar canvas {
   width: 100%;
   height: 100%;
   border-radius: 50%;
@@ -125,18 +118,9 @@ body.light-theme .floating-call-panel {
 }
 .fcp-avatar-md { width: 40px; height: 40px; font-size: 15px; }
 .fcp-avatar-sm { width: 26px; height: 26px; font-size: 11px; }
+/* Quem fala: só o anel verde parado, que acende e apaga com a voz (sem pulso, sem crescer, sem transição) */
 .fcp-avatar.is-speaking {
   box-shadow: 0 0 0 2.5px #22c55e;
-  transform: scale(1.06);
-}
-.fcp-avatar.is-speaking::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  border: 2px solid #22c55e;
-  opacity: 0;
-  animation: fcp-speak 1.3s ease-out infinite;
 }
 .fcp-avatar-flag {
   position: absolute;
@@ -274,20 +258,8 @@ body.light-theme .floating-call-panel {
   from { opacity: 0; transform: translateY(16px) scale(0.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
-@keyframes fcp-live {
-  0% { transform: scale(1); opacity: 0.55; }
-  100% { transform: scale(2.6); opacity: 0; }
-}
-@keyframes fcp-speak {
-  0% { transform: scale(0.95); opacity: 0.7; }
-  100% { transform: scale(1.3); opacity: 0; }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .floating-call-panel,
-  .fcp-live-dot::after,
-  .fcp-avatar.is-speaking::after {
+  .floating-call-panel {
     animation: none;
   }
-  .fcp-avatar.is-speaking { transform: none; }
 }

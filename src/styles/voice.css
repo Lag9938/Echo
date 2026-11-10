@@ -1279,6 +1279,8 @@ canvas.participant-card-backdrop {
   height: 140%;
   object-fit: cover;
   background: none;
+  /* Já vem desfocada do desenho (StillAvatarImage blurPx): sem filtro aqui, falar não refaz o desfoque */
+  filter: none;
 }
 .participants-grid .participant-card:not(.has-camera) .participant-avatar-large {
   position: relative;
@@ -1332,10 +1334,15 @@ canvas.participant-card-backdrop {
 }
 
 /* Quem está falando: contorno e rótulo na cor de destaque do tema (sem o azul e o verde fixos) */
+/* Sem brilho difuso, sem trocar o fundo e sem transição: o estado liga e desliga várias vezes por segundo enquanto
+   a pessoa fala, e cada troca suave ou sombra desfocada vira várias repinturas do cartão inteiro. */
 .participants-grid .participant-card.speaking:not(.has-camera) {
   border-color: var(--accent-color);
-  background: var(--bg-tertiary);
-  box-shadow: 0 0 0 2px var(--accent-color), 0 10px 30px color-mix(in srgb, var(--accent-color) 30%, transparent);
+  box-shadow: 0 0 0 2px var(--accent-color);
+}
+.participants-grid .participant-card:not(.has-camera),
+.participants-grid .participant-card:not(.has-camera) .participant-avatar-large {
+  transition: none !important;
 }
 .participants-grid .participant-card.speaking:not(.has-camera) .participant-name {
   background: var(--accent-color);
@@ -1358,7 +1365,7 @@ canvas.participant-card-backdrop {
   z-index: 2;
 }
 @media (prefers-reduced-motion: reduce) {
-  .participant-card-backdrop { filter: blur(34px); }
+  span.participant-card-backdrop { filter: blur(34px); }
 }
 
 .participants-grid .participant-card:not(.has-camera) .watch-stream-badge-btn {

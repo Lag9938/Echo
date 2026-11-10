@@ -18,11 +18,31 @@ export { APP_CURRENT_VERSION } from './version'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
   {
+    version: '0.62.8',
+    title: 'Echo v0.62.8 - Quem Fala, Sem Pesar',
+    date: '10 de Novembro de 2026',
+    tagline: 'O aviso de quem está falando ficou simples e quase não gasta processador.',
+    isLatest: true,
+    highlights: [
+      {
+        icon: '🟢',
+        badge: 'DESEMPENHO',
+        title: 'Anel de Fala Leve',
+        description: 'Quem fala ganha só um anel verde que acende e apaga com a voz, na chamada, na lista de canais e no painel flutuante. Sai o brilho, as ondas e as barrinhas animadas.'
+      },
+      {
+        icon: '🖼️',
+        badge: 'DESEMPENHO',
+        title: 'Fundo do Cartão Parado',
+        description: 'O fundo desfocado do cartão na chamada não pisca mais quando você fala, e as fotos animadas ficam paradas no painel flutuante.'
+      }
+    ]
+  },
+  {
     version: '0.62.7',
     title: 'Echo v0.62.7 - Voz Sem Chiado e Chamadas Mais Leves',
     date: '8 de Novembro de 2026',
     tagline: 'O portão de ruído se ajusta sozinho ao seu ambiente, você escolhe o tipo de supressão e as chamadas pesam menos no computador.',
-    isLatest: true,
     highlights: [
       {
         icon: '🎙️',

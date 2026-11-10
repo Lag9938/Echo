@@ -927,13 +927,11 @@ body.light-theme .server-header-card.has-banner .server-dropdown-chevron {
 .sidebar-voice-user.speaking .sidebar-voice-avatar {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 55%, transparent);
 }
-.sidebar-voice-user.speaking .sidebar-voice-avatar::before { animation: voiceWave 1.7s ease-out infinite; }
-.sidebar-voice-user.speaking .sidebar-voice-avatar::after { animation: voiceWave 1.7s ease-out 0.55s infinite; }
+/* Sem ondas nem brilho: só o anel parado, que acende e apaga junto com a voz (nenhuma animação contínua) */
 .sidebar-voice-user.speaking { color: var(--text-primary); }
 .sidebar-voice-user.speaking .sidebar-voice-name {
   color: var(--text-primary);
   font-weight: 700;
-  text-shadow: 0 0 14px color-mix(in srgb, var(--accent-color) 70%, transparent);
 }
 @keyframes voiceWave {
   0% { transform: scale(1); opacity: 0.6; }
@@ -3236,11 +3234,10 @@ body.light-theme .channels-sidebar.echo-layout-glass .channel-item.active {
   object-fit: cover !important;
 }
 
-/* Anel de fala pulsante */
+/* Anel de fala parado (sem brilho difuso nem pulso) */
 .channels-sidebar.echo-layout-glass .voice-channel-node.has-users .sidebar-voice-user.speaking .sidebar-voice-avatar {
   border-color: #10b981 !important;
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.8), 0 0 2px #10b981 !important;
-  animation: voiceGlowPulse 1.4s infinite !important;
+  box-shadow: 0 0 0 2px #10b981 !important;
 }
 
 /* Nome do participante: encolhe com ellipsis se faltar espaço */

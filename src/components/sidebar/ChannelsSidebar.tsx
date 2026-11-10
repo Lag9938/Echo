@@ -660,11 +660,6 @@ export const ChannelsSidebar = memo(function ChannelsSidebar(props: ChannelsSide
                             )}
                           </div>
                           <span className="sidebar-voice-name" style={nameFontStyle(resolveNameFontId(p.userId, user?.id ?? '', myNameFont, props.presenceData))}>{p.displayName}</span>
-                          {p.isSpeaking && (
-                            <span className="voice-speaking-bars" title="Falando...">
-                              <span /><span /><span /><span /><span />
-                            </span>
-                          )}
                           <div className="sidebar-voice-user-icons">
                             {isSharer && (
                               <button

@@ -6,6 +6,13 @@ interface StillAvatarImageProps {
   className?: string
   /** Maior lado (px) em que a imagem é desenhada; o resto é só o CSS escalando */
   maxSize?: number
+  /**
+   * Desfoque (px da tela pequena) aplicado UMA vez, ao desenhar. Para fundos desfocados: um `filter: blur()` no
+   * CSS é refeito a cada repintura do cartão (por exemplo, toda vez que a pessoa começa ou para de falar).
+   */
+  blurPx?: number
+  /** Se a imagem não carregar: mostra a imagem normal (padrão) ou nada (fundos decorativos não devem virar GIF vivo) */
+  fallback?: 'image' | 'none'
 }
 
 /**
@@ -13,7 +20,7 @@ interface StillAvatarImageProps {
  * mantém todos os quadros decodificados na memória; na chamada, com o fundo desfocado de cada cartão, era
  * custo a mais para cada pessoa na sala. Sem o GIF vivo, o navegador também deixa de redesenhar o desfoque.
  */
-export function StillAvatarImage({ src, alt = '', className, maxSize = 256 }: StillAvatarImageProps) {
+export function StillAvatarImage({ src, alt = '', className, maxSize = 256, blurPx = 0, fallback = 'image' }: StillAvatarImageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [failed, setFailed] = useState(false)
 
@@ -29,6 +36,7 @@ export function StillAvatarImage({ src, alt = '', className, maxSize = 256 }: St
       const scale = Math.min(1, maxSize / Math.max(img.naturalWidth, img.naturalHeight))
       canvas.width = Math.max(1, Math.round(img.naturalWidth * scale))
       canvas.height = Math.max(1, Math.round(img.naturalHeight * scale))
+      if (blurPx > 0) ctx.filter = `blur(${blurPx}px) saturate(1.2)`
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
       // Solta o GIF (e seus quadros) assim que o primeiro foi desenhado
       img.onload = null
@@ -41,9 +49,12 @@ export function StillAvatarImage({ src, alt = '', className, maxSize = 256 }: St
       img.onload = null
       img.onerror = null
     }
-  }, [src, maxSize])
+  }, [src, maxSize, blurPx])
 
-  // Imagem que não carregou: mostra a imagem normal, que ao menos exibe o texto alternativo
-  if (failed) return <img src={src} alt={alt} className={className} />
-  return <canvas ref={canvasRef} className={className} role="img" aria-label={alt || undefined} />
+  if (failed) {
+    if (fallback === 'none') return null
+    // Imagem que não carregou: mostra a imagem normal, que ao menos exibe o texto alternativo
+    return <img src={src} alt={alt} className={className} />
+  }
+  return <canvas ref={canvasRef} className={className} role={alt ? 'img' : undefined} aria-label={alt || undefined} aria-hidden={alt ? undefined : true} />
 }

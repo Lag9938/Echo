@@ -449,14 +449,15 @@ body.light-theme .participant-avatar-large {
 }
 
 /* Anel de fala pulsante em verde esmeralda acolhedor */
+/* (anel parado, sem brilho difuso: liga e desliga junto com a voz e custa uma repintura simples) */
 body.light-theme .participant-card.speaking {
   border-color: rgba(34, 197, 94, 0.5) !important;
-  box-shadow: inset 0 1px 0 #fff, 0 0 0 2px rgba(34, 197, 94, 0.4), 0 18px 44px rgba(34, 197, 94, 0.18) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 0 0 2px rgba(34, 197, 94, 0.4) !important;
 }
 
 body.light-theme .participant-card.speaking .participant-avatar-large {
   border-color: #22c55e !important;
-  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25), 0 12px 28px rgba(34, 197, 94, 0.3) !important;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.35) !important;
 }
 
 /* Nome do participante e estados de mutado */

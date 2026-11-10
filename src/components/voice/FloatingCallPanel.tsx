@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { HeadphonesIcon, HeadphonesOffIcon, MicIcon, MicOffIcon, PhoneOffIcon } from '../icons'
 import { useVoiceStore } from '../../stores/useVoiceStore'
+import { StillAvatarImage } from './StillAvatarImage'
 
 export interface FloatingCallParticipant {
   userId: string
@@ -57,7 +58,8 @@ function readCollapsed(): boolean {
 function Avatar({ p, size }: { p: FloatingCallParticipant; size: 'md' | 'sm' }) {
   return (
     <span className={`fcp-avatar fcp-avatar-${size} ${p.isSpeaking ? 'is-speaking' : ''}`} title={p.displayName}>
-      {p.avatarUrl ? <img src={p.avatarUrl} alt="" /> : <span aria-hidden="true">{(p.displayName || '?').slice(0, 1).toUpperCase()}</span>}
+      {/* Foto parada: o painel fica na tela a chamada toda, e um GIF vivo aqui era redesenho sem fim */}
+      {p.avatarUrl ? <StillAvatarImage src={p.avatarUrl} maxSize={80} /> : <span aria-hidden="true">{(p.displayName || '?').slice(0, 1).toUpperCase()}</span>}
       {p.isMuted && (
         <span className="fcp-avatar-flag" aria-hidden="true">
           <MicOffIcon style={{ width: 8, height: 8 }} />

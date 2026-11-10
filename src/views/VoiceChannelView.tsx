@@ -1021,7 +1021,7 @@ export const VoiceChannelView = memo(function VoiceChannelView(props: VoiceChann
                                     >
                                       {/* Fundo desfocado do cartão: a foto da pessoa parada, pequena (sem foto, a cor de destaque) */}
                                       {!hasCam && (p.avatarUrl
-                                        ? <StillAvatarImage src={p.avatarUrl} className="participant-card-backdrop" maxSize={48} />
+                                        ? <StillAvatarImage src={p.avatarUrl} className="participant-card-backdrop" maxSize={48} blurPx={4} fallback="none" />
                                         : <span className="participant-card-backdrop" aria-hidden="true" />)}
                                       {isSharer && (
                                         <div className="participant-live-badge">
